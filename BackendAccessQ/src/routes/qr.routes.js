@@ -5,7 +5,7 @@ const qrVerifyController = require("../controllers/api.qr_verify.controller");
 const authMiddleware = require('../middleware/authMiddleware');
 
 const multer = require('multer');
-const upload = multer({ 
+const upload = multer({
     dest: 'tmp/uploads/',
     limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
     fileFilter: (req, file, cb) => {
@@ -39,7 +39,7 @@ router.put("/revoke/:id", authMiddleware, qrController.revokeQr);
 
 // Note: Toutes les anciennes routes (/ajoutP, /updateP, /mytransactions) 
 // qui semblaient concerner un autre projet ("produits") ont été supprimées 
-// pour garder une API REST propre dédiée à Qr Access 2.
+// pour garder une API REST propre dédiée à accessQSI.
 
 
 module.exports = router;

@@ -95,26 +95,26 @@ export default function Dashboard() {
     return (
         <div className="max-w-7xl mx-auto space-y-8">
             {/* Welcome Banner */}
-            <div className="relative overflow-hidden bg-white rounded-3xl p-8 border border-slate-200 shadow-sm">
+            <div className="relative overflow-hidden bg-white dark:bg-slate-950 rounded-3xl p-8 border border-slate-200 dark:border-slate-800 shadow-sm">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-blue-50 rounded-bl-full blur-[60px] pointer-events-none -mr-10 -mt-10" />
                 <div className="absolute bottom-0 right-32 w-48 h-48 bg-blue-100/40 rounded-t-full blur-[50px] pointer-events-none" />
 
                 <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div>
-                        <h2 className="text-3xl font-bold text-slate-900 mb-2 mt-2">Welcome back, {userName || "Admin"} 👋</h2>
-                        <p className="text-slate-500 text-lg">Here's what's happening in your organization today.</p>
+                        <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-2 mt-2">Welcome back, {userName || "Admin"} 👋</h2>
+                        <p className="text-slate-500 dark:text-slate-400 text-lg">Here's what's happening in your organization today.</p>
                     </div>
                     <div className="flex gap-3">
                         <button 
                             onClick={() => handleExport('csv')}
-                            className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl transition-colors border border-slate-200"
+                            className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 font-semibold rounded-xl transition-colors border border-slate-200 dark:border-slate-800"
                         >
                             <Download className="w-4 h-4" />
                             CSV
                         </button>
                         <button 
                             onClick={() => handleExport('pdf')}
-                            className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-slate-50 text-slate-900 font-semibold rounded-xl shadow-sm transition-colors border border-slate-200"
+                            className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-950 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-900 dark:text-white font-semibold rounded-xl shadow-sm transition-colors border border-slate-200 dark:border-slate-800"
                         >
                             <Download className="w-4 h-4" />
                             PDF
@@ -126,14 +126,14 @@ export default function Dashboard() {
             {/* Quick Stats */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
                 {/* Stat 1 */}
-                <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                <div className="bg-white dark:bg-slate-950 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow">
                     <div className="flex items-center gap-4 mb-4">
                         <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
                         </div>
                         <div>
-                            <p className="text-sm font-medium text-slate-500">Active QR Codes</p>
-                            <h4 className="text-2xl font-bold text-slate-900">{stats.activeQrs}</h4>
+                            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Active QR Codes</p>
+                            <h4 className="text-2xl font-bold text-slate-900 dark:text-white">{stats.activeQrs}</h4>
                         </div>
                     </div>
                     <div className="flex items-center text-sm">
@@ -141,19 +141,19 @@ export default function Dashboard() {
                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
                             12%
                         </span>
-                        <span className="text-slate-400 ml-2">from last month</span>
+                        <span className="text-slate-400 dark:text-slate-500 ml-2">from last month</span>
                     </div>
                 </div>
 
                 {/* Stat 2 */}
-                <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                <div className="bg-white dark:bg-slate-950 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow">
                     <div className="flex items-center gap-4 mb-4">
                         <div className="w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600">
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
                         </div>
                         <div>
-                            <p className="text-sm font-medium text-slate-500">Total Scans</p>
-                            <h4 className="text-2xl font-bold text-slate-900">{stats.totalScans}</h4>
+                            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Total Scans</p>
+                            <h4 className="text-2xl font-bold text-slate-900 dark:text-white">{stats.totalScans}</h4>
                         </div>
                     </div>
                     <div className="flex items-center text-sm">
@@ -161,39 +161,39 @@ export default function Dashboard() {
                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
                             24%
                         </span>
-                        <span className="text-slate-400 ml-2">from last month</span>
+                        <span className="text-slate-400 dark:text-slate-500 ml-2">from last month</span>
                     </div>
                 </div>
 
                 {/* Stat 3 */}
-                <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                <div className="bg-white dark:bg-slate-950 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow">
                     <div className="flex items-center gap-4 mb-4">
                         <div className="w-12 h-12 rounded-xl bg-orange-50 flex items-center justify-center text-orange-600">
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                         </div>
                         <div>
-                            <p className="text-sm font-medium text-slate-500">Upcoming Events</p>
-                            <h4 className="text-2xl font-bold text-slate-900">{stats.upcomingEvents}</h4>
+                            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Upcoming Events</p>
+                            <h4 className="text-2xl font-bold text-slate-900 dark:text-white">{stats.upcomingEvents}</h4>
                         </div>
                     </div>
                     <div className="flex items-center text-sm">
-                        <span className="text-slate-500 font-medium truncate">Next: {stats.nextEventTitle}</span>
+                        <span className="text-slate-500 dark:text-slate-400 font-medium truncate">Next: {stats.nextEventTitle}</span>
                     </div>
                 </div>
 
                 {/* Stat 4 */}
-                <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                <div className="bg-white dark:bg-slate-950 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow">
                     <div className="flex items-center gap-4 mb-4">
                         <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
                         </div>
                         <div>
-                            <p className="text-sm font-medium text-slate-500">Active Agents</p>
-                            <h4 className="text-2xl font-bold text-slate-900">{stats.activeAgents}</h4>
+                            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Active Agents</p>
+                            <h4 className="text-2xl font-bold text-slate-900 dark:text-white">{stats.activeAgents}</h4>
                         </div>
                     </div>
                     <div className="flex items-center text-sm">
-                        <span className="text-slate-500 font-medium">Out of 15 allowed</span>
+                        <span className="text-slate-500 dark:text-slate-400 font-medium">Out of 15 allowed</span>
                     </div>
                 </div>
             </div>
@@ -201,11 +201,11 @@ export default function Dashboard() {
             {/* Charts & Top Performance Section */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Line Chart */}
-                <div className="lg:col-span-2 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+                <div className="lg:col-span-2 bg-white dark:bg-slate-950 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
                     <div className="flex items-center justify-between mb-8">
                         <div>
-                            <h3 className="text-lg font-bold text-slate-900">Activity Overview</h3>
-                            <p className="text-sm text-slate-500">Total scans over the last 7 days</p>
+                            <h3 className="text-lg font-bold text-slate-900 dark:text-white">Activity Overview</h3>
+                            <p className="text-sm text-slate-500 dark:text-slate-400">Total scans over the last 7 days</p>
                         </div>
                         <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
                             <TrendingUp className="w-5 h-5" />
@@ -244,11 +244,11 @@ export default function Dashboard() {
                 </div>
 
                 {/* Top Agents Panel */}
-                <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+                <div className="bg-white dark:bg-slate-950 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
                     <div className="flex items-center justify-between mb-8">
                         <div>
-                            <h3 className="text-lg font-bold text-slate-900">Top Agents</h3>
-                            <p className="text-sm text-slate-500">Best performance by scans</p>
+                            <h3 className="text-lg font-bold text-slate-900 dark:text-white">Top Agents</h3>
+                            <p className="text-sm text-slate-500 dark:text-slate-400">Best performance by scans</p>
                         </div>
                         <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
                             <Users className="w-5 h-5" />
@@ -261,23 +261,23 @@ export default function Dashboard() {
                                     <div className="flex items-center gap-3">
                                         <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs ${
                                             index === 0 ? 'bg-amber-100 text-amber-700' : 
-                                            index === 1 ? 'bg-slate-100 text-slate-700' : 'bg-orange-50 text-orange-700'
+                                            index === 1 ? 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200' : 'bg-orange-50 text-orange-700'
                                         }`}>
                                             {index + 1}
                                         </div>
-                                        <span className="font-semibold text-slate-900">{agent.name}</span>
+                                        <span className="font-semibold text-slate-900 dark:text-white">{agent.name}</span>
                                     </div>
-                                    <span className="px-3 py-1 bg-slate-50 text-slate-600 text-sm font-bold rounded-lg border border-slate-200">
+                                    <span className="px-3 py-1 bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 text-sm font-bold rounded-lg border border-slate-200 dark:border-slate-800">
                                         {agent.count}
                                     </span>
                                 </div>
                             ))
                         ) : (
-                            <p className="text-center text-slate-400 italic py-8">Aucun agent actif détecté.</p>
+                            <p className="text-center text-slate-400 dark:text-slate-500 italic py-8">Aucun agent actif détecté.</p>
                         )}
                     </div>
-                    <div className="mt-8 p-4 bg-slate-50 rounded-2xl border border-dashed border-slate-300">
-                        <p className="text-xs text-slate-500 leading-relaxed">
+                    <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700">
+                        <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
                             Ces données sont rafraîchies en temps réel à chaque scan autorisé ou refusé.
                         </p>
                     </div>
@@ -285,15 +285,15 @@ export default function Dashboard() {
             </div>
 
             {/* Recent Activity Table */}
-            <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-                <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between">
-                    <h3 className="text-lg font-bold text-slate-900">Recent Scans</h3>
+            <div className="bg-white dark:bg-slate-950 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+                <div className="px-8 py-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">Recent Scans</h3>
                     <button className="text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline">View all</button>
                 </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                         <thead>
-                            <tr className="bg-slate-100/80 text-slate-600 text-sm border-b-2 border-slate-300">
+                            <tr className="bg-slate-100/80 text-slate-600 dark:text-slate-300 text-sm border-b-2 border-slate-300 dark:border-slate-700">
                                 <th className="px-8 py-4 font-semibold uppercase tracking-wider">Access Code</th>
                                 <th className="px-8 py-4 font-semibold uppercase tracking-wider">Event / Location</th>
                                 <th className="px-8 py-4 font-semibold uppercase tracking-wider">Agent</th>
@@ -301,14 +301,14 @@ export default function Dashboard() {
                                 <th className="px-8 py-4 font-semibold uppercase tracking-wider">Status</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y-2 divide-slate-300 text-slate-700 text-sm">
+                        <tbody className="divide-y-2 divide-slate-300 text-slate-700 dark:text-slate-200 text-sm">
                             {stats.recentScans && stats.recentScans.length > 0 ? (
                                 stats.recentScans.map((scan) => (
                                     <tr key={scan.id} className="hover:bg-slate-50/50 transition-colors">
-                                        <td className="px-8 py-4 font-medium text-slate-900 tracking-tight font-mono">{scan.code}</td>
+                                        <td className="px-8 py-4 font-medium text-slate-900 dark:text-white tracking-tight font-mono">{scan.code}</td>
                                         <td className="px-8 py-4">{scan.event}</td>
                                         <td className="px-8 py-4">{scan.agent}</td>
-                                        <td className="px-8 py-4 text-slate-500">
+                                        <td className="px-8 py-4 text-slate-500 dark:text-slate-400">
                                             {new Date(scan.time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
                                         </td>
                                         <td className="px-8 py-4">
@@ -323,7 +323,7 @@ export default function Dashboard() {
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan="5" className="px-8 py-8 text-center text-slate-500 border-none">
+                                    <td colSpan="5" className="px-8 py-8 text-center text-slate-500 dark:text-slate-400 border-none">
                                         Aucun scan récent enregistré.
                                     </td>
                                 </tr>
@@ -336,7 +336,7 @@ export default function Dashboard() {
             {/* ── CUSTOM TOAST ── */}
             {toast.show && (
                 <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-bottom-5 fade-in duration-300">
-                    <div className="bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 border border-slate-700/50 backdrop-blur-md">
+                    <div className="bg-slate-900 dark:bg-slate-100 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 border border-slate-700/50 backdrop-blur-md">
                         <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
                             <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                         </div>

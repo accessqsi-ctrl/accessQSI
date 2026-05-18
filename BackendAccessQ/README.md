@@ -1,6 +1,6 @@
-# QR Access 2 - Système de Gestion d'Accès par Code QR
+# accessQSI - Système de Gestion d'Accès par Code QR
 
-QR Access 2 est une plateforme moderne et sécurisée pour la gestion d'événements et le contrôle d'accès via des codes QR uniques.
+accessQSI est une plateforme moderne et sécurisée pour la gestion d'événements et le contrôle d'accès via des codes QR uniques.
 
 ## Fonctionnalités Clés
 

@@ -88,8 +88,8 @@ export default function AreasPage() {
         <div className="max-w-7xl mx-auto space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900">Zones & Locals</h1>
-                    <p className="text-slate-500 mt-1">Gérez les lieux physiques de votre organisation.</p>
+                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Zones & Locals</h1>
+                    <p className="text-slate-500 dark:text-slate-400 mt-1">Gérez les lieux physiques de votre organisation.</p>
                 </div>
                 <button
                     onClick={() => { setEditingArea(null); setFormData({ area_name: "", accreditation_level: 1 }); setIsModalOpen(true); }}
@@ -100,34 +100,34 @@ export default function AreasPage() {
                 </button>
             </div>
 
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="bg-white dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                         <thead>
-                            <tr className="bg-slate-50 text-slate-600 text-sm border-b border-slate-200">
+                            <tr className="bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 text-sm border-b border-slate-200 dark:border-slate-800">
                                 <th className="px-6 py-4 font-semibold uppercase tracking-wider">Nom de la zone</th>
                                 <th className="px-6 py-4 font-semibold uppercase tracking-wider">Niveau d'accréditation</th>
                                 <th className="px-6 py-4 font-semibold uppercase tracking-wider text-right">Actions</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100 text-slate-700 text-sm">
+                        <tbody className="divide-y divide-slate-100 text-slate-700 dark:text-slate-200 text-sm">
                             {loading ? (
                                 <tr>
                                     <td colSpan="3" className="px-6 py-8 text-center">
                                         <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto" />
-                                        <p className="mt-2 text-slate-500">Chargement des zones...</p>
+                                        <p className="mt-2 text-slate-500 dark:text-slate-400">Chargement des zones...</p>
                                     </td>
                                 </tr>
                             ) : areas.length === 0 ? (
                                 <tr>
-                                    <td colSpan="3" className="px-6 py-12 text-center text-slate-500">
+                                    <td colSpan="3" className="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
                                         Aucune zone trouvée. Commencez par en ajouter une.
                                     </td>
                                 </tr>
                             ) : (
                                 areas.map((area) => (
-                                    <tr key={area.area_id} className="hover:bg-slate-50 transition-colors group">
-                                        <td className="px-6 py-4 font-medium text-slate-900 flex items-center gap-3">
+                                    <tr key={area.area_id} className="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors group">
+                                        <td className="px-6 py-4 font-medium text-slate-900 dark:text-white flex items-center gap-3">
                                             <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
                                                 <MapPin className="w-5 h-5" />
                                             </div>
@@ -140,10 +140,10 @@ export default function AreasPage() {
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex items-center justify-end gap-2">
-                                                <button onClick={() => openEditModal(area)} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                                                <button onClick={() => openEditModal(area)} className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 rounded-lg transition-colors">
                                                     <Edit2 className="w-4 h-4" />
                                                 </button>
-                                                <button onClick={() => handleDelete(area.area_id)} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                                                <button onClick={() => handleDelete(area.area_id)} className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
                                                     <Trash2 className="w-4 h-4" />
                                                 </button>
                                             </div>
@@ -158,26 +158,26 @@ export default function AreasPage() {
 
             {isModalOpen && (
                 <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
-                        <div className="p-6 border-b border-slate-100">
-                            <h2 className="text-xl font-bold text-slate-900">
+                    <div className="bg-white dark:bg-slate-950 rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+                        <div className="p-6 border-b border-slate-100 dark:border-slate-800">
+                            <h2 className="text-xl font-bold text-slate-900 dark:text-white">
                                 {editingArea ? "Modifier la zone" : "Nouvelle zone"}
                             </h2>
                         </div>
                         <form onSubmit={handleSubmit} className="p-6 space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Nom de la zone</label>
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Nom de la zone</label>
                                 <input
                                     type="text"
                                     required
                                     value={formData.area_name}
                                     onChange={(e) => setFormData({ ...formData, area_name: e.target.value })}
-                                    className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                                    className="w-full px-4 py-2 border border-slate-200 dark:border-slate-800 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
                                     placeholder="Ex: Entrée Principale, Server Room..."
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Niveau d'accréditation requis</label>
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Niveau d'accréditation requis</label>
                                 <input
                                     type="number"
                                     required
@@ -185,14 +185,14 @@ export default function AreasPage() {
                                     max="10"
                                     value={formData.accreditation_level}
                                     onChange={(e) => setFormData({ ...formData, accreditation_level: Number(e.target.value) })}
-                                    className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                                    className="w-full px-4 py-2 border border-slate-200 dark:border-slate-800 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
                                 />
                             </div>
                             <div className="flex gap-3 pt-4">
                                 <button
                                     type="button"
                                     onClick={() => setIsModalOpen(false)}
-                                    className="flex-1 px-4 py-2 bg-slate-100 text-slate-700 font-medium rounded-xl hover:bg-slate-200 transition-colors"
+                                    className="flex-1 px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-medium rounded-xl hover:bg-slate-200 transition-colors"
                                 >
                                     Annuler
                                 </button>

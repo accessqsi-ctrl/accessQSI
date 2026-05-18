@@ -146,8 +146,8 @@ export default function AgentsPage() {
         <div className="max-w-7xl mx-auto space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900">Agents & Équipe</h1>
-                    <p className="text-slate-500 mt-1">Gérez les membres autorisés à scanner les codes QR.</p>
+                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Agents & Équipe</h1>
+                    <p className="text-slate-500 dark:text-slate-400 mt-1">Gérez les membres autorisés à scanner les codes QR.</p>
                 </div>
                 <button
                     onClick={() => setIsAddModalOpen(true)}
@@ -158,30 +158,30 @@ export default function AgentsPage() {
                 </button>
             </div>
 
-            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col md:flex-row items-center gap-8">
+            <div className="bg-white dark:bg-slate-950 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row items-center gap-8">
                 <div className="flex-1 flex items-center gap-4">
                     <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
                     </div>
                     <div>
-                        <p className="text-sm font-medium text-slate-500">Limite du Plan</p>
-                        <p className="text-xl font-bold text-slate-900">{activeAgentsCount} / {planLimit} <span className="text-sm font-normal text-slate-500">Agents Actifs</span></p>
+                        <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Limite du Plan</p>
+                        <p className="text-xl font-bold text-slate-900 dark:text-white">{activeAgentsCount} / {planLimit} <span className="text-sm font-normal text-slate-500 dark:text-slate-400">Agents Actifs</span></p>
                     </div>
                 </div>
                 <div className="w-full md:w-auto flex-1 md:flex-none">
-                    <div className="w-full bg-slate-100 rounded-full h-2.5 mb-2">
+                    <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2.5 mb-2">
                         <div className="bg-blue-600 h-2.5 rounded-full duration-500 ease-out transition-all" style={{ width: percentFill + "%" }}></div>
                     </div>
-                    <p className="text-xs text-slate-500 text-right">{Math.max(0, planLimit - activeAgentsCount)} places restantes</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 text-right">{Math.max(0, planLimit - activeAgentsCount)} places restantes</p>
                 </div>
             </div>
 
             {error && <div className="p-4 bg-red-50 text-red-600 rounded-xl">{error}</div>}
 
-            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
+            <div className="bg-white dark:bg-slate-950 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
                 <div className="relative w-full md:w-96">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <svg className="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg className="h-5 w-5 text-slate-400 dark:text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                         </svg>
                     </div>
@@ -190,18 +190,18 @@ export default function AgentsPage() {
                         placeholder="Rechercher par nom ou email..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="block w-full pl-10 pr-3 py-2 border border-slate-200 rounded-xl leading-5 bg-slate-50 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 sm:text-sm transition-colors"
+                        className="block w-full pl-10 pr-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl leading-5 bg-slate-50 dark:bg-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 sm:text-sm transition-colors"
                     />
                 </div>
 
                 <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
-                    <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className="px-3 py-2 border border-slate-200 rounded-xl bg-white text-sm text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
+                    <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className="px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-950 text-sm text-slate-700 dark:text-slate-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
                         <option>All Roles</option>
                         <option>Admin</option>
                         <option>Agent</option>
                         <option>Opérateur</option>
                     </select>
-                    <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-3 py-2 border border-slate-200 rounded-xl bg-white text-sm text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
+                    <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-950 text-sm text-slate-700 dark:text-slate-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
                         <option>All Statuses</option>
                         <option>Active</option>
                         <option>Inactive</option>
@@ -209,11 +209,11 @@ export default function AgentsPage() {
                 </div>
             </div>
 
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="bg-white dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse min-w-[800px]">
                         <thead>
-                            <tr className="bg-slate-100/80 text-slate-600 text-sm border-b-2 border-slate-300">
+                            <tr className="bg-slate-100/80 text-slate-600 dark:text-slate-300 text-sm border-b-2 border-slate-300 dark:border-slate-700">
                                 <th className="px-6 py-4 font-semibold uppercase tracking-wider">Détails Agent</th>
                                 <th className="px-6 py-4 font-semibold uppercase tracking-wider">Rôle</th>
                                 <th className="px-6 py-4 font-semibold uppercase tracking-wider">Statut</th>
@@ -222,31 +222,31 @@ export default function AgentsPage() {
                                 <th className="px-6 py-4 font-semibold uppercase tracking-wider text-right">Actions</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y-2 divide-slate-300 text-slate-700 text-sm">
+                        <tbody className="divide-y-2 divide-slate-300 text-slate-700 dark:text-slate-200 text-sm">
                             {filteredAgents.length === 0 ? (
                                 <tr>
-                                    <td colSpan="6" className="px-6 py-12 text-center text-slate-500">Aucun agent trouvé.</td>
+                                    <td colSpan="6" className="px-6 py-12 text-center text-slate-500 dark:text-slate-400">Aucun agent trouvé.</td>
                                 </tr>
                             ) : (
                                 filteredAgents.map((agent) => {
                                     const isAdmin = agent.role === 'Admin';
                                     const isOperator = agent.role === 'Opérateur';
-                                    const spanClass = isAdmin ? "px-2.5 py-1 rounded-lg text-xs font-semibold border bg-purple-50 text-purple-700 border-purple-200" : isOperator ? "px-2.5 py-1 rounded-lg text-xs font-semibold border bg-amber-50 text-amber-700 border-amber-200" : "px-2.5 py-1 rounded-lg text-xs font-semibold border bg-slate-50 text-slate-700 border-slate-200";
+                                    const spanClass = isAdmin ? "px-2.5 py-1 rounded-lg text-xs font-semibold border bg-purple-50 text-purple-700 border-purple-200" : isOperator ? "px-2.5 py-1 rounded-lg text-xs font-semibold border bg-amber-50 text-amber-700 border-amber-200" : "px-2.5 py-1 rounded-lg text-xs font-semibold border bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-800";
                                     
                                     const isActive = agent.status === 'Active';
                                     const statusDotClass = isActive ? "w-2 h-2 rounded-full bg-emerald-500" : "w-2 h-2 rounded-full bg-slate-300";
-                                    const actionBtnClass = isActive ? "p-1.5 rounded-lg transition-colors text-slate-400 hover:text-red-600 hover:bg-red-50" : "p-1.5 rounded-lg transition-colors text-slate-400 hover:text-emerald-600 hover:bg-emerald-50";
+                                    const actionBtnClass = isActive ? "p-1.5 rounded-lg transition-colors text-slate-400 dark:text-slate-500 hover:text-red-600 hover:bg-red-50" : "p-1.5 rounded-lg transition-colors text-slate-400 dark:text-slate-500 hover:text-emerald-600 hover:bg-emerald-50";
 
                                     return (
                                         <tr key={agent.id} className="hover:bg-slate-50/50 transition-colors group">
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-4">
-                                                    <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 font-bold uppercase">
+                                                    <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 font-bold uppercase">
                                                         {agent.name.charAt(0)}
                                                     </div>
                                                     <div>
-                                                        <p className="font-medium text-slate-900">{agent.name}</p>
-                                                        <p className="text-slate-500 text-xs">{agent.email}</p>
+                                                        <p className="font-medium text-slate-900 dark:text-white">{agent.name}</p>
+                                                        <p className="text-slate-500 dark:text-slate-400 text-xs">{agent.email}</p>
                                                     </div>
                                                 </div>
                                             </td>
@@ -259,8 +259,8 @@ export default function AgentsPage() {
                                                     <span className="font-medium">{agent.status}</span>
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-4 font-medium text-slate-900">{agent.scans}</td>
-                                            <td className="px-6 py-4 text-slate-500">{agent.lastActive}</td>
+                                            <td className="px-6 py-4 font-medium text-slate-900 dark:text-white">{agent.scans}</td>
+                                            <td className="px-6 py-4 text-slate-500 dark:text-slate-400">{agent.lastActive}</td>
                                             <td className="px-6 py-4 text-right">
                                                 <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                                     {!isAdmin && (
@@ -282,7 +282,7 @@ export default function AgentsPage() {
                                                             <button 
                                                                 onClick={() => handleDeleteAgent(agent.id)}
                                                                 disabled={togglingId === agent.id}
-                                                                className="p-1.5 rounded-lg transition-colors text-slate-400 hover:text-red-700 hover:bg-red-100" 
+                                                                className="p-1.5 rounded-lg transition-colors text-slate-400 dark:text-slate-500 hover:text-red-700 hover:bg-red-100" 
                                                                 title="Supprimer Définitivement"
                                                             >
                                                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
@@ -302,10 +302,10 @@ export default function AgentsPage() {
 
             {isAddModalOpen && (
                 <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-3xl w-full max-w-md p-6 sm:p-8 shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
+                    <div className="bg-white dark:bg-slate-950 rounded-3xl w-full max-w-md p-6 sm:p-8 shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
                         <button
                             onClick={() => setIsAddModalOpen(false)}
-                            className="absolute top-6 right-6 text-slate-400 hover:text-slate-900 transition-colors"
+                            className="absolute top-6 right-6 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
                         >
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                         </button>
@@ -314,52 +314,52 @@ export default function AgentsPage() {
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>
                         </div>
 
-                        <h3 className="text-xl font-bold text-slate-900 mb-2">Inviter un Nouvel Agent</h3>
-                        <p className="text-slate-500 text-sm mb-6">L'accès et les mots de passe générés seront envoyés automatiquement par email.</p>
+                        <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Inviter un Nouvel Agent</h3>
+                        <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">L'accès et les mots de passe générés seront envoyés automatiquement par email.</p>
 
                         <form onSubmit={handleAddAgent} className="space-y-4">
                             {addError && <div className="p-3 bg-red-50 text-red-600 rounded-lg text-sm">{addError}</div>}
                             {addSuccess && <div className="p-3 bg-emerald-50 text-emerald-600 rounded-lg text-sm">{addSuccess}</div>}
 
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-slate-700">Nom Complet *</label>
+                                <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Nom Complet *</label>
                                 <input
                                     type="text"
                                     required
                                     value={addForm.fullName}
                                     onChange={(e) => setAddForm({ ...addForm, fullName: e.target.value })}
                                     placeholder="e.g. Jane Smith"
-                                    className="w-full px-4 py-3 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
+                                    className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
                                 />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-slate-700">Adresse Email *</label>
+                                <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Adresse Email *</label>
                                 <input
                                     type="email"
                                     required
                                     value={addForm.email}
                                     onChange={(e) => setAddForm({ ...addForm, email: e.target.value })}
                                     placeholder="e.g. jane@example.com"
-                                    className="w-full px-4 py-3 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
+                                    className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
                                 />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-slate-700">Mot de Passe *</label>
+                                <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Mot de Passe *</label>
                                 <input
                                     type="password"
                                     required
                                     value={addForm.password}
                                     onChange={(e) => setAddForm({ ...addForm, password: e.target.value })}
                                     placeholder="••••••••"
-                                    className="w-full px-4 py-3 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
+                                    className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
                                 />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-slate-700">Rôle *</label>
+                                <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Rôle *</label>
                                 <select
                                     value={addForm.role}
                                     onChange={(e) => setAddForm({ ...addForm, role: e.target.value })}
-                                    className="w-full px-4 py-3 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors text-sm font-medium"
+                                    className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors text-sm font-medium"
                                 >
                                     <option value="ORG_AGENT">Agent (Scan standard)</option>
                                     <option value="OPERATOR">Opérateur (Responsable de zone)</option>

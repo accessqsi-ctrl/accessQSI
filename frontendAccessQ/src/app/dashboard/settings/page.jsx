@@ -187,8 +187,8 @@ export default function SettingsPage() {
     return (
         <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500 pb-12">
             <div>
-                <h1 className="text-2xl font-bold text-slate-900">Paramètres</h1>
-                <p className="text-slate-500 mt-1">Gérez vos informations personnelles et celles de votre organisation.</p>
+                <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Paramètres</h1>
+                <p className="text-slate-500 dark:text-slate-400 mt-1">Gérez vos informations personnelles et celles de votre organisation.</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -198,7 +198,7 @@ export default function SettingsPage() {
                         <User className="w-4 h-4" /> Profil & Sécurité
                     </button>
                     {isAdmin && (
-                        <button className="w-full flex items-center gap-3 px-4 py-2.5 text-slate-600 hover:bg-slate-50 rounded-xl font-medium text-sm transition-colors">
+                        <button className="w-full flex items-center gap-3 px-4 py-2.5 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl font-medium text-sm transition-colors">
                             <Building className="w-4 h-4" /> Organisation
                         </button>
                     )}
@@ -208,12 +208,12 @@ export default function SettingsPage() {
                 <div className="md:col-span-2 space-y-8">
                     
                     {/* Mon Profil Section */}
-                    <section className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-                        <div className="p-6 border-b border-slate-100 flex items-center gap-4">
+                    <section className="bg-white dark:bg-slate-950 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+                        <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center gap-4">
                             <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
                                 <User className="w-5 h-5" />
                             </div>
-                            <h2 className="font-bold text-slate-900">Informations Personnelles</h2>
+                            <h2 className="font-bold text-slate-900 dark:text-white">Informations Personnelles</h2>
                         </div>
                         <div className="p-6 space-y-6">
                             <form onSubmit={handleUpdateProfile} className="space-y-4">
@@ -228,21 +228,21 @@ export default function SettingsPage() {
                                 
                                 <div className="grid grid-cols-1 gap-4">
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-700">Nom Complet</label>
+                                        <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Nom Complet</label>
                                         <input
                                             type="text"
                                             value={profileForm.fullName}
                                             onChange={(e) => setProfileForm({...profileForm, fullName: e.target.value})}
-                                            className="w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all sm:text-sm"
+                                            className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all sm:text-sm"
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-700">Adresse Email</label>
+                                        <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Adresse Email</label>
                                         <input
                                             type="email"
                                             value={profileForm.email}
                                             onChange={(e) => setProfileForm({...profileForm, email: e.target.value})}
-                                            className="w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all sm:text-sm"
+                                            className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all sm:text-sm"
                                         />
                                     </div>
                                 </div>
@@ -259,12 +259,12 @@ export default function SettingsPage() {
                     </section>
 
                     {/* Sécurité / Mot de passe */}
-                    <section className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-                        <div className="p-6 border-b border-slate-100 flex items-center gap-4">
-                            <div className="w-10 h-10 rounded-xl bg-slate-50 text-slate-600 flex items-center justify-center">
+                    <section className="bg-white dark:bg-slate-950 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+                        <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 flex items-center justify-center">
                                 <Lock className="w-5 h-5" />
                             </div>
-                            <h2 className="font-bold text-slate-900">Mot de Passe</h2>
+                            <h2 className="font-bold text-slate-900 dark:text-white">Mot de Passe</h2>
                         </div>
                         <div className="p-6 space-y-6">
                             <form onSubmit={handleUpdatePassword} className="space-y-4">
@@ -278,38 +278,38 @@ export default function SettingsPage() {
                                 )}
                                 
                                 <div className="space-y-2">
-                                    <label className="text-sm font-medium text-slate-700">Mot de passe actuel</label>
+                                    <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Mot de passe actuel</label>
                                     <input
                                         type="password"
                                         value={pwdForm.currentPassword}
                                         onChange={(e) => setPwdForm({...pwdForm, currentPassword: e.target.value})}
-                                        className="w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all sm:text-sm"
+                                        className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all sm:text-sm"
                                     />
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-700">Nouveau mot de passe</label>
+                                        <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Nouveau mot de passe</label>
                                         <input
                                             type="password"
                                             value={pwdForm.newPassword}
                                             onChange={(e) => setPwdForm({...pwdForm, newPassword: e.target.value})}
-                                            className="w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all sm:text-sm"
+                                            className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all sm:text-sm"
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-700">Confirmer</label>
+                                        <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Confirmer</label>
                                         <input
                                             type="password"
                                             value={pwdForm.confirmPassword}
                                             onChange={(e) => setPwdForm({...pwdForm, confirmPassword: e.target.value})}
-                                            className="w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all sm:text-sm"
+                                            className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all sm:text-sm"
                                         />
                                     </div>
                                 </div>
                                 <button
                                     type="submit"
                                     disabled={pwdLoading}
-                                    className="inline-flex items-center gap-2 px-6 py-2.5 bg-slate-900 hover:bg-black text-white font-medium rounded-xl shadow-sm transition-all active:scale-95 disabled:opacity-50 text-sm"
+                                    className="inline-flex items-center gap-2 px-6 py-2.5 bg-slate-900 dark:bg-slate-100 hover:bg-black text-white font-medium rounded-xl shadow-sm transition-all active:scale-95 disabled:opacity-50 text-sm"
                                 >
                                     {pwdLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
                                     Changer le mot de passe
@@ -320,12 +320,12 @@ export default function SettingsPage() {
 
                     {/* Organisation Section */}
                     {isAdmin && (
-                        <section className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden border-l-4 border-l-blue-500">
-                            <div className="p-6 border-b border-slate-100 flex items-center gap-4">
+                        <section className="bg-white dark:bg-slate-950 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden border-l-4 border-l-blue-500">
+                            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center gap-4">
                                 <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
                                     <Building className="w-5 h-5" />
                                 </div>
-                                <h2 className="font-bold text-slate-900">Organisation</h2>
+                                <h2 className="font-bold text-slate-900 dark:text-white">Organisation</h2>
                             </div>
                             <div className="p-6 space-y-6">
                                 <form onSubmit={handleUpdateOrg} className="space-y-4">
@@ -339,12 +339,12 @@ export default function SettingsPage() {
                                     )}
                                     
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-700">Nom de l'Organisation</label>
+                                        <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Nom de l'Organisation</label>
                                         <input
                                             type="text"
                                             value={orgForm.name}
                                             onChange={(e) => setOrgForm({ name: e.target.value })}
-                                            className="w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all sm:text-sm"
+                                            className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all sm:text-sm"
                                         />
                                     </div>
                                     <button
@@ -390,13 +390,13 @@ export default function SettingsPage() {
             {/* Delete Confirmation Modal */}
             {showDeleteModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                    <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden animate-in zoom-in-95">
-                        <div className="p-6 border-b border-slate-100 flex items-center gap-3">
+                    <div className="bg-white dark:bg-slate-950 rounded-2xl max-w-md w-full shadow-2xl overflow-hidden animate-in zoom-in-95">
+                        <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3">
                             <AlertCircle className="w-6 h-6 text-red-500" />
-                            <h3 className="font-bold text-lg text-slate-900">Confirmation de suppression</h3>
+                            <h3 className="font-bold text-lg text-slate-900 dark:text-white">Confirmation de suppression</h3>
                         </div>
                         <div className="p-6 space-y-4">
-                            <p className="text-sm text-slate-600">
+                            <p className="text-sm text-slate-600 dark:text-slate-300">
                                 Êtes-vous absolument sûr ? Cette action va désactiver l'accès à tous les membres de <strong>{organization?.name}</strong>.
                             </p>
                             <div className="bg-red-50 text-red-800 p-4 rounded-xl text-sm border border-red-100">
@@ -408,17 +408,17 @@ export default function SettingsPage() {
                                 value={deleteInput}
                                 onChange={(e) => setDeleteInput(e.target.value)}
                                 placeholder="Tapez la phrase ici..."
-                                className="w-full px-4 py-3 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all text-sm"
+                                className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all text-sm"
                             />
                         </div>
-                        <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+                        <div className="p-4 bg-slate-50 dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3">
                             <button
                                 onClick={() => {
                                     setShowDeleteModal(false);
                                     setDeleteInput("");
                                 }}
                                 disabled={deleteLoading}
-                                className="px-4 py-2 text-slate-600 hover:bg-slate-200 font-medium rounded-xl transition-all text-sm"
+                                className="px-4 py-2 text-slate-600 dark:text-slate-300 hover:bg-slate-200 font-medium rounded-xl transition-all text-sm"
                             >
                                 Annuler
                             </button>

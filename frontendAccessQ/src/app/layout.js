@@ -17,7 +17,7 @@ export const viewport = {
 };
 
 export const metadata = {
-  title: "QR Access 2",
+  title: "accessQSI",
   description: "Système de Gestion d'Accès par Code QR",
   manifest: "/manifest.json",
   appleWebApp: {

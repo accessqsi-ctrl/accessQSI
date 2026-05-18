@@ -50,8 +50,8 @@ function VerifyEmailContent() {
     }, [token]);
 
     return (
-        <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
-            <div className="max-w-md w-full bg-white rounded-2xl shadow-xl overflow-hidden text-center">
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col items-center justify-center p-4">
+            <div className="max-w-md w-full bg-white dark:bg-slate-950 rounded-2xl shadow-xl overflow-hidden text-center">
                 <div className="p-8">
                     <div className="mb-6 flex justify-center">
                         {status === "loading" && (
@@ -65,13 +65,13 @@ function VerifyEmailContent() {
                         )}
                     </div>
 
-                    <h2 className="text-2xl font-bold text-slate-900 mb-4">
+                    <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-4">
                         {status === "loading" && "Vérification..."}
                         {status === "success" && "E-mail Vérifié !"}
                         {status === "error" && "Échec de la Vérification"}
                     </h2>
 
-                    <p className="text-slate-600 mb-8 max-w-sm mx-auto">
+                    <p className="text-slate-600 dark:text-slate-300 mb-8 max-w-sm mx-auto">
                         {message}
                     </p>
 
@@ -91,7 +91,7 @@ function VerifyEmailContent() {
 
 export default function VerifyEmailPage() {
     return (
-        <Suspense fallback={<div className="min-h-screen bg-slate-50 flex items-center justify-center"><Loader2 className="w-10 h-10 text-blue-500 animate-spin" /></div>}>
+        <Suspense fallback={<div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center"><Loader2 className="w-10 h-10 text-blue-500 animate-spin" /></div>}>
             <VerifyEmailContent />
         </Suspense>
     );
