@@ -111,7 +111,7 @@ export default function EventsPage() {
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse min-w-[800px]">
                         <thead>
-                            <tr className="bg-slate-100/80 text-slate-600 dark:text-slate-300 text-sm border-b-2 border-slate-300 dark:border-slate-700">
+                            <tr className="bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 text-sm border-b border-slate-200 dark:border-slate-800">
                                 <th className="px-6 py-4 font-semibold uppercase tracking-wider">Event Name</th>
                                 <th className="px-6 py-4 font-semibold uppercase tracking-wider">Date / Timeframe</th>
                                 <th className="px-6 py-4 font-semibold uppercase tracking-wider">Location</th>
@@ -120,7 +120,7 @@ export default function EventsPage() {
                                 <th className="px-6 py-4 font-semibold uppercase tracking-wider text-right">Actions</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y-2 divide-slate-300 text-slate-700 dark:text-slate-200 text-sm">
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-200 text-sm">
                             {loading ? (
                                 <tr>
                                     <td colSpan="6" className="px-6 py-8 text-center">

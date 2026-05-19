@@ -1,13 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 import { useState, useEffect, useMemo } from "react";
 
 export default function DashboardLayout({ children }) {
     const pathname = usePathname();
+    const router = useRouter();
     const [userProfile, setUserProfile] = useState(null);
+    const [showLogoutModal, setShowLogoutModal] = useState(false);
 
     useEffect(() => {
         const fetchProfile = async () => {
@@ -21,6 +23,17 @@ export default function DashboardLayout({ children }) {
         };
         fetchProfile();
     }, []);
+
+    const handleLogout = async () => {
+        try {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/user/logout`, { credentials: "include" });
+            if (res.ok) {
+                router.push("/login");
+            }
+        } catch (err) {
+            console.error("Error during logout:", err);
+        }
+    };
 
     const navigation = useMemo(() => {
         const items = [
@@ -49,7 +62,7 @@ export default function DashboardLayout({ children }) {
                             alt="QR Access Logo"
                             className="w-8 h-8 drop-shadow-sm"
                         />
-                        <span className="font-bold tracking-tight text-lg text-blue-700">
+                        <span className="font-bold tracking-tight text-lg bg-gradient-to-r from-blue-700 to-emerald-600 bg-clip-text text-transparent">
                             QR Access
                         </span>
                     </Link>
@@ -92,6 +105,13 @@ export default function DashboardLayout({ children }) {
                             <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{userProfile ? (userProfile.name || userProfile.full_name) : "Chargement..."}</p>
                             <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{userProfile ? (userProfile.role === 'ORG_ADMIN' ? 'Admin' : (userProfile.role === 'OPERATOR' ? 'Opérateur' : 'Agent')) : "..."}</p>
                         </div>
+                        <button 
+                            onClick={() => setShowLogoutModal(true)}
+                            title="Déconnexion"
+                            className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                        </button>
                     </div>
                 </div>
             </aside>
@@ -106,7 +126,7 @@ export default function DashboardLayout({ children }) {
                             alt="QR Access Logo"
                             className="w-6 h-6"
                         />
-                        <span className="font-bold tracking-tight text-blue-700">
+                        <span className="font-bold tracking-tight bg-gradient-to-r from-blue-700 to-emerald-600 bg-clip-text text-transparent">
                             QR Access
                         </span>
                     </Link>
@@ -131,10 +151,40 @@ export default function DashboardLayout({ children }) {
                 </header>
 
                 {/* Scrollable Page Content */}
-                <main className="flex-1 overflow-y-auto bg-slate-50/50 p-4 sm:p-6 lg:p-8">
+                <main className="flex-1 overflow-y-auto bg-slate-50/50 dark:bg-[#222239] p-4 sm:p-6 lg:p-8">
                     {children}
                 </main>
             </div>
+
+            {/* Logout Confirmation Modal */}
+            {showLogoutModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 w-full max-w-sm mx-4 shadow-xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200">
+                        <div className="flex flex-col items-center text-center">
+                            <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-500 flex items-center justify-center mb-4">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                            </div>
+                            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Se déconnecter ?</h3>
+                            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">Êtes-vous sûr de vouloir vous déconnecter de votre compte QR Access ?</p>
+                            
+                            <div className="flex gap-3 w-full">
+                                <button 
+                                    onClick={() => setShowLogoutModal(false)}
+                                    className="flex-1 py-2.5 px-4 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold rounded-xl transition-colors"
+                                >
+                                    Annuler
+                                </button>
+                                <button 
+                                    onClick={handleLogout}
+                                    className="flex-1 py-2.5 px-4 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl shadow-md transition-all active:scale-95"
+                                >
+                                    Déconnexion
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

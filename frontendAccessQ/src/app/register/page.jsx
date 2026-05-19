@@ -119,6 +119,13 @@ export default function Register() {
             {/* Right Side - Registration Form */}
             <div className="w-full lg:w-[600px] xl:w-[700px] flex items-center justify-center p-8 sm:p-12 lg:p-16 relative bg-white dark:bg-slate-950 lg:shadow-[-20px_0_30px_-15px_rgba(0,0,0,0.05)] z-20">
                 <div className="w-full max-w-md">
+                    {/* Back to home link */}
+                    <div className="mb-8">
+                        <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors group">
+                            <svg className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>
+                            Retour à l'accueil
+                        </Link>
+                    </div>
                     <div className="mb-10 lg:text-left text-center">
                         <h1 className="text-4xl font-bold tracking-tight mb-3 text-slate-900 dark:text-white">
                             Create an Account
