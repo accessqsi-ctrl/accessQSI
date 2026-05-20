@@ -100,7 +100,7 @@ export default function Home() {
             {/* Subtle Yellow accent shape */}
             <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-24 h-24 bg-yellow-300/20 rounded-full blur-2xl pointer-events-none -z-10"></div>
             <h2 className="text-3xl md:text-5xl font-bold text-slate-900 dark:text-white mb-6 tracking-tight">
-              Control your access with <span className="text-blue-700">ease</span>
+              Control your access with <span className="text-blue-900">ease</span>
             </h2>
             <p className="text-lg text-slate-600 dark:text-slate-300 max-w-3xl mx-auto leading-relaxed">
               Our access control and authentication platform relies on secure QR codes to offer a modern, reliable, and accessible solution. It allows organizations, businesses, and event organizers to effectively manage access to their services, premises, or activities, while significantly reducing the risks of fraud and intrusion.

@@ -1,15 +1,14 @@
-version: '3.8'
 
 services:
-  backend-accessq:
+  back-accessqsi:
     build:
       context: .
       dockerfile: Dockerfile
+    image: accessqsi/back-accessq:1.0.1
+    env_file:
+      .env
     container_name: backend-accessq
     ports:
       # Expose le port 5000 du conteneur vers le port 5000 de votre machine
       - "5000:5000"
-    env_file:
-      # Charge toutes vos variables d'environnement (y compris celles de Brevo et Prisma)
-      - .env
     restart: unless-stopped

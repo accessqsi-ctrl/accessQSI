@@ -89,7 +89,7 @@ export default function Login() {
                     </div>
                     <div className="mb-10 lg:text-left text-center">
                         <h1 className="text-4xl font-bold tracking-tight mb-3 text-slate-900 dark:text-white">
-                            Sign In
+                            Log In
                         </h1>
                         <p className="text-slate-500 dark:text-slate-400 text-base">
                             Enter your email and password to access your account.
