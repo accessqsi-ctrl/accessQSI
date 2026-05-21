@@ -4,7 +4,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: accessqsi/back-accessq:1.0.1
+    image: accessqsi/back-accessq
     env_file:
       .env
     container_name: backend-accessq

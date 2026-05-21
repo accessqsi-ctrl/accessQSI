@@ -1,34 +1,47 @@
-const nodemailer = require("nodemailer");
+const axios = require("axios");
 
-// Using real SMTP configuration (e.g. Brevo) loaded from environment variables
-const createTransporter = async () => {
-    const transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST,
-        port: Number(process.env.SMTP_PORT),
-        secure: false,
-        family: 4,
-        auth: {
-            user: process.env.SMTP_USER,
-            pass: process.env.SMTP_PASS,
+const BREVO_API_URL = "https://api.brevo.com/v3/smtp/email";
+
+// Default sender loaded from env
+const defaultSender = {
+    name: process.env.BREVO_SENDER_NAME || "QR Access",
+    email: process.env.BREVO_SENDER_EMAIL || "access.qsi@gmail.com",
+};
+
+/**
+ * Send a transactional email via Brevo API v3
+ */
+const sendEmail = async ({ to, subject, textContent, htmlContent }) => {
+    const response = await axios.post(
+        BREVO_API_URL,
+        {
+            sender: defaultSender,
+            to,
+            subject,
+            textContent,
+            htmlContent,
         },
-    });
-
-    return transporter;
+        {
+            headers: {
+                "api-key": process.env.BREVO_API_KEY,
+                "Content-Type": "application/json",
+                Accept: "application/json",
+            },
+        }
+    );
+    return response.data;
 };
 
 exports.sendVerificationEmail = async (toEmail, fullName, token) => {
     try {
-        const transporter = await createTransporter();
-
         const baseUrl = process.env.FRONTEND_URL || "http://localhost:3000";
         const verifyUrl = `${baseUrl}/verify-email?token=${token}`;
 
-        const info = await transporter.sendMail({
-            from: process.env.SMTP_FROM || '"QR Access Security" <noreply@qraccess.local>',
-            to: toEmail,
+        const data = await sendEmail({
+            to: [{ email: toEmail, name: fullName }],
             subject: "Verify Your Email Address - QR Access",
-            text: `Hello ${fullName},\n\nPlease verify your email by clicking the following link:\n${verifyUrl}\n\nIf you did not request this, please ignore this email.`,
-            html: `
+            textContent: `Hello ${fullName},\n\nPlease verify your email by clicking the following link:\n${verifyUrl}\n\nIf you did not request this, please ignore this email.`,
+            htmlContent: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                     <h2 style="color: #2563eb;">Welcome to QR Access!</h2>
                     <p>Hello <strong>${fullName}</strong>,</p>
@@ -41,30 +54,28 @@ exports.sendVerificationEmail = async (toEmail, fullName, token) => {
         });
 
         console.log("=========================================");
-        console.log("📨 EMAIL SENT FOR VERIFICATION");
+        console.log("📨 EMAIL SENT FOR VERIFICATION (Brevo API)");
         console.log(`To: ${toEmail}`);
-        if (info.messageId) console.log("Message ID: %s", info.messageId);
+        if (data.messageId) console.log("Message ID: %s", data.messageId);
         console.log("=========================================");
 
         return true;
     } catch (error) {
-        console.error("Error sending verification email:", error);
+        console.error("Error sending verification email:", error?.response?.data || error.message);
         return false;
     }
 };
 
 exports.sendAgentInvitation = async (toEmail, fullName, rawPassword) => {
     try {
-        const transporter = await createTransporter();
-        const baseUrl = process.env.FRONTEND_URL; //|| "http://localhost:3000";
+        const baseUrl = process.env.FRONTEND_URL;
         const loginUrl = `${baseUrl}/login`;
 
-        const info = await transporter.sendMail({
-            from: process.env.SMTP_FROM || '"QR Access Team" <noreply@qraccess.local>',
-            to: toEmail,
+        const data = await sendEmail({
+            to: [{ email: toEmail, name: fullName }],
             subject: "You've been invited as an Agent - QR Access",
-            text: `Hello ${fullName},\n\nYou have been added as an Agent for your organization.\nYour email: ${toEmail}\nYour password: ${rawPassword}\n\nPlease login at: ${loginUrl}`,
-            html: `
+            textContent: `Hello ${fullName},\n\nYou have been added as an Agent for your organization.\nYour email: ${toEmail}\nYour password: ${rawPassword}\n\nPlease login at: ${loginUrl}`,
+            htmlContent: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px;">
                     <h2 style="color: #2563eb;">Welcome to QR Access!</h2>
                     <p>Hello <strong>${fullName}</strong>,</p>
@@ -80,15 +91,14 @@ exports.sendAgentInvitation = async (toEmail, fullName, rawPassword) => {
         });
 
         console.log("=========================================");
-        console.log("📨 INVITATION EMAIL SENT");
+        console.log("📨 INVITATION EMAIL SENT (Brevo API)");
         console.log(`To: ${toEmail}`);
-        if (info.messageId) console.log("Message ID: %s", info.messageId);
+        if (data.messageId) console.log("Message ID: %s", data.messageId);
         console.log("=========================================");
 
         return true;
     } catch (error) {
-        console.error("Error sending agent invitation email:", error);
+        console.error("Error sending agent invitation email:", error?.response?.data || error.message);
         return false;
     }
 };
-
