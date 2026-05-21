@@ -19,6 +19,7 @@ const loginLimiter = rateLimit({
     message: { success: false, message: "Trop de tentatives de connexion, veuillez réessayer après 15 minutes." },
     standardHeaders: true, // Renvoie les infos de limite dans les headers standards `RateLimit-*`
     legacyHeaders: false, // Désactive les anciens headers `X-RateLimit-*`
+    validate: { xForwardedForHeader: false }, // trust proxy est déjà configuré dans app.js
 });
 
 // === Authentication Routes ===
