@@ -1,5 +1,8 @@
 const express = require('express');
 const app = express();
+
+// Render utilise un reverse proxy → nécessaire pour express-rate-limit et les IPs clients
+app.set('trust proxy', 1);
 const path = require("path");
 const cookieParser = require("cookie-parser");
 
