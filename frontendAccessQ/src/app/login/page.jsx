@@ -160,7 +160,7 @@ export default function Login() {
                             disabled={loading}
                             className={`w-full mt-6 py-3.5 px-4 bg-gradient-to-r ${loading ? 'from-slate-400 to-slate-500 cursor-not-allowed' : 'from-blue-600 to-emerald-500 hover:from-blue-700 hover:to-emerald-600 shadow-lg shadow-blue-500/20'} text-white font-medium rounded-lg transition-all active:scale-[0.98]`}
                         >
-                            {loading ? "Signing in..." : "Sign In"}
+                            {loading ? "Login..." : "Login"}
                         </button>
                     </form>
 
