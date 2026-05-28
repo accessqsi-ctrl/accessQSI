@@ -7,7 +7,7 @@ exports.findByEmail = (email) => {
 };
 
 exports.createOrgAndAdminUser = async (orgData, userData) => {
-  // Use a transaction since we are creating both an organization and its admin user
+  // Utiliser une transaction car on crée à la fois une organisation et son utilisateur admin
   return await prisma.$transaction(async (tx) => {
     const org = await tx.organization.create({
       data: orgData
@@ -45,13 +45,13 @@ exports.getOrganizationById = async (orgId) => {
 
 exports.deleteOrganization = async (orgId) => {
     return await prisma.$transaction(async (tx) => {
-        // Soft delete the organization
+        // Suppression logique de l'organisation
         const org = await tx.organization.update({
             where: { org_id: orgId },
             data: { deleted_at: new Date() }
         });
 
-        // Soft delete all users belonging to this organization
+        // Suppression logique de tous les utilisateurs de cette organisation
         await tx.userQ.updateMany({
             where: { org_id: orgId },
             data: { deleted_at: new Date() }

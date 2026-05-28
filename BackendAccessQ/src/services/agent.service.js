@@ -25,7 +25,7 @@ exports.createAgent = async (orgId, fullName, email, hashedPassword, role = "ORG
             email: email,
             password_hash: hashedPassword,
             role: role,
-            is_verified: true, // Auto-verified since it's an internal invite
+            is_verified: true, // Vérifié automatiquement car c'est une invitation interne
             clef: require("crypto").randomUUID()
         }
     });

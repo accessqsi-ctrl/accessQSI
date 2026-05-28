@@ -16,12 +16,12 @@ exports.verifyScan = async (req, res) => {
             return res.status(404).json({ success: false, message: "QR Code non reconnu ou inexistant." });
         }
 
-        // 1. Security check: Organization match
+        // 1. Vérification de sécurité : correspondance de l'organisation
         if (qr.event.org_id !== scannerOrgId) {
             return res.status(403).json({ success: false, message: "Ce QR Code n'appartient pas à votre organisation." });
         }
 
-        // 2. Logic checks
+        // 2. Vérifications logiques
         let scanStatus = "authorized";
         let denialReason = "";
 
@@ -34,19 +34,19 @@ exports.verifyScan = async (req, res) => {
             scanStatus = "denied_limit_reached";
             denialReason = "Limite d'utilisation atteinte.";
         } else if (qr.valid_from && now < new Date(qr.valid_from)) {
-            scanStatus = "denied_expired"; // Not yet valid
+            scanStatus = "denied_expired"; // Pas encore valide
             denialReason = `Valide à partir de : ${new Date(qr.valid_from).toLocaleString()}`;
         } else if (qr.valid_until && now > new Date(qr.valid_until)) {
             scanStatus = "denied_expired";
             denialReason = "Ce QR Code est expiré.";
         }
 
-        // 3. Record the scan
+        // 3. Enregistrer le scan
         await qrVerifyService.recordScan(qr.qr_id, scannerId, scanStatus);
 
-        // 4. Respond
+        // 4. Répondre
         if (scanStatus === "authorized") {
-            // Check if it reached the limit now to update status (optional but clean)
+            // Vérifier si la limite est atteinte maintenant pour mettre à jour le statut (optionnel mais propre)
             if (qr.usage_limit > 0 && (qr.scans_count + 1) >= qr.usage_limit) {
                 await qrVerifyService.updateQrStatus(qr.qr_id, "used_up");
             }
@@ -62,7 +62,7 @@ exports.verifyScan = async (req, res) => {
                 remaining: qr.usage_limit > 0 ? (qr.usage_limit - (qr.scans_count + 1)) : "Illimité"
             });
         } else {
-            return res.status(200).json({ // We return 200 success:false to the UI for friendly error handling
+            return res.status(200).json({ // On retourne 200 success:false pour un traitement d'erreur convivial côté UI
                 success: false,
                 message: "Accès Refusé",
                 reason: denialReason

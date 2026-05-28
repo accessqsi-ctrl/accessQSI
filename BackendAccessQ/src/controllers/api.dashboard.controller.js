@@ -2,7 +2,7 @@ const prisma = require("../prisma/client");
 
 exports.getOverviewStats = async (req, res) => {
     try {
-        // Ensure the user is authenticated and has an organization
+        // Vérifier que l'utilisateur est authentifié et a une organisation
         if (!req.user || !req.user.org_id) {
             return res.status(401).json({ success: false, message: "Non autorisé ou aucune organisation liée." });
         }
@@ -10,7 +10,7 @@ exports.getOverviewStats = async (req, res) => {
         const orgId = req.user.org_id;
         const now = new Date();
 
-        // 1. Total Active QR Codes for the Organization
+        // 1. Total de QR Codes actifs pour l'organisation
         const activeQrCount = await prisma.qrCode.count({
             where: {
                 event: { org_id: orgId },
@@ -19,7 +19,7 @@ exports.getOverviewStats = async (req, res) => {
             }
         });
 
-        // 2. Total Scans (Global for the org's QR codes)
+        // 2. Total des scans (global pour les QR codes de l'organisation)
         const totalScansInfo = await prisma.qrCode.aggregate({
             _sum: {
                 scans_count: true
@@ -30,7 +30,7 @@ exports.getOverviewStats = async (req, res) => {
         });
         const totalScans = totalScansInfo._sum.scans_count || 0;
 
-        // 3. Upcoming Events
+        // 3. Événements à venir
         const upcomingEventsCount = await prisma.event.count({
             where: {
                 org_id: orgId,
@@ -43,7 +43,7 @@ exports.getOverviewStats = async (req, res) => {
             }
         });
 
-        // Fetch the name of the very next event for the subtitle
+        // Récupérer le nom du prochain événement pour le sous-titre
         const nextEventSchedule = await prisma.eventSchedule.findFirst({
             where: {
                 event: {
@@ -63,7 +63,7 @@ exports.getOverviewStats = async (req, res) => {
         });
         const nextEvent = nextEventSchedule ? nextEventSchedule.event : null;
 
-        // 4. Active Agents (ORG_AGENT or OPERATOR)
+        // 4. Agents actifs (ORG_AGENT ou OPERATOR)
         const activeAgentsCount = await prisma.userQ.count({
             where: {
                 org_id: orgId,
@@ -72,7 +72,7 @@ exports.getOverviewStats = async (req, res) => {
             }
         });
 
-        // 6. Scans per Day (Last 7 Days)
+        // 6. Scans par jour (7 derniers jours)
         const scansByDay = [];
         for (let i = 6; i >= 0; i--) {
             const date = new Date();
@@ -99,7 +99,7 @@ exports.getOverviewStats = async (req, res) => {
             });
         }
 
-        // 7. Top Agents by scan count
+        // 7. Meilleurs agents par nombre de scans
         const topAgentsRaw = await prisma.scanLog.groupBy({
             by: ['scanned_by_id'],
             where: { qr_code: { event: { org_id: orgId } } },
@@ -119,7 +119,7 @@ exports.getOverviewStats = async (req, res) => {
             };
         }));
 
-        // 5. Recent Scans (last 5) - we need to fetch them again as the previous block replaced it
+        // 5. Scans récents (5 derniers) - on les récupère à nouveau car le bloc précédent l'a remplacé
         const recentScans = await prisma.scanLog.findMany({
             where: { qr_code: { event: { org_id: orgId } } },
             take: 5,

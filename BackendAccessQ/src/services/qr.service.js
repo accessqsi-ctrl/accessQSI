@@ -1,6 +1,6 @@
 const prisma = require("../prisma/client");
 
-// Get all QR Codes for a specific event (Filtered by Org)
+// Récupérer tous les QR Codes pour un événement spécifique (filtré par organisation)
 exports.getQrsByEventId = async (orgId, eventId) => {
     return await prisma.qrCode.findMany({
         where: {
@@ -15,7 +15,7 @@ exports.getQrsByEventId = async (orgId, eventId) => {
     });
 };
 
-// Get all QR Codes belonging to events owned by the user's organization
+// Récupérer tous les QR Codes des événements de l'organisation
 exports.getAllQrsForOrg = async (orgId) => {
     return await prisma.qrCode.findMany({
         where: {
@@ -35,21 +35,21 @@ exports.getAllQrsForOrg = async (orgId) => {
     });
 };
 
-// Find a specific QR Code
+// Rechercher un QR Code spécifique
 exports.getQrById = async (id) => {
     return await prisma.qrCode.findUnique({
         where: { qr_id: id },
     });
 };
 
-// Create a new QR Code record
+// Créer un nouveau QR Code
 exports.createQr = async (data) => {
     return await prisma.qrCode.create({
         data,
     });
 };
 
-// Update an existing QR Code
+// Mettre à jour un QR Code existant
 exports.updateQr = async (id, data) => {
     return await prisma.qrCode.update({
         where: { qr_id: id },
@@ -57,7 +57,7 @@ exports.updateQr = async (id, data) => {
     });
 };
 
-// Soft Delete a QR Code
+// Suppression logique d'un QR Code
 exports.deleteQr = async (id) => {
     return await prisma.qrCode.update({
         where: { qr_id: id },

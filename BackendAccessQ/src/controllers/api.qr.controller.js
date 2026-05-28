@@ -21,21 +21,21 @@ exports.generateQrForEvent = async (req, res) => {
             return res.status(400).json({ success: false, message: "Nom complet et Type d'accès requis" });
         }
 
-        // Verify that the event belongs to this user's organization
+        // Vérifier que l'événement appartient à l'organisation de l'utilisateur
         const event = await eventService.findById(orgId, eventId);
         if (!event) {
             return res.status(404).json({ success: false, message: 'Événement non trouvé ou accès refusé' });
         }
 
-        // Generate a cryptographically secure token
+        // Générer un jeton sécurisé par cryptographie
         const uniqueToken = crypto.randomUUID();
 
-        // Define limits based on accessType
+        // Définir les limites selon le type d'accès
         let usageLimit = 1;
         if (accessType === 'multi') usageLimit = Number(limit) || 2;
         if (accessType === 'unlimited') usageLimit = 999999;
 
-        // Save the QR Code configuration to Prisma
+        // Enregistrer la configuration du QR Code dans Prisma
         const qrRecord = await qrService.createQr({
             unique_token: uniqueToken,
             status: "active",
@@ -49,20 +49,20 @@ exports.generateQrForEvent = async (req, res) => {
             event_id: event.event_id
         });
 
-        // The secure data payload placed inside the physical QR image
+        // Les données sécurisées placées dans l'image physique du QR
         const qrData = JSON.stringify({
-            t: uniqueToken,      // The secure token representing this pass
-            e: event.event_id          // The event it's targeting
+            t: uniqueToken,      // Le jeton sécurisé représentant ce pass
+            e: event.event_id          // L'événement ciblé
         });
 
         const qrFilename = `qr_${holder_email}_${uniqueToken}.png`;
         const qrPath = path.join(__dirname, '../statics/qrcodes', qrFilename);
 
-        // Ensure the directory exists
+        // S'assurer que le répertoire existe
         const dir = path.dirname(qrPath);
         if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 
-        // Physically generate the PNG
+        // Générer physiquement le PNG
         await QRCode.toFile(qrPath, qrData, {
             errorCorrectionLevel: 'H',
             margin: 2,
@@ -94,7 +94,7 @@ exports.getAllQrs = async (req, res) => {
 
         const qrs = await qrService.getAllQrsForOrg(req.user.org_id);
 
-        // Format for frontend
+        // Formatage pour le frontend
         const formattedQrs = qrs.map(qr => {
             const now = new Date();
             let state = qr.status;
@@ -115,7 +115,7 @@ exports.getAllQrs = async (req, res) => {
 
         return res.status(200).json({ success: true, qrs: formattedQrs });
     } catch (error) {
-        console.error("Error fetching QRs:", error);
+        console.error("Erreur lors de la récupération des QR :", error);
         return res.status(500).json({ success: false, message: "Erreur serveur" });
     }
 };
@@ -157,7 +157,7 @@ exports.getQrsByEvent = async (req, res) => {
 
         return res.status(200).json({ success: true, qrs: formattedQrs });
     } catch (error) {
-        console.error("Error fetching QRs by event:", error);
+        console.error("Erreur lors de la récupération des QR par événement :", error);
         return res.status(500).json({ success: false, message: "Erreur serveur" });
     }
 };
@@ -253,7 +253,7 @@ exports.importQrsFromCSV = async (req, res) => {
                 event_id: eventId
             });
 
-            // Generate physical QR
+            // Générer le QR physique
             const qrData = JSON.stringify({ t: uniqueToken, e: eventId });
             const qrFilename = `qr_${uniqueToken}.png`;
             const qrPath = path.join(__dirname, '../statics/qrcodes', qrFilename);
@@ -269,7 +269,7 @@ exports.importQrsFromCSV = async (req, res) => {
             createdQrs.push(qrRecord);
         }
 
-        // Cleanup uploaded file
+        // Nettoyer le fichier téléchargé
         if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
 
         return res.status(201).json({
@@ -280,7 +280,7 @@ exports.importQrsFromCSV = async (req, res) => {
 
 
     } catch (error) {
-        console.error("Error importing CSV:", error);
+        console.error("Erreur lors de l'importation CSV :", error);
         if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
         return res.status(500).json({ success: false, message: "Erreur lors de l'importation" });
     }

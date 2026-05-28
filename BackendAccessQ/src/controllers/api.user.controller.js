@@ -28,7 +28,7 @@ const isValidPassword = (password) => {
 // =========================================================
 // CONFIGURATION SÉCURISÉE DES COOKIES (Protection des Sessions)
 // =========================================================
-// En plaçant notre Token JWT (Json Web Token) dans un cookie ultra-sécurisé,
+// En plaçant notre Token JWT (Json Web Token) dans un cookie,
 // nous protégeons l'application contre les attaques de type:
 // - Session Hijacking (Vol de session via XSS)
 // - Session Fixation (Forcer l'identifiant de session d'un utilisateur)
@@ -43,7 +43,7 @@ exports.login = async (req, res) => {
     try {
         const { email, password } = req.body;
         if (!email || !password) {
-            return res.status(400).json({ success: false, message: "Email and password are required" });
+            return res.status(400).json({ success: false, message: "L'email et le mot de passe sont requis." });
         }
         const user = await userService.findByEmail(email);
         if (!user) {
@@ -78,16 +78,16 @@ exports.login = async (req, res) => {
         const token = jwt.sign(
             { user_id: user.user_id, email: user.email, role: user.role, org_id: user.org_id },
             process.env.JWT_SECRET,
-            { expiresIn: "100d" }
+            { expiresIn: process.env.TOKEN_EXPIRES_IN }
         );
 
-        // Security update: store JWT in an HttpOnly cookie instead of sending it purely in JSON
+        // Mise à jour sécurité : stocker le JWT dans un cookie HttpOnly au lieu de l'envoyer uniquement en JSON
         res.cookie("token", token, cookieOptions);
 
         return res.status(200).json({
             success: true,
             message: "Connexion réussie",
-            token: token, // Optionally keep this for mobile apps, but NextJS should rely on the cookie
+            token: token, // Optionnel pour les apps mobiles, NextJS doit utiliser le cookie
             user: {
                 user_id: user.user_id,
                 name: user.full_name,
@@ -110,10 +110,10 @@ exports.signin = async (req, res) => {
         const { fullName, email, organizationName, password } = req.body;
 
         if (!fullName || !email || !organizationName || !password) {
-            return res.status(400).json({ success: false, message: "Missing required fields" });
+            return res.status(400).json({ success: false, message: "Tous les champs obligatoires doivent être remplis." });
         }
 
-        // Enforce strong password policy
+        // Appliquer la politique de mot de passe fort
         if (!isValidPassword(password)) {
             return res.status(400).json({
                 success: false,
@@ -125,7 +125,7 @@ exports.signin = async (req, res) => {
 
         if (!user) {
             const hashed = await bcrypt.hash(password, 10);
-            const clef = crypto.randomUUID(); // Generation of a unique string clef
+            const clef = crypto.randomUUID(); // Génération d'une clef unique
 
             // --- NOUVEAU: GÉNÉRATION DU TOKEN DE VÉRIFICATION ---
             const verificationToken = crypto.randomBytes(32).toString('hex');
@@ -170,7 +170,7 @@ exports.verifyEmail = async (req, res) => {
         const { token } = req.body;
 
         if (!token) {
-            return res.status(400).json({ success: false, message: "Token is required" });
+            return res.status(400).json({ success: false, message: "Le jeton de vérification est requis." });
         }
 
         // Trouver l'utilisateur par son token de vérification
@@ -197,7 +197,7 @@ exports.verifyEmail = async (req, res) => {
         });
 
     } catch (error) {
-        console.error("Verification error: ", error);
+        console.error("Erreur de vérification : ", error);
         return res.status(500).json({ success: false, message: "Erreur serveur lors de la vérification de l'e-mail." });
     }
 };
@@ -228,7 +228,7 @@ exports.viewprofile = async (req, res) => {
 };
 
 exports.logout = async (req, res) => {
-    // Clear the secure cookie to fully destroy the session context from the client
+    // Supprimer le cookie sécurisé pour détruire complètement le contexte de session côté client
     res.clearCookie("token", { ...cookieOptions, maxAge: 0 });
 
     return res.status(200).json({
@@ -245,7 +245,7 @@ exports.updateProfile = async (req, res) => {
             return res.status(400).json({ success: false, message: "Nom et email requis." });
         }
 
-        // Check if email is already taken by another user
+        // Vérifier si l'email est déjà utilisé par un autre utilisateur
         const existing = await userService.findByEmail(email);
         if (existing && existing.user_id !== userId) {
             return res.status(400).json({ success: false, message: "Cet email est déjà utilisé." });
@@ -328,7 +328,7 @@ exports.getOrganization = async (req, res) => {
         const org = await userService.getOrganizationById(orgId);
         return res.status(200).json({ success: true, organization: org });
     } catch (error) {
-        return res.status(500).json({ success: false, message: "Erreur serveur." });
+        return res.status(500).json({ success: false, message: "Erreur serveur, organisation introuvable." });
     }
 };
 
@@ -336,7 +336,7 @@ exports.deleteOrganization = async (req, res) => {
     try {
         const { org_id, role } = req.user;
 
-        // Ensure user is an ORG_ADMIN
+        // Vérifier que l'utilisateur est un ORG_ADMIN
         if (role !== "ORG_ADMIN") {
             return res.status(403).json({ success: false, message: "Accès refusé. Réservé à l'administrateur de l'organisation." });
         }
@@ -345,10 +345,10 @@ exports.deleteOrganization = async (req, res) => {
             return res.status(400).json({ success: false, message: "Aucune organisation liée à cet utilisateur." });
         }
 
-        // Soft delete the organization and its users
+        // Suppression logique de l'organisation et de ses utilisateurs
         await userService.deleteOrganization(org_id);
 
-        // Clear the session cookie
+        // Supprimer le cookie de session
         res.clearCookie("token");
 
         return res.status(200).json({ success: true, message: "Organisation supprimée avec succès." });

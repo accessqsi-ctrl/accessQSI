@@ -13,14 +13,14 @@ exports.getAgents = async (req, res) => {
         const orgId = req.user.org_id;
         const agents = await agentService.getAllAgentsForOrg(orgId);
 
-        // Format for frontend
+        // Formatage pour le frontend
         const formattedAgents = agents.map(agent => {
             return {
                 id: agent.user_id,
                 name: agent.full_name,
                 email: agent.email,
                 role: agent.role === "ORG_ADMIN" ? "Admin" : (agent.role === "OPERATOR" ? "Opérateur" : "Agent"),
-                status: agent.deleted_at ? "Inactive" : "Active",
+                status: agent.deleted_at ? "Inactif" : "Actif",
                 lastActive: agent.last_login ? new Date(agent.last_login).toLocaleDateString() : (agent.created_at ? new Date(agent.created_at).toLocaleDateString() : "Jamais"),
                 scans: agent._count.scan_logs
             };
@@ -46,25 +46,25 @@ exports.addAgent = async (req, res) => {
             return res.status(400).json({ success: false, message: "Le nom et l'email sont requis." });
         }
 
-        // Check if email already exists
+        // Vérifier si l'email existe déjà
         const existingUser = await userService.findByEmail(email);
         if (existingUser) {
             return res.status(400).json({ success: false, message: "Un utilisateur avec cet email existe déjà." });
         }
 
-        // Use provided password or generate a secure random one
+        // Utiliser le mot de passe fourni ou en générer un aléatoire sécurisé
         const rawPassword = password || (crypto.randomBytes(8).toString('hex') + "!Aa1");
         const hashedPassword = await bcrypt.hash(rawPassword, 10);
 
-        // Determine role to assign
+        // Déterminer le rôle à attribuer
         let assignedRole = "ORG_AGENT";
         if (role === "ORG_ADMIN") assignedRole = "ORG_ADMIN";
         else if (role === "OPERATOR") assignedRole = "OPERATOR";
 
-        // Save agent
+        // Enregistrer l'agent
         const newAgent = await agentService.createAgent(orgId, fullName, email, hashedPassword, assignedRole);
 
-        // Send email with credentials
+        // Envoyer l'email avec les identifiants
         await emailService.sendAgentInvitation(email, fullName, rawPassword);
 
         return res.status(201).json({ success: true, message: "Agent ajouté et invitation envoyée avec succès." });
@@ -98,7 +98,7 @@ exports.toggleAgentStatus = async (req, res) => {
         return res.status(200).json({ 
             success: true, 
             message: isCurrentlyDeleted ? "Accès restauré avec succès." : "Accès révoqué avec succès.",
-            newStatus: isCurrentlyDeleted ? "Active" : "Inactive"
+            newStatus: isCurrentlyDeleted ? "Actif" : "Inactif"
         });
     } catch (error) {
         console.error("Erreur toggleAgentStatus:", error);
@@ -127,7 +127,7 @@ exports.deleteAgent = async (req, res) => {
         try {
             await agentService.hardDeleteAgent(agentId, orgId);
         } catch (dbError) {
-            // Handle foreign key constraint (e.g. if they have scan logs) (P2003 in Prisma)
+            // Gérer la contrainte de clé étrangère (ex: si l'agent a des journaux de scan) (P2003 dans Prisma)
             if (dbError.code === 'P2003') {
                 return res.status(400).json({ 
                     success: false, 

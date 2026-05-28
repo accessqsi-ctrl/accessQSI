@@ -8,7 +8,7 @@ exports.getAreas = async (req, res) => {
         const areas = await areaService.findAll(req.user.org_id);
         res.status(200).json({ success: true, areas });
     } catch (error) {
-        console.error("Error fetching areas:", error);
+        console.error("Erreur lors de la récupération des zones :", error);
         res.status(500).json({ success: false, message: "Erreur serveur" });
     }
 };
@@ -24,7 +24,7 @@ exports.getAreaById = async (req, res) => {
         }
         res.status(200).json({ success: true, area });
     } catch (error) {
-        console.error("Error fetching area:", error);
+        console.error("Erreur lors de la récupération de la zone :", error);
         res.status(500).json({ success: false, message: "Erreur serveur" });
     }
 };
@@ -45,7 +45,7 @@ exports.createArea = async (req, res) => {
         });
         res.status(201).json({ success: true, area: newArea });
     } catch (error) {
-        console.error("Error creating area:", error);
+        console.error("Erreur lors de la création de la zone :", error);
         res.status(500).json({ success: false, message: "Erreur serveur" });
     }
 };
@@ -63,7 +63,7 @@ exports.updateArea = async (req, res) => {
         const updatedArea = await areaService.updateArea(areaId, req.body);
         res.status(200).json({ success: true, area: updatedArea });
     } catch (error) {
-        console.error("Error updating area:", error);
+        console.error("Erreur lors de la mise à jour de la zone :", error);
         res.status(500).json({ success: false, message: "Erreur serveur" });
     }
 };
@@ -81,7 +81,7 @@ exports.deleteArea = async (req, res) => {
         await areaService.deleteArea(areaId);
         res.status(200).json({ success: true, message: "Zone supprimée" });
     } catch (error) {
-        console.error("Error deleting area:", error);
+        console.error("Erreur lors de la suppression de la zone :", error);
         res.status(500).json({ success: false, message: "Erreur serveur" });
     }
 };

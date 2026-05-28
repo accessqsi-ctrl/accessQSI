@@ -1,6 +1,6 @@
 const eventService = require('../services/event.service');
 
-// Get all events for the current organization
+// Récupérer tous les événements de l'organisation courante
 exports.getEvents = async (req, res) => {
     try {
         if (!req.user || !req.user.org_id) {
@@ -17,21 +17,21 @@ exports.getEvents = async (req, res) => {
             events = await eventService.findAll(orgId);
         }
 
-        // Format for frontend
+        // Formatage pour le frontend
         const formattedEvents = events.map(e => {
             const now = new Date();
             const schedules = e.EventSchedules || [];
             const firstSchedule = schedules[0];
             const lastSchedule = schedules[schedules.length - 1];
 
-            let status = "Active";
-            if (firstSchedule && new Date(firstSchedule.start_date) > now) status = "Upcoming";
-            if (lastSchedule && new Date(lastSchedule.end_date) < now) status = "Past";
+            let status = "Actif";
+            if (firstSchedule && new Date(firstSchedule.start_date) > now) status = "À venir";
+            if (lastSchedule && new Date(lastSchedule.end_date) < now) status = "Passé";
 
             const startDateStr = firstSchedule ? new Date(firstSchedule.start_date).toLocaleDateString() : 'N/A';
             const endDateStr = lastSchedule ? new Date(lastSchedule.end_date).toLocaleDateString() : 'N/A';
 
-            // List all area names
+            // Lister tous les noms de zones
             const locationNames = schedules.map(s => s.area?.area_name).filter(Boolean).join(", ") || "N/A";
 
             return {
@@ -48,12 +48,12 @@ exports.getEvents = async (req, res) => {
 
         res.status(200).json({ success: true, events: formattedEvents });
     } catch (error) {
-        console.error("Error fetching events:", error);
+        console.error("Erreur lors de la récupération des événements :", error);
         res.status(500).json({ success: false, message: "Erreur serveur" });
     }
 }
 
-// Get single event details
+// Récupérer les détails d'un événement
 exports.getEventById = async (req, res) => {
     try {
         if (!req.user || !req.user.org_id) {
@@ -70,12 +70,12 @@ exports.getEventById = async (req, res) => {
 
         res.status(200).json({ success: true, event });
     } catch (error) {
-        console.error("Error fetching event:", error);
+        console.error("Erreur lors de la récupération de l'événement :", error);
         res.status(500).json({ success: false, message: "Erreur serveur" });
     }
 }
 
-// Create a new event
+// Créer un nouvel événement
 exports.createEvent = async (req, res) => {
     try {
         if (!req.user || !req.user.org_id) {
@@ -103,12 +103,12 @@ exports.createEvent = async (req, res) => {
 
         res.status(201).json({ success: true, message: 'Événement créé avec succès', event: newEvent });
     } catch (error) {
-        console.error("Error creating event:", error);
+        console.error("Erreur lors de la création de l'événement :", error);
         res.status(500).json({ success: false, message: "Erreur serveur lors de la création" });
     }
 }
 
-// Update an event
+// Modifier un événement
 exports.updateEvent = async (req, res) => {
     try {
         if (!req.user || !req.user.org_id) {
@@ -119,7 +119,7 @@ exports.updateEvent = async (req, res) => {
         const eventId = Number(req.params.event_id);
         const { title, description, location, id_area, areaIds, startDate, endDate } = req.body;
 
-        // Verify ownership first
+        // Vérifier la propriété d'abord
         const existingEvent = await eventService.findById(orgId, eventId);
         if (!existingEvent) {
             return res.status(404).json({ success: false, message: "Événement introuvable ou non autorisé" });
@@ -137,12 +137,12 @@ exports.updateEvent = async (req, res) => {
 
         res.status(200).json({ success: true, message: 'Événement mis à jour', event: updatedEvent });
     } catch (error) {
-        console.error("Error updating event:", error);
+        console.error("Erreur lors de la mise à jour de l'événement :", error);
         res.status(500).json({ success: false, message: "Erreur serveur" });
     }
 }
 
-// Delete an event (Soft Delete)
+// Supprimer un événement (Suppression logique)
 exports.deleteEvent = async (req, res) => {
     try {
         if (!req.user || !req.user.org_id) {
@@ -152,7 +152,7 @@ exports.deleteEvent = async (req, res) => {
         const orgId = req.user.org_id;
         const eventId = Number(req.params.event_id);
 
-        // Verify ownership
+        // Vérifier la propriété
         const existingEvent = await eventService.findById(orgId, eventId);
         if (!existingEvent) {
             return res.status(404).json({ success: false, message: "Événement introuvable" });
@@ -161,7 +161,7 @@ exports.deleteEvent = async (req, res) => {
         await eventService.deleteEvent(eventId);
         res.status(200).json({ success: true, message: 'Événement supprimé' });
     } catch (error) {
-        console.error("Error deleting event:", error);
+        console.error("Erreur lors de la suppression de l'événement :", error);
         res.status(500).json({ success: false, message: "Erreur serveur" });
     }
 }

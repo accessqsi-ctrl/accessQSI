@@ -16,25 +16,25 @@ const upload = multer({
         }
     }
 });
-
+router.use(authMiddleware);
 
 // Vérification d'un QR code (Scanner)
-router.post("/verify", authMiddleware, qrVerifyController.verifyScan);
+router.post("/verify", qrVerifyController.verifyScan);
 
 // Récupération de tous les QR codes 
-router.get("/qrs", authMiddleware, qrController.getAllQrs);
+router.get("/qrs", qrController.getAllQrs);
 
 // Récupération des QR codes d'un événement spécifique
-router.get("/event/:event_id", authMiddleware, qrController.getQrsByEvent);
+router.get("/event/:event_id", qrController.getQrsByEvent);
 
 // Générer un QR code pour un événement spécifique
-router.post("/generate/:event_id", authMiddleware, qrController.generateQrForEvent);
+router.post("/generate/:event_id", qrController.generateQrForEvent);
 
 // Importer des QR codes depuis un CSV
-router.post("/import/:event_id", authMiddleware, upload.single('file'), qrController.importQrsFromCSV);
+router.post("/import/:event_id", upload.single('file'), qrController.importQrsFromCSV);
 
 // Révoquer un QR code
-router.put("/revoke/:id", authMiddleware, qrController.revokeQr);
+router.put("/revoke/:id", qrController.revokeQr);
 
 
 // Note: Toutes les anciennes routes (/ajoutP, /updateP, /mytransactions) 

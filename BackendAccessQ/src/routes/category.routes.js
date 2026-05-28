@@ -2,18 +2,21 @@ const express = require('express');
 const router = express.Router();
 const catController = require("../controllers/api.category.controller");
 const authMiddleware = require('../middleware/authMiddleware');
+const roleMiddleware = require('../middleware/roleMiddleware');
 
+const adminOnly = roleMiddleware(["SUPER_ADMIN", "ORG_ADMIN"]);
 
+router.use(authMiddleware)
 // list categories
-router.get("/cats", authMiddleware, catController.renderCats);
+router.get("/cats", adminOnly, catController.renderCats);
 
 
 // create cat
-router.post("/createCat", authMiddleware, catController.createCat);
+router.post("/createCat", adminOnly, catController.createCat);
 
 
 // delete cat
-router.delete("/deleteCat/:id", authMiddleware, catController.deletecat);
+router.delete("/deleteCat/:id", adminOnly, catController.deletecat);
 
 module.exports = router;
 

@@ -13,7 +13,7 @@ exports.getQrByToken = async (token) => {
 
 exports.recordScan = async (qrId, scannerId, status) => {
     return await prisma.$transaction(async (tx) => {
-        // 1. Create ScanLog
+        // 1. Créer le journal de scan
         const scan = await tx.scanLog.create({
             data: {
                 qr_code_id: qrId,
@@ -22,7 +22,7 @@ exports.recordScan = async (qrId, scannerId, status) => {
             }
         });
 
-        // 2. If authorized, increment scans_count
+        // 2. Si autorisé, incrémenter le compteur de scans
         if (status === "authorized") {
             await tx.qrCode.update({
                 where: { qr_id: qrId },

@@ -4,11 +4,10 @@ const areaController = require('../controllers/api.area.controller');
 const authMiddleware = require('../middleware/authMiddleware');
 const roleMiddleware = require('../middleware/roleMiddleware');
 
-router.use(authMiddleware);
 const adminOnly = roleMiddleware(["SUPER_ADMIN", "ORG_ADMIN"]);
 
-router.get('/', areaController.getAreas);
-router.get('/:id', areaController.getAreaById);
+router.get('/', authMiddleware, areaController.getAreas);
+router.get('/:id', authMiddleware, areaController.getAreaById);
 router.post('/', adminOnly, areaController.createArea);
 router.put('/:id', adminOnly, areaController.updateArea);
 router.delete('/:id', adminOnly, areaController.deleteArea);

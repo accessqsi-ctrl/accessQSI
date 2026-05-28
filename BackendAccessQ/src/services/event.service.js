@@ -1,6 +1,6 @@
 const prisma = require("../prisma/client");
 
-// Find by the name (Filtered by Org)
+// Rechercher par nom (filtré par organisation)
 exports.findByTitle = async (orgId, titleSearch) => {
   return await prisma.event.findMany({
     where: {
@@ -25,7 +25,7 @@ exports.findByTitle = async (orgId, titleSearch) => {
   });
 };
 
-// Find by id (Filtered by Org)
+// Rechercher par ID (filtré par organisation)
 exports.findById = async (orgId, eventId) => {
   return await prisma.event.findFirst({
     where: { event_id: eventId, org_id: orgId, deleted_at: null },
@@ -41,7 +41,7 @@ exports.findById = async (orgId, eventId) => {
   });
 };
 
-// Find all events (Filtered by Org)
+// Récupérer tous les événements (filtré par organisation)
 exports.findAll = async (orgId) => {
   return await prisma.event.findMany({
     where: {
@@ -61,7 +61,7 @@ exports.findAll = async (orgId) => {
   });
 };
 
-// Create event (Bound to Org)
+// Créer un événement (lié à l'organisation)
 exports.createEvent = async (data) => {
   const { start_date, end_date, id_area, areaIds, ...eventData } = data;
 
@@ -82,20 +82,20 @@ exports.createEvent = async (data) => {
   });
 };
 
-// Update event (Assumes ownership verified by controller)
+// Modifier un événement (propriété vérifiée par le contrôleur)
 exports.updateEvent = async (eventId, data) => {
   const { start_date, end_date, id_area, areaIds, ...eventData } = data;
 
   const updateData = { ...eventData };
 
   if (start_date || end_date || id_area || areaIds) {
-    // If no explicit areaIds but we have id_area, use it
+    // Si pas de areaIds explicites mais on a id_area, l'utiliser
     const finalAreaIds = areaIds && Array.isArray(areaIds) 
         ? areaIds.map(Number) 
         : (id_area ? [Number(id_area)] : null);
 
     if (finalAreaIds) {
-      // Simplest way to sync: delete all and recreate
+      // Méthode simple pour synchroniser : supprimer tout et recréer
       await prisma.eventSchedule.deleteMany({
         where: { id_event: eventId }
       });
@@ -109,7 +109,7 @@ exports.updateEvent = async (eventId, data) => {
         }))
       });
     } else if (start_date || end_date) {
-        // Just update dates for all existing schedules if areas didn't change
+        // Mettre à jour uniquement les dates si les zones n'ont pas changé
         await prisma.eventSchedule.updateMany({
             where: { id_event: eventId },
             data: {
@@ -127,7 +127,7 @@ exports.updateEvent = async (eventId, data) => {
   });
 };
 
-// Delete event (Soft delete)
+// Supprimer un événement (Suppression logique)
 exports.deleteEvent = async (eventId) => {
   return prisma.event.update({
     where: { event_id: eventId },

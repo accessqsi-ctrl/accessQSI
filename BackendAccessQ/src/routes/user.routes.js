@@ -6,6 +6,8 @@ router.use(express.urlencoded({ extended: true }));
 router.use(express.static("public"));
 const userController = require("../controllers/api.user.controller");
 const authMiddleware = require('../middleware/authMiddleware');
+const roleMiddleware = require('../middleware/roleMiddleware');
+const adminOnly = roleMiddleware(["SUPER_ADMIN", "ORG_ADMIN"]);
 
 // =========================================================
 // PROTECTION CONTRE LES ATTAQUES PAR FORCE BRUTE (Brute Force)
@@ -33,15 +35,14 @@ router.post('/signin', userController.signin);
 router.post("/verify-email", userController.verifyEmail);
 
 
-// User Profile (Protected)
 // Page profile
 router.get("/profile", authMiddleware, userController.viewprofile);
-// User Settings (Protected)
+// User Settings
 router.put("/profile", authMiddleware, userController.updateProfile);
 router.put("/password", authMiddleware, userController.updatePassword);
-router.get("/org", authMiddleware, userController.getOrganization);
-router.put("/org", authMiddleware, userController.updateOrganization);
-router.delete("/org", authMiddleware, userController.deleteOrganization);
+router.get("/org", adminOnly, userController.getOrganization);
+router.put("/org", adminOnly, userController.updateOrganization);
+router.delete("/org", adminOnly, userController.deleteOrganization);
 
 // Page log out
 router.get("/logout", authMiddleware, userController.logout);

@@ -41,8 +41,8 @@ exports.exportScansCSV = async (req, res) => {
             orderBy: { scanned_at: "desc" }
         });
 
-        // Removed: if (scans.length === 0) return res.status(404).json(...)
-        // We will now always generate the CSV file, even if empty, to avoid ugly error pages
+        // Supprimé : if (scans.length === 0) return res.status(404).json(...)
+        // On génère toujours le fichier CSV, même vide, pour éviter des pages d'erreur disgracieuses
 
 
         const filePath = path.join(__dirname, "../../tmp", `scans_export_${Date.now()}.csv`);
@@ -73,19 +73,19 @@ exports.exportScansCSV = async (req, res) => {
             email: s.qr_code.holder_email || "-",
             event: s.qr_code.event.title,
             agent: s.scanned_by.full_name,
-            status: s.status === "authorized" ? "AUTORISE" : "REFUSE"
+            status: s.status === "authorized" ? "AUTORISÉ" : "REFUSÉ"
         }));
 
         await csvWriter.writeRecords(records);
 
         res.download(filePath, "scans_history.csv", (err) => {
-            if (err) console.error("Error sending file:", err);
-            // Delete file after sending
+            if (err) console.error("Erreur lors de l'envoi du fichier :", err);
+            // Supprimer le fichier après envoi
             fs.unlink(filePath, () => {});
         });
 
     } catch (error) {
-        console.error("Export CSV Error:", error);
+        console.error("Erreur export CSV :", error);
         res.status(500).json({ success: false, message: "Erreur lors de l'export CSV" });
     }
 };
@@ -113,10 +113,10 @@ exports.exportScansPDF = async (req, res) => {
                 scanned_by: { select: { full_name: true } }
             },
             orderBy: { scanned_at: "desc" },
-            take: 100 // Limit for PDF demo
+            take: 100 // Limite pour la démo PDF
         });
 
-        // We will now always generate the PDF file to avoid ugly JSON error pages
+        // On génère toujours le fichier PDF pour éviter des pages d'erreur JSON disgracieuses
 
 
         const doc = new PDFDocument();
@@ -127,13 +127,13 @@ exports.exportScansPDF = async (req, res) => {
 
         doc.pipe(res);
 
-        // Header
+        // En-tête
         doc.fontSize(20).text("Rapport d'Accès QR", { align: "center" });
         doc.moveDown();
         doc.fontSize(12).text(`Généré le: ${new Date().toLocaleString()}`, { align: "right" });
         doc.moveDown();
 
-        // Table Header
+        // En-tête du tableau
         const tableTop = 150;
         doc.font("Helvetica-Bold");
         doc.text("Date", 50, tableTop);
@@ -165,7 +165,7 @@ exports.exportScansPDF = async (req, res) => {
         doc.end();
 
     } catch (error) {
-        console.error("Export PDF Error:", error);
+        console.error("Erreur export PDF :", error);
         res.status(500).json({ success: false, message: "Erreur lors de l'export PDF" });
     }
 };
