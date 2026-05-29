@@ -24,39 +24,39 @@ exports.createOrgAndAdminUser = async (orgData, userData) => {
   });
 };
 exports.updateUser = async (userId, data) => {
-    return await prisma.userQ.update({
-        where: { user_id: userId },
-        data: data
-    });
+  return await prisma.userQ.update({
+    where: { user_id: userId },
+    data: data
+  });
 };
 
 exports.updateOrganization = async (orgId, data) => {
-    return await prisma.organization.update({
-        where: { org_id: orgId },
-        data: data
-    });
+  return await prisma.organization.update({
+    where: { org_id: orgId },
+    data: data
+  });
 };
 
 exports.getOrganizationById = async (orgId) => {
-    return await prisma.organization.findUnique({
-        where: { org_id: orgId }
-    });
+  return await prisma.organization.findUnique({
+    where: { org_id: orgId }
+  });
 };
 
 exports.deleteOrganization = async (orgId) => {
-    return await prisma.$transaction(async (tx) => {
-        // Suppression logique de l'organisation
-        const org = await tx.organization.update({
-            where: { org_id: orgId },
-            data: { deleted_at: new Date() }
-        });
-
-        // Suppression logique de tous les utilisateurs de cette organisation
-        await tx.userQ.updateMany({
-            where: { org_id: orgId },
-            data: { deleted_at: new Date() }
-        });
-
-        return org;
+  return await prisma.$transaction(async (tx) => {
+    // Suppression logique de l'organisation
+    const org = await tx.organization.update({
+      where: { org_id: orgId },
+      data: { deleted_at: new Date() }
     });
+
+    // Suppression logique de tous les utilisateurs de cette organisation
+    await tx.userQ.updateMany({
+      where: { org_id: orgId },
+      data: { deleted_at: new Date() }
+    });
+
+    return org;
+  });
 };

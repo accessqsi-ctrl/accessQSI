@@ -4,26 +4,17 @@ const crypto = require("crypto");
 const userService = require("../services/user.service");
 const emailService = require("../services/email.service");
 const prisma = require("../prisma/client");
+const PasswordValidator = require('password-validator');
 
-// =========================================================
-// RÈGLES DE SÉCURITÉ POUR LES MOTS DE PASSE
-// =========================================================
-// Cette fonction garantit que le mot de passe respecte les standards de sécurité
-// pour éviter qu'il soit facilement devinable ou cassé.
-const isValidPassword = (password) => {
-    // Règle 1: Minimum 8 caractères de long
-    if (password.length < 8) return false;
-    // Règle 2: Doit contenir au moins une lettre majuscule
-    if (!/[A-Z]/.test(password)) return false;
-    // Règle 3: Doit contenir au moins une lettre minuscule
-    if (!/[a-z]/.test(password)) return false;
-    // Règle 4: Doit contenir au moins un chiffre
-    if (!/[0-9]/.test(password)) return false;
-    // Règle 5: Doit contenir au moins un symbole spécial
-    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) return false;
+const pm = new PasswordValidator();
 
-    return true;
-};
+pm
+    .is().min(8)
+    .is().max(100)
+    .has().uppercase()
+    .has().lowercase()
+    .has().digits()
+    .has().not().spaces();
 
 // =========================================================
 // CONFIGURATION SÉCURISÉE DES COOKIES (Protection des Sessions)
@@ -105,6 +96,8 @@ exports.login = async (req, res) => {
     }
 };
 
+
+
 exports.signin = async (req, res) => {
     try {
         const { fullName, email, organizationName, password } = req.body;
@@ -114,17 +107,18 @@ exports.signin = async (req, res) => {
         }
 
         // Appliquer la politique de mot de passe fort
-        if (!isValidPassword(password)) {
+        const errors = pm.validate(password.trim(), { errors: true });
+        if (errors.length > 0) {
             return res.status(400).json({
                 success: false,
-                message: "Le mot de passe doit contenir au moins 12 caractères, incluant des lettres, des chiffres et des symboles spéciaux."
+                message: errors[0].message
             });
         }
 
         let user = await userService.findByEmail(email);
 
         if (!user) {
-            const hashed = await bcrypt.hash(password, 10);
+            const hashed = await bcrypt.hash(password.trim(), process.env.SALT_ROUNDS);
             const clef = crypto.randomUUID(); // Génération d'une clef unique
 
             // --- NOUVEAU: GÉNÉRATION DU TOKEN DE VÉRIFICATION ---
@@ -160,7 +154,7 @@ exports.signin = async (req, res) => {
         console.error(error);
         return res.status(500).json({
             success: false,
-            message: "Une erreur s'est produite lors de l'inscription."
+            message: "Une erreur s'est produite lors de l'inscription.{" + error + "}"
         });
     }
 };
@@ -286,11 +280,12 @@ exports.updatePassword = async (req, res) => {
             return res.status(400).json({ success: false, message: "Ancien mot de passe incorrect." });
         }
 
-        if (!isValidPassword(newPassword)) {
-            return res.status(400).json({ success: false, message: "Le nouveau mot de passe ne respecte pas les règles de sécurité." });
+        const errors = pm.validate(newPassword.trim(), { errors: true });
+        if (errors) {
+            return res.status(400).json({ success: false, message: errors[0] });
         }
 
-        const hashed = await bcrypt.hash(newPassword, 10);
+        const hashed = await bcrypt.hash(newPassword.trim(), process.env.SALT_ROUNDS);
         await userService.updateUser(userId, { password_hash: hashed });
 
         return res.status(200).json({ success: true, message: "Mot de passe modifié avec succès." });
