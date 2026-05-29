@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const agentController = require("../controllers/api.agent.controller");
 const roleMiddleware = require("../middleware/roleMiddleware");
+const authMiddleware = require("../middleware/authMiddleware");
 
 // Protect all event routes
 router.use(authMiddleware);
