@@ -5,8 +5,6 @@ const userService = require("../services/user.service");
 const emailService = require("../services/email.service");
 const prisma = require("../prisma/client");
 const PasswordValidator = require('password-validator');
-const fs = require("fs");
-const privateKey = fs.readFileSync(process.env.PRIVATE_KEY);
 const pm = new PasswordValidator();
 
 pm
@@ -69,7 +67,7 @@ exports.login = async (req, res) => {
 
         const token = jwt.sign(
             { user_id: user.user_id, email: user.email, role: user.role, org_id: user.org_id },
-            privateKey,
+            process.env.PRIVATE_KEY,
             { expiresIn: process.env.TOKEN_EXPIRES_IN, algorithm: "RS256" }
         );
 
