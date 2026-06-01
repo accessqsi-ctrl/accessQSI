@@ -5,7 +5,8 @@ const userService = require("../services/user.service");
 const emailService = require("../services/email.service");
 const prisma = require("../prisma/client");
 const PasswordValidator = require('password-validator');
-
+const fs = require("fs");
+const privateKey = fs.readFileSync(process.env.PRIVATE_KEY);
 const pm = new PasswordValidator();
 
 pm
@@ -68,8 +69,8 @@ exports.login = async (req, res) => {
 
         const token = jwt.sign(
             { user_id: user.user_id, email: user.email, role: user.role, org_id: user.org_id },
-            process.env.JWT_SECRET,
-            { expiresIn: process.env.TOKEN_EXPIRES_IN }
+            privateKey,
+            { expiresIn: process.env.TOKEN_EXPIRES_IN, algorithm: "RS256" }
         );
 
         // Mise à jour sécurité : stocker le JWT dans un cookie HttpOnly au lieu de l'envoyer uniquement en JSON
