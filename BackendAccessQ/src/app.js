@@ -5,15 +5,59 @@ const app = express();
 app.set('trust proxy', 1);
 const path = require("path");
 const cookieParser = require("cookie-parser");
+const { generalLimiter } = require('./middleware/limMiddleware');
 
 const cors = require('cors');
 const helmet = require('helmet');
 
 
+const isProd = process.env.NODE_ENV === 'production';
+
 app.use(helmet({
-    crossOriginResourcePolicy: false, // Permet le chargement d'images de QR codes depuis le frontend
-    contentSecurityPolicy: false // Pour le dev local, sinon à configurer finement en prod
+
+    // ── HTTP Strict Transport Security (HSTS) ────────────────────────────────
+    // Force le navigateur à utiliser HTTPS pour 1 an.
+    // Activé uniquement en production (Render fournit HTTPS nativement).
+    strictTransportSecurity: isProd
+        ? { maxAge: 31536000, includeSubDomains: true, preload: true }
+        : false,
+
+    // ── Cross-Origin Resource Policy ─────────────────────────────────────────
+    // "cross-origin" : permet au frontend React (domaine différent) de charger
+    // les images de QR codes servies par ce backend.
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+
+    // ── Cross-Origin Embedder Policy ─────────────────────────────────────────
+    // Désactivé : COEP bloquerait les ressources cross-origin (ex: QR codes depuis
+    // le frontend) qui n'ont pas de header CORP explicite sur chaque réponse.
+    crossOriginEmbedderPolicy: false,
+
+    // ── Clickjacking protection ───────────────────────────────────────────────
+    // Interdit l'intégration de ce backend dans des iframes.
+    frameguard: { action: "deny" },
+
+    // ── MIME Sniffing protection ──────────────────────────────────────────────
+    // Empêche le navigateur de deviner le type MIME d'une réponse.
+    noSniff: true,
+
+    // ── Referrer Policy ──────────────────────────────────────────────────────
+    // N'envoie l'URL complète en Referer que vers la même origine.
+    referrerPolicy: { policy: "strict-origin-when-cross-origin" },
+
+    // ── DNS Prefetch Control ──────────────────────────────────────────────────
+    // Désactive le prefetch DNS automatique du navigateur.
+    dnsPrefetchControl: { allow: false },
+
+    // ── X-Powered-By ─────────────────────────────────────────────────────────
+    // Supprime le header "X-Powered-By: Express" pour ne pas exposer la stack.
+    hidePoweredBy: true,
+
+    // ── Cross-Domain Policy (Flash / PDF readers) ─────────────────────────────
+    // Interdit le chargement de fichiers de politique cross-domaine.
+    permittedCrossDomainPolicies: { permittedPolicies: "none" },
+
 }));
+
 
 // ===== Configurer CORS pour React =====
 const allowedOrigins = [
@@ -36,6 +80,7 @@ app.use(cors({
 }));
 
 // ===== Middlewares globaux =====
+app.use(generalLimiter); // Filet de sécurité global contre les abus et DDoS basiques
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -46,10 +91,10 @@ app.use(cookieParser(process.env.JWT_SECRET));
 
 
 
+
+
 // ===== Fichiers statiques =====
 app.use(express.static(path.join(__dirname, "statics")));
-
-
 
 // Importer les différentes routes depuis le dossier src/routes/
 const userRoutes = require("./routes/user.routes");
