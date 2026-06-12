@@ -8,7 +8,7 @@ const authMiddleware = require("../middleware/authMiddleware");
 router.use(authMiddleware);
 
 // Seuls les admins peuvent gérer les agents
-const adminOnly = roleMiddleware(["SUPER_ADMIN", "ORG_ADMIN"]);
+const adminOnly = roleMiddleware(["ORG_ADMIN"]);
 
 // Liste des agents
 router.get("/", agentController.getAgents);

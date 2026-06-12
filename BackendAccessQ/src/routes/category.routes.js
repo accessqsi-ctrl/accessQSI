@@ -4,7 +4,7 @@ const catController = require("../controllers/api.category.controller");
 const authMiddleware = require('../middleware/authMiddleware');
 const roleMiddleware = require('../middleware/roleMiddleware');
 
-const adminOnly = roleMiddleware(["SUPER_ADMIN", "ORG_ADMIN"]);
+const adminOnly = roleMiddleware(["ORG_ADMIN"]);
 
 router.use(authMiddleware)
 // list categories

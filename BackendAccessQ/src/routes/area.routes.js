@@ -8,7 +8,7 @@ const roleMiddleware = require('../middleware/roleMiddleware');
 router.use(authMiddleware);
 
 // Seuls les admins peuvent gérer les zones
-const adminOnly = roleMiddleware(["SUPER_ADMIN", "ORG_ADMIN"]);
+const adminOnly = roleMiddleware(["ORG_ADMIN"]);
 
 router.get('/', areaController.getAreas);
 router.get('/:id', areaController.getAreaById);

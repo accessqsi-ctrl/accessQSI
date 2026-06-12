@@ -39,7 +39,7 @@ exports.login = async (req, res) => {
         if (!user) {
             return res.status(401).json({
                 success: false,
-                message: "Aucun compte trouvé pour cette adresse email."
+                message: "Identifiants incorrects. Veuillez réessayer."
             });
         }
 
@@ -53,7 +53,7 @@ exports.login = async (req, res) => {
         if (!validPassword) {
             return res.status(401).json({
                 success: false,
-                message: "Mot de passe incorrect. Veuillez réessayer."
+                message: "Identifiants incorrects. Veuillez réessayer."
             });
         }
 
