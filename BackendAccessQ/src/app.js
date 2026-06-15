@@ -1,9 +1,24 @@
 const express = require('express');
 const app = express();
-app.set('trust proxy', 3);
 
-// Render utilise un reverse proxy → nécessaire pour express-rate-limit et les IPs clients
-// app.set('trust proxy', 1);
+// Configuration dynamique du trust proxy (1 par défaut pour Render)
+const trustProxyValue = process.env.TRUST_PROXY;
+
+if (trustProxyValue) {
+    if (!isNaN(trustProxyValue)) {
+        app.set('trust proxy', parseInt(trustProxyValue, 10));
+    } else if (trustProxyValue === 'true') {
+        app.set('trust proxy', true);
+    } else if (trustProxyValue === 'false') {
+        app.set('trust proxy', false);
+    } else {
+        app.set('trust proxy', trustProxyValue);
+    }
+} else {
+    app.set('trust proxy', 1);
+}
+
+
 const path = require("path");
 const cookieParser = require("cookie-parser");
 const { generalLimiter } = require('./middleware/limMiddleware');
