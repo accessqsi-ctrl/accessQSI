@@ -33,7 +33,9 @@ router.delete("/org", adminOnly, userController.deleteOrganization);
 // Page log out
 router.get("/logout", authMiddleware, userController.logout);
 
-
+router.get('/ip', (request, response) => {
+    response.send(request.ip);
+});
 
 
 module.exports = router;

@@ -64,8 +64,6 @@ app.use(helmet({
 const allowedOrigins = [
     process.env.FRONTEND_URL
 ].filter(Boolean);
-
-console.log(allowedOrigins);
 console.log(process.env.FRONTEND_URL);
 
 app.use(cors({
@@ -87,10 +85,6 @@ app.use(express.urlencoded({ extended: true }));
 
 // Configuration des cookies sécurisée si en HTTPS
 app.use(cookieParser(process.env.JWT_SECRET));
-
-
-
-
 
 
 
