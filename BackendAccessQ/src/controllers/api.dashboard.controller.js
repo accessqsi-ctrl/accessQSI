@@ -2,6 +2,7 @@ const prisma = require("../prisma/client");
 
 exports.getOverviewStats = async (req, res) => {
     try {
+        console.log(req.ip);
         // Vérifier que l'utilisateur est authentifié et a une organisation
         if (!req.user || !req.user.org_id) {
             return res.status(401).json({ success: false, message: "Non autorisé ou aucune organisation liée." });
@@ -78,7 +79,7 @@ exports.getOverviewStats = async (req, res) => {
             const date = new Date();
             date.setDate(date.getDate() - i);
             date.setHours(0, 0, 0, 0);
-            
+
             const nextDay = new Date(date);
             nextDay.setDate(nextDay.getDate() + 1);
 
