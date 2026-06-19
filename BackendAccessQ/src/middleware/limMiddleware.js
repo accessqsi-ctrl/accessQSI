@@ -1,19 +1,5 @@
 const rateLimit = require("express-rate-limit");
 
-const trustProxyValue = process.env.TRUST_PROXY;
-
-if (trustProxyValue !== undefined) {
-    if (!isNaN(Number(trustProxyValue))) {
-        app.set('trust proxy', Number(trustProxyValue));
-    } else if (trustProxyValue === 'true') {
-        app.set('trust proxy', true);
-    } else if (trustProxyValue === 'false') {
-        app.set('trust proxy', false);
-    } else {
-        app.set('trust proxy', trustProxyValue);
-    }
-}
-
 // Limiteur global (filet de sécurité contre les abus et attaques DDoS basiques)
 // Appliqué à toutes les routes dans app.js. Les limites sont généreuses pour ne pas
 // gêner les utilisateurs légitimes, mais suffisantes pour bloquer les bots agressifs.
