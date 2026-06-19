@@ -13,6 +13,7 @@ pm
     .has().uppercase()
     .has().lowercase()
     .has().digits()
+    .has().symbols()
     .has().not().spaces();
 
 // =========================================================
@@ -280,7 +281,7 @@ exports.updatePassword = async (req, res) => {
         }
 
         const errors = pm.validate(newPassword.trim(), { errors: true });
-        if (errors) {
+        if (errors.length > 0) {
             return res.status(400).json({ success: false, message: errors[0] });
         }
 

@@ -4,6 +4,12 @@ const agentService = require("../services/agent.service");
 const emailService = require("../services/email.service");
 const userService = require("../services/user.service");
 
+const canManageAgents = (user) => {
+    return user && user.org_id && ["ORG_ADMIN", "SUPER_ADMIN"].includes(user.role);
+};
+
+exports.canManageAgents = canManageAgents;
+
 exports.getAgents = async (req, res) => {
     try {
         if (!req.user || !req.user.org_id) {
@@ -35,7 +41,7 @@ exports.getAgents = async (req, res) => {
 
 exports.addAgent = async (req, res) => {
     try {
-        if (!req.user || !req.user.org_id || req.user.role !== "ORG_ADMIN") {
+        if (!canManageAgents(req.user)) {
             return res.status(403).json({ success: false, message: "Accès refusé. Réservé aux administrateurs." });
         }
 
@@ -76,7 +82,7 @@ exports.addAgent = async (req, res) => {
 
 exports.toggleAgentStatus = async (req, res) => {
     try {
-        if (!req.user || !req.user.org_id || req.user.role !== "ORG_ADMIN") {
+        if (!canManageAgents(req.user)) {
             return res.status(403).json({ success: false, message: "Accès refusé." });
         }
 
@@ -108,7 +114,7 @@ exports.toggleAgentStatus = async (req, res) => {
 
 exports.deleteAgent = async (req, res) => {
     try {
-        if (!req.user || !req.user.org_id || req.user.role !== "ORG_ADMIN") {
+        if (!canManageAgents(req.user)) {
             return res.status(403).json({ success: false, message: "Accès refusé." });
         }
 

@@ -8,7 +8,7 @@ const roleMiddleware = require('../middleware/roleMiddleware');
 router.use(authMiddleware);
 
 // Define admin roles
-const adminOnly = roleMiddleware(["ORG_ADMIN"]);
+const adminOnly = roleMiddleware(["ORG_ADMIN", "SUPER_ADMIN"]);
 
 // GET /events (Get all events for user's org)
 router.get("/", eventController.getEvents);

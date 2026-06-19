@@ -1,22 +1,24 @@
 "use client";
 
 import { useEffect, useState, Suspense } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { CheckCircle, XCircle, Loader2 } from "lucide-react";
 
 function VerifyEmailContent() {
     const searchParams = useSearchParams();
-    const router = useRouter();
     const token = searchParams.get("token");
+    const hasToken = Boolean(token);
 
-    const [status, setStatus] = useState("loading"); // loading, success, error
-    const [message, setMessage] = useState("Vérification de votre adresse e-mail en cours...");
+    const [status, setStatus] = useState(hasToken ? "loading" : "error"); // loading, success, error
+    const [message, setMessage] = useState(
+        hasToken
+            ? "Vérification de votre adresse e-mail en cours..."
+            : "Lien de vérification invalide ou manquant."
+    );
 
     useEffect(() => {
         if (!token) {
-            setStatus("error");
-            setMessage("Lien de vérification invalide ou manquant.");
             return;
         }
 

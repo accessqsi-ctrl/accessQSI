@@ -7,7 +7,7 @@ router.use(express.static("public"));
 const userController = require("../controllers/api.user.controller");
 const authMiddleware = require('../middleware/authMiddleware');
 const roleMiddleware = require('../middleware/roleMiddleware');
-const adminOnly = roleMiddleware(["ORG_ADMIN"]);
+const adminOnly = roleMiddleware(["ORG_ADMIN", "SUPER_ADMIN"]);
 
 
 // === Authentication Routes ===
@@ -26,9 +26,9 @@ router.get("/profile", authMiddleware, userController.viewprofile);
 // User Settings
 router.put("/profile", authMiddleware, userController.updateProfile);
 router.put("/password", authMiddleware, userController.updatePassword);
-router.get("/org", adminOnly, userController.getOrganization);
-router.put("/org", adminOnly, userController.updateOrganization);
-router.delete("/org", adminOnly, userController.deleteOrganization);
+router.get("/org", authMiddleware, adminOnly, userController.getOrganization);
+router.put("/org", authMiddleware, adminOnly, userController.updateOrganization);
+router.delete("/org", authMiddleware, adminOnly, userController.deleteOrganization);
 
 // Page log out
 router.get("/logout", authMiddleware, userController.logout);
@@ -38,7 +38,7 @@ router.get('/ip', (req, res) => {
         ip: req.ip,
         ips: req.ips,
         xForwardedFor: req.headers['x-forwarded-for'],
-        trustProxy: app.get('trust proxy'),
+        trustProxy: req.app.get('trust proxy'),
     });
 });
 

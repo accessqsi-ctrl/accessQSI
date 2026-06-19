@@ -82,7 +82,7 @@ exports.createEvent = async (req, res) => {
             return res.status(401).json({ success: false, message: "Non autorisé" });
         }
 
-        const { title, description, location, id_area, areaIds, startDate, endDate } = req.body;
+        const { title, description, id_area, areaIds, startDate, endDate } = req.body;
 
         if (!title || !startDate || !endDate) {
             return res.status(400).json({ success: false, message: "Titre, Date de début et Date de fin sont requis" });
@@ -93,7 +93,6 @@ exports.createEvent = async (req, res) => {
         const newEvent = await eventService.createEvent({
             title: title,
             description: description,
-            location: location,
             id_area: id_area,
             areaIds: areaIds,
             start_date: new Date(startDate),
@@ -117,7 +116,7 @@ exports.updateEvent = async (req, res) => {
 
         const orgId = req.user.org_id;
         const eventId = Number(req.params.event_id);
-        const { title, description, location, id_area, areaIds, startDate, endDate } = req.body;
+        const { title, description, id_area, areaIds, startDate, endDate } = req.body;
 
         // Vérifier la propriété d'abord
         const existingEvent = await eventService.findById(orgId, eventId);
@@ -128,7 +127,6 @@ exports.updateEvent = async (req, res) => {
         const updatedEvent = await eventService.updateEvent(eventId, {
             title,
             description,
-            location,
             id_area,
             areaIds,
             start_date: startDate ? new Date(startDate) : undefined,
@@ -165,4 +163,3 @@ exports.deleteEvent = async (req, res) => {
         res.status(500).json({ success: false, message: "Erreur serveur" });
     }
 }
-

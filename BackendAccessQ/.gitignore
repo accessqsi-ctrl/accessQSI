@@ -1,6 +1,12 @@
 node_modules
 # Keep environment variables out of version control
 .env
+*.pem
+.sofin/
+tmp/
+uploads/
+statics/qrcodes/
+src/statics/qrcodes/
 
 /src/generated/prisma
 

@@ -55,7 +55,7 @@ exports.generateQrForEvent = async (req, res) => {
             e: event.event_id          // L'événement ciblé
         });
 
-        const qrFilename = `qr_${holder_email}_${uniqueToken}.png`;
+        const qrFilename = `qr_${uniqueToken}.png`;
         const qrPath = path.join(__dirname, '../statics/qrcodes', qrFilename);
 
         // S'assurer que le répertoire existe

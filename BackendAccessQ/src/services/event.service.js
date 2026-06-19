@@ -7,8 +7,16 @@ exports.findByTitle = async (orgId, titleSearch) => {
       org_id: orgId,
       OR: [
         { title: { contains: titleSearch, mode: 'insensitive' } },
-        { location: { contains: titleSearch, mode: 'insensitive' } },
-        { description: { contains: titleSearch, mode: 'insensitive' } }
+        { description: { contains: titleSearch, mode: 'insensitive' } },
+        {
+          EventSchedules: {
+            some: {
+              area: {
+                area_name: { contains: titleSearch, mode: 'insensitive' }
+              }
+            }
+          }
+        }
       ],
       deleted_at: null
     },
@@ -86,7 +94,9 @@ exports.createEvent = async (data) => {
 exports.updateEvent = async (eventId, data) => {
   const { start_date, end_date, id_area, areaIds, ...eventData } = data;
 
-  const updateData = { ...eventData };
+  const updateData = Object.fromEntries(
+    Object.entries(eventData).filter(([, value]) => value !== undefined)
+  );
 
   if (start_date || end_date || id_area || areaIds) {
     // Si pas de areaIds explicites mais on a id_area, l'utiliser
@@ -136,4 +146,3 @@ exports.deleteEvent = async (eventId) => {
     }
   });
 };
-

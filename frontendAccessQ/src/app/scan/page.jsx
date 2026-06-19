@@ -83,10 +83,18 @@ export default function ScanPage() {
     const verifyToken = async (token) => {
         setLoading(true);
         try {
-            const res = await fetch("https://tidy-teeth-turn.loca.lt/qr/verify", {
+            let qrToken = token;
+            try {
+                const parsed = JSON.parse(token);
+                qrToken = parsed.t || token;
+            } catch {
+                qrToken = token;
+            }
+
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/qr/verify`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ token }),
+                body: JSON.stringify({ token: qrToken }),
                 credentials: "include"
             });
             const data = await res.json();

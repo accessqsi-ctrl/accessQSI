@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Loader2, Calendar, MapPin, QrCode, Edit2, Trash2, ArrowLeft, Plus, Download, X, CheckCircle2 } from "lucide-react";
@@ -53,14 +53,7 @@ export default function EventDetailPage() {
     const [selectedQr, setSelectedQr] = useState(null);
     const [revokingId, setRevokingId] = useState(null);
 
-    useEffect(() => {
-        if (eventId) {
-            fetchAll();
-            fetchAreas();
-        }
-    }, [eventId]);
-
-    const fetchAreas = async () => {
+    const fetchAreas = useCallback(async () => {
         try {
             const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/areas`, {
                 method: "GET",
@@ -76,9 +69,9 @@ export default function EventDetailPage() {
         } finally {
             setLoadingAreas(false);
         }
-    };
+    }, []);
 
-    const fetchAll = async () => {
+    const fetchAll = useCallback(async () => {
         setLoading(true);
         setError("");
         try {
@@ -110,7 +103,14 @@ export default function EventDetailPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [eventId]);
+
+    useEffect(() => {
+        if (eventId) {
+            fetchAll();
+            fetchAreas();
+        }
+    }, [eventId, fetchAll, fetchAreas]);
 
     const handleAreaChange = (areaId) => {
         setEditForm(prev => {
@@ -942,5 +942,4 @@ export default function EventDetailPage() {
         </div>
     );
 }
-
 
