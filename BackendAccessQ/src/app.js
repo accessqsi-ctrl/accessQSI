@@ -15,12 +15,13 @@ if (trustProxyValue) {
         app.set('trust proxy', trustProxyValue);
     }
 } else {
-    app.set('trust proxy', 1);
+    app.set('trust proxy', trustProxyValue);
 }
 
 
 const path = require("path");
 const cookieParser = require("cookie-parser");
+
 const { generalLimiter } = require('./middleware/limMiddleware');
 
 const cors = require('cors');

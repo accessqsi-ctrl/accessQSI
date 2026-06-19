@@ -1,5 +1,19 @@
 const rateLimit = require("express-rate-limit");
 
+const trustProxyValue = process.env.TRUST_PROXY;
+
+if (trustProxyValue !== undefined) {
+    if (!isNaN(Number(trustProxyValue))) {
+        app.set('trust proxy', Number(trustProxyValue));
+    } else if (trustProxyValue === 'true') {
+        app.set('trust proxy', true);
+    } else if (trustProxyValue === 'false') {
+        app.set('trust proxy', false);
+    } else {
+        app.set('trust proxy', trustProxyValue);
+    }
+}
+
 // Limiteur global (filet de sécurité contre les abus et attaques DDoS basiques)
 // Appliqué à toutes les routes dans app.js. Les limites sont généreuses pour ne pas
 // gêner les utilisateurs légitimes, mais suffisantes pour bloquer les bots agressifs.
@@ -9,7 +23,6 @@ const generalLimiter = rateLimit({
     message: { success: false, message: "Trop de requêtes, veuillez réessayer plus tard." },
     standardHeaders: false,
     legacyHeaders: false,
-    validate: { xForwardedForHeader: false },
 });
 
 // Limiteur pour les routes d'authentification (anti brute-force)
@@ -19,7 +32,6 @@ const loginLimiter = rateLimit({
     message: { success: false, message: "Trop de tentatives de connexion, veuillez réessayer après 15 minutes." },
     standardHeaders: false,
     legacyHeaders: false,
-    validate: { xForwardedForHeader: false },
 });
 
 // Limiteur pour la création de comptes (anti spam d'inscriptions)
@@ -31,7 +43,6 @@ const signinLimiter = rateLimit({
     message: { success: false, message: "Trop de tentatives d'inscription, veuillez réessayer dans une heure." },
     standardHeaders: false,
     legacyHeaders: false,
-    validate: { xForwardedForHeader: false },
 });
 
 module.exports = { generalLimiter, loginLimiter, signinLimiter };

@@ -33,9 +33,13 @@ router.delete("/org", adminOnly, userController.deleteOrganization);
 // Page log out
 router.get("/logout", authMiddleware, userController.logout);
 
-router.get('/ip', (request, response) => {
-    response.send(request.ip);
+router.get('/ip', (req, res) => {
+    res.json({
+        ip: req.ip,
+        ips: req.ips,
+        xForwardedFor: req.headers['x-forwarded-for'],
+        trustProxy: app.get('trust proxy'),
+    });
 });
-
 
 module.exports = router;
