@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Loader2 } from "lucide-react";
+import { apiFetch } from "../../lib/api";
 
 export default function AgentsPage() {
     const [agents, setAgents] = useState([]);
@@ -28,9 +29,7 @@ export default function AgentsPage() {
 
     const fetchAgents = async () => {
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents`, {
-                credentials: "include"
-            });
+            const res = await apiFetch("/agents");
             const data = await res.json();
             if (data.success) {
                 setAgents(data.agents);
@@ -51,10 +50,9 @@ export default function AgentsPage() {
         setAdding(true);
 
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents`, {
+            const res = await apiFetch("/agents/add-agent", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                credentials: "include",
                 body: JSON.stringify(addForm)
             });
             const data = await res.json();
@@ -81,9 +79,8 @@ export default function AgentsPage() {
         if (!confirm("Voulez-vous modifier le statut de cet agent ?")) return;
         setTogglingId(agentId);
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/${agentId}/toggle`, {
-                method: "PUT",
-                credentials: "include"
+            const res = await apiFetch(`/agents/${agentId}/toggle`, {
+                method: "PUT"
             });
             const data = await res.json();
             if (data.success) {
@@ -102,9 +99,8 @@ export default function AgentsPage() {
         if (!confirm("⚠️ Voulez-vous vraiment SUPPRIMER cet agent définitivement ? Cette action est irréversible.")) return;
         setTogglingId(agentId);
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/${agentId}`, {
-                method: "DELETE",
-                credentials: "include"
+            const res = await apiFetch(`/agents/${agentId}`, {
+                method: "DELETE"
             });
             const data = await res.json();
             if (data.success) {

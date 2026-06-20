@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { Loader2 } from "lucide-react";
+import { apiFetch } from "../../lib/api";
 
 export default function EventsPage() {
     const [events, setEvents] = useState([]);
@@ -17,7 +18,7 @@ export default function EventsPage() {
     useEffect(() => {
         const fetchProfileAndEvents = async () => {
             try {
-                const profileRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/user/profile`, { credentials: "include" });
+                const profileRes = await apiFetch("/user/profile");
                 const profileData = await profileRes.json();
                 if (profileData.success) {
                     setUserRole(profileData.user.role);
@@ -26,10 +27,9 @@ export default function EventsPage() {
                 console.error("Error fetching profile:", err);
             }
             try {
-                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/events`, {
+                const res = await apiFetch("/events", {
                     method: "GET",
-                    headers: { "Content-Type": "application/json" },
-                    credentials: "include"
+                    headers: { "Content-Type": "application/json" }
                 });
                 const data = await res.json();
 

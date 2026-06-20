@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Loader2, Plus, Trash2, Edit2, MapPin } from "lucide-react";
+import { apiFetch } from "../../lib/api";
 
 export default function AreasPage() {
     const [areas, setAreas] = useState([]);
@@ -13,7 +14,7 @@ export default function AreasPage() {
 
     const fetchAreas = async () => {
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/areas`, {
+            const res = await apiFetch("/areas", {
                 method: "GET",
                 headers: { "Content-Type": "application/json" },
                 credentials: "include"
@@ -39,16 +40,15 @@ export default function AreasPage() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         const url = editingArea
-            ? `${process.env.NEXT_PUBLIC_API_URL}/areas/${editingArea.area_id}`
-            : `${process.env.NEXT_PUBLIC_API_URL}/areas`;
+            ? `/areas/${editingArea.area_id}`
+            : "/areas";
         const method = editingArea ? "PUT" : "POST";
 
         try {
-            const res = await fetch(url, {
+            const res = await apiFetch(url, {
                 method,
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(formData),
-                credentials: "include"
+                body: JSON.stringify(formData)
             });
             const data = await res.json();
             if (data.success) {
@@ -65,9 +65,8 @@ export default function AreasPage() {
     const handleDelete = async (id) => {
         if (!confirm("Êtes-vous sûr de vouloir supprimer cette zone ?")) return;
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/areas/${id}`, {
-                method: "DELETE",
-                credentials: "include"
+            const res = await apiFetch(`/areas/${id}`, {
+                method: "DELETE"
             });
             const data = await res.json();
             if (data.success) {

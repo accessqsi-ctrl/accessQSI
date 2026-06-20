@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Loader2, Calendar, MapPin, QrCode, Edit2, Trash2, ArrowLeft, Plus, Download, X, CheckCircle2 } from "lucide-react";
+import { apiFetch, refreshSession } from "../../../lib/api";
 
 export default function EventDetailPage() {
     const params = useParams();
@@ -55,10 +56,9 @@ export default function EventDetailPage() {
 
     const fetchAreas = useCallback(async () => {
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/areas`, {
+            const res = await apiFetch("/areas", {
                 method: "GET",
-                headers: { "Content-Type": "application/json" },
-                credentials: "include"
+                headers: { "Content-Type": "application/json" }
             });
             const data = await res.json();
             if (data.success) {
@@ -76,8 +76,8 @@ export default function EventDetailPage() {
         setError("");
         try {
             const [eventRes, qrRes] = await Promise.all([
-                fetch(`${process.env.NEXT_PUBLIC_API_URL}/events/${eventId}`, { credentials: "include" }),
-                fetch(`${process.env.NEXT_PUBLIC_API_URL}/qr/event/${eventId}`, { credentials: "include" })
+                apiFetch(`/events/${eventId}`),
+                apiFetch(`/qr/event/${eventId}`)
             ]);
             const eventData = await eventRes.json();
             const qrData = await qrRes.json();
@@ -134,10 +134,9 @@ export default function EventDetailPage() {
         }
 
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/events/${eventId}`, {
+            const res = await apiFetch(`/events/${eventId}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
-                credentials: "include",
                 body: JSON.stringify(editForm)
             });
             const data = await res.json();
@@ -157,9 +156,8 @@ export default function EventDetailPage() {
     const handleDeleteEvent = async () => {
         setIsDeleting(true);
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/events/${eventId}`, {
-                method: "DELETE",
-                credentials: "include"
+            const res = await apiFetch(`/events/${eventId}`, {
+                method: "DELETE"
             });
             const data = await res.json();
             if (data.success) {
@@ -180,10 +178,9 @@ export default function EventDetailPage() {
         setQrError("");
         setGeneratingQr(true);
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/qr/generate/${eventId}`, {
+            const res = await apiFetch(`/qr/generate/${eventId}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                credentials: "include",
                 body: JSON.stringify(qrForm)
             });
             const data = await res.json();
@@ -191,7 +188,7 @@ export default function EventDetailPage() {
                 setShowQrModal(false);
                 setQrForm({ ...qrForm, fullName: "", email: "", phone: "", level: "1" });
                 // Refresh QR list
-                const qrRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/qr/event/${eventId}`, { credentials: "include" });
+                const qrRes = await apiFetch(`/qr/event/${eventId}`);
                 const qrData = await qrRes.json();
                 if (qrData.success) setQrCodes(qrData.qrs || []);
             } else {
@@ -208,9 +205,8 @@ export default function EventDetailPage() {
         if (!confirm("Voulez-vous vraiment révoquer ce QR Code ?")) return;
         setRevokingId(id);
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/qr/revoke/${id}`, {
-                method: "PUT",
-                credentials: "include"
+            const res = await apiFetch(`/qr/revoke/${id}`, {
+                method: "PUT"
             });
             const data = await res.json();
             if (data.success) {
@@ -225,13 +221,14 @@ export default function EventDetailPage() {
         }
     };
 
-    const handleExport = (format) => {
+    const handleExport = async (format) => {
         const totalScanLogs = qrCodes.reduce((sum, qr) => sum + (qr.scans_count || 0), 0);
         if (totalScanLogs === 0) {
             setToast({ show: true, message: "Aucune donnée de scan n'est disponible pour cet événement." });
             setTimeout(() => setToast({ show: false, message: "" }), 4000);
             return;
         }
+        await refreshSession();
         window.open(`${process.env.NEXT_PUBLIC_API_URL}/export/${format}?event_id=${eventId}`, '_blank');
     };
 
@@ -252,9 +249,8 @@ export default function EventDetailPage() {
         formData.append("file", importFile);
 
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/qr/import/${eventId}`, {
+            const res = await apiFetch(`/qr/import/${eventId}`, {
                 method: "POST",
-                credentials: "include",
                 body: formData
             });
             const data = await res.json();
@@ -262,7 +258,7 @@ export default function EventDetailPage() {
                 setImportSuccess(data.message);
                 setImportFile(null);
                 // Refresh list
-                const qrRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/qr/event/${eventId}`, { credentials: "include" });
+                const qrRes = await apiFetch(`/qr/event/${eventId}`);
                 const qrData = await qrRes.json();
                 if (qrData.success) setQrCodes(qrData.qrs || []);
                 
@@ -942,4 +938,3 @@ export default function EventDetailPage() {
         </div>
     );
 }
-

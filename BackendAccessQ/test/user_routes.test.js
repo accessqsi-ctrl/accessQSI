@@ -66,7 +66,7 @@ test("POST /user/login rejects missing credentials", async () => {
 });
 
 test("POST /user/login returns a token for verified active users", async () => {
-    let signPayload = null;
+    const signPayloads = [];
     const app = loadUserApp({
         userService: {
             findByEmail: async () => ({
@@ -85,8 +85,8 @@ test("POST /user/login returns a token for verified active users", async () => {
         },
         jwt: {
             sign: (payload) => {
-                signPayload = payload;
-                return "signed-token";
+                signPayloads.push(payload);
+                return `${payload.token_type}-signed-token`;
             }
         }
     });
@@ -98,13 +98,65 @@ test("POST /user/login returns a token for verified active users", async () => {
 
     assert.equal(res.status, 200);
     assert.equal(res.body.success, true);
-    assert.equal(res.body.token, "signed-token");
-    assert.deepEqual(signPayload, {
+    assert.equal(res.body.token, "access-signed-token");
+    assert.deepEqual(signPayloads[0], {
         user_id: 7,
         email: "admin@example.com",
         role: "ORG_ADMIN",
-        org_id: 42
+        org_id: 42,
+        token_type: "access"
     });
+    assert.deepEqual(signPayloads[1], {
+        user_id: 7,
+        email: "admin@example.com",
+        role: "ORG_ADMIN",
+        org_id: 42,
+        token_type: "refresh"
+    });
+});
+
+test("POST /user/refresh issues a new short-lived access token from a refresh token", async () => {
+    const signPayloads = [];
+    const app = loadUserApp({
+        jwt: {
+            verify: (token, publicKey, options, callback) => {
+                callback(null, {
+                    user_id: 7,
+                    email: "admin@example.com",
+                    role: "ORG_ADMIN",
+                    org_id: 42,
+                    token_type: "refresh"
+                });
+            },
+            sign: (payload) => {
+                signPayloads.push(payload);
+                return `${payload.token_type}-signed-token`;
+            }
+        }
+    });
+
+    const res = await request(
+        app,
+        "POST",
+        "/user/refresh",
+        {},
+        { cookies: { refreshToken: "valid-refresh-token" } }
+    );
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body.success, true);
+    assert.equal(res.body.token, "access-signed-token");
+    assert.equal(signPayloads[0].token_type, "access");
+    assert.equal(signPayloads[1].token_type, "refresh");
+});
+
+test("POST /user/refresh rejects missing refresh token", async () => {
+    const app = loadUserApp();
+
+    const res = await request(app, "POST", "/user/refresh", {});
+
+    assert.equal(res.status, 401);
+    assert.equal(res.body.success, false);
 });
 
 test("POST /user/signin creates an organization admin and sends a verification email", async () => {

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Loader2, Camera, ShieldCheck, ShieldAlert, ArrowLeft, History } from "lucide-react";
 import Link from "next/link";
+import { apiFetch } from "../lib/api";
 
 export default function ScanPage() {
     const [scanResult, setScanResult] = useState(null); // { success, message, holder, reason }
@@ -91,11 +92,10 @@ export default function ScanPage() {
                 qrToken = token;
             }
 
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/qr/verify`, {
+            const res = await apiFetch("/qr/verify", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ token: qrToken }),
-                credentials: "include"
+                body: JSON.stringify({ token: qrToken })
             });
             const data = await res.json();
             

@@ -18,6 +18,28 @@ pm
 
 const passwordPolicyMessage = "Le mot de passe doit contenir entre 8 et 100 caractères, avec au moins une majuscule, une minuscule, un chiffre, un symbole, et aucun espace.";
 
+const ACCESS_TOKEN_EXPIRES_IN = process.env.ACCESS_TOKEN_EXPIRES_IN || "15m";
+const REFRESH_TOKEN_EXPIRES_IN = process.env.REFRESH_TOKEN_EXPIRES_IN || "7d";
+
+const durationToMs = (duration, fallbackMs) => {
+    if (!duration || typeof duration !== "string") return fallbackMs;
+
+    const match = duration.trim().match(/^(\d+)(ms|s|m|h|d)$/);
+    if (!match) return fallbackMs;
+
+    const value = Number(match[1]);
+    const unit = match[2];
+    const multipliers = {
+        ms: 1,
+        s: 1000,
+        m: 60 * 1000,
+        h: 60 * 60 * 1000,
+        d: 24 * 60 * 60 * 1000
+    };
+
+    return value * multipliers[unit];
+};
+
 // =========================================================
 // CONFIGURATION SÉCURISÉE DES COOKIES (Protection des Sessions)
 // =========================================================
@@ -29,7 +51,43 @@ const cookieOptions = {
     httpOnly: true, // Empêche tout script JavaScript côté client (Cross-Site Scripting - XSS) de lire le cookie.
     secure: process.env.NODE_ENV === "production", // Autorise l'envoi du cookie UNIQUEMENT sur des connexions HTTPS chiffrées (en prod).
     sameSite: "strict", // Protection contre la falsification de requête intersite (CSRF). Le cookie ne sera pas envoyé si on clique sur un lien externe.
-    maxAge: 100 * 24 * 60 * 60 * 1000 // Le token expire après 100 jours.
+};
+
+const accessCookieOptions = {
+    ...cookieOptions,
+    maxAge: durationToMs(ACCESS_TOKEN_EXPIRES_IN, 15 * 60 * 1000)
+};
+
+const refreshCookieOptions = {
+    ...cookieOptions,
+    maxAge: durationToMs(REFRESH_TOKEN_EXPIRES_IN, 7 * 24 * 60 * 60 * 1000)
+};
+
+const buildTokenPayload = (user, tokenType) => ({
+    user_id: user.user_id,
+    email: user.email,
+    role: user.role,
+    org_id: user.org_id,
+    token_type: tokenType
+});
+
+const issueSession = (res, user) => {
+    const accessToken = jwt.sign(
+        buildTokenPayload(user, "access"),
+        process.env.PRIVATE_KEY,
+        { expiresIn: ACCESS_TOKEN_EXPIRES_IN, algorithm: "RS256" }
+    );
+
+    const refreshToken = jwt.sign(
+        buildTokenPayload(user, "refresh"),
+        process.env.PRIVATE_KEY,
+        { expiresIn: REFRESH_TOKEN_EXPIRES_IN, algorithm: "RS256" }
+    );
+
+    res.cookie("token", accessToken, accessCookieOptions);
+    res.cookie("refreshToken", refreshToken, refreshCookieOptions);
+
+    return { accessToken, refreshToken };
 };
 
 exports.login = async (req, res) => {
@@ -68,19 +126,14 @@ exports.login = async (req, res) => {
             });
         }
 
-        const token = jwt.sign(
-            { user_id: user.user_id, email: user.email, role: user.role, org_id: user.org_id },
-            process.env.PRIVATE_KEY,
-            { expiresIn: process.env.TOKEN_EXPIRES_IN, algorithm: "RS256" }
-        );
+        const { accessToken } = issueSession(res, user);
 
-        // Mise à jour sécurité : stocker le JWT dans un cookie HttpOnly au lieu de l'envoyer uniquement en JSON
-        res.cookie("token", token, cookieOptions);
+        // Le JWT d'accès reste renvoyé pour les clients mobiles, mais le web utilise les cookies HttpOnly.
 
         return res.status(200).json({
             success: true,
             message: "Connexion réussie",
-            token: token, // Optionnel pour les apps mobiles, NextJS doit utiliser le cookie
+            token: accessToken, // Optionnel pour les apps mobiles, NextJS doit utiliser le cookie
             user: {
                 user_id: user.user_id,
                 name: user.full_name,
@@ -96,6 +149,28 @@ exports.login = async (req, res) => {
             message: "Erreur lors de la connexion."
         });
     }
+};
+
+exports.refreshSession = async (req, res) => {
+    const refreshToken = req.cookies?.refreshToken;
+
+    if (!refreshToken) {
+        return res.status(401).json({ success: false, message: "Session expirée. Veuillez vous reconnecter." });
+    }
+
+    jwt.verify(refreshToken, process.env.PUBLIC_KEY, { algorithms: ["RS256"] }, (err, decoded) => {
+        if (err || decoded.token_type !== "refresh") {
+            return res.status(403).json({ success: false, message: "Session invalide." });
+        }
+
+        const { accessToken } = issueSession(res, decoded);
+
+        return res.status(200).json({
+            success: true,
+            message: "Session renouvelée.",
+            token: accessToken
+        });
+    });
 };
 
 
@@ -226,6 +301,7 @@ exports.viewprofile = async (req, res) => {
 exports.logout = async (req, res) => {
     // Supprimer le cookie sécurisé pour détruire complètement le contexte de session côté client
     res.clearCookie("token", { ...cookieOptions, maxAge: 0 });
+    res.clearCookie("refreshToken", { ...cookieOptions, maxAge: 0 });
 
     return res.status(200).json({
         success: true,

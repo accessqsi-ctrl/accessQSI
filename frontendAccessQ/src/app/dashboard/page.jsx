@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Loader2, Download, TrendingUp, Users } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { apiFetch, refreshSession } from "../lib/api";
 
 export default function Dashboard() {
     const [stats, setStats] = useState({
@@ -28,6 +29,7 @@ export default function Dashboard() {
             setTimeout(() => setToast({ show: false, message: "" }), 4000);
             return;
         }
+        await refreshSession();
         window.open(`${process.env.NEXT_PUBLIC_API_URL}/export/${format}`, '_blank');
     };
 
@@ -37,10 +39,9 @@ export default function Dashboard() {
         const fetchDashboardData = async () => {
             try {
                 // Fetch User Profile to get Name
-                const profileRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/user/profile`, {
+                const profileRes = await apiFetch("/user/profile", {
                     method: "GET",
-                    headers: { "Content-Type": "application/json" },
-                    credentials: "include"
+                    headers: { "Content-Type": "application/json" }
                 });
                 const profileData = await profileRes.json();
 
@@ -50,10 +51,9 @@ export default function Dashboard() {
                 }
 
                 // Fetch Dashboard Stats
-                const statsRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/dashboard/stats`, {
+                const statsRes = await apiFetch("/dashboard/stats", {
                     method: "GET",
-                    headers: { "Content-Type": "application/json" },
-                    credentials: "include"
+                    headers: { "Content-Type": "application/json" }
                 });
                 const statsData = await statsRes.json();
 
@@ -350,5 +350,3 @@ export default function Dashboard() {
         </div>
     );
 }
-
-

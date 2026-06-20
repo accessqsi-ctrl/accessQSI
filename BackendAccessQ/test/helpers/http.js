@@ -50,7 +50,7 @@ exports.mountRouter = (basePath, router) => {
     return app;
 };
 
-exports.request = async (app, method, url, body) => {
+exports.request = async (app, method, url, body, options = {}) => {
     const payload = body ? JSON.stringify(body) : "";
     const req = new Readable({
         read() {
@@ -65,6 +65,7 @@ exports.request = async (app, method, url, body) => {
     req.headers = body
         ? { "content-type": "application/json", "content-length": Buffer.byteLength(payload) }
         : {};
+    req.cookies = options.cookies || {};
     req.socket = new PassThrough();
     req.socket.encrypted = false;
 

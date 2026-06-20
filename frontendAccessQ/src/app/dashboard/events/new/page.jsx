@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Loader2 } from "lucide-react";
+import { apiFetch } from "../../../lib/api";
 
 export default function NewEventPage() {
     const router = useRouter();
@@ -22,10 +23,9 @@ export default function NewEventPage() {
     useEffect(() => {
         const fetchAreas = async () => {
             try {
-                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/areas`, {
+                const res = await apiFetch("/areas", {
                     method: "GET",
-                    headers: { "Content-Type": "application/json" },
-                    credentials: "include"
+                    headers: { "Content-Type": "application/json" }
                 });
                 const data = await res.json();
                 if (data.success) {
@@ -77,10 +77,9 @@ export default function NewEventPage() {
         setLoading(true);
 
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/events`, {
+            const res = await apiFetch("/events", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                credentials: "include",
                 body: JSON.stringify(formData)
             });
 

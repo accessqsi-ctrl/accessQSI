@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Loader2, User, Building, Lock, Save, CheckCircle, AlertCircle } from "lucide-react";
+import { apiFetch } from "../../lib/api";
 
 export default function SettingsPage() {
     const [user, setUser] = useState(null);
@@ -37,8 +38,8 @@ export default function SettingsPage() {
         try {
             console.log("Fetching settings data...");
             const [userRes, orgRes] = await Promise.all([
-                fetch(`${process.env.NEXT_PUBLIC_API_URL}/user/profile`, { credentials: "include" }),
-                fetch(`${process.env.NEXT_PUBLIC_API_URL}/user/org`, { credentials: "include" })
+                apiFetch("/user/profile"),
+                apiFetch("/user/org")
             ]);
 
             if (userRes.ok) {
@@ -75,11 +76,10 @@ export default function SettingsPage() {
         setProfileStatus({ type: "", message: "" });
 
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/user/profile`, {
+            const res = await apiFetch("/user/profile", {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(profileForm),
-                credentials: "include"
+                body: JSON.stringify(profileForm)
             });
             const data = await res.json();
             if (data.success) {
@@ -105,14 +105,13 @@ export default function SettingsPage() {
         setPwdStatus({ type: "", message: "" });
 
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/user/password`, {
+            const res = await apiFetch("/user/password", {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     currentPassword: pwdForm.currentPassword,
                     newPassword: pwdForm.newPassword
-                }),
-                credentials: "include"
+                })
             });
             const data = await res.json();
             if (data.success) {
@@ -134,11 +133,10 @@ export default function SettingsPage() {
         setOrgStatus({ type: "", message: "" });
 
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/user/org`, {
+            const res = await apiFetch("/user/org", {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(orgForm),
-                credentials: "include"
+                body: JSON.stringify(orgForm)
             });
             const data = await res.json();
             if (data.success) {
@@ -156,9 +154,8 @@ export default function SettingsPage() {
     const handleDeleteOrg = async () => {
         setDeleteLoading(true);
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/user/org`, {
-                method: "DELETE",
-                credentials: "include"
+            const res = await apiFetch("/user/org", {
+                method: "DELETE"
             });
             const data = await res.json();
             if (data.success) {

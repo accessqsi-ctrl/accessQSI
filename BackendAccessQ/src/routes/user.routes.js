@@ -14,6 +14,9 @@ const adminOnly = roleMiddleware(["ORG_ADMIN", "SUPER_ADMIN"]);
 // Login submit
 router.post("/login", loginLimiter, userController.login);
 
+// Refresh access token from HttpOnly refresh token
+router.post("/refresh", userController.refreshSession);
+
 // SignIn submit
 router.post('/signin', signinLimiter, userController.signin);
 
