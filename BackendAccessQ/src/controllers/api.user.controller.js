@@ -16,6 +16,8 @@ pm
     .has().symbols()
     .has().not().spaces();
 
+const passwordPolicyMessage = "Le mot de passe doit contenir entre 8 et 100 caractères, avec au moins une majuscule, une minuscule, un chiffre, un symbole, et aucun espace.";
+
 // =========================================================
 // CONFIGURATION SÉCURISÉE DES COOKIES (Protection des Sessions)
 // =========================================================
@@ -107,11 +109,11 @@ exports.signin = async (req, res) => {
         }
 
         // Appliquer la politique de mot de passe fort
-        const errors = pm.validate(password.trim(), { errors: true });
+        const errors = pm.validate(password.trim(), { list: true });
         if (errors.length > 0) {
             return res.status(400).json({
                 success: false,
-                message: errors[0].message
+                message: passwordPolicyMessage
             });
         }
 
@@ -280,9 +282,9 @@ exports.updatePassword = async (req, res) => {
             return res.status(400).json({ success: false, message: "Ancien mot de passe incorrect." });
         }
 
-        const errors = pm.validate(newPassword.trim(), { errors: true });
+        const errors = pm.validate(newPassword.trim(), { list: true });
         if (errors.length > 0) {
-            return res.status(400).json({ success: false, message: errors[0] });
+            return res.status(400).json({ success: false, message: passwordPolicyMessage });
         }
 
         const hashed = await bcrypt.hash(newPassword.trim(), process.env.SALT_ROUNDS);
