@@ -3,6 +3,7 @@ const crypto = require("crypto");
 const agentService = require("../services/agent.service");
 const emailService = require("../services/email.service");
 const userService = require("../services/user.service");
+const logger = require("../utils/logger");
 
 const canManageAgents = (user) => {
     return user && user.org_id && ["ORG_ADMIN", "SUPER_ADMIN"].includes(user.role);
@@ -73,6 +74,14 @@ exports.addAgent = async (req, res) => {
         // Envoyer l'email avec les identifiants
         await emailService.sendAgentInvitation(email, fullName, rawPassword);
 
+        logger.info("agent.created", {
+            request_id: req.requestId,
+            admin_id: req.user.user_id,
+            org_id: orgId,
+            agent_id: newAgent.user_id,
+            role: assignedRole
+        });
+
         return res.status(201).json({ success: true, message: "Agent ajouté et invitation envoyée avec succès." });
     } catch (error) {
         console.error("Erreur addAgent:", error);
@@ -100,6 +109,13 @@ exports.toggleAgentStatus = async (req, res) => {
 
         const isCurrentlyDeleted = agent.deleted_at !== null;
         await agentService.updateAgentStatus(agentId, !isCurrentlyDeleted);
+        logger.info("agent.status_changed", {
+            request_id: req.requestId,
+            admin_id: req.user.user_id,
+            org_id: orgId,
+            agent_id: agentId,
+            deleted: !isCurrentlyDeleted
+        });
 
         return res.status(200).json({ 
             success: true, 
@@ -131,6 +147,12 @@ exports.deleteAgent = async (req, res) => {
         }
 
         await agentService.softDeleteAgent(agentId, orgId);
+        logger.info("agent.deleted", {
+            request_id: req.requestId,
+            admin_id: req.user.user_id,
+            org_id: orgId,
+            agent_id: agentId
+        });
 
         return res.status(200).json({ success: true, message: "Agent désactivé et conservé dans l'historique." });
     } catch (error) {

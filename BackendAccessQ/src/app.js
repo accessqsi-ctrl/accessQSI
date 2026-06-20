@@ -23,10 +23,12 @@ const path = require("path");
 const cookieParser = require("cookie-parser");
 
 const { generalLimiter } = require('./middleware/limMiddleware');
+const requestLogger = require('./middleware/requestLogger');
 
 const cors = require('cors');
 const helmet = require('helmet');
 const { getAllowedOrigins, isOriginAllowed } = require('./config/security');
+const logger = require('./utils/logger');
 
 
 const isProd = process.env.NODE_ENV === 'production';
@@ -84,6 +86,7 @@ app.use(cors({
     origin: function (origin, callback) {
         if (!isOriginAllowed(origin, allowedOrigins)) {
             var msg = 'La politique CORS de ce site n\'autorise pas l\'accès depuis cette origine.';
+            logger.warn("cors.denied", { origin });
             return callback(new Error(msg), false);
         }
         return callback(null, true);
@@ -98,6 +101,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Configuration des cookies sécurisée si en HTTPS
 app.use(cookieParser(process.env.JWT_SECRET));
+app.use(requestLogger);
 
 
 
@@ -125,5 +129,16 @@ app.use("/areas", areaRoutes);
 app.use("/agents", agentRoutes);
 app.use("/export", exportRoutes);
 
+app.use((err, req, res, next) => {
+    logger.error("request.unhandled_error", {
+        request_id: req.requestId,
+        method: req.method,
+        path: req.originalUrl || req.url,
+        error: err
+    });
+
+    if (res.headersSent) return next(err);
+    return res.status(500).json({ success: false, message: "Erreur serveur" });
+});
 
 module.exports = app;

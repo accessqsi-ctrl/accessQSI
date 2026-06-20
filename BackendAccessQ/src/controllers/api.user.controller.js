@@ -5,6 +5,7 @@ const userService = require("../services/user.service");
 const emailService = require("../services/email.service");
 const prisma = require("../prisma/client");
 const { getSessionCookieOptions } = require("../config/security");
+const logger = require("../utils/logger");
 const PasswordValidator = require('password-validator');
 const pm = new PasswordValidator();
 
@@ -154,15 +155,33 @@ exports.refreshSession = async (req, res) => {
     const refreshToken = req.cookies?.refreshToken;
 
     if (!refreshToken) {
+        logger.warn("session.refresh_failed", {
+            reason: "missing_refresh_token",
+            request_id: req.requestId,
+            ip: req.ip
+        });
         return res.status(401).json({ success: false, message: "Session expirée. Veuillez vous reconnecter." });
     }
 
     jwt.verify(refreshToken, process.env.PUBLIC_KEY, { algorithms: ["RS256"] }, (err, decoded) => {
         if (err || decoded.token_type !== "refresh") {
+            logger.warn("session.refresh_failed", {
+                reason: err ? "invalid_refresh_token" : "wrong_token_type",
+                request_id: req.requestId,
+                ip: req.ip,
+                user_id: decoded?.user_id,
+                org_id: decoded?.org_id,
+                error: err
+            });
             return res.status(403).json({ success: false, message: "Session invalide." });
         }
 
         const { accessToken } = issueSession(res, decoded);
+        logger.info("session.refreshed", {
+            request_id: req.requestId,
+            user_id: decoded.user_id,
+            org_id: decoded.org_id
+        });
 
         return res.status(200).json({
             success: true,
@@ -301,6 +320,11 @@ exports.logout = async (req, res) => {
     // Supprimer le cookie sécurisé pour détruire complètement le contexte de session côté client
     res.clearCookie("token", { ...cookieOptions, maxAge: 0 });
     res.clearCookie("refreshToken", { ...cookieOptions, maxAge: 0 });
+    logger.info("session.logout", {
+        request_id: req.requestId,
+        user_id: req.user?.user_id,
+        org_id: req.user?.org_id
+    });
 
     return res.status(200).json({
         success: true,

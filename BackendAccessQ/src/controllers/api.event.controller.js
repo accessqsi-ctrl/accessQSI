@@ -1,4 +1,5 @@
 const eventService = require('../services/event.service');
+const logger = require('../utils/logger');
 
 // Récupérer tous les événements de l'organisation courante
 exports.getEvents = async (req, res) => {
@@ -100,9 +101,22 @@ exports.createEvent = async (req, res) => {
             org_id: orgId
         });
 
+        logger.info("event.created", {
+            request_id: req.requestId,
+            user_id: req.user.user_id,
+            org_id: orgId,
+            event_id: newEvent.event_id
+        });
+
         res.status(201).json({ success: true, message: 'Événement créé avec succès', event: newEvent });
     } catch (error) {
         if (error.code === "INVALID_EVENT_AREAS") {
+            logger.warn("event.invalid_areas", {
+                request_id: req.requestId,
+                user_id: req.user?.user_id,
+                org_id: req.user?.org_id,
+                error
+            });
             return res.status(400).json({ success: false, message: error.message });
         }
         console.error("Erreur lors de la création de l'événement :", error);
@@ -136,9 +150,23 @@ exports.updateEvent = async (req, res) => {
             end_date: endDate ? new Date(endDate) : undefined
         }, orgId);
 
+        logger.info("event.updated", {
+            request_id: req.requestId,
+            user_id: req.user.user_id,
+            org_id: orgId,
+            event_id: eventId
+        });
+
         res.status(200).json({ success: true, message: 'Événement mis à jour', event: updatedEvent });
     } catch (error) {
         if (error.code === "INVALID_EVENT_AREAS") {
+            logger.warn("event.invalid_areas", {
+                request_id: req.requestId,
+                user_id: req.user?.user_id,
+                org_id: req.user?.org_id,
+                event_id: Number(req.params.event_id),
+                error
+            });
             return res.status(400).json({ success: false, message: error.message });
         }
         console.error("Erreur lors de la mise à jour de l'événement :", error);
@@ -163,6 +191,12 @@ exports.deleteEvent = async (req, res) => {
         }
 
         await eventService.deleteEvent(eventId);
+        logger.info("event.deleted", {
+            request_id: req.requestId,
+            user_id: req.user.user_id,
+            org_id: orgId,
+            event_id: eventId
+        });
         res.status(200).json({ success: true, message: 'Événement supprimé' });
     } catch (error) {
         console.error("Erreur lors de la suppression de l'événement :", error);

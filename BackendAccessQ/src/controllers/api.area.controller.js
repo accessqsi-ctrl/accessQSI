@@ -1,4 +1,5 @@
 const areaService = require('../services/area.service');
+const logger = require('../utils/logger');
 
 exports.getAreas = async (req, res) => {
     try {
@@ -43,6 +44,12 @@ exports.createArea = async (req, res) => {
             accreditation_level: Number(accreditation_level),
             org_id: req.user.org_id
         });
+        logger.info("area.created", {
+            request_id: req.requestId,
+            user_id: req.user.user_id,
+            org_id: req.user.org_id,
+            area_id: newArea.area_id
+        });
         res.status(201).json({ success: true, area: newArea });
     } catch (error) {
         console.error("Erreur lors de la création de la zone :", error);
@@ -61,6 +68,12 @@ exports.updateArea = async (req, res) => {
             return res.status(404).json({ success: false, message: "Zone introuvable" });
         }
         const updatedArea = await areaService.updateArea(areaId, req.body);
+        logger.info("area.updated", {
+            request_id: req.requestId,
+            user_id: req.user.user_id,
+            org_id: req.user.org_id,
+            area_id: areaId
+        });
         res.status(200).json({ success: true, area: updatedArea });
     } catch (error) {
         console.error("Erreur lors de la mise à jour de la zone :", error);
@@ -79,6 +92,12 @@ exports.deleteArea = async (req, res) => {
             return res.status(404).json({ success: false, message: "Zone introuvable" });
         }
         await areaService.deleteArea(areaId);
+        logger.info("area.deleted", {
+            request_id: req.requestId,
+            user_id: req.user.user_id,
+            org_id: req.user.org_id,
+            area_id: areaId
+        });
         res.status(200).json({ success: true, message: "Zone supprimée" });
     } catch (error) {
         console.error("Erreur lors de la suppression de la zone :", error);
