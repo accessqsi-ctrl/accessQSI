@@ -11,8 +11,8 @@ export default function AgentsPage() {
 
     // Filters
     const [searchQuery, setSearchQuery] = useState("");
-    const [roleFilter, setRoleFilter] = useState("All Roles");
-    const [statusFilter, setStatusFilter] = useState("All Statuses");
+    const [roleFilter, setRoleFilter] = useState("Tous les rôles");
+    const [statusFilter, setStatusFilter] = useState("Tous les statuts");
 
     // Modal state for adding a new agent
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -128,15 +128,14 @@ export default function AgentsPage() {
             agent.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
             agent.email.toLowerCase().includes(searchQuery.toLowerCase());
         
-        const matchesRole = roleFilter === "All Roles" || agent.role.toLowerCase() === roleFilter.toLowerCase();
-        const matchesStatus = statusFilter === "All Statuses" || agent.status.toLowerCase() === statusFilter.toLowerCase();
+        const matchesRole = roleFilter === "Tous les rôles" || agent.role.toLowerCase() === roleFilter.toLowerCase();
+        const matchesStatus = statusFilter === "Tous les statuts" || agent.status.toLowerCase() === statusFilter.toLowerCase();
         
         return matchesSearch && matchesRole && matchesStatus;
     });
 
-    const activeAgentsCount = agents.filter(a => a.status === 'Active').length;
-    const planLimit = 15; // Hardcoded default for mockup styling
-    const percentFill = (activeAgentsCount / planLimit) * 100;
+    const activeAgentsCount = agents.filter(a => a.status === 'Actif').length;
+    const inactiveAgentsCount = agents.length - activeAgentsCount;
 
     if (loading) {
         return (
@@ -150,7 +149,7 @@ export default function AgentsPage() {
         <div className="max-w-7xl mx-auto space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Agents & Équipe</h1>
+                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Agents et équipe</h1>
                     <p className="text-slate-500 dark:text-slate-400 mt-1">Gérez les membres autorisés à scanner les codes QR.</p>
                 </div>
                 <button
@@ -158,25 +157,29 @@ export default function AgentsPage() {
                     className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl shadow-sm hover:shadow active:scale-95 transition-all text-sm"
                 >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>
-                    Ajouter Agent
+                    Ajouter un agent
                 </button>
             </div>
 
-            <div className="bg-white dark:bg-slate-950 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row items-center gap-8">
-                <div className="flex-1 flex items-center gap-4">
+            <div className="bg-white dark:bg-slate-950 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-black/20 flex flex-col md:flex-row items-center gap-8">
+                <div className="flex-1 flex items-center gap-4 w-full">
                     <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
                     </div>
                     <div>
-                        <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Limite du Plan</p>
-                        <p className="text-xl font-bold text-slate-900 dark:text-white">{activeAgentsCount} / {planLimit} <span className="text-sm font-normal text-slate-500 dark:text-slate-400">Agents Actifs</span></p>
+                        <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Accès agents</p>
+                        <p className="text-xl font-bold text-slate-900 dark:text-white">{activeAgentsCount} actifs <span className="text-sm font-normal text-slate-500 dark:text-slate-400">sur {agents.length} comptes</span></p>
                     </div>
                 </div>
-                <div className="w-full md:w-auto flex-1 md:flex-none">
-                    <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2.5 mb-2">
-                        <div className="bg-blue-600 h-2.5 rounded-full duration-500 ease-out transition-all" style={{ width: percentFill + "%" }}></div>
+                <div className="grid grid-cols-2 gap-3 w-full md:w-auto">
+                    <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300">
+                        <p className="text-xs font-semibold uppercase">Actifs</p>
+                        <p className="text-xl font-bold">{activeAgentsCount}</p>
                     </div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 text-right">{Math.max(0, planLimit - activeAgentsCount)} places restantes</p>
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+                        <p className="text-xs font-semibold uppercase">Inactifs</p>
+                        <p className="text-xl font-bold">{inactiveAgentsCount}</p>
+                    </div>
                 </div>
             </div>
 
@@ -195,21 +198,21 @@ export default function AgentsPage() {
                         placeholder="Rechercher par nom ou email..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="block w-full pl-10 pr-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl leading-5 bg-slate-50 dark:bg-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 sm:text-sm transition-colors"
+                        className="block w-full pl-10 pr-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl leading-5 bg-slate-50 dark:bg-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white dark:focus:bg-slate-950 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 sm:text-sm transition-colors"
                     />
                 </div>
 
                 <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
                     <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className="px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-950 text-sm text-slate-700 dark:text-slate-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
-                        <option>All Roles</option>
+                        <option>Tous les rôles</option>
                         <option>Admin</option>
                         <option>Agent</option>
                         <option>Opérateur</option>
                     </select>
                     <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-950 text-sm text-slate-700 dark:text-slate-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
-                        <option>All Statuses</option>
-                        <option>Active</option>
-                        <option>Inactive</option>
+                        <option>Tous les statuts</option>
+                        <option>Actif</option>
+                        <option>Inactif</option>
                     </select>
                 </div>
             </div>
@@ -238,12 +241,12 @@ export default function AgentsPage() {
                                     const isOperator = agent.role === 'Opérateur';
                                     const spanClass = isAdmin ? "px-2.5 py-1 rounded-lg text-xs font-semibold border bg-purple-50 text-purple-700 border-purple-200" : isOperator ? "px-2.5 py-1 rounded-lg text-xs font-semibold border bg-amber-50 text-amber-700 border-amber-200" : "px-2.5 py-1 rounded-lg text-xs font-semibold border bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-800";
                                     
-                                    const isActive = agent.status === 'Active';
+                                    const isActive = agent.status === 'Actif';
                                     const statusDotClass = isActive ? "w-2 h-2 rounded-full bg-emerald-500" : "w-2 h-2 rounded-full bg-slate-300";
                                     const actionBtnClass = isActive ? "p-1.5 rounded-lg transition-colors text-slate-400 dark:text-slate-500 hover:text-red-600 hover:bg-red-50" : "p-1.5 rounded-lg transition-colors text-slate-400 dark:text-slate-500 hover:text-emerald-600 hover:bg-emerald-50";
 
                                     return (
-                                        <tr key={agent.id} className="hover:bg-slate-50/50 transition-colors group">
+                                        <tr key={agent.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/70 transition-colors group">
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-4">
                                                     <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 font-bold uppercase">
@@ -274,7 +277,7 @@ export default function AgentsPage() {
                                                                 onClick={() => handleToggleStatus(agent.id)}
                                                                 disabled={togglingId === agent.id}
                                                                 className={actionBtnClass} 
-                                                                title={isActive ? 'Révoquer Accès' : 'Restaurer Accès'}
+                                                                title={isActive ? 'Révoquer l’accès' : 'Restaurer l’accès'}
                                                             >
                                                                 {togglingId === agent.id ? <Loader2 className="w-5 h-5 animate-spin"/> : (
                                                                     isActive ? (
@@ -288,7 +291,7 @@ export default function AgentsPage() {
                                                                 onClick={() => handleDeleteAgent(agent.id)}
                                                                 disabled={togglingId === agent.id}
                                                                 className="p-1.5 rounded-lg transition-colors text-slate-400 dark:text-slate-500 hover:text-red-700 hover:bg-red-100" 
-                                                                title="Supprimer Définitivement"
+                                                                title="Désactiver"
                                                             >
                                                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                                                             </button>
@@ -319,22 +322,22 @@ export default function AgentsPage() {
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>
                         </div>
 
-                        <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Inviter un Nouvel Agent</h3>
-                        <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">L'accès et les mots de passe générés seront envoyés automatiquement par email.</p>
+                        <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Inviter un agent</h3>
+                        <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">Créez un compte rattaché à votre organisation.</p>
 
                         <form onSubmit={handleAddAgent} className="space-y-4">
                             {addError && <div className="p-3 bg-red-50 text-red-600 rounded-lg text-sm">{addError}</div>}
                             {addSuccess && <div className="p-3 bg-emerald-50 text-emerald-600 rounded-lg text-sm">{addSuccess}</div>}
 
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Nom Complet *</label>
+                                <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Nom complet *</label>
                                 <input
                                     type="text"
                                     required
                                     value={addForm.fullName}
                                     onChange={(e) => setAddForm({ ...addForm, fullName: e.target.value })}
-                                    placeholder="e.g. Jane Smith"
-                                    className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
+                                    placeholder="Ex. Jane Smith"
+                                    className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
                                 />
                             </div>
                             <div className="space-y-2">
@@ -345,7 +348,7 @@ export default function AgentsPage() {
                                     value={addForm.email}
                                     onChange={(e) => setAddForm({ ...addForm, email: e.target.value })}
                                     placeholder="e.g. jane@example.com"
-                                    className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
+                                    className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
                                 />
                             </div>
                             <div className="space-y-2">
@@ -356,7 +359,7 @@ export default function AgentsPage() {
                                     value={addForm.password}
                                     onChange={(e) => setAddForm({ ...addForm, password: e.target.value })}
                                     placeholder="••••••••"
-                                    className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
+                                    className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
                                 />
                             </div>
                             <div className="space-y-2">
@@ -364,7 +367,7 @@ export default function AgentsPage() {
                                 <select
                                     value={addForm.role}
                                     onChange={(e) => setAddForm({ ...addForm, role: e.target.value })}
-                                    className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors text-sm font-medium"
+                                    className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors text-sm font-medium"
                                 >
                                     <option value="ORG_AGENT">Agent (Scan standard)</option>
                                     <option value="OPERATOR">Opérateur (Responsable de zone)</option>

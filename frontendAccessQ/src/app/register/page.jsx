@@ -47,12 +47,12 @@ export default function Register() {
         }
 
         if (formData.password !== formData.confirmPassword) {
-            setError("Passwords do not match!");
+            setError("Les mots de passe ne correspondent pas.");
             return;
         }
 
         if (hasOrganization && formData.organizationName.trim() !== formData.confirmOrganizationName.trim()) {
-            setError("Organization names do not match!");
+            setError("Les noms d'organisation ne correspondent pas.");
             return;
         }
 
@@ -82,11 +82,11 @@ export default function Register() {
                     window.location.href = "/login";
                 }, 2000);
             } else {
-                setError(data.message || "Something went wrong during registration.");
+                setError(data.message || "Erreur lors de la création du compte.");
             }
         } catch (err) {
             console.error("API Error:", err);
-            setError("Failed to connect to the server.");
+            setError("Impossible de joindre le serveur.");
         } finally {
             setLoading(false);
         }
@@ -108,10 +108,10 @@ export default function Register() {
                         className="w-64 h-auto drop-shadow-xl mb-8 transform transition-transform hover:scale-105 duration-500"
                     />
                     <h2 className="text-3xl font-semibold bg-gradient-to-r from-blue-700 to-emerald-600 bg-clip-text text-transparent">
-                        Secure Your Organisation
+                        QR Access
                     </h2>
                     <p className="mt-4 text-slate-500 dark:text-slate-400 max-w-md text-center">
-                        Generate and manage secure QR codes. Keep track of access and empower your agents smoothly.
+                        Configurez votre organisation et invitez ensuite vos agents.
                     </p>
                 </div>
             </div>
@@ -128,10 +128,10 @@ export default function Register() {
                     </div>
                     <div className="mb-10 lg:text-left text-center">
                         <h1 className="text-4xl font-bold tracking-tight mb-3 text-slate-900 dark:text-white">
-                            Create an Account
+                            Créer un compte
                         </h1>
                         <p className="text-slate-500 dark:text-slate-400 text-base">
-                            Sign up to start generating secure QR codes for your organization.
+                            Ces informations créeront le premier compte administrateur.
                         </p>
                     </div>
 
@@ -143,7 +143,7 @@ export default function Register() {
 
                     {success && (
                         <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-lg text-sm text-center font-medium">
-                            Registration successful! Redirecting to login...
+                            Compte créé. Redirection vers la connexion...
                         </div>
                     )}
 
@@ -151,7 +151,7 @@ export default function Register() {
                         {/* Full Name */}
                         <div className="space-y-1.5">
                             <label className="text-sm font-semibold text-slate-700 dark:text-slate-200 block mb-1">
-                                Full Name
+                                Nom complet
                             </label>
                             <input
                                 type="text"
@@ -167,7 +167,7 @@ export default function Register() {
                         {/* Email Address */}
                         <div className="space-y-1.5">
                             <label className="text-sm font-semibold text-slate-700 dark:text-slate-200 block mb-1">
-                                Email Address
+                                Adresse email
                             </label>
                             <input
                                 type="email"
@@ -185,7 +185,7 @@ export default function Register() {
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="space-y-1.5">
                                     <label className="text-sm font-semibold text-slate-700 dark:text-slate-200 block mb-1">
-                                        Organization Name
+                                        Nom de l'organisation
                                     </label>
                                     <input
                                         type="text"
@@ -199,7 +199,7 @@ export default function Register() {
                                 </div>
                                 <div className="space-y-1.5">
                                     <label className="text-sm font-semibold text-slate-700 dark:text-slate-200 block mb-1">
-                                        Confirm Org Name
+                                        Confirmer le nom
                                     </label>
                                     <input
                                         type="text"
@@ -232,7 +232,7 @@ export default function Register() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-1.5">
                                 <label className="text-sm font-semibold text-slate-700 dark:text-slate-200 block mb-1">
-                                    Password
+                                    Mot de passe
                                 </label>
                                 <div className="relative">
                                     <input
@@ -260,7 +260,7 @@ export default function Register() {
                             </div>
                             <div className="space-y-1.5">
                                 <label className="text-sm font-semibold text-slate-700 dark:text-slate-200 block mb-1">
-                                    Confirm Password
+                                    Confirmer
                                 </label>
                                 <div className="relative">
                                     <input
@@ -288,7 +288,7 @@ export default function Register() {
                             </div>
                         </div>
                         <p className="text-xs text-slate-500 dark:text-slate-400 -mt-2">
-                            Must contain at least 8 characters, including uppercase, lowercase, numbers and symbols (!@#$).
+                            Minimum 8 caractères, avec majuscule, minuscule, chiffre et symbole.
                         </p>
 
                         {/* Submit Button */}
@@ -297,17 +297,17 @@ export default function Register() {
                             disabled={loading}
                             className={`w-full mt-6 py-3.5 px-4 bg-gradient-to-r ${loading ? 'from-slate-400 to-slate-500 cursor-not-allowed' : 'from-blue-600 to-emerald-500 hover:from-blue-700 hover:to-emerald-600'} text-white font-medium rounded-lg transition-all shadow-lg shadow-blue-500/20 active:scale-[0.98]`}
                         >
-                            {loading ? "Registering..." : (hasOrganization ? "Register Organization" : "Create Account")}
+                            {loading ? "Création..." : (hasOrganization ? "Créer l'organisation" : "Créer le compte")}
                         </button>
                     </form>
 
                     <div className="mt-8 text-center text-sm text-slate-500 dark:text-slate-400">
-                        Already have an account?{" "}
+                        Déjà inscrit ?{" "}
                         <Link
                             href="/login"
                             className="text-blue-600 dark:text-blue-400 hover:text-blue-500 transition-colors font-semibold hover:underline"
                         >
-                            Log in
+                            Se connecter
                         </Link>
                     </div>
                 </div>

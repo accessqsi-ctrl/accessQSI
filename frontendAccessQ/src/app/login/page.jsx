@@ -43,11 +43,11 @@ export default function Login() {
                 // We no longer manually sore it in localStorage.
                 router.push("/dashboard");
             } else {
-                setError(data.message || "Invalid credentials.");
+                setError(data.message || "Identifiants incorrects.");
             }
         } catch (err) {
             console.error("Login Error:", err);
-            setError("Unable to connect to the server.");
+            setError("Impossible de joindre le serveur.");
         } finally {
             setLoading(false);
         }
@@ -69,10 +69,10 @@ export default function Login() {
                         className="w-64 h-auto drop-shadow-xl mb-8 transform transition-transform hover:scale-105 duration-500"
                     />
                     <h2 className="text-3xl font-semibold bg-gradient-to-r from-blue-700 to-emerald-600 bg-clip-text text-transparent">
-                        Welcome Back
+                        QR Access
                     </h2>
                     <p className="mt-4 text-slate-500 dark:text-slate-400 max-w-md text-center">
-                        Access your dashboard to manage your QR codes, events, and agents securely.
+                        Connexion sécurisée à votre espace de gestion des accès.
                     </p>
                 </div>
             </div>
@@ -89,10 +89,10 @@ export default function Login() {
                     </div>
                     <div className="mb-10 lg:text-left text-center">
                         <h1 className="text-4xl font-bold tracking-tight mb-3 text-slate-900 dark:text-white">
-                            Log In
+                            Connexion
                         </h1>
                         <p className="text-slate-500 dark:text-slate-400 text-base">
-                            Enter your email and password to access your account.
+                            Utilisez les identifiants associés à votre organisation.
                         </p>
                     </div>
 
@@ -106,7 +106,7 @@ export default function Login() {
                         {/* Email Address */}
                         <div className="space-y-1.5">
                             <label className="text-sm font-semibold text-slate-700 dark:text-slate-200 block mb-1">
-                                Email Address
+                                Adresse email
                             </label>
                             <input
                                 type="email"
@@ -123,11 +123,8 @@ export default function Login() {
                         <div className="space-y-1.5">
                             <div className="flex items-center justify-between mb-1">
                                 <label className="text-sm font-semibold text-slate-700 dark:text-slate-200 block">
-                                    Password
+                                    Mot de passe
                                 </label>
-                                <a href="#" className="text-sm text-blue-600 hover:text-blue-500 font-medium transition-colors hover:underline">
-                                    Forgot password?
-                                </a>
                             </div>
                             <div className="relative">
                                 <input
@@ -160,17 +157,17 @@ export default function Login() {
                             disabled={loading}
                             className={`w-full mt-6 py-3.5 px-4 bg-gradient-to-r ${loading ? 'from-slate-400 to-slate-500 cursor-not-allowed' : 'from-blue-600 to-emerald-500 hover:from-blue-700 hover:to-emerald-600 shadow-lg shadow-blue-500/20'} text-white font-medium rounded-lg transition-all active:scale-[0.98]`}
                         >
-                            {loading ? "Login..." : "Login"}
+                            {loading ? "Connexion..." : "Se connecter"}
                         </button>
                     </form>
 
                     <div className="mt-8 text-center text-sm text-slate-500 dark:text-slate-400">
-                        Don't have an account yet?{" "}
+                        Pas encore de compte ?{" "}
                         <Link
                             href="/register"
                             className="text-blue-600 dark:text-blue-400 hover:text-blue-500 transition-colors font-semibold hover:underline"
                         >
-                            Create an account
+                            Créer une organisation
                         </Link>
                     </div>
                 </div>

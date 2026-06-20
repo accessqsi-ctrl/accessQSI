@@ -95,15 +95,11 @@ export default function Dashboard() {
 
     return (
         <div className="max-w-7xl mx-auto space-y-8">
-            {/* Welcome Banner */}
-            <div className="relative overflow-hidden bg-white dark:bg-slate-950 rounded-3xl p-8 border border-slate-200 dark:border-slate-800 shadow-sm">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-blue-50 dark:bg-blue-900/20 rounded-bl-full blur-[60px] pointer-events-none -mr-10 -mt-10" />
-                <div className="absolute bottom-0 right-32 w-48 h-48 bg-blue-100/40 dark:bg-blue-800/10 rounded-t-full blur-[50px] pointer-events-none" />
-
+            <div className="relative overflow-hidden bg-white dark:bg-slate-950 rounded-2xl p-8 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-black/20">
                 <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div>
-                        <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-2 mt-2">Welcome back, {userName || "Admin"} 👋</h2>
-                        <p className="text-slate-500 dark:text-slate-400 text-lg">Here's what's happening in your organization today.</p>
+                        <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white mb-2 mt-2">Tableau de bord{userName ? `, ${userName}` : ""}</h2>
+                        <p className="text-slate-500 dark:text-slate-400 text-base">Suivi des accès, des scans et des agents de votre organisation.</p>
                     </div>
                     <div className="flex gap-3">
                         <button 
@@ -127,74 +123,62 @@ export default function Dashboard() {
             {/* Quick Stats */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
                 {/* Stat 1 */}
-                <div className="bg-white dark:bg-slate-950 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow">
+                <div className="bg-white dark:bg-slate-950 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-black/20 hover:shadow-md transition-shadow">
                     <div className="flex items-center gap-4 mb-4">
                         <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
                         </div>
                         <div>
-                            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Active QR Codes</p>
+                            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">QR actifs</p>
                             <h4 className="text-2xl font-bold text-slate-900 dark:text-white">{stats.activeQrs}</h4>
                         </div>
                     </div>
-                    <div className="flex items-center text-sm">
-                        <span className="text-emerald-500 font-medium flex items-center gap-1">
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
-                            12%
-                        </span>
-                        <span className="text-slate-400 dark:text-slate-500 ml-2">from last month</span>
-                    </div>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Disponibles pour le contrôle d'accès.</p>
                 </div>
 
                 {/* Stat 2 */}
-                <div className="bg-white dark:bg-slate-950 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow">
+                <div className="bg-white dark:bg-slate-950 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-black/20 hover:shadow-md transition-shadow">
                     <div className="flex items-center gap-4 mb-4">
                         <div className="w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600">
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
                         </div>
                         <div>
-                            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Total Scans</p>
+                            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Scans enregistrés</p>
                             <h4 className="text-2xl font-bold text-slate-900 dark:text-white">{stats.totalScans}</h4>
                         </div>
                     </div>
-                    <div className="flex items-center text-sm">
-                        <span className="text-emerald-500 font-medium flex items-center gap-1">
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
-                            24%
-                        </span>
-                        <span className="text-slate-400 dark:text-slate-500 ml-2">from last month</span>
-                    </div>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Total des contrôles effectués.</p>
                 </div>
 
                 {/* Stat 3 */}
-                <div className="bg-white dark:bg-slate-950 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow">
+                <div className="bg-white dark:bg-slate-950 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-black/20 hover:shadow-md transition-shadow">
                     <div className="flex items-center gap-4 mb-4">
                         <div className="w-12 h-12 rounded-xl bg-orange-50 flex items-center justify-center text-orange-600">
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                         </div>
                         <div>
-                            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Upcoming Events</p>
+                            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Événements à venir</p>
                             <h4 className="text-2xl font-bold text-slate-900 dark:text-white">{stats.upcomingEvents}</h4>
                         </div>
                     </div>
                     <div className="flex items-center text-sm">
-                        <span className="text-slate-500 dark:text-slate-400 font-medium truncate">Next: {stats.nextEventTitle}</span>
+                        <span className="text-slate-500 dark:text-slate-400 font-medium truncate">Prochain : {stats.nextEventTitle}</span>
                     </div>
                 </div>
 
                 {/* Stat 4 */}
-                <div className="bg-white dark:bg-slate-950 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow">
+                <div className="bg-white dark:bg-slate-950 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-black/20 hover:shadow-md transition-shadow">
                     <div className="flex items-center gap-4 mb-4">
                         <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
                         </div>
                         <div>
-                            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Active Agents</p>
+                            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Agents actifs</p>
                             <h4 className="text-2xl font-bold text-slate-900 dark:text-white">{stats.activeAgents}</h4>
                         </div>
                     </div>
                     <div className="flex items-center text-sm">
-                        <span className="text-slate-500 dark:text-slate-400 font-medium">Out of 15 allowed</span>
+                        <span className="text-slate-500 dark:text-slate-400 font-medium">Comptes autorisés à scanner.</span>
                     </div>
                 </div>
             </div>
@@ -202,11 +186,11 @@ export default function Dashboard() {
             {/* Charts & Top Performance Section */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Line Chart */}
-                <div className="lg:col-span-2 bg-white dark:bg-slate-950 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                <div className="lg:col-span-2 bg-white dark:bg-slate-950 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-black/20">
                     <div className="flex items-center justify-between mb-8">
                         <div>
-                            <h3 className="text-lg font-bold text-slate-900 dark:text-white">Activity Overview</h3>
-                            <p className="text-sm text-slate-500 dark:text-slate-400">Total scans over the last 7 days</p>
+                            <h3 className="text-lg font-bold text-slate-900 dark:text-white">Activité des scans</h3>
+                            <p className="text-sm text-slate-500 dark:text-slate-400">Volume des contrôles sur les derniers jours.</p>
                         </div>
                         <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
                             <TrendingUp className="w-5 h-5" />
@@ -245,11 +229,11 @@ export default function Dashboard() {
                 </div>
 
                 {/* Top Agents Panel */}
-                <div className="bg-white dark:bg-slate-950 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                <div className="bg-white dark:bg-slate-950 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-black/20">
                     <div className="flex items-center justify-between mb-8">
                         <div>
-                            <h3 className="text-lg font-bold text-slate-900 dark:text-white">Top Agents</h3>
-                            <p className="text-sm text-slate-500 dark:text-slate-400">Best performance by scans</p>
+                            <h3 className="text-lg font-bold text-slate-900 dark:text-white">Agents les plus actifs</h3>
+                            <p className="text-sm text-slate-500 dark:text-slate-400">Classement par nombre de scans.</p>
                         </div>
                         <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
                             <Users className="w-5 h-5" />
@@ -286,20 +270,19 @@ export default function Dashboard() {
             </div>
 
             {/* Recent Activity Table */}
-            <div className="bg-white dark:bg-slate-950 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+            <div className="bg-white dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-black/20 overflow-hidden">
                 <div className="px-8 py-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">Recent Scans</h3>
-                    <button className="text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline">View all</button>
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">Derniers scans</h3>
                 </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 text-sm border-b border-slate-200 dark:border-slate-800">
-                                <th className="px-8 py-4 font-semibold uppercase tracking-wider">Access Code</th>
-                                <th className="px-8 py-4 font-semibold uppercase tracking-wider">Event / Location</th>
+                                <th className="px-8 py-4 font-semibold uppercase tracking-wider">Code</th>
+                                <th className="px-8 py-4 font-semibold uppercase tracking-wider">Événement / zone</th>
                                 <th className="px-8 py-4 font-semibold uppercase tracking-wider">Agent</th>
-                                <th className="px-8 py-4 font-semibold uppercase tracking-wider">Time</th>
-                                <th className="px-8 py-4 font-semibold uppercase tracking-wider">Status</th>
+                                <th className="px-8 py-4 font-semibold uppercase tracking-wider">Heure</th>
+                                <th className="px-8 py-4 font-semibold uppercase tracking-wider">Statut</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-200 text-sm">
@@ -317,7 +300,7 @@ export default function Dashboard() {
                                                 ? 'bg-emerald-100 text-emerald-700'
                                                 : 'bg-red-100 text-red-700'
                                                 }`}>
-                                                {scan.status === 'authorized' ? 'Granted' : 'Denied'}
+                                                {scan.status === 'authorized' ? 'Autorisé' : 'Refusé'}
                                             </span>
                                         </td>
                                     </tr>
@@ -337,7 +320,7 @@ export default function Dashboard() {
             {/* ── CUSTOM TOAST ── */}
             {toast.show && (
                 <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-bottom-5 fade-in duration-300">
-                    <div className="bg-slate-900 dark:bg-slate-100 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 border border-slate-700/50 backdrop-blur-md">
+                    <div className="bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 border border-slate-700/50 dark:border-slate-300 backdrop-blur-md">
                         <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
                             <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                         </div>

@@ -13,7 +13,12 @@ export default function EventsPage() {
 
     // Filters state
     const [searchQuery, setSearchQuery] = useState("");
-    const [statusFilter, setStatusFilter] = useState("All Statuses");
+    const [statusFilter, setStatusFilter] = useState("Tous les statuts");
+    const statusLabel = {
+        Upcoming: "À venir",
+        Active: "Actif",
+        Past: "Terminé"
+    };
 
     useEffect(() => {
         const fetchProfileAndEvents = async () => {
@@ -54,7 +59,7 @@ export default function EventsPage() {
             event.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
             event.location?.toLowerCase().includes(searchQuery.toLowerCase());
             
-        const matchesStatus = statusFilter === "All Statuses" || 
+        const matchesStatus = statusFilter === "Tous les statuts" ||
                               event.status === statusFilter;
                               
         return matchesSearch && matchesStatus;
@@ -65,8 +70,8 @@ export default function EventsPage() {
             {/* Page Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Events & Locations</h1>
-                    <p className="text-slate-500 dark:text-slate-400 mt-1">Manage where and when your QR codes can be used.</p>
+                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Événements et zones d'accès</h1>
+                    <p className="text-slate-500 dark:text-slate-400 mt-1">Définissez les périodes et lieux où les QR peuvent être validés.</p>
                 </div>
                 {(userRole === "SUPER_ADMIN" || userRole === "ORG_ADMIN") && (
                     <Link
@@ -74,7 +79,7 @@ export default function EventsPage() {
                         className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl shadow-sm hover:shadow active:scale-95 transition-all text-sm"
                     >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path></svg>
-                        Create Event
+                        Créer un événement
                     </Link>
                 )}
             </div>
@@ -91,17 +96,17 @@ export default function EventsPage() {
                         type="text"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Search events by name or location..."
-                        className="block w-full pl-10 pr-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl leading-5 bg-slate-50 dark:bg-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 sm:text-sm transition-colors"
+                        placeholder="Rechercher par nom ou zone..."
+                        className="block w-full pl-10 pr-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl leading-5 bg-slate-50 dark:bg-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white dark:focus:bg-slate-950 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 sm:text-sm transition-colors"
                     />
                 </div>
 
                 <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
                     <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-950 text-sm text-slate-700 dark:text-slate-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
-                        <option value="All Statuses">All Statuses</option>
-                        <option value="Upcoming">Upcoming</option>
-                        <option value="Active">Active</option>
-                        <option value="Past">Past</option>
+                        <option value="Tous les statuts">Tous les statuts</option>
+                        <option value="Upcoming">À venir</option>
+                        <option value="Active">Actif</option>
+                        <option value="Past">Terminé</option>
                     </select>
                 </div>
             </div>
@@ -112,11 +117,11 @@ export default function EventsPage() {
                     <table className="w-full text-left border-collapse min-w-[800px]">
                         <thead>
                             <tr className="bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 text-sm border-b border-slate-200 dark:border-slate-800">
-                                <th className="px-6 py-4 font-semibold uppercase tracking-wider">Event Name</th>
-                                <th className="px-6 py-4 font-semibold uppercase tracking-wider">Date / Timeframe</th>
-                                <th className="px-6 py-4 font-semibold uppercase tracking-wider">Location</th>
-                                <th className="px-6 py-4 font-semibold uppercase tracking-wider">Active QRs</th>
-                                <th className="px-6 py-4 font-semibold uppercase tracking-wider">Status</th>
+                                <th className="px-6 py-4 font-semibold uppercase tracking-wider">Événement</th>
+                                <th className="px-6 py-4 font-semibold uppercase tracking-wider">Période</th>
+                                <th className="px-6 py-4 font-semibold uppercase tracking-wider">Zone</th>
+                                <th className="px-6 py-4 font-semibold uppercase tracking-wider">QR actifs</th>
+                                <th className="px-6 py-4 font-semibold uppercase tracking-wider">Statut</th>
                                 <th className="px-6 py-4 font-semibold uppercase tracking-wider text-right">Actions</th>
                             </tr>
                         </thead>
@@ -141,12 +146,12 @@ export default function EventsPage() {
                                             <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
                                         </div>
                                         <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Aucun événement</h3>
-                                        <p className="text-slate-500 dark:text-slate-400 mt-1 max-w-sm mx-auto">{events.length === 0 ? "Vous n'avez pas encore créé de lieu ou d'événement. Cliquez sur \"Create Event\" pour commencer." : "Aucun événement trouvé pour ces critères."}</p>
+                                        <p className="text-slate-500 dark:text-slate-400 mt-1 max-w-sm mx-auto">{events.length === 0 ? "Aucun événement n'est encore configuré." : "Aucun événement ne correspond aux filtres."}</p>
                                     </td>
                                 </tr>
                             ) : (
                                 filteredEvents.map((event) => (
-                                    <tr key={event.id} className="hover:bg-slate-50/50 transition-colors group">
+                                    <tr key={event.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/70 transition-colors group">
                                         <td className="px-6 py-4 font-medium text-slate-900 dark:text-white">
                                             <Link href={`/dashboard/events/${event.id}`} className="flex items-center gap-3 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                                                 <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
@@ -163,7 +168,7 @@ export default function EventsPage() {
                                                 event.status === 'Upcoming' ? 'bg-blue-100 text-blue-700' :
                                                     'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
                                                 }`}>
-                                                {event.status}
+                                                {statusLabel[event.status] || event.status}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-right">

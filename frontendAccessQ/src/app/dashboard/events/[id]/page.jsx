@@ -55,7 +55,7 @@ export default function EventDetailPage() {
 
     // Filters and Actions State
     const [searchQuery, setSearchQuery] = useState("");
-    const [statusFilter, setStatusFilter] = useState("All Statuses");
+    const [statusFilter, setStatusFilter] = useState("Tous les statuts");
     const [selectedQr, setSelectedQr] = useState(null);
     const [revokingId, setRevokingId] = useState(null);
 
@@ -288,7 +288,7 @@ export default function EventDetailPage() {
             qr.holder?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             String(qr.id).includes(searchQuery);
 
-        const matchesStatus = statusFilter === "All Statuses" ||
+        const matchesStatus = statusFilter === "Tous les statuts" ||
             qr.status.toLowerCase() === statusFilter.toLowerCase();
 
         return matchesSearch && matchesStatus;
@@ -471,7 +471,7 @@ export default function EventDetailPage() {
 
                     <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
                         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-950 text-sm text-slate-700 dark:text-slate-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
-                            <option value="All Statuses">Tous les statuts</option>
+                            <option value="Tous les statuts">Tous les statuts</option>
                             <option value="active">Actif</option>
                             <option value="exhausted">Épuisé</option>
                             <option value="expired">Expiré</option>
@@ -600,7 +600,7 @@ export default function EventDetailPage() {
                                             placeholder="John Doe"
                                             value={qrForm.fullName}
                                             onChange={(e) => setQrForm({ ...qrForm, fullName: e.target.value })}
-                                            className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all"
+                                            className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all"
                                         />
                                     </div>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -611,7 +611,7 @@ export default function EventDetailPage() {
                                                 placeholder="john@example.com"
                                                 value={qrForm.email}
                                                 onChange={(e) => setQrForm({ ...qrForm, email: e.target.value })}
-                                                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all"
+                                                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all"
                                             />
                                         </div>
                                         <div className="space-y-2">
@@ -621,7 +621,7 @@ export default function EventDetailPage() {
                                                 placeholder="+33..."
                                                 value={qrForm.phone}
                                                 onChange={(e) => setQrForm({ ...qrForm, phone: e.target.value })}
-                                                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all"
+                                                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all"
                                             />
                                         </div>
                                     </div>
@@ -633,7 +633,7 @@ export default function EventDetailPage() {
                                         min="1"
                                         value={qrForm.level}
                                         onChange={(e) => setQrForm({ ...qrForm, level: e.target.value })}
-                                        className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all"
+                                        className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all"
                                     />
                                 </div>
 
@@ -666,7 +666,7 @@ export default function EventDetailPage() {
                                             min="2"
                                             value={qrForm.limit}
                                             onChange={(e) => setQrForm({ ...qrForm, limit: e.target.value })}
-                                            className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all"
+                                            className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all"
                                         />
                                     </div>
                                 )}
@@ -678,7 +678,7 @@ export default function EventDetailPage() {
                                             type="datetime-local"
                                             value={qrForm.validFrom}
                                             onChange={(e) => setQrForm({ ...qrForm, validFrom: e.target.value })}
-                                            className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all text-slate-600 dark:text-slate-300"
+                                            className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all text-slate-600 dark:text-slate-300"
                                         />
                                     </div>
                                     <div className="space-y-2">
@@ -687,7 +687,7 @@ export default function EventDetailPage() {
                                             type="datetime-local"
                                             value={qrForm.validUntil}
                                             onChange={(e) => setQrForm({ ...qrForm, validUntil: e.target.value })}
-                                            className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all text-slate-600 dark:text-slate-300"
+                                            className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all text-slate-600 dark:text-slate-300"
                                         />
                                     </div>
                                 </div>
@@ -765,7 +765,7 @@ export default function EventDetailPage() {
                                     type="text"
                                     value={editForm.title}
                                     onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
-                                    className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all"
+                                    className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all"
                                 />
                             </div>
                             <div className="space-y-3">
@@ -797,7 +797,7 @@ export default function EventDetailPage() {
                                         type="datetime-local"
                                         value={editForm.startDate}
                                         onChange={(e) => setEditForm({ ...editForm, startDate: e.target.value })}
-                                        className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all text-slate-600 dark:text-slate-300"
+                                        className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all text-slate-600 dark:text-slate-300"
                                     />
                                 </div>
                                 <div className="space-y-1.5">
@@ -806,7 +806,7 @@ export default function EventDetailPage() {
                                         type="datetime-local"
                                         value={editForm.endDate}
                                         onChange={(e) => setEditForm({ ...editForm, endDate: e.target.value })}
-                                        className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all text-slate-600 dark:text-slate-300"
+                                        className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all text-slate-600 dark:text-slate-300"
                                     />
                                 </div>
                             </div>
@@ -816,7 +816,7 @@ export default function EventDetailPage() {
                                     rows="3"
                                     value={editForm.description}
                                     onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-                                    className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all resize-none"
+                                    className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all resize-none"
                                 />
                             </div>
                             <button

@@ -106,8 +106,8 @@ export default function NewEventPage() {
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
                 </Link>
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Create New Event</h1>
-                    <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Set up a new location or timeframe for QR code validation.</p>
+                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Créer un événement</h1>
+                    <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Associez une période de validité aux zones de contrôle.</p>
                 </div>
             </div>
 
@@ -122,65 +122,65 @@ export default function NewEventPage() {
 
                 {/* General Info */}
                 <div className="space-y-6">
-                    <h2 className="text-lg font-semibold text-slate-900 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-3">General Information</h2>
+                    <h2 className="text-lg font-semibold text-slate-900 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-3">Informations</h2>
 
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Event / Location Name *</label>
+                        <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Nom de l'événement *</label>
                         <input
                             type="text"
                             name="title"
                             value={formData.title}
                             onChange={handleChange}
                             required
-                            placeholder="e.g. Annual Gala Dinner, Main Warehouse, Gate C"
-                            className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
+                            placeholder="Ex. Conférence annuelle, Hall principal"
+                            className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
                         />
                     </div>
 
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Description (Optional)</label>
+                        <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Description</label>
                         <textarea
                             name="description"
                             value={formData.description}
                             onChange={handleChange}
                             rows={3}
-                            placeholder="Brief details about this event or location..."
-                            className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors resize-none"
+                            placeholder="Détails utiles pour les agents ou l'administration..."
+                            className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors resize-none"
                         ></textarea>
                     </div>
                 </div>
 
-                {/* Timing & Logistics */}
+                {/* Période et zones */}
                 <div className="space-y-6">
-                    <h2 className="text-lg font-semibold text-slate-900 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-3">Timing & Logistics</h2>
+                    <h2 className="text-lg font-semibold text-slate-900 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-3">Période et zones</h2>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Start Date & Time *</label>
+                            <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Début *</label>
                             <input
                                 type="datetime-local"
                                 name="startDate"
                                 value={formData.startDate}
                                 onChange={handleChange}
                                 required
-                                className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors text-slate-600 dark:text-slate-300"
+                                className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors text-slate-600 dark:text-slate-300"
                             />
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-slate-700 dark:text-slate-200">End Date & Time *</label>
+                            <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Fin *</label>
                             <input
                                 type="datetime-local"
                                 name="endDate"
                                 value={formData.endDate}
                                 onChange={handleChange}
                                 required
-                                className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors text-slate-600 dark:text-slate-300"
+                                className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors text-slate-600 dark:text-slate-300"
                             />
                         </div>
                     </div>
 
                     <div className="space-y-3">
-                        <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Areas / Zones *</label>
+                        <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Zones *</label>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             {loadingAreas ? (
                                 <p className="text-sm text-slate-500 dark:text-slate-400 italic">Chargement des zones...</p>
@@ -210,7 +210,7 @@ export default function NewEventPage() {
                 {/* Submit Actions */}
                 <div className="pt-4 flex items-center justify-end gap-4 border-t border-slate-100 dark:border-slate-800">
                     <Link href="/dashboard/events" className="px-6 py-3 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-medium rounded-xl shadow-sm transition-all text-sm">
-                        Cancel
+                        Annuler
                     </Link>
                     <button
                         type="submit"
@@ -222,7 +222,7 @@ export default function NewEventPage() {
                         ) : (
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
                         )}
-                        {loading ? "Saving..." : "Save Event"}
+                        {loading ? "Enregistrement..." : "Enregistrer"}
                     </button>
                 </div>
             </form>
