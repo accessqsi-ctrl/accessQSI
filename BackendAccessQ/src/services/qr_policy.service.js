@@ -8,6 +8,15 @@ exports.evaluateQrScan = (qr, scannerOrgId, now = new Date()) => {
         };
     }
 
+    if (qr.deleted_at || qr.event?.deleted_at || qr.event?.organization?.deleted_at || qr.event?.organization?.is_active === false) {
+        return {
+            httpStatus: 410,
+            success: false,
+            message: "Ce QR Code n'est plus actif.",
+            shouldRecord: false
+        };
+    }
+
     if (qr.event.org_id !== scannerOrgId) {
         return {
             httpStatus: 403,

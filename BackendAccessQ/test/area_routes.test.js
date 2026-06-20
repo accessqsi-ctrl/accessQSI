@@ -102,3 +102,23 @@ test("PUT /areas/:id refuses updates for areas outside the organization", async 
     assert.equal(res.body.success, false);
     assert.equal(updateCalled, false);
 });
+
+test("DELETE /areas/:id soft-deletes an organization area", async () => {
+    let deletedAreaId = null;
+    const app = loadAreaApp({
+        user: { user_id: 7, role: "ORG_ADMIN", org_id: 42 },
+        areaService: {
+            findById: async (orgId, areaId) => ({ area_id: areaId, org_id: orgId }),
+            deleteArea: async (areaId) => {
+                deletedAreaId = areaId;
+                return { area_id: areaId, deleted_at: new Date() };
+            }
+        }
+    });
+
+    const res = await request(app, "DELETE", "/areas/12");
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body.success, true);
+    assert.equal(deletedAreaId, 12);
+});

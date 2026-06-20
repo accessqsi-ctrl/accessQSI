@@ -102,3 +102,26 @@ test("POST /events allows ORG_ADMIN and does not pass unknown location field to 
     assert.equal(receivedData.title, "Concert");
     assert.equal(Object.hasOwn(receivedData, "location"), false);
 });
+
+test("POST /events maps invalid organization areas to a 400 response", async () => {
+    const app = loadEventApp({
+        user: { user_id: 7, role: "ORG_ADMIN", org_id: 42 },
+        eventService: {
+            createEvent: async () => {
+                const error = new Error("Une ou plusieurs zones sont introuvables pour cette organisation.");
+                error.code = "INVALID_EVENT_AREAS";
+                throw error;
+            }
+        }
+    });
+
+    const res = await request(app, "POST", "/events", {
+        title: "Concert",
+        areaIds: [99],
+        startDate: "2026-01-01T10:00:00Z",
+        endDate: "2026-01-01T22:00:00Z"
+    });
+
+    assert.equal(res.status, 400);
+    assert.equal(res.body.success, false);
+});

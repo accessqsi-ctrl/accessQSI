@@ -2,13 +2,14 @@ const prisma = require("../prisma/client");
 
 exports.findAll = async (orgId) => {
     return await prisma.area.findMany({
-        where: { org_id: orgId }
+        where: { org_id: orgId, deleted_at: null },
+        orderBy: { area_name: 'asc' }
     });
 };
 
 exports.findById = async (orgId, areaId) => {
     return await prisma.area.findFirst({
-        where: { area_id: areaId, org_id: orgId }
+        where: { area_id: areaId, org_id: orgId, deleted_at: null }
     });
 };
 
@@ -24,7 +25,8 @@ exports.updateArea = async (areaId, data) => {
 };
 
 exports.deleteArea = async (areaId) => {
-    return await prisma.area.delete({
-        where: { area_id: areaId }
+    return await prisma.area.update({
+        where: { area_id: areaId },
+        data: { deleted_at: new Date() }
     });
 };

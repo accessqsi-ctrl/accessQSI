@@ -133,21 +133,21 @@ test("PUT /agents/:id/toggle refuses to revoke organization admins", async () =>
     assert.equal(updateCalled, false);
 });
 
-test("DELETE /agents/:id maps scan-history foreign key errors to a 400 response", async () => {
+test("DELETE /agents/:id soft-deletes agents to preserve scan history", async () => {
+    let softDeleted = null;
     const app = loadAgentApp({
         user: { user_id: 7, role: "ORG_ADMIN", org_id: 42 },
         agentService: {
             getAgentByIdAndOrg: async () => ({ user_id: 2, org_id: 42, role: "ORG_AGENT", deleted_at: null }),
-            hardDeleteAgent: async () => {
-                const err = new Error("Foreign key constraint");
-                err.code = "P2003";
-                throw err;
+            softDeleteAgent: async (agentId, orgId) => {
+                softDeleted = { agentId, orgId };
             }
         }
     });
 
     const res = await request(app, "DELETE", "/agents/2");
 
-    assert.equal(res.status, 400);
-    assert.equal(res.body.success, false);
+    assert.equal(res.status, 200);
+    assert.equal(res.body.success, true);
+    assert.deepEqual(softDeleted, { agentId: 2, orgId: 42 });
 });

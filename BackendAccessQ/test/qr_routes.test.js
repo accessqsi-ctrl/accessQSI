@@ -37,7 +37,8 @@ const validQr = (overrides = {}) => ({
     holder_name: "Jane",
     holder_email: "jane@example.com",
     level: 1,
-    event: { org_id: 42 },
+    deleted_at: null,
+    event: { org_id: 42, deleted_at: null, organization: { deleted_at: null, is_active: true } },
     ...overrides
 });
 
@@ -102,6 +103,32 @@ test("POST /qr/verify rejects QR from another organization without recording", a
     const res = await request(app, "POST", "/qr/verify", { token: "token-1" });
 
     assert.equal(res.status, 403);
+    assert.equal(res.body.success, false);
+    assert.equal(recordCalled, false);
+});
+
+test("POST /qr/verify rejects QR from a deleted event without recording", async () => {
+    let recordCalled = false;
+    const app = loadQrApp({
+        user: { user_id: 7, role: "ORG_AGENT", org_id: 42 },
+        qrVerifyService: {
+            getQrByToken: async () => validQr({
+                event: {
+                    org_id: 42,
+                    deleted_at: new Date("2026-01-01T00:00:00Z"),
+                    organization: { deleted_at: null, is_active: true }
+                }
+            }),
+            recordScan: async () => {
+                recordCalled = true;
+            },
+            updateQrStatus: async () => {}
+        }
+    });
+
+    const res = await request(app, "POST", "/qr/verify", { token: "token-1" });
+
+    assert.equal(res.status, 410);
     assert.equal(res.body.success, false);
     assert.equal(recordCalled, false);
 });

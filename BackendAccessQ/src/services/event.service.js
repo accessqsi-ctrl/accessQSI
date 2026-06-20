@@ -1,5 +1,40 @@
 const prisma = require("../prisma/client");
 
+const getScheduleAreaIds = ({ id_area, areaIds }) => {
+  if (areaIds && Array.isArray(areaIds)) {
+    return [...new Set(areaIds.map(Number).filter(Number.isFinite))];
+  }
+
+  if (id_area !== undefined && id_area !== null) {
+    const areaId = Number(id_area);
+    return Number.isFinite(areaId) ? [areaId] : [];
+  }
+
+  return [];
+};
+
+const assertAreasBelongToOrg = async (tx, orgId, areaIds) => {
+  if (!areaIds.length) {
+    const error = new Error("Au moins une zone valide est requise.");
+    error.code = "INVALID_EVENT_AREAS";
+    throw error;
+  }
+
+  const count = await tx.area.count({
+    where: {
+      org_id: orgId,
+      area_id: { in: areaIds },
+      deleted_at: null
+    }
+  });
+
+  if (count !== areaIds.length) {
+    const error = new Error("Une ou plusieurs zones sont introuvables pour cette organisation.");
+    error.code = "INVALID_EVENT_AREAS";
+    throw error;
+  }
+};
+
 // Rechercher par nom (filtré par organisation)
 exports.findByTitle = async (orgId, titleSearch) => {
   return await prisma.event.findMany({
@@ -72,77 +107,93 @@ exports.findAll = async (orgId) => {
 // Créer un événement (lié à l'organisation)
 exports.createEvent = async (data) => {
   const { start_date, end_date, id_area, areaIds, ...eventData } = data;
+  const idsToCreate = getScheduleAreaIds({ id_area, areaIds });
 
-  const idsToCreate = areaIds && Array.isArray(areaIds) ? areaIds : (id_area ? [Number(id_area)] : [1]);
+  return await prisma.$transaction(async (tx) => {
+    await assertAreasBelongToOrg(tx, eventData.org_id, idsToCreate);
 
-  return await prisma.event.create({
-    data: {
-      ...eventData,
-      EventSchedules: {
-        create: idsToCreate.map(id => ({
-          start_date: start_date,
-          end_date: end_date,
-          id_area: Number(id)
-        }))
-      }
-    },
-    include: { EventSchedules: true }
+    return tx.event.create({
+      data: {
+        ...eventData,
+        EventSchedules: {
+          create: idsToCreate.map(id => ({
+            start_date: start_date,
+            end_date: end_date,
+            id_area: id
+          }))
+        }
+      },
+      include: { EventSchedules: true }
+    });
   });
 };
 
 // Modifier un événement (propriété vérifiée par le contrôleur)
-exports.updateEvent = async (eventId, data) => {
+exports.updateEvent = async (eventId, data, orgId) => {
   const { start_date, end_date, id_area, areaIds, ...eventData } = data;
 
   const updateData = Object.fromEntries(
     Object.entries(eventData).filter(([, value]) => value !== undefined)
   );
 
-  if (start_date || end_date || id_area || areaIds) {
-    // Si pas de areaIds explicites mais on a id_area, l'utiliser
-    const finalAreaIds = areaIds && Array.isArray(areaIds) 
-        ? areaIds.map(Number) 
-        : (id_area ? [Number(id_area)] : null);
+  return prisma.$transaction(async (tx) => {
+    if (start_date || end_date || id_area !== undefined || areaIds !== undefined) {
+      const shouldSyncAreas = areaIds !== undefined || id_area !== undefined;
+      const finalAreaIds = shouldSyncAreas ? getScheduleAreaIds({ id_area, areaIds }) : null;
 
-    if (finalAreaIds) {
-      // Méthode simple pour synchroniser : supprimer tout et recréer
-      await prisma.eventSchedule.deleteMany({
-        where: { id_event: eventId }
-      });
+      if (finalAreaIds) {
+        await assertAreasBelongToOrg(tx, orgId, finalAreaIds);
 
-      await prisma.eventSchedule.createMany({
-        data: finalAreaIds.map(id => ({
-          id_event: eventId,
-          id_area: id,
-          start_date: start_date ? new Date(start_date) : new Date(),
-          end_date: end_date ? new Date(end_date) : new Date()
-        }))
-      });
-    } else if (start_date || end_date) {
-        // Mettre à jour uniquement les dates si les zones n'ont pas changé
-        await prisma.eventSchedule.updateMany({
-            where: { id_event: eventId },
-            data: {
-                start_date: start_date ? new Date(start_date) : undefined,
-                end_date: end_date ? new Date(end_date) : undefined
-            }
+        const existingSchedule = await tx.eventSchedule.findFirst({
+          where: { id_event: eventId },
+          orderBy: { start_date: 'asc' }
         });
-    }
-  }
 
-  return prisma.event.update({
-    where: { event_id: eventId },
-    data: updateData,
-    include: { EventSchedules: true }
+        await tx.eventSchedule.deleteMany({
+          where: { id_event: eventId }
+        });
+
+        await tx.eventSchedule.createMany({
+          data: finalAreaIds.map(id => ({
+            id_event: eventId,
+            id_area: id,
+            start_date: start_date || existingSchedule?.start_date || new Date(),
+            end_date: end_date || existingSchedule?.end_date || new Date()
+          }))
+        });
+      } else if (start_date || end_date) {
+          await tx.eventSchedule.updateMany({
+              where: { id_event: eventId },
+              data: {
+                  start_date: start_date || undefined,
+                  end_date: end_date || undefined
+              }
+          });
+      }
+    }
+
+    return tx.event.update({
+      where: { event_id: eventId },
+      data: updateData,
+      include: { EventSchedules: true }
+    });
   });
 };
 
 // Supprimer un événement (Suppression logique)
 exports.deleteEvent = async (eventId) => {
-  return prisma.event.update({
-    where: { event_id: eventId },
-    data: {
-      deleted_at: new Date()
-    }
+  return prisma.$transaction(async (tx) => {
+    const deletedAt = new Date();
+    const event = await tx.event.update({
+      where: { event_id: eventId },
+      data: { deleted_at: deletedAt }
+    });
+
+    await tx.qrCode.updateMany({
+      where: { event_id: eventId, deleted_at: null },
+      data: { status: "revoked", deleted_at: deletedAt }
+    });
+
+    return event;
   });
 };

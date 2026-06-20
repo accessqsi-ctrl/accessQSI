@@ -102,6 +102,9 @@ exports.createEvent = async (req, res) => {
 
         res.status(201).json({ success: true, message: 'Événement créé avec succès', event: newEvent });
     } catch (error) {
+        if (error.code === "INVALID_EVENT_AREAS") {
+            return res.status(400).json({ success: false, message: error.message });
+        }
         console.error("Erreur lors de la création de l'événement :", error);
         res.status(500).json({ success: false, message: "Erreur serveur lors de la création" });
     }
@@ -131,10 +134,13 @@ exports.updateEvent = async (req, res) => {
             areaIds,
             start_date: startDate ? new Date(startDate) : undefined,
             end_date: endDate ? new Date(endDate) : undefined
-        });
+        }, orgId);
 
         res.status(200).json({ success: true, message: 'Événement mis à jour', event: updatedEvent });
     } catch (error) {
+        if (error.code === "INVALID_EVENT_AREAS") {
+            return res.status(400).json({ success: false, message: error.message });
+        }
         console.error("Erreur lors de la mise à jour de l'événement :", error);
         res.status(500).json({ success: false, message: "Erreur serveur" });
     }

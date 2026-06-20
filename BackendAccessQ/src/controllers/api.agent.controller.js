@@ -130,20 +130,9 @@ exports.deleteAgent = async (req, res) => {
             return res.status(403).json({ success: false, message: "Impossible de supprimer un administrateur." });
         }
 
-        try {
-            await agentService.hardDeleteAgent(agentId, orgId);
-        } catch (dbError) {
-            // Gérer la contrainte de clé étrangère (ex: si l'agent a des journaux de scan) (P2003 dans Prisma)
-            if (dbError.code === 'P2003') {
-                return res.status(400).json({ 
-                    success: false, 
-                    message: "Cet agent ne peut pas être supprimé car il possède des journaux de scan (historique). Révoquez son accès à la place." 
-                });
-            }
-            throw dbError;
-        }
+        await agentService.softDeleteAgent(agentId, orgId);
 
-        return res.status(200).json({ success: true, message: "Agent supprimé définitivement." });
+        return res.status(200).json({ success: true, message: "Agent désactivé et conservé dans l'historique." });
     } catch (error) {
         console.error("Erreur deleteAgent:", error);
         return res.status(500).json({ success: false, message: "Erreur serveur lors de la suppression." });

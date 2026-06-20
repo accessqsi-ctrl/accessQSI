@@ -49,11 +49,9 @@ exports.updateAgentStatus = async (userId, isDeleted) => {
     });
 };
 
-exports.hardDeleteAgent = async (userId, orgId) => {
-    return await prisma.userQ.delete({
-        where: { 
-            user_id: userId,
-            org_id: orgId
-        }
+exports.softDeleteAgent = async (userId, orgId) => {
+    return await prisma.userQ.update({
+        where: { user_id: userId },
+        data: { deleted_at: new Date() }
     });
 };
