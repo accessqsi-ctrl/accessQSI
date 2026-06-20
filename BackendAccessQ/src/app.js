@@ -15,7 +15,7 @@ if (trustProxyValue) {
         app.set('trust proxy', trustProxyValue);
     }
 } else {
-    app.set('trust proxy', trustProxyValue);
+    app.set('trust proxy', process.env.NODE_ENV === 'production' ? 3 : false);
 }
 
 
@@ -26,6 +26,7 @@ const { generalLimiter } = require('./middleware/limMiddleware');
 
 const cors = require('cors');
 const helmet = require('helmet');
+const { getAllowedOrigins, isOriginAllowed } = require('./config/security');
 
 
 const isProd = process.env.NODE_ENV === 'production';
@@ -77,15 +78,11 @@ app.use(helmet({
 
 
 // ===== Configurer CORS pour React =====
-const allowedOrigins = [
-    process.env.FRONTEND_URL
-].filter(Boolean);
-console.log(process.env.FRONTEND_URL);
+const allowedOrigins = getAllowedOrigins();
 
 app.use(cors({
     origin: function (origin, callback) {
-        if (!origin) return callback(null, true);
-        if (allowedOrigins.indexOf(origin) === -1) {
+        if (!isOriginAllowed(origin, allowedOrigins)) {
             var msg = 'La politique CORS de ce site n\'autorise pas l\'accès depuis cette origine.';
             return callback(new Error(msg), false);
         }

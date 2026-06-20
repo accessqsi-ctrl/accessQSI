@@ -29,7 +29,8 @@ export default function Dashboard() {
             setTimeout(() => setToast({ show: false, message: "" }), 4000);
             return;
         }
-        await refreshSession();
+        const session = await refreshSession();
+        if (!session.ok) return;
         window.open(`${process.env.NEXT_PUBLIC_API_URL}/export/${format}`, '_blank');
     };
 

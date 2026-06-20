@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { loginLimiter, signinLimiter, generalLimiter } = require('../middleware/limMiddleware');
+const { loginLimiter, signinLimiter, refreshLimiter } = require('../middleware/limMiddleware');
 
 router.use(express.urlencoded({ extended: true }));
 router.use(express.static("public"));
@@ -15,7 +15,7 @@ const adminOnly = roleMiddleware(["ORG_ADMIN", "SUPER_ADMIN"]);
 router.post("/login", loginLimiter, userController.login);
 
 // Refresh access token from HttpOnly refresh token
-router.post("/refresh", userController.refreshSession);
+router.post("/refresh", refreshLimiter, userController.refreshSession);
 
 // SignIn submit
 router.post('/signin', signinLimiter, userController.signin);

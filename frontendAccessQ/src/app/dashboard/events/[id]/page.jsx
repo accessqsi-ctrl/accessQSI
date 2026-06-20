@@ -30,6 +30,11 @@ export default function EventDetailPage() {
     const [loadingAreas, setLoadingAreas] = useState(true);
     const [toast, setToast] = useState({ show: false, message: "" });
 
+    const showToast = (message) => {
+        setToast({ show: true, message });
+        setTimeout(() => setToast({ show: false, message: "" }), 4000);
+    };
+
 
 
     // QR Generation Form
@@ -163,11 +168,11 @@ export default function EventDetailPage() {
             if (data.success) {
                 router.push("/dashboard/events");
             } else {
-                alert(data.message || "Erreur lors de la suppression.");
+                showToast(data.message || "Erreur lors de la suppression.");
                 setShowDeleteConfirm(false);
             }
         } catch {
-            alert("Erreur de connexion au serveur.");
+            showToast("Erreur de connexion au serveur.");
         } finally {
             setIsDeleting(false);
         }
@@ -212,10 +217,10 @@ export default function EventDetailPage() {
             if (data.success) {
                 setQrCodes(qrCodes.map(qr => qr.id === id ? { ...qr, status: 'revoked' } : qr));
             } else {
-                alert(data.message || "Erreur lors de la révocation.");
+                showToast(data.message || "Erreur lors de la révocation.");
             }
         } catch (err) {
-            alert("Erreur de connexion au serveur.");
+            showToast("Erreur de connexion au serveur.");
         } finally {
             setRevokingId(null);
         }
@@ -224,11 +229,11 @@ export default function EventDetailPage() {
     const handleExport = async (format) => {
         const totalScanLogs = qrCodes.reduce((sum, qr) => sum + (qr.scans_count || 0), 0);
         if (totalScanLogs === 0) {
-            setToast({ show: true, message: "Aucune donnée de scan n'est disponible pour cet événement." });
-            setTimeout(() => setToast({ show: false, message: "" }), 4000);
+            showToast("Aucune donnée de scan n'est disponible pour cet événement.");
             return;
         }
-        await refreshSession();
+        const session = await refreshSession();
+        if (!session.ok) return;
         window.open(`${process.env.NEXT_PUBLIC_API_URL}/export/${format}?event_id=${eventId}`, '_blank');
     };
 

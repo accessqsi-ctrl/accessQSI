@@ -24,7 +24,8 @@ const loadUserApp = ({
     mockModule("src/middleware/limMiddleware", {
         generalLimiter: passThroughLimiter,
         loginLimiter: passThroughLimiter,
-        signinLimiter: passThroughLimiter
+        signinLimiter: passThroughLimiter,
+        refreshLimiter: passThroughLimiter
     });
     mockModule("src/services/user.service", userService);
     mockModule("src/services/email.service", {
@@ -157,6 +158,39 @@ test("POST /user/refresh rejects missing refresh token", async () => {
 
     assert.equal(res.status, 401);
     assert.equal(res.body.success, false);
+});
+
+test("POST /user/refresh rejects non-refresh tokens", async () => {
+    let signCalled = false;
+    const app = loadUserApp({
+        jwt: {
+            verify: (token, publicKey, options, callback) => {
+                callback(null, {
+                    user_id: 7,
+                    email: "admin@example.com",
+                    role: "ORG_ADMIN",
+                    org_id: 42,
+                    token_type: "access"
+                });
+            },
+            sign: () => {
+                signCalled = true;
+                return "signed-token";
+            }
+        }
+    });
+
+    const res = await request(
+        app,
+        "POST",
+        "/user/refresh",
+        {},
+        { cookies: { refreshToken: "access-token-used-as-refresh" } }
+    );
+
+    assert.equal(res.status, 403);
+    assert.equal(res.body.success, false);
+    assert.equal(signCalled, false);
 });
 
 test("POST /user/signin creates an organization admin and sends a verification email", async () => {
@@ -368,4 +402,18 @@ test("PUT /user/org allows admins to update their organization", async () => {
     assert.equal(res.body.success, true);
     assert.equal(receivedOrgId, 42);
     assert.deepEqual(receivedData, { name: "New Org" });
+});
+
+test("GET /user/logout clears access and refresh cookies", async () => {
+    const app = loadUserApp();
+
+    const res = await request(app, "GET", "/user/logout");
+    const cookies = Array.isArray(res.headers["set-cookie"])
+        ? res.headers["set-cookie"]
+        : [res.headers["set-cookie"]];
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body.success, true);
+    assert.equal(cookies.some((cookie) => cookie.startsWith("token=")), true);
+    assert.equal(cookies.some((cookie) => cookie.startsWith("refreshToken=")), true);
 });

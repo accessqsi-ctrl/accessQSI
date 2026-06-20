@@ -62,9 +62,10 @@ exports.request = async (app, method, url, body, options = {}) => {
     req.method = method;
     req.url = url;
     req.originalUrl = url;
-    req.headers = body
-        ? { "content-type": "application/json", "content-length": Buffer.byteLength(payload) }
-        : {};
+    req.headers = {
+        ...(body ? { "content-type": "application/json", "content-length": Buffer.byteLength(payload) } : {}),
+        ...(options.headers || {})
+    };
     req.cookies = options.cookies || {};
     req.socket = new PassThrough();
     req.socket.encrypted = false;
@@ -129,6 +130,7 @@ exports.request = async (app, method, url, body, options = {}) => {
 
     return {
         status: res.statusCode,
-        body: parsedBody
+        body: parsedBody,
+        headers
     };
 };

@@ -31,5 +31,12 @@ const signinLimiter = rateLimit({
     legacyHeaders: false,
 });
 
-module.exports = { generalLimiter, loginLimiter, signinLimiter };
+const refreshLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 30,
+    message: { success: false, message: "Trop de tentatives de renouvellement, veuillez réessayer plus tard." },
+    standardHeaders: false,
+    legacyHeaders: false,
+});
 
+module.exports = { generalLimiter, loginLimiter, signinLimiter, refreshLimiter };

@@ -20,8 +20,14 @@ export default function AgentsPage() {
     const [adding, setAdding] = useState(false);
     const [addError, setAddError] = useState("");
     const [addSuccess, setAddSuccess] = useState("");
+    const [actionMessage, setActionMessage] = useState("");
 
     const [togglingId, setTogglingId] = useState(null);
+
+    const showActionMessage = (message) => {
+        setActionMessage(message);
+        setTimeout(() => setActionMessage(""), 4000);
+    };
 
     useEffect(() => {
         fetchAgents();
@@ -77,6 +83,7 @@ export default function AgentsPage() {
 
     const handleToggleStatus = async (agentId) => {
         if (!confirm("Voulez-vous modifier le statut de cet agent ?")) return;
+        setActionMessage("");
         setTogglingId(agentId);
         try {
             const res = await apiFetch(`/agents/${agentId}/toggle`, {
@@ -86,17 +93,18 @@ export default function AgentsPage() {
             if (data.success) {
                 setAgents(agents.map(a => a.id === agentId ? { ...a, status: data.newStatus } : a));
             } else {
-                alert(data.message || "Erreur avec cet agent.");
+                showActionMessage(data.message || "Erreur avec cet agent.");
             }
         } catch (err) {
-            alert("Erreur serveur.");
+            showActionMessage("Erreur serveur.");
         } finally {
             setTogglingId(null);
         }
     };
 
     const handleDeleteAgent = async (agentId) => {
-        if (!confirm("⚠️ Voulez-vous vraiment SUPPRIMER cet agent définitivement ? Cette action est irréversible.")) return;
+        if (!confirm("Voulez-vous vraiment supprimer cet agent définitivement ? Cette action est irréversible.")) return;
+        setActionMessage("");
         setTogglingId(agentId);
         try {
             const res = await apiFetch(`/agents/${agentId}`, {
@@ -106,10 +114,10 @@ export default function AgentsPage() {
             if (data.success) {
                 setAgents(agents.filter(a => a.id !== agentId));
             } else {
-                alert(data.message || "Erreur lors de la suppression.");
+                showActionMessage(data.message || "Erreur lors de la suppression.");
             }
         } catch (err) {
-            alert("Erreur réseau lors de la suppression.");
+            showActionMessage("Erreur réseau lors de la suppression.");
         } finally {
             setTogglingId(null);
         }
@@ -173,6 +181,7 @@ export default function AgentsPage() {
             </div>
 
             {error && <div className="p-4 bg-red-50 text-red-600 rounded-xl">{error}</div>}
+            {actionMessage && <div className="p-4 bg-red-50 text-red-600 rounded-xl">{actionMessage}</div>}
 
             <div className="bg-white dark:bg-slate-950 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
                 <div className="relative w-full md:w-96">

@@ -4,6 +4,7 @@ const crypto = require("crypto");
 const userService = require("../services/user.service");
 const emailService = require("../services/email.service");
 const prisma = require("../prisma/client");
+const { getSessionCookieOptions } = require("../config/security");
 const PasswordValidator = require('password-validator');
 const pm = new PasswordValidator();
 
@@ -48,9 +49,7 @@ const durationToMs = (duration, fallbackMs) => {
 // - Session Hijacking (Vol de session via XSS)
 // - Session Fixation (Forcer l'identifiant de session d'un utilisateur)
 const cookieOptions = {
-    httpOnly: true, // Empêche tout script JavaScript côté client (Cross-Site Scripting - XSS) de lire le cookie.
-    secure: process.env.NODE_ENV === "production", // Autorise l'envoi du cookie UNIQUEMENT sur des connexions HTTPS chiffrées (en prod).
-    sameSite: "strict", // Protection contre la falsification de requête intersite (CSRF). Le cookie ne sera pas envoyé si on clique sur un lien externe.
+    ...getSessionCookieOptions()
 };
 
 const accessCookieOptions = {

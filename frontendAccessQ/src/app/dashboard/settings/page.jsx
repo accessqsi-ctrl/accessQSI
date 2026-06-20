@@ -28,6 +28,7 @@ export default function SettingsPage() {
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [deleteInput, setDeleteInput] = useState("");
     const [deleteLoading, setDeleteLoading] = useState(false);
+    const [deleteStatus, setDeleteStatus] = useState("");
     const requiredDeleteText = "oui, je comprend les consequences de mon action et je valide la suppression";
 
     useEffect(() => {
@@ -36,7 +37,6 @@ export default function SettingsPage() {
 
     const fetchData = async () => {
         try {
-            console.log("Fetching settings data...");
             const [userRes, orgRes] = await Promise.all([
                 apiFetch("/user/profile"),
                 apiFetch("/user/org")
@@ -44,7 +44,6 @@ export default function SettingsPage() {
 
             if (userRes.ok) {
                 const userData = await userRes.json();
-                console.log("User Data received:", userData);
                 if (userData.success && userData.user) {
                     const u = userData.user;
                     setUser(u);
@@ -54,14 +53,11 @@ export default function SettingsPage() {
 
             if (orgRes.ok) {
                 const orgData = await orgRes.json();
-                console.log("Org Data received:", orgData);
                 if (orgData.success && orgData.organization) {
                     const o = orgData.organization;
                     setOrganization(o);
                     setOrgForm({ name: o.name || "" });
                 }
-            } else {
-                console.warn("Organization fetch failed with status:", orgRes.status);
             }
         } catch (err) {
             console.error("Error fetching settings:", err);
@@ -153,6 +149,7 @@ export default function SettingsPage() {
 
     const handleDeleteOrg = async () => {
         setDeleteLoading(true);
+        setDeleteStatus("");
         try {
             const res = await apiFetch("/user/org", {
                 method: "DELETE"
@@ -162,11 +159,11 @@ export default function SettingsPage() {
                 // Redirect to login page upon success
                 window.location.href = "/login";
             } else {
-                alert(data.message || "Erreur lors de la suppression.");
+                setDeleteStatus(data.message || "Erreur lors de la suppression.");
                 setDeleteLoading(false);
             }
         } catch (err) {
-            alert("Erreur réseau.");
+            setDeleteStatus("Erreur réseau.");
             setDeleteLoading(false);
         }
     };
@@ -372,7 +369,10 @@ export default function SettingsPage() {
                                     Cela désactivera immédiatement tous les comptes liés, y compris le vôtre.
                                 </p>
                                 <button
-                                    onClick={() => setShowDeleteModal(true)}
+                                    onClick={() => {
+                                        setDeleteStatus("");
+                                        setShowDeleteModal(true);
+                                    }}
                                     className="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white font-medium rounded-xl shadow-sm transition-all text-sm"
                                 >
                                     Supprimer l'organisation
@@ -403,16 +403,26 @@ export default function SettingsPage() {
                             <input
                                 type="text"
                                 value={deleteInput}
-                                onChange={(e) => setDeleteInput(e.target.value)}
+                                onChange={(e) => {
+                                    setDeleteInput(e.target.value);
+                                    setDeleteStatus("");
+                                }}
                                 placeholder="Tapez la phrase ici..."
                                 className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all text-sm"
                             />
+                            {deleteStatus && (
+                                <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                                    <AlertCircle className="h-4 w-4 shrink-0" />
+                                    {deleteStatus}
+                                </div>
+                            )}
                         </div>
                         <div className="p-4 bg-slate-50 dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3">
                             <button
                                 onClick={() => {
                                     setShowDeleteModal(false);
                                     setDeleteInput("");
+                                    setDeleteStatus("");
                                 }}
                                 disabled={deleteLoading}
                                 className="px-4 py-2 text-slate-600 dark:text-slate-300 hover:bg-slate-200 font-medium rounded-xl transition-all text-sm"

@@ -7,39 +7,59 @@ const buildUrl = (path) => {
     return `${API_URL}${path}`;
 };
 
+const authStatuses = [401, 403];
+
+function redirectToLogin() {
+    if (typeof window === "undefined") return;
+    if (window.location.pathname === "/login") return;
+
+    const next = `${window.location.pathname}${window.location.search}`;
+    window.location.href = `/login?next=${encodeURIComponent(next)}`;
+}
+
 export async function apiFetch(path, options = {}) {
+    const { redirectOnAuthFailure = true, ...fetchOptions } = options;
     const requestOptions = {
-        ...options,
+        ...fetchOptions,
         credentials: "include",
         headers: {
-            ...(options.headers || {})
+            ...(fetchOptions.headers || {})
         }
     };
 
     let response = await fetch(buildUrl(path), requestOptions);
 
-    if (response.status !== 401 && response.status !== 403) {
+    if (!authStatuses.includes(response.status)) {
         return response;
     }
 
-    const refreshResponse = await fetch(buildUrl("/user/refresh"), {
-        method: "POST",
-        credentials: "include"
-    });
+    const refreshResponse = await refreshSession({ redirectOnAuthFailure: false });
 
     if (!refreshResponse.ok) {
+        if (redirectOnAuthFailure) redirectToLogin();
         return response;
     }
 
     response = await fetch(buildUrl(path), requestOptions);
+    if (authStatuses.includes(response.status) && redirectOnAuthFailure) {
+        redirectToLogin();
+    }
+
     return response;
 }
 
-export async function refreshSession() {
-    return fetch(buildUrl("/user/refresh"), {
+export async function refreshSession(options = {}) {
+    const { redirectOnAuthFailure = true } = options;
+    const response = await fetch(buildUrl("/user/refresh"), {
         method: "POST",
         credentials: "include"
     });
+
+    if (!response.ok && redirectOnAuthFailure) {
+        redirectToLogin();
+    }
+
+    return response;
 }
 
 export function apiUrl(path) {

@@ -20,9 +20,6 @@ export default function ScanPage() {
         const script = document.createElement("script");
         script.src = "https://unpkg.com/html5-qrcode";
         script.async = true;
-        script.onload = () => {
-            console.log("Scanner library loaded");
-        };
         document.body.appendChild(script);
 
         return () => {
