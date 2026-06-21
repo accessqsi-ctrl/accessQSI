@@ -113,7 +113,7 @@ export default function Login() {
                                 name="email"
                                 value={formData.email}
                                 onChange={handleChange}
-                                placeholder="lionel@example.com"
+                                placeholder="john@example.com"
                                 required
                                 className="w-full px-4 py-3 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none placeholder:text-slate-400 text-sm text-slate-800 dark:text-slate-100"
                             />

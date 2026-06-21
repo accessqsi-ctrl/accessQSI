@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Loader2, Calendar, MapPin, QrCode, Edit2, Trash2, ArrowLeft, Plus, Download, X, CheckCircle2 } from "lucide-react";
+import { Loader2, Calendar, MapPin, QrCode, Edit2, Trash2, ArrowLeft, Plus, Download, X, CheckCircle2, FileSpreadsheet } from "lucide-react";
 import { apiFetch, refreshSession } from "../../../lib/api";
 
 export default function EventDetailPage() {
@@ -227,14 +227,26 @@ export default function EventDetailPage() {
     };
 
     const handleExport = async (format) => {
-        const totalScanLogs = qrCodes.reduce((sum, qr) => sum + (qr.scans_count || 0), 0);
-        if (totalScanLogs === 0) {
+        if (format !== "csv") {
+            const totalScanLogs = qrCodes.reduce((sum, qr) => sum + (qr.scans_count || 0), 0);
+            if (totalScanLogs === 0) {
+                showToast("Aucune donnée de scan n'est disponible pour cet événement.");
+                return;
+            }
+        }
+        if (format === "csv" && qrCodes.length === 0) {
             showToast("Aucune donnée de scan n'est disponible pour cet événement.");
             return;
         }
         const session = await refreshSession();
         if (!session.ok) return;
         window.open(`${process.env.NEXT_PUBLIC_API_URL}/export/${format}?event_id=${eventId}`, '_blank');
+    };
+
+    const handleDownloadTemplate = async () => {
+        const session = await refreshSession();
+        if (!session.ok) return;
+        window.open(`${process.env.NEXT_PUBLIC_API_URL}/qr/template/${eventId}`, '_blank');
     };
 
 
@@ -402,6 +414,13 @@ export default function EventDetailPage() {
                             title="Exporter en CSV"
                         >
                             <Download className="w-5 h-5" />
+                        </button>
+                        <button
+                            onClick={handleDownloadTemplate}
+                            className="inline-flex items-center justify-center p-2.5 bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 text-slate-700 dark:text-slate-200 rounded-xl transition-all border border-slate-200 dark:border-slate-800"
+                            title="Télécharger le modèle d'import CSV"
+                        >
+                            <FileSpreadsheet className="w-5 h-5" />
                         </button>
                         <button
                             onClick={() => handleExport('pdf')}
@@ -905,13 +924,13 @@ export default function EventDetailPage() {
                                     <li>Les colonnes obligatoires sont : <code className="bg-slate-200 dark:bg-slate-700 px-1 rounded">fullName</code>.</li>
                                     <li>Les types d'accès valides : <code className="bg-slate-200 dark:bg-slate-700 px-1 rounded">single</code>, <code className="bg-slate-200 dark:bg-slate-700 px-1 rounded">multi</code>, <code className="bg-slate-200 dark:bg-slate-700 px-1 rounded">unlimited</code>.</li>
                                 </ul>
-                                <a
-                                    href={`${process.env.NEXT_PUBLIC_API_URL}/templates/qr_template.csv`}
-                                    download
+                                <button
+                                    type="button"
+                                    onClick={handleDownloadTemplate}
                                     className="mt-3 inline-flex items-center gap-1.5 text-blue-600 hover:text-blue-700 font-bold text-xs"
                                 >
-                                    <Download className="w-3 h-3" /> Télécharger le modèle CSV
-                                </a>
+                                    <FileSpreadsheet className="w-3 h-3" /> Télécharger le modèle CSV
+                                </button>
                             </div>
 
                             <button

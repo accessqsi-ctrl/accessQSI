@@ -78,6 +78,21 @@ export default function ScanPage() {
         // Silent failure for continuous scanning
     };
 
+    const getScanLocation = () => {
+        if (!navigator.geolocation) return Promise.resolve(null);
+
+        return new Promise((resolve) => {
+            navigator.geolocation.getCurrentPosition(
+                (position) => resolve({
+                    latitude: position.coords.latitude,
+                    longitude: position.coords.longitude
+                }),
+                () => resolve(null),
+                { enableHighAccuracy: false, timeout: 2500, maximumAge: 60000 }
+            );
+        });
+    };
+
     const verifyToken = async (token) => {
         setLoading(true);
         try {
@@ -89,10 +104,13 @@ export default function ScanPage() {
                 qrToken = token;
             }
 
+            const location = await getScanLocation();
+            const payload = location ? { token: qrToken, location } : { token: qrToken };
+
             const res = await apiFetch("/qr/verify", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ token: qrToken })
+                body: JSON.stringify(payload)
             });
             const data = await res.json();
             
