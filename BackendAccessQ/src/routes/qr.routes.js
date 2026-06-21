@@ -24,6 +24,9 @@ router.post("/verify", qrVerifyController.verifyScan);
 // Récupération de tous les QR codes 
 router.get("/qrs", qrController.getAllQrs);
 
+// Télécharger le modèle CSV pour importer des QR codes
+router.get("/template/:event_id", qrController.downloadQrImportTemplate);
+
 // Récupération des QR codes d'un événement spécifique
 router.get("/event/:event_id", qrController.getQrsByEvent);
 

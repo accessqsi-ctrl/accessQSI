@@ -1,4 +1,1 @@
 fullName,email,phone,accessType,limit,validFrom,validUntil,level
-John Doe,john@example.com,+33612345678,multi,5,2026-04-01T08:00,2026-04-01T20:00,1
-Jane Smith,jane@example.com,,single,1,,,2
-Guest User,,,unlimited,999999,,,1

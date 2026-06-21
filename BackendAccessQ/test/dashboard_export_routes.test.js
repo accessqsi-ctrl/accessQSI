@@ -119,19 +119,37 @@ test("GET /export/csv exports scans scoped by organization and optional event", 
     const app = loadExportApp({
         user: { user_id: 7, role: "ORG_ADMIN", org_id: 42 },
         prisma: {
-            scanLog: {
+            qrCode: {
                 findMany: async ({ where }) => {
                     whereClause = where;
                     return [{
-                        scanned_at: new Date("2026-01-01T10:00:00Z"),
+                        qr_id: 9,
+                        unique_token: "token-1",
+                        holder_name: "Jane",
+                        holder_email: "jane@example.com",
+                        holder_phone: "+243000000",
+                        scans_count: 1,
+                        usage_limit: 2,
                         status: "authorized",
-                        qr_code: {
-                            unique_token: "token-1",
-                            holder_name: "Jane",
-                            holder_email: "jane@example.com",
-                            event: { title: "Concert" }
-                        },
-                        scanned_by: { full_name: "Alice" }
+                        event: { title: "Concert" },
+                        scan_logs: [{
+                            scanned_at: new Date("2026-01-01T10:00:00Z"),
+                            status: "authorized",
+                            location_lat: "-11.664",
+                            location_long: "27.479",
+                            scanned_by: { full_name: "Alice" }
+                        }]
+                    }, {
+                        qr_id: 10,
+                        unique_token: "token-2",
+                        holder_name: "Bob",
+                        holder_email: null,
+                        holder_phone: null,
+                        scans_count: 0,
+                        usage_limit: 1,
+                        status: "active",
+                        event: { title: "Concert" },
+                        scan_logs: []
                     }];
                 }
             }
@@ -147,10 +165,16 @@ test("GET /export/csv exports scans scoped by organization and optional event", 
     const res = await request(app, "GET", "/export/csv?event_id=5");
 
     assert.equal(res.status, 200);
-    assert.equal(whereClause.qr_code.event.org_id, 42);
-    assert.equal(whereClause.qr_code.event_id, 5);
+    assert.equal(whereClause.event.org_id, 42);
+    assert.equal(whereClause.event_id, 5);
+    assert.equal(recordsWritten.length, 2);
     assert.equal(recordsWritten[0].token, "token-1");
-    assert.equal(recordsWritten[0].status, "AUTORISÉ");
+    assert.equal(recordsWritten[0].scansCount, 1);
+    assert.equal(recordsWritten[0].result, "AUTORISÉ");
+    assert.equal(recordsWritten[0].agent, "Alice");
+    assert.equal(recordsWritten[0].latitude, "-11.664");
+    assert.equal(recordsWritten[1].token, "token-2");
+    assert.equal(recordsWritten[1].result, "AUCUN SCAN");
     assert.equal(res.body.downloaded, true);
     assert.equal(res.body.filename, "scans_history.csv");
 });

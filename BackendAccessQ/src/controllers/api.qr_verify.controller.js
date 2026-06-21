@@ -4,7 +4,7 @@ const logger = require("../utils/logger");
 
 exports.verifyScan = async (req, res) => {
     try {
-        const { token } = req.body;
+        const { token, location } = req.body;
         const scannerId = req.user.user_id;
         const scannerOrgId = req.user.org_id;
 
@@ -30,8 +30,14 @@ exports.verifyScan = async (req, res) => {
             });
         }
 
+        const scanLocation = {};
+        if (location && Number.isFinite(Number(location.latitude)) && Number.isFinite(Number(location.longitude))) {
+            scanLocation.latitude = Number(location.latitude);
+            scanLocation.longitude = Number(location.longitude);
+        }
+
         // 3. Enregistrer le scan
-        await qrVerifyService.recordScan(qr.qr_id, scannerId, decision.scanStatus);
+        await qrVerifyService.recordScan(qr.qr_id, scannerId, decision.scanStatus, scanLocation);
 
         // 4. Répondre
         if (decision.success) {

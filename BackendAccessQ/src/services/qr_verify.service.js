@@ -11,15 +11,22 @@ exports.getQrByToken = async (token) => {
     });
 };
 
-exports.recordScan = async (qrId, scannerId, status) => {
+exports.recordScan = async (qrId, scannerId, status, location = {}) => {
     return await prisma.$transaction(async (tx) => {
+        const scanData = {
+            qr_code_id: qrId,
+            scanned_by_id: scannerId,
+            status: status
+        };
+
+        if (location.latitude !== undefined && location.longitude !== undefined) {
+            scanData.location_lat = location.latitude;
+            scanData.location_long = location.longitude;
+        }
+
         // 1. Créer le journal de scan
         const scan = await tx.scanLog.create({
-            data: {
-                qr_code_id: qrId,
-                scanned_by_id: scannerId,
-                status: status
-            }
+            data: scanData
         });
 
         // 2. Si autorisé, incrémenter le compteur de scans

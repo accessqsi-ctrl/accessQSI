@@ -192,6 +192,41 @@ exports.revokeQr = async (req, res) => {
     }
 };
 
+exports.downloadQrImportTemplate = async (req, res) => {
+    try {
+        if (!req.user || !req.user.org_id) {
+            return res.status(401).json({ success: false, message: "Non autorisé" });
+        }
+
+        const orgId = req.user.org_id;
+        const eventId = Number(req.params.event_id);
+
+        const event = await eventService.findById(orgId, eventId);
+        if (!event) {
+            return res.status(404).json({ success: false, message: "Événement non trouvé" });
+        }
+
+        const headers = [
+            "fullName",
+            "email",
+            "phone",
+            "accessType",
+            "limit",
+            "validFrom",
+            "validUntil",
+            "level"
+        ];
+
+        const filename = `modele_import_qr_evenement_${eventId}.csv`;
+        res.setHeader("Content-Type", "text/csv; charset=utf-8");
+        res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+        return res.status(200).send(`${headers.join(",")}\n`);
+    } catch (error) {
+        console.error("Erreur lors du téléchargement du modèle CSV :", error);
+        return res.status(500).json({ success: false, message: "Erreur lors du téléchargement du modèle" });
+    }
+};
+
 exports.importQrsFromCSV = async (req, res) => {
     try {
         if (!req.user || !req.user.org_id) {

@@ -12,6 +12,7 @@ const noopQrController = {
     getAllQrs: (req, res) => res.json({ success: true, qrs: [] }),
     getQrsByEvent: (req, res) => res.json({ success: true, qrs: [] }),
     generateQrForEvent: (req, res) => res.status(201).json({ success: true }),
+    downloadQrImportTemplate: (req, res) => res.send("fullName,email,phone,accessType,limit,validFrom,validUntil,level\n"),
     importQrsFromCSV: (req, res) => res.status(201).json({ success: true }),
     revokeQr: (req, res) => res.json({ success: true })
 };
@@ -67,8 +68,8 @@ test("POST /qr/verify authorizes a valid QR and records the scan", async () => {
                 calls.push(["getQrByToken", token]);
                 return validQr();
             },
-            recordScan: async (qrId, scannerId, status) => {
-                calls.push(["recordScan", qrId, scannerId, status]);
+            recordScan: async (qrId, scannerId, status, location) => {
+                calls.push(["recordScan", qrId, scannerId, status, location]);
             },
             updateQrStatus: async () => {
                 calls.push(["updateQrStatus"]);
@@ -76,14 +77,17 @@ test("POST /qr/verify authorizes a valid QR and records the scan", async () => {
         }
     });
 
-    const res = await request(app, "POST", "/qr/verify", { token: "token-1" });
+    const res = await request(app, "POST", "/qr/verify", {
+        token: "token-1",
+        location: { latitude: -11.664, longitude: 27.479 }
+    });
 
     assert.equal(res.status, 200);
     assert.equal(res.body.success, true);
     assert.equal(res.body.holder.name, "Jane");
     assert.deepEqual(calls, [
         ["getQrByToken", "token-1"],
-        ["recordScan", 1, 7, "authorized"]
+        ["recordScan", 1, 7, "authorized", { latitude: -11.664, longitude: 27.479 }]
     ]);
 });
 

@@ -155,10 +155,10 @@ export default function Home() {
 
       <main className="flex-1 relative flex flex-col items-center justify-center p-6 lg:p-16 text-center">
         <div className="relative z-10 max-w-4xl mx-auto space-y-8 mt-12 mb-20">
-          <h1 className="text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-[1.1]">
+          <h1 className="text-4xl md:text-4xl lg:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-[1.1]">
             Gérez vos accès avec sécurité et simplicité pour votre{" "}
             <span className="bg-gradient-to-r from-blue-600 via-emerald-500 to-emerald-400 bg-clip-text text-transparent relative inline-block">
-              organisation
+              organisation ou evenement 
             </span>
           </h1>
 

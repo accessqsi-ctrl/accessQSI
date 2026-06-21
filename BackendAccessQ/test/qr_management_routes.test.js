@@ -153,3 +153,25 @@ test("POST /qr/import/:event_id rejects requests without a CSV file", async () =
     assert.equal(res.status, 400);
     assert.equal(res.body.success, false);
 });
+
+test("GET /qr/template/:event_id downloads a CSV import template for an event in the user's organization", async () => {
+    let eventLookup = null;
+    const app = loadQrManagementApp({
+        user: { user_id: 7, role: "ORG_ADMIN", org_id: 42 },
+        eventService: {
+            findById: async (orgId, eventId) => {
+                eventLookup = { orgId, eventId };
+                return { event_id: eventId, title: "Concert" };
+            }
+        },
+        qrService: {}
+    });
+
+    const res = await request(app, "GET", "/qr/template/5");
+
+    assert.equal(res.status, 200);
+    assert.deepEqual(eventLookup, { orgId: 42, eventId: 5 });
+    assert.match(res.headers["content-type"], /text\/csv/);
+    assert.equal(res.headers["content-disposition"], 'attachment; filename="modele_import_qr_evenement_5.csv"');
+    assert.equal(res.body, "fullName,email,phone,accessType,limit,validFrom,validUntil,level\n");
+});
