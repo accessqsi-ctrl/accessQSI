@@ -22,6 +22,10 @@ const passwordPolicyMessage = "Le mot de passe doit contenir entre 8 et 100 cara
 
 const ACCESS_TOKEN_EXPIRES_IN = process.env.ACCESS_TOKEN_EXPIRES_IN || "15m";
 const REFRESH_TOKEN_EXPIRES_IN = process.env.REFRESH_TOKEN_EXPIRES_IN || "7d";
+const parsedSaltRounds = Number.parseInt(process.env.SALT_ROUNDS, 10);
+const BCRYPT_SALT_ROUNDS = Number.isInteger(parsedSaltRounds) && parsedSaltRounds >= 4 && parsedSaltRounds <= 31
+    ? parsedSaltRounds
+    : 10;
 
 const durationToMs = (duration, fallbackMs) => {
     if (!duration || typeof duration !== "string") return fallbackMs;
@@ -213,7 +217,7 @@ exports.signin = async (req, res) => {
         let user = await userService.findByEmail(email);
 
         if (!user) {
-            const hashed = await bcrypt.hash(password.trim(), process.env.SALT_ROUNDS);
+            const hashed = await bcrypt.hash(password.trim(), BCRYPT_SALT_ROUNDS);
             const clef = crypto.randomUUID(); // Génération d'une clef unique
 
             // --- NOUVEAU: GÉNÉRATION DU TOKEN DE VÉRIFICATION ---
@@ -386,7 +390,7 @@ exports.updatePassword = async (req, res) => {
             return res.status(400).json({ success: false, message: passwordPolicyMessage });
         }
 
-        const hashed = await bcrypt.hash(newPassword.trim(), process.env.SALT_ROUNDS);
+        const hashed = await bcrypt.hash(newPassword.trim(), BCRYPT_SALT_ROUNDS);
         await userService.updateUser(userId, { password_hash: hashed });
 
         return res.status(200).json({ success: true, message: "Mot de passe modifié avec succès." });

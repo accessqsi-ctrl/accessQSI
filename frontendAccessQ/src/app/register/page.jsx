@@ -8,7 +8,6 @@ export default function Register() {
         fullName: "",
         email: "",
         organizationName: "",
-        confirmOrganizationName: "",
         password: "",
         confirmPassword: "",
     });
@@ -48,11 +47,6 @@ export default function Register() {
 
         if (formData.password !== formData.confirmPassword) {
             setError("Les mots de passe ne correspondent pas.");
-            return;
-        }
-
-        if (hasOrganization && formData.organizationName.trim() !== formData.confirmOrganizationName.trim()) {
-            setError("Les noms d'organisation ne correspondent pas.");
             return;
         }
 
@@ -180,37 +174,21 @@ export default function Register() {
                             />
                         </div>
 
-                        {/* Organization Group - Side by Side */}
+                        {/* Organization */}
                         {hasOrganization && (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div className="space-y-1.5">
-                                    <label className="text-sm font-semibold text-slate-700 dark:text-slate-200 block mb-1">
-                                        Nom de l'organisation
-                                    </label>
-                                    <input
-                                        type="text"
-                                        name="organizationName"
-                                        value={formData.organizationName}
-                                        onChange={handleChange}
-                                        placeholder="Acme Corp"
-                                        required
-                                        className="w-full px-4 py-3 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none placeholder:text-slate-400 text-sm text-slate-800 dark:text-slate-100"
-                                    />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-sm font-semibold text-slate-700 dark:text-slate-200 block mb-1">
-                                        Confirmer le nom
-                                    </label>
-                                    <input
-                                        type="text"
-                                        name="confirmOrganizationName"
-                                        value={formData.confirmOrganizationName}
-                                        onChange={handleChange}
-                                        placeholder="Acme Corp"
-                                        required
-                                        className="w-full px-4 py-3 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none placeholder:text-slate-400 text-sm text-slate-800 dark:text-slate-100"
-                                    />
-                                </div>
+                            <div className="space-y-1.5">
+                                <label className="text-sm font-semibold text-slate-700 dark:text-slate-200 block mb-1">
+                                    Nom de l'organisation
+                                </label>
+                                <input
+                                    type="text"
+                                    name="organizationName"
+                                    value={formData.organizationName}
+                                    onChange={handleChange}
+                                    placeholder="Acme Corp"
+                                    required
+                                    className="w-full px-4 py-3 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none placeholder:text-slate-400 text-sm text-slate-800 dark:text-slate-100"
+                                />
                             </div>
                         )}
 
