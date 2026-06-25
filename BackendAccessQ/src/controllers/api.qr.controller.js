@@ -5,6 +5,7 @@ const crypto = require("crypto");
 const csv = require("csv-parser");
 const eventService = require('../services/event.service');
 const qrService = require('../services/qr.service');
+const cardTemplateService = require('../services/card_template.service');
 
 // Générer un QR Code
 exports.generateQrForEvent = async (req, res) => {
@@ -15,10 +16,14 @@ exports.generateQrForEvent = async (req, res) => {
 
         const orgId = req.user.org_id;
         const eventId = Number(req.params.event_id);
-        const { fullName, email, phone, accessType, limit, validFrom, validUntil, level } = req.body;
+        const { fullName, email, phone, accessType, limit, validFrom, validUntil, level, cardTemplateId } = req.body;
 
         if (!fullName || !accessType) {
             return res.status(400).json({ success: false, message: "Nom complet et Type d'accès requis" });
+        }
+
+        if (cardTemplateId && !cardTemplateService.hasTemplate(cardTemplateId)) {
+            return res.status(400).json({ success: false, message: "Modèle de carte invalide." });
         }
 
         // Vérifier que l'événement appartient à l'organisation de l'utilisateur
@@ -70,11 +75,22 @@ exports.generateQrForEvent = async (req, res) => {
         });
 
         const qrUrl = `/qrcodes/${qrFilename}`;
+        let cardUrl = null;
+
+        if (cardTemplateId) {
+            cardUrl = await cardTemplateService.generateCardForQr({
+                templateId: cardTemplateId,
+                event,
+                qrRecord,
+                qrUrl
+            });
+        }
 
         return res.status(201).json({
             success: true,
             message: 'QR Code généré et sauvegardé avec succès',
             qrUrl: qrUrl,
+            cardUrl,
             qrCode: qrRecord,
             event: { id: event.event_id, title: event.title }
         });
@@ -109,6 +125,7 @@ exports.getAllQrs = async (req, res) => {
                 status: state,
                 scans: `${qr.scans_count} / ${qr.usage_limit > 9999 ? '∞' : qr.usage_limit}`,
                 token: qr.unique_token,
+                cardUrl: cardTemplateService.cardExistsForToken(qr.unique_token) ? cardTemplateService.cardUrlForToken(qr.unique_token) : null,
                 createdAt: new Date(qr.valid_from || new Date()).toLocaleDateString() // Using valid_from roughly as creation or start
             };
         });
@@ -151,6 +168,7 @@ exports.getQrsByEvent = async (req, res) => {
                 scans_count: qr.scans_count,
                 usage_limit: qr.usage_limit,
                 token: qr.unique_token,
+                cardUrl: cardTemplateService.cardExistsForToken(qr.unique_token) ? cardTemplateService.cardUrlForToken(qr.unique_token) : null,
                 createdAt: new Date(qr.valid_from || new Date()).toLocaleDateString()
             };
         });

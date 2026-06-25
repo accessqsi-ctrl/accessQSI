@@ -1,40 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { BadgeCheck, Calendar, Crown, IdCard, Mail, QrCode, Ticket } from "lucide-react";
+import { CARD_TEMPLATE_STORAGE_KEY, cardTemplates } from "../../lib/cardTemplates";
 
-const templates = [
-    {
-        id: "event-ticket",
-        name: "Billet événement",
-        category: "Billetterie",
-        format: "1600 x 600 px",
-        accent: "blue",
-        icon: Ticket,
-        description: "Support horizontal pour concerts, conférences et accès VIP.",
-        fields: ["Nom", "Événement", "Date", "Zone", "QR"]
-    },
-    {
-        id: "staff-card",
-        name: "Carte du personnel",
-        category: "Organisation",
-        format: "900 x 1400 px",
-        accent: "emerald",
-        icon: IdCard,
-        description: "Badge vertical avec identité, rôle et niveau d'accréditation.",
-        fields: ["Nom", "Rôle", "Organisation", "Niveau", "QR"]
-    },
-    {
-        id: "wedding-invite",
-        name: "Invitation de mariage",
-        category: "Cérémonie",
-        format: "1200 x 1800 px",
-        accent: "rose",
-        icon: Mail,
-        description: "Invitation élégante avec QR de validation à l'entrée.",
-        fields: ["Invité", "Couple", "Date", "Lieu", "QR"]
-    }
-];
+const templateIcons = {
+    "event-ticket": Ticket,
+    "staff-card": IdCard,
+    "wedding-invite": Mail
+};
 
 const accentStyles = {
     blue: {
@@ -97,13 +71,28 @@ function TemplatePreview({ template }) {
 }
 
 export default function CardTemplatesPage() {
-    const [selectedId, setSelectedId] = useState(templates[0].id);
+    const [selectedId, setSelectedId] = useState(cardTemplates[0].id);
+    const [savedTemplateId, setSavedTemplateId] = useState("");
     const selectedTemplate = useMemo(
-        () => templates.find(template => template.id === selectedId) || templates[0],
+        () => cardTemplates.find(template => template.id === selectedId) || cardTemplates[0],
         [selectedId]
     );
-    const SelectedIcon = selectedTemplate.icon;
+    const SelectedIcon = templateIcons[selectedTemplate.id] || Ticket;
     const selectedStyles = accentStyles[selectedTemplate.accent];
+
+    useEffect(() => {
+        setSavedTemplateId(window.localStorage.getItem(CARD_TEMPLATE_STORAGE_KEY) || "");
+    }, []);
+
+    const handleEnableTemplate = () => {
+        window.localStorage.setItem(CARD_TEMPLATE_STORAGE_KEY, selectedTemplate.id);
+        setSavedTemplateId(selectedTemplate.id);
+    };
+
+    const handleDisableTemplate = () => {
+        window.localStorage.removeItem(CARD_TEMPLATE_STORAGE_KEY);
+        setSavedTemplateId("");
+    };
 
     return (
         <div className="mx-auto max-w-7xl space-y-6">
@@ -125,8 +114,8 @@ export default function CardTemplatesPage() {
 
             <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
                 <section className="grid gap-4 md:grid-cols-3">
-                    {templates.map((template) => {
-                        const Icon = template.icon;
+                    {cardTemplates.map((template) => {
+                        const Icon = templateIcons[template.id] || Ticket;
                         const styles = accentStyles[template.accent];
                         const isSelected = template.id === selectedId;
 
@@ -192,10 +181,22 @@ export default function CardTemplatesPage() {
 
                         <button
                             type="button"
-                            disabled
-                            className="w-full rounded-xl bg-slate-200 px-4 py-3 text-sm font-semibold text-slate-500 dark:bg-slate-800 dark:text-slate-400"
+                            onClick={handleEnableTemplate}
+                            className={`w-full rounded-xl px-4 py-3 text-sm font-semibold text-white transition-colors ${selectedStyles.solid}`}
                         >
-                            Sélection indisponible pendant les tests
+                            Activer ce modèle pour mes tests
+                        </button>
+                        {savedTemplateId === selectedTemplate.id && (
+                            <p className="text-center text-xs font-medium text-emerald-600">
+                                Ce modèle sera proposé dans la génération QR.
+                            </p>
+                        )}
+                        <button
+                            type="button"
+                            onClick={handleDisableTemplate}
+                            className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-900"
+                        >
+                            Désactiver l'option de test
                         </button>
                     </div>
                 </aside>

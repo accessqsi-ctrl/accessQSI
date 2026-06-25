@@ -9,11 +9,18 @@ const {
     request
 } = require("./helpers/http");
 
-const loadQrManagementApp = ({ user, eventService, qrService, qrcode = {} }) => {
+const loadQrManagementApp = ({ user, eventService, qrService, qrcode = {}, cardTemplateService = {} }) => {
     clearSrcModules();
     mockModule("src/middleware/authMiddleware", authAs(user));
     mockModule("src/services/event.service", eventService);
     mockModule("src/services/qr.service", qrService);
+    mockModule("src/services/card_template.service", {
+        hasTemplate: () => false,
+        cardExistsForToken: () => false,
+        cardUrlForToken: (token) => `/cards/card_${token}.svg`,
+        generateCardForQr: async () => null,
+        ...cardTemplateService
+    });
     mockModule("src/controllers/api.qr_verify.controller", {
         verifyScan: (req, res) => res.json({ success: true })
     });
@@ -93,6 +100,67 @@ test("POST /qr/generate/:event_id creates QR data for an event in the user's org
     assert.match(res.body.qrUrl, /^\/qrcodes\/qr_.+\.png$/);
     assert.match(qrFileArgs[0], /qr_.+\.png$/);
     assert.equal(JSON.parse(qrFileArgs[1]).e, 5);
+});
+
+test("POST /qr/generate/:event_id rejects unknown card templates", async () => {
+    let createCalled = false;
+    const app = loadQrManagementApp({
+        user: { user_id: 7, role: "ORG_ADMIN", org_id: 42 },
+        eventService: {
+            findById: async () => ({ event_id: 5, title: "Concert" })
+        },
+        qrService: {
+            createQr: async () => {
+                createCalled = true;
+            }
+        },
+        cardTemplateService: {
+            hasTemplate: () => false
+        }
+    });
+
+    const res = await request(app, "POST", "/qr/generate/5", {
+        fullName: "Jane Holder",
+        accessType: "single",
+        cardTemplateId: "unknown-template"
+    });
+
+    assert.equal(res.status, 400);
+    assert.equal(res.body.success, false);
+    assert.equal(createCalled, false);
+});
+
+test("POST /qr/generate/:event_id can generate a card from a selected template", async () => {
+    let cardArgs = null;
+    const app = loadQrManagementApp({
+        user: { user_id: 7, role: "ORG_ADMIN", org_id: 42 },
+        eventService: {
+            findById: async (orgId, eventId) => ({ event_id: eventId, title: "Concert" })
+        },
+        qrService: {
+            createQr: async (data) => ({ qr_id: 9, ...data })
+        },
+        cardTemplateService: {
+            hasTemplate: (templateId) => templateId === "event-ticket",
+            generateCardForQr: async (args) => {
+                cardArgs = args;
+                return "/cards/card-token.svg";
+            }
+        }
+    });
+
+    const res = await request(app, "POST", "/qr/generate/5", {
+        fullName: "Jane Holder",
+        accessType: "single",
+        cardTemplateId: "event-ticket"
+    });
+
+    assert.equal(res.status, 201);
+    assert.equal(res.body.success, true);
+    assert.equal(res.body.cardUrl, "/cards/card-token.svg");
+    assert.equal(cardArgs.templateId, "event-ticket");
+    assert.equal(cardArgs.qrRecord.holder_name, "Jane Holder");
+    assert.match(cardArgs.qrUrl, /^\/qrcodes\/qr_.+\.png$/);
 });
 
 test("PUT /qr/revoke/:id refuses QR codes outside the user's organization", async () => {

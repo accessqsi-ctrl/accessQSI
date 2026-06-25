@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Loader2, Calendar, MapPin, QrCode, Edit2, Trash2, ArrowLeft, Plus, Download, X, CheckCircle2, FileSpreadsheet, Mail, Phone } from "lucide-react";
 import { apiFetch, refreshSession } from "../../../lib/api";
+import { CARD_TEMPLATE_STORAGE_KEY, cardTemplates } from "../../../lib/cardTemplates";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -45,6 +46,11 @@ const validateQrContact = ({ email, phone }) => {
     }
 
     return errors;
+};
+
+const getSavedCardTemplateId = () => {
+    const savedTemplateId = window.localStorage.getItem(CARD_TEMPLATE_STORAGE_KEY) || "";
+    return cardTemplates.some(template => template.id === savedTemplateId) ? savedTemplateId : "";
 };
 
 export default function EventDetailPage() {
@@ -103,6 +109,8 @@ export default function EventDetailPage() {
     const [selectedQr, setSelectedQr] = useState(null);
     const [qrToRevoke, setQrToRevoke] = useState(null);
     const [revokingId, setRevokingId] = useState(null);
+    const [activeCardTemplateId, setActiveCardTemplateId] = useState("");
+    const [cardTemplateId, setCardTemplateId] = useState("");
 
     const fetchAreas = useCallback(async () => {
         try {
@@ -161,6 +169,28 @@ export default function EventDetailPage() {
             fetchAreas();
         }
     }, [eventId, fetchAll, fetchAreas]);
+
+    useEffect(() => {
+        const savedTemplateId = getSavedCardTemplateId();
+        setActiveCardTemplateId(savedTemplateId);
+        setCardTemplateId(savedTemplateId);
+    }, []);
+
+    const openQrGenerationModal = () => {
+        const savedTemplateId = getSavedCardTemplateId();
+        setActiveCardTemplateId(savedTemplateId);
+        setCardTemplateId(savedTemplateId);
+        setShowQrModal(true);
+        setQrError("");
+        if (event && event.EventSchedules && event.EventSchedules.length > 0) {
+            const schedules = event.EventSchedules;
+            setQrForm(prev => ({
+                ...prev,
+                validFrom: new Date(schedules[0].start_date).toISOString().slice(0, 16),
+                validUntil: new Date(schedules[schedules.length - 1].end_date).toISOString().slice(0, 16)
+            }));
+        }
+    };
 
     const handleAreaChange = (areaId) => {
         setEditForm(prev => {
@@ -243,7 +273,8 @@ export default function EventDetailPage() {
         const payload = {
             ...qrForm,
             email: qrForm.email.trim().toLowerCase(),
-            phone: normalizePhone(qrForm.phone)
+            phone: normalizePhone(qrForm.phone),
+            ...(cardTemplateId ? { cardTemplateId } : {})
         };
         try {
             const res = await apiFetch(`/qr/generate/${eventId}`, {
@@ -257,6 +288,9 @@ export default function EventDetailPage() {
                 setQrForm({ ...qrForm, fullName: "", email: "", phone: "", level: "1" });
                 setQrContactTouched({ email: false, phone: false });
                 setQrSubmitAttempted(false);
+                if (data.cardUrl) {
+                    showToast("QR Code généré avec une carte prête à télécharger.");
+                }
                 // Refresh QR list
                 const qrRes = await apiFetch(`/qr/event/${eventId}`);
                 const qrData = await qrRes.json();
@@ -515,19 +549,7 @@ export default function EventDetailPage() {
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
                         </button>
                         <button
-                            onClick={() => {
-                                setShowQrModal(true);
-                                setSuccessData(null);
-                                setQrError("");
-                                if (event && event.EventSchedules && event.EventSchedules.length > 0) {
-                                    const schedules = event.EventSchedules;
-                                    setQrForm(prev => ({
-                                        ...prev,
-                                        validFrom: new Date(schedules[0].start_date).toISOString().slice(0, 16),
-                                        validUntil: new Date(schedules[schedules.length - 1].end_date).toISOString().slice(0, 16)
-                                    }));
-                                }
-                            }}
+                            onClick={openQrGenerationModal}
                             className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl shadow-sm hover:shadow active:scale-95 transition-all text-sm"
                         >
                             <Plus className="w-5 h-5" /> Générer un QR
@@ -596,19 +618,7 @@ export default function EventDetailPage() {
                                         <h3 className="text-base font-semibold text-slate-900 dark:text-white">Aucun QR code</h3>
                                         <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">{qrCodes.length === 0 ? "Générez votre premier code QR pour cet événement." : "Aucun QR Code trouvé pour ces critères."}</p>
                                         <button
-                                            onClick={() => {
-                                                setShowQrModal(true);
-                                                setSuccessData(null);
-                                                setQrError("");
-                                                if (event && event.EventSchedules && event.EventSchedules.length > 0) {
-                                                    const schedules = event.EventSchedules;
-                                                    setQrForm(prev => ({
-                                                        ...prev,
-                                                        validFrom: new Date(schedules[0].start_date).toISOString().slice(0, 16),
-                                                        validUntil: new Date(schedules[schedules.length - 1].end_date).toISOString().slice(0, 16)
-                                                    }));
-                                                }
-                                            }}
+                                            onClick={openQrGenerationModal}
                                             className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors"
                                         >
                                             <Plus className="w-4 h-4" /> Générer un QR
@@ -651,6 +661,17 @@ export default function EventDetailPage() {
                                                 >
                                                     <Download className="w-5 h-5" />
                                                 </a>
+                                                {qr.cardUrl ? (
+                                                    <a
+                                                        href={`${process.env.NEXT_PUBLIC_API_URL}${qr.cardUrl}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors inline-block"
+                                                        title="Télécharger la carte"
+                                                    >
+                                                        <FileSpreadsheet className="w-5 h-5" />
+                                                    </a>
+                                                ) : null}
                                                 {qr.status === 'active' ? (
                                                     <button onClick={() => setQrToRevoke(qr)} disabled={revokingId === qr.id} className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50" title="Révoquer Accès">
                                                         {revokingId === qr.id ? <Loader2 className="w-5 h-5 animate-spin" /> : <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>}
@@ -783,6 +804,27 @@ export default function EventDetailPage() {
                                         ))}
                                     </div>
                                 </div>
+
+                                {activeCardTemplateId && (
+                                    <div className="space-y-2 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900/60 dark:bg-emerald-950/30">
+                                        <label className="text-sm font-semibold text-emerald-800 dark:text-emerald-200">Modèle de carte test</label>
+                                        <select
+                                            value={cardTemplateId}
+                                            onChange={(e) => setCardTemplateId(e.target.value)}
+                                            className="w-full px-4 py-3 bg-white dark:bg-slate-950 border border-emerald-200 dark:border-emerald-900 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+                                        >
+                                            <option value="">QR seul</option>
+                                            {cardTemplates.map(template => (
+                                                <option key={template.id} value={template.id}>
+                                                    {template.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <p className="text-xs leading-relaxed text-emerald-700 dark:text-emerald-300">
+                                            Visible uniquement après activation depuis /dashboard/card-templates.
+                                        </p>
+                                    </div>
+                                )}
 
                                 {qrForm.accessType === 'multi' && (
                                     <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
