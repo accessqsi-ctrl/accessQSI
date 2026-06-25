@@ -61,6 +61,7 @@ export default function EventDetailPage() {
     const [showQrModal, setShowQrModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [deleteConfirmationText, setDeleteConfirmationText] = useState("");
     const [isDeleting, setIsDeleting] = useState(false);
     const [showImportModal, setShowImportModal] = useState(false);
     const [importFile, setImportFile] = useState(null);
@@ -100,6 +101,7 @@ export default function EventDetailPage() {
     const [searchQuery, setSearchQuery] = useState("");
     const [statusFilter, setStatusFilter] = useState("Tous les statuts");
     const [selectedQr, setSelectedQr] = useState(null);
+    const [qrToRevoke, setQrToRevoke] = useState(null);
     const [revokingId, setRevokingId] = useState(null);
 
     const fetchAreas = useCallback(async () => {
@@ -202,6 +204,12 @@ export default function EventDetailPage() {
     };
 
     const handleDeleteEvent = async () => {
+        const expectedConfirmation = `je veux supprimer ${event.title}`;
+        if (deleteConfirmationText.trim() !== expectedConfirmation) {
+            showToast("Veuillez écrire exactement la phrase de confirmation.");
+            return;
+        }
+
         setIsDeleting(true);
         try {
             const res = await apiFetch(`/events/${eventId}`, {
@@ -213,6 +221,7 @@ export default function EventDetailPage() {
             } else {
                 showToast(data.message || "Erreur lors de la suppression.");
                 setShowDeleteConfirm(false);
+                setDeleteConfirmationText("");
             }
         } catch {
             showToast("Erreur de connexion au serveur.");
@@ -263,7 +272,6 @@ export default function EventDetailPage() {
     };
 
     const handleRevoke = async (id) => {
-        if (!confirm("Voulez-vous vraiment révoquer ce QR Code ?")) return;
         setRevokingId(id);
         try {
             const res = await apiFetch(`/qr/revoke/${id}`, {
@@ -272,6 +280,7 @@ export default function EventDetailPage() {
             const data = await res.json();
             if (data.success) {
                 setQrCodes(qrCodes.map(qr => qr.id === id ? { ...qr, status: 'revoked' } : qr));
+                setQrToRevoke(null);
             } else {
                 showToast(data.message || "Erreur lors de la révocation.");
             }
@@ -408,6 +417,8 @@ export default function EventDetailPage() {
     }
 
     const evtStatus = getEventStatus();
+    const expectedDeleteConfirmation = `je veux supprimer ${event.title}`;
+    const canDeleteEvent = deleteConfirmationText.trim() === expectedDeleteConfirmation;
 
     return (
         <div className="max-w-7xl mx-auto space-y-6">
@@ -424,7 +435,10 @@ export default function EventDetailPage() {
                         <Edit2 className="w-4 h-4" /> Modifier
                     </button>
                     <button
-                        onClick={() => setShowDeleteConfirm(true)}
+                        onClick={() => {
+                            setDeleteConfirmationText("");
+                            setShowDeleteConfirm(true);
+                        }}
                         className="inline-flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 border border-red-100 rounded-xl text-sm font-medium hover:bg-red-100 active:scale-95 transition-all shadow-sm"
                     >
                         <Trash2 className="w-4 h-4" /> Supprimer
@@ -638,7 +652,7 @@ export default function EventDetailPage() {
                                                     <Download className="w-5 h-5" />
                                                 </a>
                                                 {qr.status === 'active' ? (
-                                                    <button onClick={() => handleRevoke(qr.id)} disabled={revokingId === qr.id} className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50" title="Révoquer Accès">
+                                                    <button onClick={() => setQrToRevoke(qr)} disabled={revokingId === qr.id} className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50" title="Révoquer Accès">
                                                         {revokingId === qr.id ? <Loader2 className="w-5 h-5 animate-spin" /> : <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>}
                                                     </button>
                                                 ) : null}
@@ -856,6 +870,44 @@ export default function EventDetailPage() {
                 </div>
             )}
 
+            {/* ── MODAL: Revoke QR ── */}
+            {qrToRevoke && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+                    <div className="bg-white dark:bg-slate-950 w-full max-w-md rounded-2xl shadow-2xl p-6 animate-in zoom-in duration-300">
+                        <div className="w-12 h-12 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center mb-4">
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>
+                        </div>
+                        <h3 className="text-lg font-bold text-slate-900 dark:text-white">Révoquer ce QR code ?</h3>
+                        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+                            Le QR code de <span className="font-semibold text-slate-700 dark:text-slate-200">{qrToRevoke.holder}</span> ne pourra plus être utilisé pour accéder à <span className="font-semibold text-slate-700 dark:text-slate-200">"{event.title}"</span>.
+                        </p>
+                        <div className="mt-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-4">
+                            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">QR ID</p>
+                            <p className="font-semibold text-slate-900 dark:text-white">#{qrToRevoke.id}</p>
+                        </div>
+                        <div className="mt-6 flex gap-3">
+                            <button
+                                type="button"
+                                onClick={() => setQrToRevoke(null)}
+                                disabled={revokingId === qrToRevoke.id}
+                                className="flex-1 py-2.5 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-200 rounded-xl font-medium text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-60"
+                            >
+                                Annuler
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => handleRevoke(qrToRevoke.id)}
+                                disabled={revokingId === qrToRevoke.id}
+                                className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-medium text-sm transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+                            >
+                                {revokingId === qrToRevoke.id && <Loader2 className="w-4 h-4 animate-spin" />}
+                                Révoquer
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* ── MODAL: Edit Event ── */}
             {showEditModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
@@ -955,16 +1007,34 @@ export default function EventDetailPage() {
                         <p className="text-slate-500 dark:text-slate-400 text-sm mt-2 mb-6">
                             Cette action supprimera définitivement <span className="font-semibold text-slate-700 dark:text-slate-200">"{event.title}"</span> et tous ses codes QR associés.
                         </p>
+                        <div className="text-left mb-6 space-y-2">
+                            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                                Phrase de confirmation
+                            </label>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                                Écrivez exactement <span className="font-semibold text-slate-700 dark:text-slate-200">"{expectedDeleteConfirmation}"</span>
+                            </p>
+                            <input
+                                type="text"
+                                value={deleteConfirmationText}
+                                onChange={(e) => setDeleteConfirmationText(e.target.value)}
+                                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all"
+                                autoComplete="off"
+                            />
+                        </div>
                         <div className="flex gap-3">
                             <button
-                                onClick={() => setShowDeleteConfirm(false)}
+                                onClick={() => {
+                                    setShowDeleteConfirm(false);
+                                    setDeleteConfirmationText("");
+                                }}
                                 className="flex-1 py-2.5 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-200 rounded-xl font-medium text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                             >
                                 Annuler
                             </button>
                             <button
                                 onClick={handleDeleteEvent}
-                                disabled={isDeleting}
+                                disabled={isDeleting || !canDeleteEvent}
                                 className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-medium text-sm transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
                             >
                                 {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}

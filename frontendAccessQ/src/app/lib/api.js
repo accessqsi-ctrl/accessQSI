@@ -17,6 +17,19 @@ function redirectToLogin() {
     window.location.href = `/login?next=${encodeURIComponent(next)}`;
 }
 
+async function isBusinessForbidden(response) {
+    if (response.status !== 403) return false;
+    const contentType = response.headers.get("content-type") || "";
+    if (!contentType.includes("application/json")) return false;
+
+    try {
+        const data = await response.clone().json();
+        return data && data.success === false && Boolean(data.message);
+    } catch {
+        return false;
+    }
+}
+
 export async function apiFetch(path, options = {}) {
     const { redirectOnAuthFailure = true, ...fetchOptions } = options;
     const requestOptions = {
@@ -33,6 +46,10 @@ export async function apiFetch(path, options = {}) {
         return response;
     }
 
+    if (await isBusinessForbidden(response)) {
+        return response;
+    }
+
     const refreshResponse = await refreshSession({ redirectOnAuthFailure: false });
 
     if (!refreshResponse.ok) {
@@ -41,7 +58,11 @@ export async function apiFetch(path, options = {}) {
     }
 
     response = await fetch(buildUrl(path), requestOptions);
-    if (authStatuses.includes(response.status) && redirectOnAuthFailure) {
+    if (
+        authStatuses.includes(response.status) &&
+        !(await isBusinessForbidden(response)) &&
+        redirectOnAuthFailure
+    ) {
         redirectToLogin();
     }
 

@@ -51,6 +51,11 @@ export default function DashboardLayout({ children }) {
         return items;
     }, [userProfile]);
 
+    const pageTitle = useMemo(() => {
+        if (pathname === "/dashboard/card-templates") return "Modèles de cartes";
+        return navigation.find(n => pathname === n.href || (pathname.startsWith(n.href) && n.href !== '/dashboard'))?.name || "Dashboard";
+    }, [navigation, pathname]);
+
     return (
         <div className="flex h-screen bg-slate-50 dark:bg-slate-950 font-sans text-slate-900 dark:text-white overflow-hidden">
             {/* Sidebar Desktop */}
@@ -140,7 +145,7 @@ export default function DashboardLayout({ children }) {
                 <header className="hidden lg:flex h-20 bg-white/50 dark:bg-slate-950/50 backdrop-blur-md border-b border-slate-200/60 dark:border-slate-800/60 items-center justify-between px-8 z-10 sticky top-0">
                     <div className="flex items-center">
                         <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">
-                            {navigation.find(n => pathname === n.href || (pathname.startsWith(n.href) && n.href !== '/dashboard'))?.name || "Dashboard"}
+                            {pageTitle}
                         </h1>
                     </div>
                     <div className="flex items-center gap-4">

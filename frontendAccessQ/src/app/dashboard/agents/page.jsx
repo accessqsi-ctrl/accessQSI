@@ -25,6 +25,7 @@ export default function AgentsPage() {
     const [actionMessage, setActionMessage] = useState("");
 
     const [togglingId, setTogglingId] = useState(null);
+    const [confirmAction, setConfirmAction] = useState(null);
 
     const showActionMessage = (message) => {
         setActionMessage(message);
@@ -97,8 +98,17 @@ export default function AgentsPage() {
         }
     };
 
+    const openAgentConfirm = (type, agent) => {
+        setActionMessage("");
+        setConfirmAction({ type, agent });
+    };
+
+    const closeAgentConfirm = () => {
+        if (togglingId) return;
+        setConfirmAction(null);
+    };
+
     const handleToggleStatus = async (agentId) => {
-        if (!confirm("Voulez-vous modifier le statut de cet agent ?")) return;
         setActionMessage("");
         setTogglingId(agentId);
         try {
@@ -108,6 +118,7 @@ export default function AgentsPage() {
             const data = await res.json();
             if (data.success) {
                 setAgents(agents.map(a => a.id === agentId ? { ...a, status: data.newStatus } : a));
+                setConfirmAction(null);
             } else {
                 showActionMessage(data.message || "Erreur avec cet agent.");
             }
@@ -119,7 +130,6 @@ export default function AgentsPage() {
     };
 
     const handleDeleteAgent = async (agentId) => {
-        if (!confirm("Voulez-vous vraiment supprimer cet agent définitivement ? Cette action est irréversible.")) return;
         setActionMessage("");
         setTogglingId(agentId);
         try {
@@ -129,6 +139,7 @@ export default function AgentsPage() {
             const data = await res.json();
             if (data.success) {
                 setAgents(agents.filter(a => a.id !== agentId));
+                setConfirmAction(null);
             } else {
                 showActionMessage(data.message || "Erreur lors de la suppression.");
             }
@@ -152,6 +163,23 @@ export default function AgentsPage() {
 
     const activeAgentsCount = agents.filter(a => a.status === 'Actif').length;
     const inactiveAgentsCount = agents.length - activeAgentsCount;
+    const confirmAgent = confirmAction?.agent;
+    const confirmAgentIsActive = confirmAgent?.status === "Actif";
+    const confirmAgentTitle = confirmAction?.type === "delete"
+        ? "Supprimer cet agent ?"
+        : confirmAgentIsActive
+            ? "Révoquer l'accès de cet agent ?"
+            : "Restaurer l'accès de cet agent ?";
+    const confirmAgentMessage = confirmAction?.type === "delete"
+        ? "Cette action supprimera définitivement le compte agent et ne pourra pas être annulée depuis l'interface."
+        : confirmAgentIsActive
+            ? "L'agent ne pourra plus accéder au tableau de bord ni scanner les QR codes."
+            : "L'agent pourra de nouveau se connecter et utiliser les accès autorisés par son rôle.";
+    const confirmAgentButton = confirmAction?.type === "delete"
+        ? "Supprimer l'agent"
+        : confirmAgentIsActive
+            ? "Révoquer l'accès"
+            : "Restaurer l'accès";
 
     if (loading) {
         return (
@@ -290,7 +318,7 @@ export default function AgentsPage() {
                                                     {!isAdmin && (
                                                         <>
                                                             <button 
-                                                                onClick={() => handleToggleStatus(agent.id)}
+                                                                onClick={() => openAgentConfirm("toggle", agent)}
                                                                 disabled={togglingId === agent.id}
                                                                 className={actionBtnClass} 
                                                                 title={isActive ? 'Révoquer l’accès' : 'Restaurer l’accès'}
@@ -304,10 +332,10 @@ export default function AgentsPage() {
                                                                 )}
                                                             </button>
                                                             <button 
-                                                                onClick={() => handleDeleteAgent(agent.id)}
+                                                                onClick={() => openAgentConfirm("delete", agent)}
                                                                 disabled={togglingId === agent.id}
                                                                 className="p-1.5 rounded-lg transition-colors text-slate-400 dark:text-slate-500 hover:text-red-700 hover:bg-red-100" 
-                                                                title="Désactiver"
+                                                                title="Supprimer"
                                                             >
                                                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                                                             </button>
@@ -439,6 +467,47 @@ export default function AgentsPage() {
                                 {adding ? <Loader2 className="w-5 h-5 animate-spin"/> : "Envoyer l'Invitation"}
                             </button>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {confirmAction && confirmAgent && (
+                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white dark:bg-slate-950 rounded-2xl w-full max-w-md p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-4 ${confirmAction.type === "delete" || confirmAgentIsActive ? "bg-red-50 text-red-600" : "bg-emerald-50 text-emerald-600"}`}>
+                            {confirmAction.type === "delete" || confirmAgentIsActive ? (
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>
+                            ) : (
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            )}
+                        </div>
+                        <h3 className="text-lg font-bold text-slate-900 dark:text-white">{confirmAgentTitle}</h3>
+                        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+                            {confirmAgentMessage}
+                        </p>
+                        <div className="mt-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-4">
+                            <p className="font-semibold text-slate-900 dark:text-white">{confirmAgent.name}</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{confirmAgent.email}</p>
+                        </div>
+                        <div className="mt-6 flex gap-3">
+                            <button
+                                type="button"
+                                onClick={closeAgentConfirm}
+                                disabled={togglingId === confirmAgent.id}
+                                className="flex-1 px-4 py-2.5 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-200 font-medium rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-60"
+                            >
+                                Annuler
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => confirmAction.type === "delete" ? handleDeleteAgent(confirmAgent.id) : handleToggleStatus(confirmAgent.id)}
+                                disabled={togglingId === confirmAgent.id}
+                                className={`flex-1 px-4 py-2.5 text-white font-medium rounded-xl transition-colors flex items-center justify-center gap-2 disabled:opacity-60 ${confirmAction.type === "delete" || confirmAgentIsActive ? "bg-red-600 hover:bg-red-700" : "bg-emerald-600 hover:bg-emerald-700"}`}
+                            >
+                                {togglingId === confirmAgent.id && <Loader2 className="w-4 h-4 animate-spin" />}
+                                {confirmAgentButton}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

@@ -98,6 +98,10 @@ exports.toggleAgentStatus = async (req, res) => {
         const agentId = Number(req.params.id);
         const orgId = req.user.org_id;
 
+        if (agentId === Number(req.user.user_id)) {
+            return res.status(403).json({ success: false, message: "Vous ne pouvez pas modifier votre propre accès." });
+        }
+
         const agent = await agentService.getAgentByIdAndOrg(agentId, orgId);
         if (!agent) {
             return res.status(404).json({ success: false, message: "Agent introuvable dans votre organisation." });
@@ -136,6 +140,10 @@ exports.deleteAgent = async (req, res) => {
 
         const agentId = Number(req.params.id);
         const orgId = req.user.org_id;
+
+        if (agentId === Number(req.user.user_id)) {
+            return res.status(403).json({ success: false, message: "Vous ne pouvez pas supprimer votre propre compte." });
+        }
 
         const agent = await agentService.getAgentByIdAndOrg(agentId, orgId);
         if (!agent) {

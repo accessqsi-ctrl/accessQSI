@@ -133,6 +133,29 @@ test("PUT /agents/:id/toggle refuses to revoke organization admins", async () =>
     assert.equal(updateCalled, false);
 });
 
+test("PUT /agents/:id/toggle refuses to change the current user's own access", async () => {
+    let lookupCalled = false;
+    let updateCalled = false;
+    const app = loadAgentApp({
+        user: { user_id: 7, role: "ORG_ADMIN", org_id: 42 },
+        agentService: {
+            getAgentByIdAndOrg: async () => {
+                lookupCalled = true;
+            },
+            updateAgentStatus: async () => {
+                updateCalled = true;
+            }
+        }
+    });
+
+    const res = await request(app, "PUT", "/agents/7/toggle");
+
+    assert.equal(res.status, 403);
+    assert.equal(res.body.success, false);
+    assert.equal(lookupCalled, false);
+    assert.equal(updateCalled, false);
+});
+
 test("DELETE /agents/:id soft-deletes agents to preserve scan history", async () => {
     let softDeleted = null;
     const app = loadAgentApp({
@@ -150,4 +173,27 @@ test("DELETE /agents/:id soft-deletes agents to preserve scan history", async ()
     assert.equal(res.status, 200);
     assert.equal(res.body.success, true);
     assert.deepEqual(softDeleted, { agentId: 2, orgId: 42 });
+});
+
+test("DELETE /agents/:id refuses to delete the current user's own account", async () => {
+    let lookupCalled = false;
+    let softDeleteCalled = false;
+    const app = loadAgentApp({
+        user: { user_id: 7, role: "ORG_ADMIN", org_id: 42 },
+        agentService: {
+            getAgentByIdAndOrg: async () => {
+                lookupCalled = true;
+            },
+            softDeleteAgent: async () => {
+                softDeleteCalled = true;
+            }
+        }
+    });
+
+    const res = await request(app, "DELETE", "/agents/7");
+
+    assert.equal(res.status, 403);
+    assert.equal(res.body.success, false);
+    assert.equal(lookupCalled, false);
+    assert.equal(softDeleteCalled, false);
 });

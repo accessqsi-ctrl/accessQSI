@@ -10,6 +10,8 @@ export default function AreasPage() {
     const [error, setError] = useState("");
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingArea, setEditingArea] = useState(null);
+    const [areaToDelete, setAreaToDelete] = useState(null);
+    const [deletingAreaId, setDeletingAreaId] = useState(null);
     const [formData, setFormData] = useState({ area_name: "", accreditation_level: 1 });
 
     const fetchAreas = async () => {
@@ -62,18 +64,21 @@ export default function AreasPage() {
         }
     };
 
-    const handleDelete = async (id) => {
-        if (!confirm("Êtes-vous sûr de vouloir supprimer cette zone ?")) return;
+    const handleDelete = async (area) => {
+        setDeletingAreaId(area.area_id);
         try {
-            const res = await apiFetch(`/areas/${id}`, {
+            const res = await apiFetch(`/areas/${area.area_id}`, {
                 method: "DELETE"
             });
             const data = await res.json();
             if (data.success) {
+                setAreaToDelete(null);
                 fetchAreas();
             }
         } catch (err) {
             console.error("Error deleting area:", err);
+        } finally {
+            setDeletingAreaId(null);
         }
     };
 
@@ -142,7 +147,7 @@ export default function AreasPage() {
                                                 <button onClick={() => openEditModal(area)} className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 rounded-lg transition-colors">
                                                     <Edit2 className="w-4 h-4" />
                                                 </button>
-                                                <button onClick={() => handleDelete(area.area_id)} className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                                                <button onClick={() => setAreaToDelete(area)} className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
                                                     <Trash2 className="w-4 h-4" />
                                                 </button>
                                             </div>
@@ -203,6 +208,42 @@ export default function AreasPage() {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {areaToDelete && (
+                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white dark:bg-slate-950 rounded-2xl shadow-xl w-full max-w-md p-6 animate-in fade-in zoom-in duration-200">
+                        <div className="w-12 h-12 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center mb-4">
+                            <Trash2 className="w-6 h-6" />
+                        </div>
+                        <h2 className="text-lg font-bold text-slate-900 dark:text-white">Supprimer cette zone ?</h2>
+                        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+                            La zone <span className="font-semibold text-slate-700 dark:text-slate-200">"{areaToDelete.area_name}"</span> ne sera plus disponible pour les événements et les contrôles d'accès.
+                        </p>
+                        <div className="mt-4 rounded-xl border border-amber-100 bg-amber-50 p-3 text-sm text-amber-800">
+                            Niveau d'accréditation requis : <span className="font-semibold">Niveau {areaToDelete.accreditation_level}</span>
+                        </div>
+                        <div className="mt-6 flex gap-3">
+                            <button
+                                type="button"
+                                onClick={() => setAreaToDelete(null)}
+                                disabled={deletingAreaId === areaToDelete.area_id}
+                                className="flex-1 px-4 py-2.5 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-200 font-medium rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-60"
+                            >
+                                Annuler
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => handleDelete(areaToDelete)}
+                                disabled={deletingAreaId === areaToDelete.area_id}
+                                className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white font-medium rounded-xl transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+                            >
+                                {deletingAreaId === areaToDelete.area_id && <Loader2 className="w-4 h-4 animate-spin" />}
+                                Supprimer la zone
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
