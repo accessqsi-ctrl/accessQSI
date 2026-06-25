@@ -3,8 +3,49 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Loader2, Calendar, MapPin, QrCode, Edit2, Trash2, ArrowLeft, Plus, Download, X, CheckCircle2, FileSpreadsheet } from "lucide-react";
+import { Loader2, Calendar, MapPin, QrCode, Edit2, Trash2, ArrowLeft, Plus, Download, X, CheckCircle2, FileSpreadsheet, Mail, Phone } from "lucide-react";
 import { apiFetch, refreshSession } from "../../../lib/api";
+
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+const normalizePhone = (phone) => phone.replace(/[^\d+]/g, "");
+
+const formatInternationalPhone = (value) => {
+    let cleaned = value.replace(/[^\d+]/g, "");
+
+    if (cleaned.startsWith("00")) {
+        cleaned = `+${cleaned.slice(2)}`;
+    }
+
+    cleaned = `${cleaned.startsWith("+") ? "+" : ""}${cleaned.replace(/\+/g, "")}`;
+
+    if (cleaned && !cleaned.startsWith("+")) {
+        cleaned = `+${cleaned}`;
+    }
+
+    const digits = cleaned.replace(/\D/g, "").slice(0, 15);
+    if (!digits) return cleaned.startsWith("+") ? "+" : "";
+
+    const groups = digits.match(/.{1,3}/g) || [];
+    return `+${groups.join(" ")}`;
+};
+
+const validateQrContact = ({ email, phone }) => {
+    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedPhone = normalizePhone(phone);
+    const phoneDigits = normalizedPhone.replace(/\D/g, "");
+    const errors = {};
+
+    if (normalizedEmail && !emailPattern.test(normalizedEmail)) {
+        errors.email = "Entrez une adresse email valide, par exemple nom@domaine.com.";
+    }
+
+    if (normalizedPhone && (!normalizedPhone.startsWith("+") || phoneDigits.length < 8 || phoneDigits.length > 15)) {
+        errors.phone = "Entrez le numéro au format international, par exemple +243 812 345 678.";
+    }
+
+    return errors;
+};
 
 export default function EventDetailPage() {
     const params = useParams();
@@ -45,6 +86,8 @@ export default function EventDetailPage() {
     });
     const [generatingQr, setGeneratingQr] = useState(false);
     const [qrError, setQrError] = useState("");
+    const [qrContactTouched, setQrContactTouched] = useState({ email: false, phone: false });
+    const [qrSubmitAttempted, setQrSubmitAttempted] = useState(false);
 
     // Edit Form
     const [editForm, setEditForm] = useState({
@@ -181,17 +224,30 @@ export default function EventDetailPage() {
     const handleGenerateQr = async (e) => {
         e.preventDefault();
         setQrError("");
+        setQrSubmitAttempted(true);
+        const contactErrors = validateQrContact(qrForm);
+        if (Object.keys(contactErrors).length > 0) {
+            setQrError("Veuillez corriger les informations de contact avant de générer le QR Code.");
+            return;
+        }
         setGeneratingQr(true);
+        const payload = {
+            ...qrForm,
+            email: qrForm.email.trim().toLowerCase(),
+            phone: normalizePhone(qrForm.phone)
+        };
         try {
             const res = await apiFetch(`/qr/generate/${eventId}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(qrForm)
+                body: JSON.stringify(payload)
             });
             const data = await res.json();
             if (data.success) {
                 setShowQrModal(false);
                 setQrForm({ ...qrForm, fullName: "", email: "", phone: "", level: "1" });
+                setQrContactTouched({ email: false, phone: false });
+                setQrSubmitAttempted(false);
                 // Refresh QR list
                 const qrRes = await apiFetch(`/qr/event/${eventId}`);
                 const qrData = await qrRes.json();
@@ -324,6 +380,10 @@ export default function EventDetailPage() {
         return { label: "Active", style: "bg-emerald-100 text-emerald-700" };
     };
 
+    const qrContactErrors = validateQrContact(qrForm);
+    const showEmailError = (qrSubmitAttempted || qrContactTouched.email) && Boolean(qrContactErrors.email);
+    const showPhoneError = (qrSubmitAttempted || qrContactTouched.phone) && Boolean(qrContactErrors.phone);
+
     if (loading) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh]">
@@ -410,21 +470,21 @@ export default function EventDetailPage() {
                     <div className="flex gap-2 flex-shrink-0">
                         <button
                             onClick={() => handleExport('csv')}
-                            className="inline-flex items-center justify-center p-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 rounded-xl transition-all border border-slate-200 dark:border-slate-800"
+                            className="inline-flex items-center justify-center p-2.5 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-200 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-95 transition-all shadow-sm"
                             title="Exporter en CSV"
                         >
                             <Download className="w-5 h-5" />
                         </button>
                         <button
                             onClick={handleDownloadTemplate}
-                            className="inline-flex items-center justify-center p-2.5 bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 text-slate-700 dark:text-slate-200 rounded-xl transition-all border border-slate-200 dark:border-slate-800"
+                            className="inline-flex items-center justify-center p-2.5 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-200 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-95 transition-all shadow-sm"
                             title="Télécharger le modèle d'import CSV"
                         >
                             <FileSpreadsheet className="w-5 h-5" />
                         </button>
                         <button
                             onClick={() => handleExport('pdf')}
-                            className="inline-flex items-center justify-center p-2.5 bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 text-slate-700 dark:text-slate-200 rounded-xl transition-all border border-slate-200 dark:border-slate-800"
+                            className="inline-flex items-center justify-center p-2.5 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-200 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-95 transition-all shadow-sm"
                             title="Exporter en PDF"
                         >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
@@ -435,7 +495,7 @@ export default function EventDetailPage() {
                                 setImportError("");
                                 setImportSuccess("");
                             }}
-                            className="inline-flex items-center justify-center p-2.5 bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 text-slate-700 dark:text-slate-200 rounded-xl transition-all border border-slate-200 dark:border-slate-800"
+                            className="inline-flex items-center justify-center p-2.5 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-200 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-95 transition-all shadow-sm"
                             title="Importer CSV"
                         >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
@@ -472,7 +532,7 @@ export default function EventDetailPage() {
                 </div>
 
                 {/* Filters and Search */}
-                <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 flex flex-col md:flex-row gap-4 items-center justify-between">
+                <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/60 flex flex-col md:flex-row gap-4 items-center justify-between">
                     <div className="relative w-full md:w-96">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <svg className="h-5 w-5 text-slate-400 dark:text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -484,12 +544,12 @@ export default function EventDetailPage() {
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             placeholder="Rechercher par ID, Nom..."
-                            className="block w-full pl-10 pr-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl leading-5 bg-white dark:bg-slate-950 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 sm:text-sm transition-colors"
+                            className="block w-full pl-10 pr-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl leading-5 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 sm:text-sm transition-colors shadow-sm"
                         />
                     </div>
 
                     <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
-                        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-950 text-sm text-slate-700 dark:text-slate-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
+                        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-950 text-sm text-slate-700 dark:text-slate-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
                             <option value="Tous les statuts">Tous les statuts</option>
                             <option value="active">Actif</option>
                             <option value="exhausted">Épuisé</option>
@@ -595,8 +655,15 @@ export default function EventDetailPage() {
             {/* ── MODAL: Generate QR ── */}
             {showQrModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm overflow-y-auto">
-                    <div className="bg-white dark:bg-slate-950 w-full max-w-md rounded-3xl shadow-2xl p-6 sm:p-8 relative my-8">
-                        <button onClick={() => setShowQrModal(false)} className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded-xl transition-colors">
+                    <div className="bg-white dark:bg-slate-950 w-full max-w-lg rounded-3xl shadow-2xl p-6 sm:p-8 relative my-8">
+                        <button
+                            onClick={() => {
+                                setShowQrModal(false);
+                                setQrError("");
+                                setQrSubmitAttempted(false);
+                            }}
+                            className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded-xl transition-colors"
+                        >
                             <X className="w-5 h-5 text-slate-400 dark:text-slate-500" />
                         </button>
                         
@@ -625,23 +692,49 @@ export default function EventDetailPage() {
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div className="space-y-2">
                                             <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Email</label>
-                                            <input
-                                                type="email"
-                                                placeholder="john@example.com"
-                                                value={qrForm.email}
-                                                onChange={(e) => setQrForm({ ...qrForm, email: e.target.value })}
-                                                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all"
-                                            />
+                                            <div className="relative">
+                                                <Mail className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${showEmailError ? "text-red-500" : "text-slate-400"}`} />
+                                                <input
+                                                    type="email"
+                                                    inputMode="email"
+                                                    autoComplete="email"
+                                                    placeholder="nom@domaine.com"
+                                                    value={qrForm.email}
+                                                    aria-invalid={showEmailError}
+                                                    onBlur={() => setQrContactTouched({ ...qrContactTouched, email: true })}
+                                                    onChange={(e) => {
+                                                        setQrError("");
+                                                        setQrForm({ ...qrForm, email: e.target.value });
+                                                    }}
+                                                    className={`w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-900 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:bg-white dark:focus:bg-slate-950 transition-all ${showEmailError ? "border-red-300 focus:ring-red-500/20" : "border-slate-200 dark:border-slate-800 focus:ring-blue-500/20"}`}
+                                                />
+                                            </div>
+                                            <p className={`text-xs leading-relaxed ${showEmailError ? "text-red-600" : "text-slate-500 dark:text-slate-400"}`}>
+                                                {showEmailError ? qrContactErrors.email : "Optionnel. Exemple : nom@entreprise.com"}
+                                            </p>
                                         </div>
                                         <div className="space-y-2">
-                                            <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Téléphone</label>
-                                            <input
-                                                type="tel"
-                                                placeholder="+33..."
-                                                value={qrForm.phone}
-                                                onChange={(e) => setQrForm({ ...qrForm, phone: e.target.value })}
-                                                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all"
-                                            />
+                                            <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Numéro de téléphone</label>
+                                            <div className="relative">
+                                                <Phone className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${showPhoneError ? "text-red-500" : "text-slate-400"}`} />
+                                                <input
+                                                    type="tel"
+                                                    inputMode="tel"
+                                                    autoComplete="tel"
+                                                    placeholder="+243 812 345 678"
+                                                    value={qrForm.phone}
+                                                    aria-invalid={showPhoneError}
+                                                    onBlur={() => setQrContactTouched({ ...qrContactTouched, phone: true })}
+                                                    onChange={(e) => {
+                                                        setQrError("");
+                                                        setQrForm({ ...qrForm, phone: formatInternationalPhone(e.target.value) });
+                                                    }}
+                                                    className={`w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-900 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:bg-white dark:focus:bg-slate-950 transition-all ${showPhoneError ? "border-red-300 focus:ring-red-500/20" : "border-slate-200 dark:border-slate-800 focus:ring-blue-500/20"}`}
+                                                />
+                                            </div>
+                                            <p className={`text-xs leading-relaxed ${showPhoneError ? "text-red-600" : "text-slate-500 dark:text-slate-400"}`}>
+                                                {showPhoneError ? qrContactErrors.phone : "Optionnel. Commencez par + et l'indicatif pays."}
+                                            </p>
                                         </div>
                                     </div>
                                 </div>

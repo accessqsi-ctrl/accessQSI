@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { apiFetch } from "../../lib/api";
 
 export default function AgentsPage() {
@@ -16,7 +16,9 @@ export default function AgentsPage() {
 
     // Modal state for adding a new agent
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-    const [addForm, setAddForm] = useState({ fullName: "", email: "", password: "", role: "ORG_AGENT" });
+    const [addForm, setAddForm] = useState({ fullName: "", email: "", password: "", confirmPassword: "", role: "ORG_AGENT" });
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [adding, setAdding] = useState(false);
     const [addError, setAddError] = useState("");
     const [addSuccess, setAddSuccess] = useState("");
@@ -53,19 +55,33 @@ export default function AgentsPage() {
         e.preventDefault();
         setAddError("");
         setAddSuccess("");
+
+        if (addForm.password !== addForm.confirmPassword) {
+            setAddError("Les mots de passe ne correspondent pas.");
+            return;
+        }
+
         setAdding(true);
 
         try {
+            const payload = {
+                fullName: addForm.fullName,
+                email: addForm.email,
+                password: addForm.password,
+                role: addForm.role
+            };
             const res = await apiFetch("/agents/add-agent", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(addForm)
+                body: JSON.stringify(payload)
             });
             const data = await res.json();
 
             if (data.success) {
                 setAddSuccess(data.message);
-                setAddForm({ fullName: "", email: "", password: "", role: "ORG_AGENT" });
+                setAddForm({ fullName: "", email: "", password: "", confirmPassword: "", role: "ORG_AGENT" });
+                setShowPassword(false);
+                setShowConfirmPassword(false);
                 fetchAgents();
                 setTimeout(() => {
                     setIsAddModalOpen(false);
@@ -312,7 +328,12 @@ export default function AgentsPage() {
                 <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                     <div className="bg-white dark:bg-slate-950 rounded-3xl w-full max-w-md p-6 sm:p-8 shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
                         <button
-                            onClick={() => setIsAddModalOpen(false)}
+                            onClick={() => {
+                                setIsAddModalOpen(false);
+                                setAddError("");
+                                setShowPassword(false);
+                                setShowConfirmPassword(false);
+                            }}
                             className="absolute top-6 right-6 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
                         >
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
@@ -353,14 +374,49 @@ export default function AgentsPage() {
                             </div>
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Mot de Passe *</label>
-                                <input
-                                    type="password"
-                                    required
-                                    value={addForm.password}
-                                    onChange={(e) => setAddForm({ ...addForm, password: e.target.value })}
-                                    placeholder="••••••••"
-                                    className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
-                                />
+                                <div className="relative">
+                                    <input
+                                        type={showPassword ? "text" : "password"}
+                                        required
+                                        minLength={8}
+                                        value={addForm.password}
+                                        onChange={(e) => setAddForm({ ...addForm, password: e.target.value })}
+                                        placeholder="••••••••"
+                                        className="w-full px-4 py-3 pr-12 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute inset-y-0 right-0 px-4 text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                                        aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+                                        title={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+                                    >
+                                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Confirmer le mot de passe *</label>
+                                <div className="relative">
+                                    <input
+                                        type={showConfirmPassword ? "text" : "password"}
+                                        required
+                                        minLength={8}
+                                        value={addForm.confirmPassword}
+                                        onChange={(e) => setAddForm({ ...addForm, confirmPassword: e.target.value })}
+                                        placeholder="••••••••"
+                                        className="w-full px-4 py-3 pr-12 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                        className="absolute inset-y-0 right-0 px-4 text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                                        aria-label={showConfirmPassword ? "Masquer la confirmation" : "Afficher la confirmation"}
+                                        title={showConfirmPassword ? "Masquer la confirmation" : "Afficher la confirmation"}
+                                    >
+                                        {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                    </button>
+                                </div>
                             </div>
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Rôle *</label>
