@@ -2,9 +2,42 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Loader2, Download, TrendingUp, Users } from "lucide-react";
+import { CalendarPlus, CheckCircle2, Download, Loader2, MapPinned, QrCode, TrendingUp, UserPlus, Users, X } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { apiFetch, refreshSession } from "../lib/api";
+
+const ONBOARDING_STORAGE_KEY = "qrAccessDashboardOnboardingDismissed";
+
+const onboardingSteps = [
+    {
+        title: "Créer un événement",
+        description: "Ajoutez le nom, la date et les accès à contrôler.",
+        href: "/dashboard/events/new",
+        action: "Nouvel événement",
+        icon: CalendarPlus
+    },
+    {
+        title: "Préparer les zones",
+        description: "Définissez les entrées, salles ou espaces autorisés.",
+        href: "/dashboard/areas",
+        action: "Gérer les zones",
+        icon: MapPinned
+    },
+    {
+        title: "Générer des QR codes",
+        description: "Créez les accès pour vos invités ou participants.",
+        href: "/dashboard/events",
+        action: "Voir les événements",
+        icon: QrCode
+    },
+    {
+        title: "Inviter des agents",
+        description: "Donnez accès aux personnes qui scanneront sur place.",
+        href: "/dashboard/agents",
+        action: "Ajouter un agent",
+        icon: UserPlus
+    }
+];
 
 export default function Dashboard() {
     const [stats, setStats] = useState({
@@ -21,6 +54,7 @@ export default function Dashboard() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [toast, setToast] = useState({ show: false, message: "" });
+    const [showOnboarding, setShowOnboarding] = useState(false);
 
 
     const handleExport = async (format) => {
@@ -37,6 +71,8 @@ export default function Dashboard() {
 
     
     useEffect(() => {
+        setShowOnboarding(localStorage.getItem(ONBOARDING_STORAGE_KEY) !== "true");
+
         const fetchDashboardData = async () => {
             try {
                 // Fetch User Profile to get Name
@@ -73,6 +109,11 @@ export default function Dashboard() {
 
         fetchDashboardData();
     }, []);
+
+    const dismissOnboarding = () => {
+        localStorage.setItem(ONBOARDING_STORAGE_KEY, "true");
+        setShowOnboarding(false);
+    };
 
     if (loading) {
         return (
@@ -119,6 +160,51 @@ export default function Dashboard() {
                     </div>
                 </div>
             </div>
+
+            {showOnboarding && (
+                <section className="relative overflow-hidden rounded-2xl border border-blue-100 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                    <button
+                        type="button"
+                        onClick={dismissOnboarding}
+                        aria-label="Masquer le guide de démarrage"
+                        className="absolute right-4 top-4 rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-900 dark:hover:text-slate-200"
+                    >
+                        <X className="h-5 w-5" />
+                    </button>
+
+                    <div className="max-w-3xl pr-10">
+                        <div className="mb-3 flex items-center gap-2 text-sm font-bold text-blue-700 dark:text-blue-300">
+                            <CheckCircle2 className="h-5 w-5" />
+                            Guide de démarrage
+                        </div>
+                        <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Bienvenue sur QR Access</h3>
+                        <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
+                            Voici les premières actions utiles pour configurer votre organisation et commencer les contrôles.
+                        </p>
+                    </div>
+
+                    <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                        {onboardingSteps.map((step) => {
+                            const Icon = step.icon;
+                            return (
+                                <div key={step.title} className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900">
+                                    <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+                                        <Icon className="h-5 w-5" />
+                                    </div>
+                                    <h4 className="font-bold text-slate-900 dark:text-white">{step.title}</h4>
+                                    <p className="mt-2 min-h-12 text-sm leading-5 text-slate-500 dark:text-slate-400">{step.description}</p>
+                                    <Link
+                                        href={step.href}
+                                        className="mt-4 inline-flex items-center text-sm font-bold text-blue-700 transition-colors hover:text-blue-600 hover:underline dark:text-blue-300 dark:hover:text-blue-200"
+                                    >
+                                        {step.action}
+                                    </Link>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </section>
+            )}
 
             {/* Quick Stats */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
