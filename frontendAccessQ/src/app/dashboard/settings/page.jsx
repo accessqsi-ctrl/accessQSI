@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Loader2, User, Building, Lock, Save, CheckCircle, AlertCircle } from "lucide-react";
 import { apiFetch } from "../../lib/api";
 
@@ -8,6 +8,9 @@ export default function SettingsPage() {
     const [user, setUser] = useState(null);
     const [organization, setOrganization] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [activeSection, setActiveSection] = useState("profile");
+    const profileSectionRef = useRef(null);
+    const orgSectionRef = useRef(null);
 
     // Profile form
     const [profileForm, setProfileForm] = useState({ fullName: "", email: "" });
@@ -30,6 +33,12 @@ export default function SettingsPage() {
     const [deleteLoading, setDeleteLoading] = useState(false);
     const [deleteStatus, setDeleteStatus] = useState("");
     const requiredDeleteText = "oui, je comprend les consequences de mon action et je valide la suppression";
+
+    const scrollToSection = (section) => {
+        setActiveSection(section);
+        const targetRef = section === "organization" ? orgSectionRef : profileSectionRef;
+        targetRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
 
     useEffect(() => {
         fetchData();
@@ -186,13 +195,29 @@ export default function SettingsPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                {/* Sidebar Navigation (Visual only for now) */}
+                {/* Sidebar Navigation */}
                 <div className="space-y-1">
-                    <button className="w-full flex items-center gap-3 px-4 py-2.5 bg-blue-50 text-blue-700 rounded-xl font-medium text-sm border border-blue-100/50">
+                    <button
+                        type="button"
+                        onClick={() => scrollToSection("profile")}
+                        className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl font-medium text-sm border transition-colors ${
+                            activeSection === "profile"
+                                ? "bg-blue-50 text-blue-700 border-blue-100/50 dark:bg-blue-950/30 dark:text-blue-300 dark:border-blue-900/50"
+                                : "text-slate-600 dark:text-slate-300 border-transparent hover:bg-slate-50 dark:hover:bg-slate-800"
+                        }`}
+                    >
                         <User className="w-4 h-4" /> Profil & Sécurité
                     </button>
                     {isAdmin && (
-                        <button className="w-full flex items-center gap-3 px-4 py-2.5 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl font-medium text-sm transition-colors">
+                        <button
+                            type="button"
+                            onClick={() => scrollToSection("organization")}
+                            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl font-medium text-sm border transition-colors ${
+                                activeSection === "organization"
+                                    ? "bg-blue-50 text-blue-700 border-blue-100/50 dark:bg-blue-950/30 dark:text-blue-300 dark:border-blue-900/50"
+                                    : "text-slate-600 dark:text-slate-300 border-transparent hover:bg-slate-50 dark:hover:bg-slate-800"
+                            }`}
+                        >
                             <Building className="w-4 h-4" /> Organisation
                         </button>
                     )}
@@ -202,7 +227,7 @@ export default function SettingsPage() {
                 <div className="md:col-span-2 space-y-8">
                     
                     {/* Mon Profil Section */}
-                    <section className="bg-white dark:bg-slate-950 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+                    <section ref={profileSectionRef} className="scroll-mt-24 bg-white dark:bg-slate-950 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
                         <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center gap-4">
                             <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
                                 <User className="w-5 h-5" />
@@ -303,7 +328,7 @@ export default function SettingsPage() {
                                 <button
                                     type="submit"
                                     disabled={pwdLoading}
-                                    className="inline-flex items-center gap-2 px-6 py-2.5 bg-slate-900 dark:bg-slate-100 hover:bg-black text-white font-medium rounded-xl shadow-sm transition-all active:scale-95 disabled:opacity-50 text-sm"
+                                    className="inline-flex items-center gap-2 px-6 py-2.5 bg-slate-900 text-white hover:bg-black dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white font-medium rounded-xl shadow-sm transition-all active:scale-95 disabled:opacity-50 text-sm"
                                 >
                                     {pwdLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
                                     Changer le mot de passe
@@ -314,7 +339,7 @@ export default function SettingsPage() {
 
                     {/* Organisation Section */}
                     {isAdmin && (
-                        <section className="bg-white dark:bg-slate-950 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden border-l-4 border-l-blue-500">
+                        <section ref={orgSectionRef} className="scroll-mt-24 bg-white dark:bg-slate-950 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden border-l-4 border-l-blue-500">
                             <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center gap-4">
                                 <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
                                     <Building className="w-5 h-5" />

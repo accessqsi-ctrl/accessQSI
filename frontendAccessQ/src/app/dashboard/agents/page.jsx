@@ -290,7 +290,7 @@ export default function AgentsPage() {
                                     const actionBtnClass = isActive ? "p-1.5 rounded-lg transition-colors text-red-600 dark:text-red-300 bg-white dark:bg-slate-900 border border-red-100 dark:border-red-900/50 hover:bg-red-50 dark:hover:bg-red-950/40 disabled:opacity-50" : "p-1.5 rounded-lg transition-colors text-emerald-600 dark:text-emerald-300 bg-white dark:bg-slate-900 border border-emerald-100 dark:border-emerald-900/50 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 disabled:opacity-50";
 
                                     return (
-                                        <tr key={agent.id} className="hover:bg-blue-50/60 dark:hover:bg-blue-950/30 transition-colors group">
+                                        <tr key={agent.id} className="hover:bg-sky-50 dark:hover:bg-sky-950/35 transition-colors group">
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-4">
                                                     <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 font-bold uppercase">

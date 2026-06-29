@@ -39,6 +39,9 @@ router.post("/import/:event_id", upload.single('file'), qrController.importQrsFr
 // Révoquer un QR code
 router.put("/revoke/:id", qrController.revokeQr);
 
+// Restaurer un QR code révoqué encore valide
+router.put("/restore/:id", qrController.restoreQr);
+
 
 // Note: Toutes les anciennes routes (/ajoutP, /updateP, /mytransactions) 
 // qui semblaient concerner un autre projet ("produits") ont été supprimées 

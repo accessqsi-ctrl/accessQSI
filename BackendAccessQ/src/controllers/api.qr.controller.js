@@ -210,6 +210,48 @@ exports.revokeQr = async (req, res) => {
     }
 };
 
+// Restauration d'un QR code révoqué
+exports.restoreQr = async (req, res) => {
+    try {
+        if (!req.user || !req.user.org_id) {
+            return res.status(401).json({ success: false, message: "Non autorisé" });
+        }
+
+        const orgId = req.user.org_id;
+        const qrId = Number(req.params.id);
+
+        const qr = await qrService.getQrById(qrId);
+        if (!qr || qr.deleted_at) {
+            return res.status(404).json({ success: false, message: "QR Code introuvable" });
+        }
+
+        const event = await eventService.findById(orgId, qr.event_id);
+        if (!event) {
+            return res.status(403).json({ success: false, message: "Accès refusé" });
+        }
+
+        if (qr.status !== "revoked") {
+            return res.status(400).json({ success: false, message: "Seuls les QR révoqués peuvent être restaurés." });
+        }
+
+        const now = new Date();
+        if (qr.valid_until && new Date(qr.valid_until) < now) {
+            return res.status(400).json({ success: false, message: "Impossible de restaurer un QR expiré." });
+        }
+
+        if (qr.scans_count >= qr.usage_limit) {
+            return res.status(400).json({ success: false, message: "Impossible de restaurer un QR dont la limite de scans est atteinte." });
+        }
+
+        await qrService.updateQr(qrId, { status: "active" });
+
+        return res.status(200).json({ success: true, message: "QR Code restauré avec succès" });
+    } catch (error) {
+        console.error("Erreur lors de la restauration du QR:", error);
+        return res.status(500).json({ success: false, message: "Erreur serveur interne" });
+    }
+};
+
 exports.downloadQrImportTemplate = async (req, res) => {
     try {
         if (!req.user || !req.user.org_id) {

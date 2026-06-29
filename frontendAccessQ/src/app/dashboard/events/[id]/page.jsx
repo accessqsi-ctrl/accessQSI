@@ -322,6 +322,26 @@ export default function EventDetailPage() {
         }
     };
 
+    const handleRestore = async (id) => {
+        setRevokingId(id);
+        try {
+            const res = await apiFetch(`/qr/restore/${id}`, {
+                method: "PUT"
+            });
+            const data = await res.json();
+            if (data.success) {
+                setQrCodes(qrCodes.map(qr => qr.id === id ? { ...qr, status: 'active' } : qr));
+                showToast("QR Code restauré avec succès.");
+            } else {
+                showToast(data.message || "Erreur lors de la restauration.");
+            }
+        } catch (err) {
+            showToast("Erreur de connexion au serveur.");
+        } finally {
+            setRevokingId(null);
+        }
+    };
+
     const handleExport = async (format) => {
         if (format !== "csv") {
             const totalScanLogs = qrCodes.reduce((sum, qr) => sum + (qr.scans_count || 0), 0);
@@ -624,7 +644,7 @@ export default function EventDetailPage() {
                                 </tr>
                             ) : (
                                 filteredQrs.map((qr) => (
-                                    <tr key={qr.id} className="hover:bg-blue-50/60 dark:hover:bg-blue-950/30 transition-colors group">
+                                    <tr key={qr.id} className="hover:bg-sky-50 dark:hover:bg-sky-950/35 transition-colors group">
                                         <td className="px-6 py-4 font-medium text-slate-900 dark:text-white">{qr.id}</td>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
@@ -646,14 +666,14 @@ export default function EventDetailPage() {
                                         <td className="px-6 py-4 text-slate-500 dark:text-slate-400">{qr.createdAt}</td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex items-center justify-end gap-2">
-                                                <button onClick={() => setSelectedQr(qr)} className="p-1.5 text-blue-600 dark:text-blue-300 bg-white dark:bg-slate-900 border border-blue-100 dark:border-blue-900/50 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-lg transition-colors" title="Voir Ticket">
+                                                <button onClick={() => setSelectedQr(qr)} className="p-1.5 text-sky-600 dark:text-sky-300 bg-white dark:bg-slate-900 border border-sky-100 dark:border-sky-900/50 hover:bg-sky-50 dark:hover:bg-sky-950/40 rounded-lg transition-colors" title="Voir Ticket">
                                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
                                                 </button>
                                                 <a
                                                     href={`${process.env.NEXT_PUBLIC_API_URL}/qrcodes/qr_${qr.token}.png`}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    className="p-1.5 text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-lg transition-colors inline-block"
+                                                    className="p-1.5 text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-sky-50 dark:hover:bg-sky-950/40 rounded-lg transition-colors inline-block"
                                                     title="Télécharger le QR"
                                                 >
                                                     <Download className="w-5 h-5" />
@@ -672,6 +692,11 @@ export default function EventDetailPage() {
                                                 {qr.status === 'active' ? (
                                                     <button onClick={() => setQrToRevoke(qr)} disabled={revokingId === qr.id} className="p-1.5 text-red-600 dark:text-red-300 bg-white dark:bg-slate-900 border border-red-100 dark:border-red-900/50 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors disabled:opacity-50" title="Révoquer Accès">
                                                         {revokingId === qr.id ? <Loader2 className="w-5 h-5 animate-spin" /> : <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>}
+                                                    </button>
+                                                ) : null}
+                                                {qr.status === 'revoked' ? (
+                                                    <button onClick={() => handleRestore(qr.id)} disabled={revokingId === qr.id} className="p-1.5 text-emerald-600 dark:text-emerald-300 bg-white dark:bg-slate-900 border border-emerald-100 dark:border-emerald-900/50 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded-lg transition-colors disabled:opacity-50" title="Restaurer Accès">
+                                                        {revokingId === qr.id ? <Loader2 className="w-5 h-5 animate-spin" /> : <CheckCircle2 className="w-5 h-5" />}
                                                     </button>
                                                 ) : null}
                                             </div>

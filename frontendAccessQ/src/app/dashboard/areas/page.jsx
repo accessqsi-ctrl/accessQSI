@@ -130,7 +130,7 @@ export default function AreasPage() {
                                 </tr>
                             ) : (
                                 areas.map((area) => (
-                                    <tr key={area.area_id} className="hover:bg-blue-50/60 dark:hover:bg-blue-950/30 transition-colors group">
+                                    <tr key={area.area_id} className="hover:bg-sky-50 dark:hover:bg-sky-950/35 transition-colors group">
                                         <td className="px-6 py-4 font-medium text-slate-900 dark:text-white flex items-center gap-3">
                                             <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
                                                 <MapPin className="w-5 h-5" />
@@ -144,7 +144,7 @@ export default function AreasPage() {
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex items-center justify-end gap-2">
-                                                <button onClick={() => openEditModal(area)} className="p-1.5 text-blue-600 dark:text-blue-300 bg-white dark:bg-slate-900 border border-blue-100 dark:border-blue-900/50 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-lg transition-colors">
+                                                <button onClick={() => openEditModal(area)} className="p-1.5 text-sky-600 dark:text-sky-300 bg-white dark:bg-slate-900 border border-sky-100 dark:border-sky-900/50 hover:bg-sky-50 dark:hover:bg-sky-950/40 rounded-lg transition-colors">
                                                     <Edit2 className="w-4 h-4" />
                                                 </button>
                                                 <button onClick={() => setAreaToDelete(area)} className="p-1.5 text-red-600 dark:text-red-300 bg-white dark:bg-slate-900 border border-red-100 dark:border-red-900/50 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors">

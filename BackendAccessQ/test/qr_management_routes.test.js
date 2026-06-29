@@ -207,6 +207,96 @@ test("PUT /qr/revoke/:id revokes QR codes from the user's organization", async (
     assert.deepEqual(updateArgs, [10, { status: "revoked" }]);
 });
 
+test("PUT /qr/restore/:id restores a revoked QR that is still valid", async () => {
+    let updateArgs = null;
+    const app = loadQrManagementApp({
+        user: { user_id: 7, role: "ORG_ADMIN", org_id: 42 },
+        eventService: {
+            findById: async () => ({ event_id: 5, title: "Concert" })
+        },
+        qrService: {
+            getQrById: async () => ({
+                qr_id: 10,
+                event_id: 5,
+                status: "revoked",
+                scans_count: 0,
+                usage_limit: 1,
+                valid_until: new Date(Date.now() + 60_000),
+                deleted_at: null
+            }),
+            updateQr: async (...args) => {
+                updateArgs = args;
+            }
+        }
+    });
+
+    const res = await request(app, "PUT", "/qr/restore/10");
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body.success, true);
+    assert.deepEqual(updateArgs, [10, { status: "active" }]);
+});
+
+test("PUT /qr/restore/:id refuses expired revoked QR codes", async () => {
+    let updateCalled = false;
+    const app = loadQrManagementApp({
+        user: { user_id: 7, role: "ORG_ADMIN", org_id: 42 },
+        eventService: {
+            findById: async () => ({ event_id: 5, title: "Concert" })
+        },
+        qrService: {
+            getQrById: async () => ({
+                qr_id: 10,
+                event_id: 5,
+                status: "revoked",
+                scans_count: 0,
+                usage_limit: 1,
+                valid_until: new Date(Date.now() - 60_000),
+                deleted_at: null
+            }),
+            updateQr: async () => {
+                updateCalled = true;
+            }
+        }
+    });
+
+    const res = await request(app, "PUT", "/qr/restore/10");
+
+    assert.equal(res.status, 400);
+    assert.equal(res.body.success, false);
+    assert.equal(updateCalled, false);
+});
+
+test("PUT /qr/restore/:id refuses QR codes outside the user's organization", async () => {
+    let updateCalled = false;
+    const app = loadQrManagementApp({
+        user: { user_id: 7, role: "ORG_ADMIN", org_id: 42 },
+        eventService: {
+            findById: async () => null
+        },
+        qrService: {
+            getQrById: async () => ({
+                qr_id: 10,
+                event_id: 99,
+                status: "revoked",
+                scans_count: 0,
+                usage_limit: 1,
+                valid_until: null,
+                deleted_at: null
+            }),
+            updateQr: async () => {
+                updateCalled = true;
+            }
+        }
+    });
+
+    const res = await request(app, "PUT", "/qr/restore/10");
+
+    assert.equal(res.status, 403);
+    assert.equal(res.body.success, false);
+    assert.equal(updateCalled, false);
+});
+
 test("POST /qr/import/:event_id rejects requests without a CSV file", async () => {
     const app = loadQrManagementApp({
         user: { user_id: 7, role: "ORG_ADMIN", org_id: 42 },
