@@ -374,7 +374,7 @@ export default function Dashboard() {
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-200 text-sm">
                             {stats.recentScans && stats.recentScans.length > 0 ? (
                                 stats.recentScans.map((scan) => (
-                                    <tr key={scan.id} className="hover:bg-slate-50/50 transition-colors">
+                                    <tr key={scan.id} className="hover:bg-blue-50/60 dark:hover:bg-blue-950/30 transition-colors">
                                         <td className="px-8 py-4 font-medium text-slate-900 dark:text-white tracking-tight font-mono">{scan.code}</td>
                                         <td className="px-8 py-4">{scan.event}</td>
                                         <td className="px-8 py-4">{scan.agent}</td>
