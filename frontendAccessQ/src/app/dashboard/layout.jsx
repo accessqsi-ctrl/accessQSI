@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { Menu, X } from "lucide-react";
 
 import { useState, useEffect, useMemo } from "react";
 import { apiFetch } from "../lib/api";
@@ -11,6 +12,7 @@ export default function DashboardLayout({ children }) {
     const router = useRouter();
     const [userProfile, setUserProfile] = useState(null);
     const [showLogoutModal, setShowLogoutModal] = useState(false);
+    const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
 
     useEffect(() => {
         const fetchProfile = async () => {
@@ -24,6 +26,10 @@ export default function DashboardLayout({ children }) {
         };
         fetchProfile();
     }, []);
+
+    useEffect(() => {
+        setIsMobileNavOpen(false);
+    }, [pathname]);
 
     const handleLogout = async () => {
         try {
@@ -136,8 +142,14 @@ export default function DashboardLayout({ children }) {
                             QR Access
                         </span>
                     </Link>
-                    <button className="p-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white focus:outline-none">
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                    <button
+                        type="button"
+                        onClick={() => setIsMobileNavOpen(true)}
+                        aria-label="Ouvrir le menu"
+                        aria-expanded={isMobileNavOpen}
+                        className="p-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 rounded-xl"
+                    >
+                        <Menu className="w-6 h-6" />
                     </button>
                 </header>
 
@@ -161,6 +173,85 @@ export default function DashboardLayout({ children }) {
                     {children}
                 </main>
             </div>
+
+            {/* Mobile Navigation Drawer */}
+            {isMobileNavOpen && (
+                <div className="fixed inset-0 z-40 lg:hidden">
+                    <button
+                        type="button"
+                        aria-label="Fermer le menu"
+                        onClick={() => setIsMobileNavOpen(false)}
+                        className="absolute inset-0 bg-slate-900/45 backdrop-blur-sm"
+                    />
+                    <aside className="relative flex h-full w-[min(19rem,86vw)] flex-col bg-white shadow-2xl dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800">
+                        <div className="h-16 flex items-center justify-between px-4 border-b border-slate-100 dark:border-slate-800">
+                            <Link href="/dashboard" className="flex items-center gap-2">
+                                <img
+                                    src="/logo/access_logo.png"
+                                    alt="QR Access Logo"
+                                    className="w-7 h-7"
+                                />
+                                <span className="font-bold tracking-tight bg-gradient-to-r from-blue-700 to-emerald-600 bg-clip-text text-transparent">
+                                    QR Access
+                                </span>
+                            </Link>
+                            <button
+                                type="button"
+                                onClick={() => setIsMobileNavOpen(false)}
+                                aria-label="Fermer le menu"
+                                className="rounded-xl p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-white"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+
+                        <nav className="flex-1 overflow-y-auto py-5 px-4 space-y-1.5">
+                            {navigation.map((item) => {
+                                const isActive = pathname === item.href || (pathname.startsWith(item.href) && item.href !== '/dashboard');
+                                return (
+                                    <Link
+                                        key={item.name}
+                                        href={item.href}
+                                        className={`flex items-center gap-3 px-3.5 py-3 rounded-lg font-medium text-sm transition-colors ${isActive
+                                            ? "bg-blue-50 text-blue-700 border border-blue-100/50 shadow-sm"
+                                            : item.special
+                                                ? "bg-blue-600 text-white hover:bg-blue-700 shadow-md shadow-blue-500/20"
+                                                : "text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
+                                            }`}
+                                    >
+                                        <svg className={`w-5 h-5 ${isActive ? 'text-blue-600' : (item.special ? 'text-white' : 'text-slate-400 dark:text-slate-500')}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={item.icon} />
+                                        </svg>
+                                        <span>{item.name}</span>
+                                    </Link>
+                                );
+                            })}
+                        </nav>
+
+                        <div className="p-4 border-t border-slate-100 dark:border-slate-800">
+                            <div className="flex items-center gap-3 rounded-lg border border-slate-100 px-2 py-2 dark:border-slate-800">
+                                <div className="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-sm shadow-sm uppercase">
+                                    {userProfile ? (userProfile.name || userProfile.full_name || "U").charAt(0) : "U"}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{userProfile ? (userProfile.name || userProfile.full_name) : "Chargement..."}</p>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{userProfile ? (userProfile.role === 'ORG_ADMIN' ? 'Admin' : (userProfile.role === 'OPERATOR' ? 'Opérateur' : 'Agent')) : "..."}</p>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setIsMobileNavOpen(false);
+                                    setShowLogoutModal(true);
+                                }}
+                                className="mt-3 w-full rounded-xl border border-red-100 px-4 py-2.5 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50 dark:border-red-900/50 dark:text-red-400 dark:hover:bg-red-950/30"
+                            >
+                                Déconnexion
+                            </button>
+                        </div>
+                    </aside>
+                </div>
+            )}
 
             {/* Logout Confirmation Modal */}
             {showLogoutModal && (

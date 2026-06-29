@@ -2,7 +2,6 @@ const prisma = require("../prisma/client");
 
 exports.getOverviewStats = async (req, res) => {
     try {
-        console.log(req.ip);
         // Vérifier que l'utilisateur est authentifié et a une organisation
         if (!req.user || !req.user.org_id) {
             return res.status(401).json({ success: false, message: "Non autorisé ou aucune organisation liée." });
@@ -115,7 +114,7 @@ exports.getOverviewStats = async (req, res) => {
                 select: { full_name: true }
             });
             return {
-                name: agent.full_name,
+                name: agent ? agent.full_name : "Agent inconnu",
                 count: item._count.id
             };
         }));
@@ -133,9 +132,9 @@ exports.getOverviewStats = async (req, res) => {
 
         const formattedScans = recentScans.map(scan => ({
             id: scan.id,
-            code: scan.qr_code.unique_token.substring(0, 8),
-            event: scan.qr_code.event.title,
-            agent: scan.scanned_by.full_name,
+            code: scan.qr_code ? scan.qr_code.unique_token.substring(0, 8) : "N/A",
+            event: scan.qr_code && scan.qr_code.event ? scan.qr_code.event.title : "Événement inconnu",
+            agent: scan.scanned_by ? scan.scanned_by.full_name : "Agent inconnu",
             time: scan.scanned_at,
             status: scan.status
         }));

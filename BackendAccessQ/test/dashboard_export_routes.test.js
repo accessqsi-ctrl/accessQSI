@@ -101,6 +101,49 @@ test("GET /dashboard/stats returns overview stats scoped to the authenticated or
     assert.ok(calls.every(([, orgId]) => orgId === 42));
 });
 
+test("GET /dashboard/stats tolerates missing dashboard relations", async () => {
+    const prisma = {
+        qrCode: {
+            count: async () => 1,
+            aggregate: async () => ({ _sum: { scans_count: 1 } })
+        },
+        event: {
+            count: async () => 0
+        },
+        eventSchedule: {
+            findFirst: async () => null
+        },
+        userQ: {
+            count: async () => 0,
+            findUnique: async () => null
+        },
+        scanLog: {
+            count: async () => 0,
+            groupBy: async () => [{ scanned_by_id: 99, _count: { id: 1 } }],
+            findMany: async () => [{
+                id: 1,
+                scanned_at: new Date("2026-01-01T10:00:00Z"),
+                status: "authorized",
+                qr_code: null,
+                scanned_by: null
+            }]
+        }
+    };
+    const app = loadDashboardApp({
+        user: { user_id: 7, role: "ORG_ADMIN", org_id: 42 },
+        prisma
+    });
+
+    const res = await request(app, "GET", "/dashboard/stats");
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body.success, true);
+    assert.equal(res.body.data.topAgents[0].name, "Agent inconnu");
+    assert.equal(res.body.data.recentScans[0].code, "N/A");
+    assert.equal(res.body.data.recentScans[0].event, "Événement inconnu");
+    assert.equal(res.body.data.recentScans[0].agent, "Agent inconnu");
+});
+
 test("GET /dashboard/stats rejects users without an organization", async () => {
     const app = loadDashboardApp({
         user: { user_id: 7, role: "SUPER_ADMIN", org_id: null },

@@ -10,6 +10,14 @@ const templates = {
         soft: "#dbeafe",
         label: "BILLET"
     },
+    "access-pass": {
+        id: "access-pass",
+        width: 1600,
+        height: 600,
+        accent: "#d97706",
+        soft: "#fef3c7",
+        label: "PASS"
+    },
     "staff-card": {
         id: "staff-card",
         width: 900,
@@ -25,6 +33,14 @@ const templates = {
         accent: "#e11d48",
         soft: "#ffe4e6",
         label: "INVITATION"
+    },
+    "vip-invitation": {
+        id: "vip-invitation",
+        width: 1200,
+        height: 1800,
+        accent: "#7c3aed",
+        soft: "#ede9fe",
+        label: "INVITATION VIP"
     }
 };
 
@@ -66,6 +82,7 @@ const renderHorizontalTicket = ({ template, qrUrl, event, qrRecord }) => {
     const holder = escapeXml(qrRecord.holder_name);
     const date = escapeXml(getEventDate(event));
     const location = escapeXml(getEventLocation(event));
+    const level = escapeXml(qrRecord.level || 1);
 
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${template.width}" height="${template.height}" viewBox="0 0 ${template.width} ${template.height}">
 <rect width="1600" height="600" fill="#f8fafc"/>
@@ -79,6 +96,7 @@ const renderHorizontalTicket = ({ template, qrUrl, event, qrRecord }) => {
 <text x="600" y="292" font-family="Arial, sans-serif" font-size="34" fill="#334155">${holder}</text>
 <text x="600" y="374" font-family="Arial, sans-serif" font-size="26" fill="#64748b">${date}</text>
 <text x="600" y="426" font-family="Arial, sans-serif" font-size="26" fill="#64748b">${location}</text>
+<text x="600" y="478" font-family="Arial, sans-serif" font-size="22" font-weight="700" fill="${template.accent}">Niveau ${level}</text>
 <rect x="1248" y="134" width="250" height="250" rx="24" fill="#ffffff" stroke="#e2e8f0" stroke-width="4"/>
 <image href="${qrUrl}" x="1272" y="158" width="202" height="202"/>
 <text x="1248" y="438" font-family="Arial, sans-serif" font-size="22" fill="#64748b">QR-${qrRecord.qr_id}</text>
@@ -121,7 +139,7 @@ const renderWeddingInvite = ({ template, qrUrl, event, qrRecord }) => {
 <rect x="70" y="70" width="1060" height="1660" rx="54" fill="#ffffff" stroke="${template.soft}" stroke-width="8"/>
 <circle cx="178" cy="196" r="76" fill="${template.soft}"/>
 <circle cx="1026" cy="1602" r="118" fill="${template.soft}"/>
-<text x="600" y="288" text-anchor="middle" font-family="Georgia, serif" font-size="38" font-style="italic" fill="${template.accent}">Invitation</text>
+<text x="600" y="288" text-anchor="middle" font-family="Georgia, serif" font-size="38" font-style="italic" fill="${template.accent}">${template.label}</text>
 <text x="600" y="420" text-anchor="middle" font-family="Georgia, serif" font-size="74" font-weight="700" fill="#881337">${title}</text>
 <text x="600" y="568" text-anchor="middle" font-family="Arial, sans-serif" font-size="34" fill="#64748b">Invite</text>
 <text x="600" y="636" text-anchor="middle" font-family="Arial, sans-serif" font-size="52" font-weight="700" fill="#0f172a">${holder}</text>
@@ -135,8 +153,8 @@ const renderWeddingInvite = ({ template, qrUrl, event, qrRecord }) => {
 
 const renderCard = (templateId, payload) => {
     const template = templates[templateId];
-    if (templateId === "event-ticket") return renderHorizontalTicket({ template, ...payload });
-    if (templateId === "wedding-invite") return renderWeddingInvite({ template, ...payload });
+    if (templateId === "event-ticket" || templateId === "access-pass") return renderHorizontalTicket({ template, ...payload });
+    if (templateId === "wedding-invite" || templateId === "vip-invitation") return renderWeddingInvite({ template, ...payload });
     return renderVerticalCard({ template, ...payload });
 };
 

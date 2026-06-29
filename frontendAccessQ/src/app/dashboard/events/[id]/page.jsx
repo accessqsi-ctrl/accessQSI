@@ -109,7 +109,6 @@ export default function EventDetailPage() {
     const [selectedQr, setSelectedQr] = useState(null);
     const [qrToRevoke, setQrToRevoke] = useState(null);
     const [revokingId, setRevokingId] = useState(null);
-    const [activeCardTemplateId, setActiveCardTemplateId] = useState("");
     const [cardTemplateId, setCardTemplateId] = useState("");
 
     const fetchAreas = useCallback(async () => {
@@ -172,13 +171,11 @@ export default function EventDetailPage() {
 
     useEffect(() => {
         const savedTemplateId = getSavedCardTemplateId();
-        setActiveCardTemplateId(savedTemplateId);
         setCardTemplateId(savedTemplateId);
     }, []);
 
     const openQrGenerationModal = () => {
         const savedTemplateId = getSavedCardTemplateId();
-        setActiveCardTemplateId(savedTemplateId);
         setCardTemplateId(savedTemplateId);
         setShowQrModal(true);
         setQrError("");
@@ -805,26 +802,27 @@ export default function EventDetailPage() {
                                     </div>
                                 </div>
 
-                                {activeCardTemplateId && (
-                                    <div className="space-y-2 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900/60 dark:bg-emerald-950/30">
-                                        <label className="text-sm font-semibold text-emerald-800 dark:text-emerald-200">Modèle de carte test</label>
-                                        <select
-                                            value={cardTemplateId}
-                                            onChange={(e) => setCardTemplateId(e.target.value)}
-                                            className="w-full px-4 py-3 bg-white dark:bg-slate-950 border border-emerald-200 dark:border-emerald-900 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
-                                        >
-                                            <option value="">QR seul</option>
-                                            {cardTemplates.map(template => (
-                                                <option key={template.id} value={template.id}>
-                                                    {template.name}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        <p className="text-xs leading-relaxed text-emerald-700 dark:text-emerald-300">
-                                            Visible uniquement après activation depuis /dashboard/card-templates.
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Support à générer</label>
+                                    <select
+                                        value={cardTemplateId}
+                                        onChange={(e) => setCardTemplateId(e.target.value)}
+                                        className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all"
+                                    >
+                                        <option value="">QR seul</option>
+                                        {cardTemplates.map(template => (
+                                            <option key={template.id} value={template.id}>
+                                                {template.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <div className="flex items-start gap-2 rounded-xl border border-blue-100 bg-blue-50 p-3 text-xs leading-relaxed text-blue-700 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-300">
+                                        <FileSpreadsheet className="mt-0.5 h-4 w-4 flex-none" />
+                                        <p>
+                                            Choisissez une invitation, un pass ou un badge. La carte sera générée avec le QR et disponible dans la liste.
                                         </p>
                                     </div>
-                                )}
+                                </div>
 
                                 {qrForm.accessType === 'multi' && (
                                     <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">

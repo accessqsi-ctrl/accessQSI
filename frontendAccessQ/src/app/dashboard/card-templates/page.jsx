@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { BadgeCheck, Calendar, Crown, IdCard, Mail, QrCode, Ticket } from "lucide-react";
+import { BadgeCheck, Calendar, Crown, IdCard, Mail, QrCode, ShieldCheck, Sparkles, Ticket } from "lucide-react";
 import { CARD_TEMPLATE_STORAGE_KEY, cardTemplates } from "../../lib/cardTemplates";
 
 const templateIcons = {
     "event-ticket": Ticket,
+    "access-pass": ShieldCheck,
     "staff-card": IdCard,
-    "wedding-invite": Mail
+    "wedding-invite": Mail,
+    "vip-invitation": Sparkles
 };
 
 const accentStyles = {
@@ -31,19 +33,33 @@ const accentStyles = {
         border: "border-rose-200",
         solid: "bg-rose-600",
         soft: "bg-rose-100"
+    },
+    amber: {
+        bg: "bg-amber-50",
+        text: "text-amber-700",
+        border: "border-amber-200",
+        solid: "bg-amber-600",
+        soft: "bg-amber-100"
+    },
+    violet: {
+        bg: "bg-violet-50",
+        text: "text-violet-700",
+        border: "border-violet-200",
+        solid: "bg-violet-600",
+        soft: "bg-violet-100"
     }
 };
 
 function TemplatePreview({ template }) {
     const styles = accentStyles[template.accent];
-    const isTicket = template.id === "event-ticket";
-    const isStaff = template.id === "staff-card";
+    const isWide = template.layout === "wide";
+    const isStaff = template.layout === "badge";
 
     return (
-        <div className={`relative overflow-hidden border ${styles.border} ${styles.bg} ${isTicket ? "aspect-[16/6]" : "aspect-[9/14]"} rounded-xl`}>
-            <div className={`absolute left-0 top-0 h-full ${isTicket ? "w-1/3" : "w-full h-1/4"} ${styles.solid}`} />
+        <div className={`relative overflow-hidden border ${styles.border} ${styles.bg} ${isWide ? "aspect-[16/6]" : "aspect-[9/14]"} rounded-xl`}>
+            <div className={`absolute left-0 top-0 h-full ${isWide ? "w-1/3" : "w-full h-1/4"} ${styles.solid}`} />
             <div className="absolute inset-4 flex flex-col justify-between">
-                <div className={isTicket ? "ml-[34%]" : "mt-[42%]"}>
+                <div className={isWide ? "ml-[34%]" : "mt-[42%]"}>
                     <div className={`inline-flex items-center gap-1.5 rounded-full ${styles.soft} ${styles.text} px-2.5 py-1 text-[10px] font-bold uppercase`}>
                         <BadgeCheck className="h-3 w-3" />
                         {template.category}
@@ -98,9 +114,9 @@ export default function CardTemplatesPage() {
         <div className="mx-auto max-w-7xl space-y-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <div className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">
+                    <div className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-800">
                         <Crown className="h-3.5 w-3.5" />
-                        Module en test
+                        Module cartes
                     </div>
                     <h1 className="mt-3 text-2xl font-bold text-slate-900 dark:text-white">Modèles de cartes</h1>
                     <p className="mt-1 max-w-2xl text-sm text-slate-500 dark:text-slate-400">
@@ -108,7 +124,7 @@ export default function CardTemplatesPage() {
                     </p>
                 </div>
                 <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
-                    Chemin caché : <span className="font-semibold text-slate-900 dark:text-white">/dashboard/card-templates</span>
+                    Modèle par défaut : <span className="font-semibold text-slate-900 dark:text-white">{savedTemplateId ? cardTemplates.find(template => template.id === savedTemplateId)?.name : "QR seul"}</span>
                 </div>
             </div>
 
@@ -124,7 +140,7 @@ export default function CardTemplatesPage() {
                                 key={template.id}
                                 type="button"
                                 onClick={() => setSelectedId(template.id)}
-                                className={`text-left rounded-2xl border bg-white p-4 shadow-sm transition-all dark:bg-slate-950 ${isSelected ? `${styles.border} ring-2 ring-offset-2 ring-offset-slate-50 dark:ring-offset-slate-950 ${template.accent === "blue" ? "ring-blue-500/30" : template.accent === "emerald" ? "ring-emerald-500/30" : "ring-rose-500/30"}` : "border-slate-200 hover:border-slate-300 dark:border-slate-800 dark:hover:border-slate-600"}`}
+                    className={`text-left rounded-2xl border bg-white p-4 shadow-sm transition-all dark:bg-slate-950 ${isSelected ? `${styles.border} ring-2 ring-offset-2 ring-offset-slate-50 dark:ring-offset-slate-950 ring-slate-500/20` : "border-slate-200 hover:border-slate-300 dark:border-slate-800 dark:hover:border-slate-600"}`}
                             >
                                 <TemplatePreview template={template} />
                                 <div className="mt-4 flex items-start gap-3">
@@ -184,11 +200,11 @@ export default function CardTemplatesPage() {
                             onClick={handleEnableTemplate}
                             className={`w-full rounded-xl px-4 py-3 text-sm font-semibold text-white transition-colors ${selectedStyles.solid}`}
                         >
-                            Activer ce modèle pour mes tests
+                            Définir comme modèle par défaut
                         </button>
                         {savedTemplateId === selectedTemplate.id && (
                             <p className="text-center text-xs font-medium text-emerald-600">
-                                Ce modèle sera proposé dans la génération QR.
+                                Ce modèle sera sélectionné automatiquement dans la génération QR.
                             </p>
                         )}
                         <button
@@ -196,7 +212,7 @@ export default function CardTemplatesPage() {
                             onClick={handleDisableTemplate}
                             className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-900"
                         >
-                            Désactiver l'option de test
+                            Revenir à QR seul par défaut
                         </button>
                     </div>
                 </aside>
