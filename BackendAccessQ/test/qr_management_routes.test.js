@@ -23,6 +23,7 @@ const loadQrManagementApp = ({ user, eventService, qrService, qrcode = {}, cardT
     });
     mockModule("src/services/custom_card_template.service", {
         resolveCustomForRender: async () => null,
+        getDefaultForOrg: async () => "",
         ...customCardTemplateService
     });
     mockModule("src/controllers/api.qr_verify.controller", {

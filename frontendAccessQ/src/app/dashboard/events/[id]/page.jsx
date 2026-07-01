@@ -262,6 +262,9 @@ export default function EventDetailPage() {
                 if (defaultData.success && defaultData.defaultTemplateId) {
                     window.localStorage.setItem(CARD_TEMPLATE_STORAGE_KEY, defaultData.defaultTemplateId);
                     setCardTemplateId(defaultData.defaultTemplateId);
+                } else if (defaultData.success) {
+                    window.localStorage.removeItem(CARD_TEMPLATE_STORAGE_KEY);
+                    setCardTemplateId("");
                 }
             } catch {
                 setCustomCardTemplates([]);
@@ -1087,55 +1090,31 @@ export default function EventDetailPage() {
                                             </div>
                                         </div>
 
-                                        <div className="mt-5 space-y-3">
-                                            <div className="flex items-center justify-between gap-4">
-                                                <label className="text-sm font-semibold text-slate-800 dark:text-slate-100">Support à générer</label>
-                                                <span className="text-xs font-medium text-slate-600 dark:text-slate-300">{selectedCardTemplate ? selectedCardTemplate.format : "QR seul"}</span>
+                                        <div className="mt-5 flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between">
+                                            <div className="flex min-w-0 items-center gap-3">
+                                                <div className="flex h-10 w-10 flex-none items-center justify-center rounded-xl bg-white text-[#7A90A4] shadow-sm dark:bg-slate-950">
+                                                    <FileSpreadsheet className="h-5 w-5" />
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <p className="text-sm font-bold text-slate-900 dark:text-white">
+                                                        {selectedCardTemplate ? selectedCardTemplate.name : "QR seul"}
+                                                    </p>
+                                                    <p className="text-xs text-slate-600 dark:text-slate-300">
+                                                        {selectedCardTemplate ? "Modèle par défaut appliqué" : "Aucun modèle par défaut défini"}
+                                                    </p>
+                                                </div>
                                             </div>
-
-                                            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setCardTemplateId("")}
-                                                    className={`rounded-2xl border p-3 text-left transition-all ${!cardTemplateId ? "border-[#7A90A4] bg-[#7A90A4]/15 ring-2 ring-[#7A90A4]/20" : "border-slate-200 bg-slate-50 hover:border-[#7A90A4] dark:border-slate-800 dark:bg-slate-900"}`}
-                                                >
-                                                    <CardTemplatePreview template={null} />
-                                                    <div className="mt-3 flex items-center gap-2">
-                                                        <QrCode className="h-4 w-4 text-[#7A90A4]" />
-                                                        <div>
-                                                            <p className="text-sm font-bold text-slate-900 dark:text-white">QR seul</p>
-                                                            <p className="text-xs text-slate-600 dark:text-slate-300">Image QR sans support carte.</p>
-                                                        </div>
-                                                    </div>
-                                                </button>
-
-                                                {allCardTemplates.map((template) => {
-                                                    const Icon = templateIconMap[template.id] || FileSpreadsheet;
-                                                    const isSelected = cardTemplateId === template.id;
-                                                    return (
-                                                        <button
-                                                            key={template.id}
-                                                            type="button"
-                                                            onClick={() => setCardTemplateId(template.id)}
-                                                            className={`rounded-2xl border p-3 text-left transition-all ${isSelected ? "border-[#7A90A4] bg-[#7A90A4]/15 ring-2 ring-[#7A90A4]/20" : "border-slate-200 bg-slate-50 hover:border-[#7A90A4] dark:border-slate-800 dark:bg-slate-900"}`}
-                                                        >
-                                                            <CardTemplatePreview template={template} />
-                                                            <div className="mt-3 flex items-start gap-2">
-                                                                <Icon className="mt-0.5 h-4 w-4 flex-none text-[#7A90A4]" />
-                                                                <div className="min-w-0">
-                                                                    <p className="truncate text-sm font-bold text-slate-900 dark:text-white">{template.name}</p>
-                                                                    <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-300">{template.category}</p>
-                                                                </div>
-                                                            </div>
-                                                        </button>
-                                                    );
-                                                })}
-                                            </div>
+                                            <Link
+                                                href="/dashboard/card-templates"
+                                                className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-800"
+                                            >
+                                                Changer le modèle
+                                            </Link>
                                         </div>
 
                                         <div className="mt-4 flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs leading-relaxed text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
                                             <FileSpreadsheet className="mt-0.5 h-4 w-4 flex-none text-[#7A90A4]" />
-                                            <p>{selectedCardTemplate ? `${selectedCardTemplate.name} sera généré avec le QR et disponible dans la liste.` : "Le QR sera généré seul. Vous pourrez créer une carte plus tard depuis la liste."}</p>
+                                            <p>{selectedCardTemplate ? `${selectedCardTemplate.name} sera généré avec le QR et disponible dans la liste.` : "Le QR sera généré seul. Définissez un modèle par défaut dans le menu Modèle pour créer une carte automatiquement."}</p>
                                         </div>
                                     </section>
 

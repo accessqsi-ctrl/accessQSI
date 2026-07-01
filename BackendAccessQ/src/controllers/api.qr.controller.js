@@ -52,7 +52,8 @@ exports.generateQrForEvent = async (req, res) => {
 
         const orgId = req.user.org_id;
         const eventId = Number(req.params.event_id);
-        const { fullName, email, phone, accessType, limit, validFrom, validUntil, level, cardTemplateId, cardMessage } = req.body;
+        const { fullName, email, phone, accessType, limit, validFrom, validUntil, level, cardMessage } = req.body;
+        const cardTemplateId = req.body.cardTemplateId || await customCardTemplateService.getDefaultForOrg(orgId);
 
         if (!fullName || !accessType) {
             return res.status(400).json({ success: false, message: "Nom complet et Type d'accès requis" });
@@ -417,7 +418,8 @@ exports.generateCardForExistingQr = async (req, res) => {
 
         const orgId = req.user.org_id;
         const qrId = Number(req.params.id);
-        const { cardTemplateId, cardMessage } = req.body;
+        const { cardMessage } = req.body;
+        const cardTemplateId = req.body.cardTemplateId || await customCardTemplateService.getDefaultForOrg(orgId);
 
         const resolvedCardTemplate = await resolveCardTemplate(orgId, cardTemplateId);
         if (!cardTemplateId || !resolvedCardTemplate) {
