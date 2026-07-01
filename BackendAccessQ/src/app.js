@@ -116,6 +116,7 @@ const dashboardRoutes = require("./routes/dashboard.routes");
 const areaRoutes = require("./routes/area.routes");
 const agentRoutes = require("./routes/agent.routes");
 const exportRoutes = require("./routes/export.routes");
+const cardTemplateRoutes = require("./routes/card_template.routes");
 
 // ===== Utilisation des routes =====
 // On préfixe toutes les routes utilisateurs par /user (/user/login, /user/signup, etc.)
@@ -128,6 +129,7 @@ app.use("/dashboard", dashboardRoutes);
 app.use("/areas", areaRoutes);
 app.use("/agents", agentRoutes);
 app.use("/export", exportRoutes);
+app.use("/card-templates", cardTemplateRoutes);
 
 app.use((err, req, res, next) => {
     logger.error("request.unhandled_error", {

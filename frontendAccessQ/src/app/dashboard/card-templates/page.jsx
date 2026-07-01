@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { BadgeCheck, Calendar, Crown, IdCard, Mail, QrCode, ShieldCheck, Sparkles, Ticket } from "lucide-react";
-import { CARD_TEMPLATE_STORAGE_KEY, cardTemplates } from "../../lib/cardTemplates";
+import { BadgeCheck, Copy, Crown, IdCard, Loader2, Mail, QrCode, Save, ShieldCheck, Sparkles, Ticket, Trash2, Upload } from "lucide-react";
+import { apiFetch } from "../../lib/api";
+import LoadingBar from "../../components/LoadingBar";
+import { CARD_TEMPLATE_STORAGE_KEY, cardTemplates, defaultVisibleFields, getBaseCardTemplate, normalizeCustomCardTemplate } from "../../lib/cardTemplates";
 
 const templateIcons = {
     "event-ticket": Ticket,
@@ -69,17 +71,26 @@ const accentStyles = {
 };
 
 function TemplatePreview({ template }) {
-    const styles = accentStyles[template.accent];
+    const styles = accentStyles[template.accent] || accentStyles.slate;
     const isWide = template.layout === "wide";
     const isCompact = template.layout === "compact";
     const isStaff = template.layout === "badge";
+    const customColors = template.accent === "custom";
 
     return (
-        <div className={`relative overflow-hidden border ${styles.border} ${styles.bg} ${isWide ? "aspect-[16/6]" : isCompact ? "aspect-[12/5]" : "aspect-[9/14]"} rounded-xl`}>
-            <div className={`absolute left-0 top-0 h-full ${isWide ? "w-1/3" : "w-full h-1/4"} ${styles.solid}`} />
+        <div
+            className={`relative overflow-hidden border ${styles.border} ${styles.bg} ${isWide ? "aspect-[16/6]" : isCompact ? "aspect-[12/5]" : "aspect-[9/14]"} rounded-xl`}
+            style={customColors ? { borderColor: template.primaryColor, backgroundColor: template.secondaryColor } : undefined}
+        >
+            <div
+                className={`absolute left-0 top-0 h-full ${isWide ? "w-1/3" : "w-full h-1/4"} ${customColors ? "" : styles.solid}`}
+                style={customColors ? { backgroundColor: template.primaryColor } : undefined}
+            />
             <div className="absolute inset-4 flex flex-col justify-between">
                 <div className={isWide ? "ml-[34%]" : "mt-[42%]"}>
-                    <div className={`inline-flex items-center gap-1.5 rounded-full ${styles.soft} ${styles.text} px-2.5 py-1 text-[10px] font-bold uppercase`}>
+                    <div
+                        className={`inline-flex items-center gap-1.5 rounded-full ${customColors ? "bg-white/85 text-slate-800" : `${styles.soft} ${styles.text}`} px-2.5 py-1 text-[10px] font-bold uppercase`}
+                    >
                         <BadgeCheck className="h-3 w-3" />
                         {template.category}
                     </div>
@@ -108,25 +119,191 @@ function TemplatePreview({ template }) {
 export default function CardTemplatesPage() {
     const [selectedId, setSelectedId] = useState(cardTemplates[0].id);
     const [savedTemplateId, setSavedTemplateId] = useState("");
+    const [customTemplates, setCustomTemplates] = useState([]);
+    const [loadingCustom, setLoadingCustom] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [deleting, setDeleting] = useState(false);
+    const [uploadingLogo, setUploadingLogo] = useState(false);
+    const [statusMessage, setStatusMessage] = useState("");
+    const [editor, setEditor] = useState(null);
+    const allTemplates = useMemo(() => [...cardTemplates, ...customTemplates], [customTemplates]);
     const selectedTemplate = useMemo(
-        () => cardTemplates.find(template => template.id === selectedId) || cardTemplates[0],
-        [selectedId]
+        () => allTemplates.find(template => template.id === selectedId) || allTemplates[0] || cardTemplates[0],
+        [allTemplates, selectedId]
     );
     const SelectedIcon = templateIcons[selectedTemplate.id] || Ticket;
-    const selectedStyles = accentStyles[selectedTemplate.accent];
+    const selectedStyles = accentStyles[selectedTemplate.accent] || accentStyles.slate;
+    const isCustomSelected = Boolean(selectedTemplate.customId);
+
+    const buildEditorFromTemplate = (template) => ({
+        customId: template.customId || null,
+        baseTemplateId: template.baseTemplateId || template.id,
+        name: template.customId ? template.name : `${template.name} personnalisé`,
+        primaryColor: template.primaryColor || "#2563eb",
+        secondaryColor: template.secondaryColor || "#dbeafe",
+        title: template.title || template.name.toUpperCase(),
+        cardMessageDefault: template.cardMessageDefault || "Présentez ce QR à l'entrée",
+        logoUrl: template.logoUrl || "",
+        qrPosition: template.qrPosition || "right",
+        visibleFields: { ...defaultVisibleFields, ...(template.visibleFields || {}) },
+        layout: template.layout || "wide"
+    });
+
+    const previewTemplate = useMemo(() => {
+        if (!editor) return selectedTemplate;
+        const base = getBaseCardTemplate(editor.baseTemplateId);
+        return {
+            ...base,
+            id: editor.customId ? `custom:${editor.customId}` : "draft",
+            name: editor.name || "Modèle personnalisé",
+            category: "Personnalisé",
+            accent: "custom",
+            primaryColor: editor.primaryColor,
+            secondaryColor: editor.secondaryColor,
+            title: editor.title,
+            logoUrl: editor.logoUrl,
+            qrPosition: editor.qrPosition,
+            visibleFields: editor.visibleFields,
+            layout: editor.layout || base.layout,
+            fields: Object.entries(editor.visibleFields).filter(([, value]) => value).map(([key]) => key)
+        };
+    }, [editor, selectedTemplate]);
+
+    const fetchCustomTemplates = async () => {
+        setLoadingCustom(true);
+        try {
+            const res = await apiFetch("/card-templates/custom");
+            const data = await res.json();
+            if (data.success) {
+                setCustomTemplates((data.templates || []).map(normalizeCustomCardTemplate));
+                setSavedTemplateId(data.defaultTemplateId || window.localStorage.getItem(CARD_TEMPLATE_STORAGE_KEY) || "");
+            }
+        } finally {
+            setLoadingCustom(false);
+        }
+    };
 
     useEffect(() => {
         setSavedTemplateId(window.localStorage.getItem(CARD_TEMPLATE_STORAGE_KEY) || "");
+        fetchCustomTemplates();
     }, []);
 
-    const handleEnableTemplate = () => {
-        window.localStorage.setItem(CARD_TEMPLATE_STORAGE_KEY, selectedTemplate.id);
-        setSavedTemplateId(selectedTemplate.id);
+    useEffect(() => {
+        setEditor(buildEditorFromTemplate(selectedTemplate));
+    }, [selectedTemplate.id]);
+
+    const handleEnableTemplate = async (templateId = selectedTemplate.id) => {
+        const res = await apiFetch("/card-templates/default", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ templateId })
+        });
+        const data = await res.json();
+        if (data.success) {
+            window.localStorage.setItem(CARD_TEMPLATE_STORAGE_KEY, data.defaultTemplateId);
+            setSavedTemplateId(data.defaultTemplateId);
+            setStatusMessage("Modèle par défaut mis à jour.");
+            setTimeout(() => setStatusMessage(""), 3000);
+        }
     };
 
-    const handleDisableTemplate = () => {
-        window.localStorage.removeItem(CARD_TEMPLATE_STORAGE_KEY);
-        setSavedTemplateId("");
+    const handleDisableTemplate = async () => {
+        const res = await apiFetch("/card-templates/default", { method: "DELETE" });
+        const data = await res.json();
+        if (data.success) {
+            window.localStorage.removeItem(CARD_TEMPLATE_STORAGE_KEY);
+            setSavedTemplateId("");
+            setStatusMessage("Modèle par défaut retiré.");
+            setTimeout(() => setStatusMessage(""), 3000);
+        }
+    };
+
+    const handleSaveCustom = async () => {
+        setSaving(true);
+        try {
+            const path = editor.customId ? `/card-templates/custom/${editor.customId}` : "/card-templates/custom";
+            const res = await apiFetch(path, {
+                method: editor.customId ? "PUT" : "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(editor)
+            });
+            const data = await res.json();
+            if (data.success) {
+                const normalized = normalizeCustomCardTemplate(data.template);
+                setCustomTemplates(prev => {
+                    const others = prev.filter(template => template.customId !== normalized.customId);
+                    return [normalized, ...others];
+                });
+                setSelectedId(normalized.id);
+                await handleEnableTemplate(normalized.id);
+                setStatusMessage("Modèle personnalisé sauvegardé.");
+                setTimeout(() => setStatusMessage(""), 3000);
+            }
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleDuplicateCustom = async () => {
+        if (!editor?.customId) return;
+        setSaving(true);
+        try {
+            const res = await apiFetch(`/card-templates/custom/${editor.customId}/duplicate`, { method: "POST" });
+            const data = await res.json();
+            if (data.success) {
+                const normalized = normalizeCustomCardTemplate(data.template);
+                setCustomTemplates(prev => [normalized, ...prev]);
+                setSelectedId(normalized.id);
+                setStatusMessage("Modèle dupliqué.");
+                setTimeout(() => setStatusMessage(""), 3000);
+            }
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleLogoUpload = async (file) => {
+        if (!file) return;
+        const formData = new FormData();
+        formData.append("logo", file);
+        setUploadingLogo(true);
+        try {
+            const res = await apiFetch("/card-templates/logo", {
+                method: "POST",
+                body: formData
+            });
+            const data = await res.json();
+            if (data.success) {
+                setEditor(prev => ({ ...prev, logoUrl: data.logoUrl }));
+                setStatusMessage("Logo ajouté au modèle.");
+                setTimeout(() => setStatusMessage(""), 3000);
+            }
+        } finally {
+            setUploadingLogo(false);
+        }
+    };
+
+    const handleDeleteCustom = async () => {
+        if (!editor?.customId) return;
+        setDeleting(true);
+        try {
+            const res = await apiFetch(`/card-templates/custom/${editor.customId}`, { method: "DELETE" });
+            const data = await res.json();
+            if (data.success) {
+                setCustomTemplates(prev => prev.filter(template => template.customId !== editor.customId));
+                if (savedTemplateId === `custom:${editor.customId}`) handleDisableTemplate();
+                setSelectedId(cardTemplates[0].id);
+            }
+        } finally {
+            setDeleting(false);
+        }
+    };
+
+    const toggleField = (field) => {
+        setEditor(prev => ({
+            ...prev,
+            visibleFields: { ...prev.visibleFields, [field]: !prev.visibleFields[field] }
+        }));
     };
 
     return (
@@ -143,15 +320,22 @@ export default function CardTemplatesPage() {
                     </p>
                 </div>
                 <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
-                    Modèle par défaut : <span className="font-semibold text-slate-900 dark:text-white">{savedTemplateId ? cardTemplates.find(template => template.id === savedTemplateId)?.name : "QR seul"}</span>
+                    Modèle par défaut : <span className="font-semibold text-slate-900 dark:text-white">{savedTemplateId ? allTemplates.find(template => template.id === savedTemplateId)?.name || "Modèle personnalisé" : "QR seul"}</span>
                 </div>
             </div>
 
-            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+            {loadingCustom && <LoadingBar label="Chargement des modèles personnalisés" />}
+            {statusMessage && (
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-200">
+                    {statusMessage}
+                </div>
+            )}
+
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
                 <section className="grid gap-4 md:grid-cols-3">
-                    {cardTemplates.map((template) => {
+                    {allTemplates.map((template) => {
                         const Icon = templateIcons[template.id] || Ticket;
-                        const styles = accentStyles[template.accent];
+                        const styles = accentStyles[template.accent] || accentStyles.slate;
                         const isSelected = template.id === selectedId;
 
                         return (
@@ -159,7 +343,7 @@ export default function CardTemplatesPage() {
                                 key={template.id}
                                 type="button"
                                 onClick={() => setSelectedId(template.id)}
-                    className={`text-left rounded-2xl border bg-white p-4 shadow-sm transition-all dark:bg-slate-950 ${isSelected ? `${styles.border} ring-2 ring-offset-2 ring-offset-slate-50 dark:ring-offset-slate-950 ring-slate-500/20` : "border-slate-200 hover:border-slate-300 dark:border-slate-800 dark:hover:border-slate-600"}`}
+                                className={`text-left rounded-2xl border bg-white p-4 shadow-sm transition-all dark:bg-slate-950 ${isSelected ? `${styles.border} ring-2 ring-offset-2 ring-offset-slate-50 dark:ring-offset-slate-950 ring-slate-500/20` : "border-slate-200 hover:border-slate-300 dark:border-slate-800 dark:hover:border-slate-600"}`}
                             >
                                 <TemplatePreview template={template} />
                                 <div className="mt-4 flex items-start gap-3">
@@ -188,52 +372,138 @@ export default function CardTemplatesPage() {
                     </div>
 
                     <div className="mt-5">
-                        <TemplatePreview template={selectedTemplate} />
+                        <TemplatePreview template={previewTemplate} />
                     </div>
 
-                    <div className="mt-5 space-y-4">
-                        <div>
-                            <h3 className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Champs prévus</h3>
-                            <div className="mt-2 flex flex-wrap gap-2">
-                                {selectedTemplate.fields.map(field => (
-                                    <span key={field} className="rounded-full border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:text-slate-300">
-                                        {field}
-                                    </span>
-                                ))}
-                            </div>
-                        </div>
+                    {editor && (
+                        <div className="mt-5 space-y-4">
+                            {(saving || deleting) && (
+                                <LoadingBar label={saving ? "Sauvegarde du modèle" : "Suppression du modèle"} />
+                            )}
 
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="rounded-xl border border-slate-200 p-3 dark:border-slate-800">
-                                <QrCode className="h-4 w-4 text-slate-400" />
-                                <p className="mt-2 text-xs font-semibold text-slate-900 dark:text-white">QR automatique</p>
+                            <div className="grid grid-cols-1 gap-3">
+                                <label className="space-y-1.5">
+                                    <span className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Nom</span>
+                                    <input value={editor.name} onChange={(e) => setEditor({ ...editor, name: e.target.value })} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100" />
+                                </label>
+                                <label className="space-y-1.5">
+                                    <span className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Titre sur carte</span>
+                                    <input value={editor.title} onChange={(e) => setEditor({ ...editor, title: e.target.value })} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100" />
+                                </label>
                             </div>
-                            <div className="rounded-xl border border-slate-200 p-3 dark:border-slate-800">
-                                <Calendar className="h-4 w-4 text-slate-400" />
-                                <p className="mt-2 text-xs font-semibold text-slate-900 dark:text-white">Données événement</p>
-                            </div>
-                        </div>
 
-                        <button
-                            type="button"
-                            onClick={handleEnableTemplate}
-                            className={`w-full rounded-xl px-4 py-3 text-sm font-semibold text-white transition-colors ${selectedStyles.solid}`}
-                        >
-                            Définir comme modèle par défaut
-                        </button>
-                        {savedTemplateId === selectedTemplate.id && (
-                            <p className="text-center text-xs font-medium text-emerald-600">
-                                Ce modèle sera sélectionné automatiquement dans la génération QR.
-                            </p>
-                        )}
-                        <button
-                            type="button"
-                            onClick={handleDisableTemplate}
-                            className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-900"
-                        >
-                            Revenir à QR seul par défaut
-                        </button>
-                    </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <label className="space-y-1.5">
+                                    <span className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Couleur principale</span>
+                                    <input type="color" value={editor.primaryColor} onChange={(e) => setEditor({ ...editor, primaryColor: e.target.value })} className="h-11 w-full rounded-xl border border-slate-200 bg-white p-1 dark:border-slate-800 dark:bg-slate-900" />
+                                </label>
+                                <label className="space-y-1.5">
+                                    <span className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Couleur douce</span>
+                                    <input type="color" value={editor.secondaryColor} onChange={(e) => setEditor({ ...editor, secondaryColor: e.target.value })} className="h-11 w-full rounded-xl border border-slate-200 bg-white p-1 dark:border-slate-800 dark:bg-slate-900" />
+                                </label>
+                            </div>
+
+                            <label className="space-y-1.5 block">
+                                <span className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Message par défaut</span>
+                                <input value={editor.cardMessageDefault} onChange={(e) => setEditor({ ...editor, cardMessageDefault: e.target.value })} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100" />
+                            </label>
+
+                            <label className="space-y-1.5 block">
+                                <span className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Logo URL</span>
+                                <input value={editor.logoUrl} onChange={(e) => setEditor({ ...editor, logoUrl: e.target.value })} placeholder="https://..." className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100" />
+                            </label>
+
+                            <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-800 dark:text-slate-200 dark:hover:bg-slate-900">
+                                {uploadingLogo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                                Importer un logo
+                                <input
+                                    type="file"
+                                    accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                                    className="sr-only"
+                                    onChange={(event) => handleLogoUpload(event.target.files?.[0])}
+                                />
+                            </label>
+
+                            <label className="space-y-1.5 block">
+                                <span className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Position QR</span>
+                                <select value={editor.qrPosition} onChange={(e) => setEditor({ ...editor, qrPosition: e.target.value })} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100">
+                                    <option value="right">Droite</option>
+                                    <option value="left">Gauche</option>
+                                    <option value="center">Centre</option>
+                                </select>
+                            </label>
+
+                            <div>
+                                <h3 className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Champs visibles</h3>
+                                <div className="mt-2 grid grid-cols-2 gap-2">
+                                    {Object.keys(defaultVisibleFields).map(field => (
+                                        <button
+                                            key={field}
+                                            type="button"
+                                            onClick={() => toggleField(field)}
+                                            className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition-colors ${editor.visibleFields[field] ? "border-[#7A90A4] bg-[#7A90A4]/15 text-slate-900 dark:text-white" : "border-slate-200 text-slate-500 dark:border-slate-800 dark:text-slate-400"}`}
+                                        >
+                                            {field}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={handleSaveCustom}
+                                disabled={saving}
+                                className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:opacity-60"
+                            >
+                                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                                {isCustomSelected ? "Enregistrer le modèle" : "Créer une variante"}
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() => handleEnableTemplate()}
+                                className={`w-full rounded-xl px-4 py-3 text-sm font-semibold text-white transition-colors ${selectedTemplate.accent === "custom" ? "bg-slate-900 dark:bg-slate-100 dark:text-slate-900" : selectedStyles.solid}`}
+                            >
+                                Définir comme modèle par défaut
+                            </button>
+                            {savedTemplateId === selectedTemplate.id && (
+                                <p className="text-center text-xs font-medium text-emerald-600">
+                                    Ce modèle sera sélectionné automatiquement dans la génération QR.
+                                </p>
+                            )}
+
+                            {isCustomSelected && (
+                                <div className="grid grid-cols-2 gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={handleDuplicateCustom}
+                                        disabled={saving}
+                                        className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-60 dark:border-slate-800 dark:text-slate-200 dark:hover:bg-slate-900"
+                                    >
+                                        <Copy className="h-4 w-4" />
+                                        Dupliquer
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleDeleteCustom}
+                                        disabled={deleting}
+                                        className="flex items-center justify-center gap-2 rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50 disabled:opacity-60 dark:border-red-900/60 dark:text-red-300 dark:hover:bg-red-950/30"
+                                    >
+                                        {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                                        Supprimer
+                                    </button>
+                                </div>
+                            )}
+
+                            <button
+                                type="button"
+                                onClick={handleDisableTemplate}
+                                className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-900"
+                            >
+                                Revenir à QR seul par défaut
+                            </button>
+                        </div>
+                    )}
                 </aside>
             </div>
         </div>

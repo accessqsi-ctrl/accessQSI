@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Loader2, Calendar, MapPin, QrCode, Edit2, Trash2, ArrowLeft, Plus, Download, X, CheckCircle2, FileSpreadsheet, Mail, Phone, IdCard, Sparkles, Ticket } from "lucide-react";
 import { apiFetch, refreshSession } from "../../../lib/api";
-import { CARD_TEMPLATE_STORAGE_KEY, cardTemplates } from "../../../lib/cardTemplates";
+import { CARD_TEMPLATE_STORAGE_KEY, cardTemplates, normalizeCustomCardTemplate } from "../../../lib/cardTemplates";
 import LoadingBar from "../../../components/LoadingBar";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -51,7 +51,7 @@ const validateQrContact = ({ email, phone }) => {
 
 const getSavedCardTemplateId = () => {
     const savedTemplateId = window.localStorage.getItem(CARD_TEMPLATE_STORAGE_KEY) || "";
-    return cardTemplates.some(template => template.id === savedTemplateId) ? savedTemplateId : "";
+    return savedTemplateId;
 };
 
 const templateIconMap = {
@@ -80,9 +80,10 @@ function CardTemplatePreview({ template }) {
     const isQrOnly = !template;
     const isWide = template?.layout === "wide" || template?.layout === "compact";
     const accentClass = template ? templateAccentClasses[template.accent] || templateAccentClasses.slate : "border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200";
+    const customStyle = template?.accent === "custom" ? { borderColor: template.primaryColor, backgroundColor: template.secondaryColor, color: template.primaryColor } : undefined;
 
     return (
-        <div className={`relative overflow-hidden rounded-xl border ${accentClass} ${isWide ? "aspect-[16/6]" : "aspect-[9/13]"}`}>
+        <div className={`relative overflow-hidden rounded-xl border ${accentClass} ${isWide ? "aspect-[16/6]" : "aspect-[9/13]"}`} style={customStyle}>
             {isQrOnly ? (
                 <div className="flex h-full items-center justify-center">
                     <div className="grid h-16 w-16 grid-cols-3 gap-1 rounded-lg bg-white p-2 shadow-sm dark:bg-slate-950">
@@ -180,10 +181,12 @@ export default function EventDetailPage() {
     const [cardGeneratingId, setCardGeneratingId] = useState(null);
     const [exportingFormat, setExportingFormat] = useState("");
     const [downloadingTemplate, setDownloadingTemplate] = useState(false);
+    const [customCardTemplates, setCustomCardTemplates] = useState([]);
+    const allCardTemplates = useMemo(() => [...cardTemplates, ...customCardTemplates], [customCardTemplates]);
 
     const selectedCardTemplate = useMemo(
-        () => cardTemplates.find(template => template.id === cardTemplateId) || null,
-        [cardTemplateId]
+        () => allCardTemplates.find(template => template.id === cardTemplateId) || null,
+        [allCardTemplates, cardTemplateId]
     );
 
     const fetchAreas = useCallback(async () => {
@@ -243,6 +246,29 @@ export default function EventDetailPage() {
             fetchAreas();
         }
     }, [eventId, fetchAll, fetchAreas]);
+
+    useEffect(() => {
+        const fetchCustomTemplates = async () => {
+            try {
+                const [templatesRes, defaultRes] = await Promise.all([
+                    apiFetch("/card-templates/custom"),
+                    apiFetch("/card-templates/default")
+                ]);
+                const templatesData = await templatesRes.json();
+                const defaultData = await defaultRes.json();
+                if (templatesData.success) {
+                    setCustomCardTemplates((templatesData.templates || []).map(normalizeCustomCardTemplate));
+                }
+                if (defaultData.success && defaultData.defaultTemplateId) {
+                    window.localStorage.setItem(CARD_TEMPLATE_STORAGE_KEY, defaultData.defaultTemplateId);
+                    setCardTemplateId(defaultData.defaultTemplateId);
+                }
+            } catch {
+                setCustomCardTemplates([]);
+            }
+        };
+        fetchCustomTemplates();
+    }, []);
 
     useEffect(() => {
         const savedTemplateId = getSavedCardTemplateId();
@@ -1083,7 +1109,7 @@ export default function EventDetailPage() {
                                                     </div>
                                                 </button>
 
-                                                {cardTemplates.map((template) => {
+                                                {allCardTemplates.map((template) => {
                                                     const Icon = templateIconMap[template.id] || FileSpreadsheet;
                                                     const isSelected = cardTemplateId === template.id;
                                                     return (

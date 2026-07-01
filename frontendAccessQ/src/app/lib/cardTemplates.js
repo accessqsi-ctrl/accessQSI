@@ -92,3 +92,42 @@ export const cardTemplates = [
 ];
 
 export const CARD_TEMPLATE_STORAGE_KEY = "qrAccessCardTemplateId";
+
+export const defaultVisibleFields = {
+    holder: true,
+    event: true,
+    date: true,
+    location: true,
+    level: true,
+    message: true,
+    qr: true
+};
+
+export const getBaseCardTemplate = (templateId) => cardTemplates.find(template => template.id === templateId) || cardTemplates[0];
+
+export const normalizeCustomCardTemplate = (template) => {
+    const baseTemplate = getBaseCardTemplate(template.baseTemplateId);
+
+    return {
+        ...baseTemplate,
+        id: template.templateId || `custom:${template.id}`,
+        customId: template.id,
+        baseTemplateId: template.baseTemplateId,
+        name: template.name,
+        category: "Personnalisé",
+        accent: "custom",
+        primaryColor: template.primaryColor,
+        secondaryColor: template.secondaryColor,
+        title: template.title,
+        cardMessageDefault: template.cardMessageDefault || "",
+        logoUrl: template.logoUrl || "",
+        qrPosition: template.qrPosition || "right",
+        visibleFields: { ...defaultVisibleFields, ...(template.visibleFields || {}) },
+        layout: template.layout || baseTemplate.layout,
+        format: baseTemplate.format,
+        description: `Variante de ${baseTemplate.name}`,
+        fields: Object.entries({ ...defaultVisibleFields, ...(template.visibleFields || {}) })
+            .filter(([, visible]) => visible)
+            .map(([field]) => field)
+    };
+};

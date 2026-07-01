@@ -6,6 +6,7 @@ const csv = require("csv-parser");
 const eventService = require('../services/event.service');
 const qrService = require('../services/qr.service');
 const cardTemplateService = require('../services/card_template.service');
+const customCardTemplateService = require('../services/custom_card_template.service');
 
 const buildQrPayload = (uniqueToken, eventId) => JSON.stringify({ t: uniqueToken, e: eventId });
 
@@ -27,6 +28,21 @@ const ensureQrImageForToken = async ({ uniqueToken, eventId }) => {
     return qrUrlForToken(uniqueToken);
 };
 
+const resolveCardTemplate = async (orgId, cardTemplateId) => {
+    if (!cardTemplateId) return null;
+    if (cardTemplateService.hasTemplate(cardTemplateId)) {
+        return { templateId: cardTemplateId };
+    }
+
+    const customTemplate = await customCardTemplateService.resolveCustomForRender(orgId, cardTemplateId);
+    if (!customTemplate) return null;
+
+    return {
+        templateId: customTemplate.baseTemplateId,
+        customization: customTemplate
+    };
+};
+
 // Générer un QR Code
 exports.generateQrForEvent = async (req, res) => {
     try {
@@ -42,7 +58,8 @@ exports.generateQrForEvent = async (req, res) => {
             return res.status(400).json({ success: false, message: "Nom complet et Type d'accès requis" });
         }
 
-        if (cardTemplateId && !cardTemplateService.hasTemplate(cardTemplateId)) {
+        const resolvedCardTemplate = cardTemplateId ? await resolveCardTemplate(orgId, cardTemplateId) : null;
+        if (cardTemplateId && !resolvedCardTemplate) {
             return res.status(400).json({ success: false, message: "Modèle de carte invalide." });
         }
 
@@ -82,7 +99,8 @@ exports.generateQrForEvent = async (req, res) => {
 
         if (cardTemplateId) {
             cardUrl = await cardTemplateService.generateCardForQr({
-                templateId: cardTemplateId,
+                templateId: resolvedCardTemplate.templateId,
+                customization: resolvedCardTemplate.customization,
                 event,
                 qrRecord,
                 qrUrl,
@@ -337,7 +355,8 @@ exports.importQrsFromCSV = async (req, res) => {
             const cardMessage = row.cardMessage || row.card_message || "";
 
             if (!fullName) continue;
-            if (cardTemplateId && !cardTemplateService.hasTemplate(cardTemplateId)) continue;
+            const resolvedCardTemplate = cardTemplateId ? await resolveCardTemplate(orgId, cardTemplateId) : null;
+            if (cardTemplateId && !resolvedCardTemplate) continue;
 
             const uniqueToken = crypto.randomUUID();
             let usageLimit = 1;
@@ -361,7 +380,8 @@ exports.importQrsFromCSV = async (req, res) => {
 
             if (cardTemplateId) {
                 await cardTemplateService.generateCardForQr({
-                    templateId: cardTemplateId,
+                    templateId: resolvedCardTemplate.templateId,
+                    customization: resolvedCardTemplate.customization,
                     event,
                     qrRecord,
                     qrUrl,
@@ -399,7 +419,8 @@ exports.generateCardForExistingQr = async (req, res) => {
         const qrId = Number(req.params.id);
         const { cardTemplateId, cardMessage } = req.body;
 
-        if (!cardTemplateId || !cardTemplateService.hasTemplate(cardTemplateId)) {
+        const resolvedCardTemplate = await resolveCardTemplate(orgId, cardTemplateId);
+        if (!cardTemplateId || !resolvedCardTemplate) {
             return res.status(400).json({ success: false, message: "Modèle de carte invalide." });
         }
 
@@ -418,7 +439,8 @@ exports.generateCardForExistingQr = async (req, res) => {
             : await ensureQrImageForToken({ uniqueToken: qrRecord.unique_token, eventId: qrRecord.event_id });
 
         const cardUrl = await cardTemplateService.generateCardForQr({
-            templateId: cardTemplateId,
+            templateId: resolvedCardTemplate.templateId,
+            customization: resolvedCardTemplate.customization,
             event,
             qrRecord,
             qrUrl,

@@ -9,7 +9,7 @@ const {
     request
 } = require("./helpers/http");
 
-const loadQrManagementApp = ({ user, eventService, qrService, qrcode = {}, cardTemplateService = {} }) => {
+const loadQrManagementApp = ({ user, eventService, qrService, qrcode = {}, cardTemplateService = {}, customCardTemplateService = {} }) => {
     clearSrcModules();
     mockModule("src/middleware/authMiddleware", authAs(user));
     mockModule("src/services/event.service", eventService);
@@ -20,6 +20,10 @@ const loadQrManagementApp = ({ user, eventService, qrService, qrcode = {}, cardT
         cardUrlForToken: (token) => `/cards/card_${token}.svg`,
         generateCardForQr: async () => null,
         ...cardTemplateService
+    });
+    mockModule("src/services/custom_card_template.service", {
+        resolveCustomForRender: async () => null,
+        ...customCardTemplateService
     });
     mockModule("src/controllers/api.qr_verify.controller", {
         verifyScan: (req, res) => res.json({ success: true })
@@ -163,6 +167,53 @@ test("POST /qr/generate/:event_id can generate a card from a selected template",
     assert.equal(cardArgs.cardMessage, "Accès VIP");
     assert.equal(cardArgs.qrRecord.holder_name, "Jane Holder");
     assert.match(cardArgs.qrUrl, /^\/qrcodes\/qr_.+\.png$/);
+});
+
+test("POST /qr/generate/:event_id can generate a card from a custom template", async () => {
+    let cardArgs = null;
+    const customTemplate = {
+        baseTemplateId: "event-ticket",
+        customization: {
+            title: "INVITÉ OFFICIEL",
+            primaryColor: "#123456",
+            secondaryColor: "#ddeeff",
+            visibleFields: { holder: true, event: true, qr: true }
+        }
+    };
+    const app = loadQrManagementApp({
+        user: { user_id: 7, role: "ORG_ADMIN", org_id: 42 },
+        eventService: {
+            findById: async (orgId, eventId) => ({ event_id: eventId, title: "Concert" })
+        },
+        qrService: {
+            createQr: async (data) => ({ qr_id: 9, ...data })
+        },
+        cardTemplateService: {
+            hasTemplate: (templateId) => templateId === "event-ticket",
+            generateCardForQr: async (args) => {
+                cardArgs = args;
+                return "/cards/card-custom.svg";
+            }
+        },
+        customCardTemplateService: {
+            resolveCustomForRender: async (orgId, templateId) => {
+                assert.equal(orgId, 42);
+                assert.equal(templateId, "custom:12");
+                return customTemplate;
+            }
+        }
+    });
+
+    const res = await request(app, "POST", "/qr/generate/5", {
+        fullName: "Jane Holder",
+        accessType: "single",
+        cardTemplateId: "custom:12"
+    });
+
+    assert.equal(res.status, 201);
+    assert.equal(res.body.cardUrl, "/cards/card-custom.svg");
+    assert.equal(cardArgs.templateId, "event-ticket");
+    assert.deepEqual(cardArgs.customization, customTemplate);
 });
 
 test("POST /qr/card/:id generates a card for an existing QR in the user's organization", async () => {
