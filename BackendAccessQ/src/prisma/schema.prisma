@@ -57,8 +57,10 @@ model CardTemplateCustom {
   title                String
   card_message_default String?
   logo_url             String?
+  background_image_url String?
   qr_position          String
   visible_fields       Json
+  layout_config        Json?
   layout               String
   is_default           Boolean      @default(false)
   deleted_at           DateTime?

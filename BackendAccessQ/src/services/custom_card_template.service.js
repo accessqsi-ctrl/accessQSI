@@ -4,6 +4,14 @@ const cardTemplateService = require("./card_template.service");
 const colorPattern = /^#[0-9a-fA-F]{6}$/;
 const qrPositions = new Set(["right", "left", "center"]);
 const visibleFieldKeys = ["holder", "event", "date", "location", "level", "message", "qr"];
+const layoutElementTypes = new Set(["logo", "title", "event", "holder", "date", "location", "level", "message", "qr", "cardId"]);
+const alignments = new Set(["left", "center", "right"]);
+
+const boundedNumber = (value, fallback, min, max) => {
+    const number = Number(value);
+    if (!Number.isFinite(number)) return fallback;
+    return Math.min(max, Math.max(min, number));
+};
 
 const normalizeVisibleFields = (value = {}) => {
     const source = typeof value === "object" && value !== null ? value : {};
@@ -11,6 +19,31 @@ const normalizeVisibleFields = (value = {}) => {
         fields[key] = source[key] !== false;
         return fields;
     }, {});
+};
+
+const normalizeLayoutConfig = (value = null) => {
+    if (!value || typeof value !== "object") return null;
+    const elements = Array.isArray(value.elements) ? value.elements : [];
+
+    return {
+        version: 2,
+        elements: elements
+            .filter(element => element && layoutElementTypes.has(element.type))
+            .slice(0, 16)
+            .map((element) => ({
+                type: element.type,
+                label: String(element.label || element.type).slice(0, 40),
+                x: boundedNumber(element.x, 80, 0, 2000),
+                y: boundedNumber(element.y, 80, 0, 2200),
+                width: boundedNumber(element.width, 260, 20, 2000),
+                height: boundedNumber(element.height, element.type === "qr" ? 260 : 60, 20, 2000),
+                fontSize: boundedNumber(element.fontSize, 28, 8, 160),
+                fontWeight: String(element.fontWeight || "700").slice(0, 12),
+                color: colorPattern.test(String(element.color || "")) ? element.color : "#0f172a",
+                align: alignments.has(element.align) ? element.align : "left",
+                visible: element.visible !== false
+            }))
+    };
 };
 
 const normalizePayload = (payload = {}, existing = null) => {
@@ -52,8 +85,10 @@ const normalizePayload = (payload = {}, existing = null) => {
         title: String(payload.title || existing?.title || baseTemplate.label).trim().slice(0, 80),
         card_message_default: String(payload.cardMessageDefault ?? existing?.card_message_default ?? "").trim().slice(0, 160) || null,
         logo_url: String(payload.logoUrl ?? existing?.logo_url ?? "").trim().slice(0, 500) || null,
+        background_image_url: String(payload.backgroundImageUrl ?? existing?.background_image_url ?? "").trim().slice(0, 500) || null,
         qr_position: qrPosition,
         visible_fields: normalizeVisibleFields(payload.visibleFields || existing?.visible_fields),
+        layout_config: normalizeLayoutConfig(payload.layoutConfig ?? existing?.layout_config),
         layout: String(payload.layout || existing?.layout || baseTemplate.layout || "wide").trim().slice(0, 32)
     };
 };
@@ -68,8 +103,10 @@ const toApiTemplate = (template) => ({
     title: template.title,
     cardMessageDefault: template.card_message_default || "",
     logoUrl: template.logo_url || "",
+    backgroundImageUrl: template.background_image_url || "",
     qrPosition: template.qr_position,
     visibleFields: template.visible_fields,
+    layoutConfig: template.layout_config || null,
     layout: template.layout,
     isDefault: template.is_default,
     createdAt: template.created_at,
@@ -151,8 +188,10 @@ exports.duplicateForOrg = async (orgId, id) => {
             title: existing.title,
             card_message_default: existing.card_message_default,
             logo_url: existing.logo_url,
+            background_image_url: existing.background_image_url,
             qr_position: existing.qr_position,
             visible_fields: existing.visible_fields,
+            layout_config: existing.layout_config,
             layout: existing.layout
         }
     });
@@ -231,8 +270,10 @@ exports.resolveCustomForRender = async (orgId, templateId) => {
             title: template.title,
             cardMessageDefault: template.card_message_default,
             logoUrl: template.logo_url,
+            backgroundImageUrl: template.background_image_url,
             qrPosition: template.qr_position,
             visibleFields: template.visible_fields,
+            layoutConfig: template.layout_config,
             layout: template.layout
         }
     };

@@ -178,7 +178,14 @@ test("POST /qr/generate/:event_id can generate a card from a custom template", a
             title: "INVITÉ OFFICIEL",
             primaryColor: "#123456",
             secondaryColor: "#ddeeff",
-            visibleFields: { holder: true, event: true, qr: true }
+            visibleFields: { holder: true, event: true, qr: true },
+            layoutConfig: {
+                version: 2,
+                elements: [
+                    { type: "event", x: 100, y: 100, width: 500, height: 80, fontSize: 42, fontWeight: "900", color: "#123456", align: "left", visible: true },
+                    { type: "qr", x: 1200, y: 120, width: 240, height: 240, fontSize: 20, fontWeight: "700", color: "#111827", align: "left", visible: true }
+                ]
+            }
         }
     };
     const app = loadQrManagementApp({
@@ -215,6 +222,7 @@ test("POST /qr/generate/:event_id can generate a card from a custom template", a
     assert.equal(res.body.cardUrl, "/cards/card-custom.svg");
     assert.equal(cardArgs.templateId, "event-ticket");
     assert.deepEqual(cardArgs.customization, customTemplate);
+    assert.equal(cardArgs.customization.customization.layoutConfig.version, 2);
 });
 
 test("POST /qr/card/:id generates a card for an existing QR in the user's organization", async () => {

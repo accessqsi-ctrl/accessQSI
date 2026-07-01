@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { BadgeCheck, Copy, Crown, IdCard, Loader2, Mail, QrCode, Save, ShieldCheck, Sparkles, Ticket, Trash2, Upload } from "lucide-react";
 import { apiFetch } from "../../lib/api";
 import LoadingBar from "../../components/LoadingBar";
-import { CARD_TEMPLATE_STORAGE_KEY, cardTemplates, defaultVisibleFields, getBaseCardTemplate, normalizeCustomCardTemplate } from "../../lib/cardTemplates";
+import { CARD_TEMPLATE_STORAGE_KEY, cardElementLabels, cardTemplates, createDefaultLayoutConfig, defaultVisibleFields, getBaseCardTemplate, normalizeCustomCardTemplate } from "../../lib/cardTemplates";
 
 const templateIcons = {
     "event-ticket": Ticket,
@@ -116,6 +116,75 @@ function TemplatePreview({ template }) {
     );
 }
 
+function CompositionPreview({ template, selectedType, onSelect }) {
+    const base = getBaseCardTemplate(template.baseTemplateId || template.id);
+    const isWide = base.layout === "wide" || base.layout === "compact";
+    const elements = template.layoutConfig?.elements || [];
+    const sampleValues = {
+        logo: "Logo",
+        title: template.title || "INVITATION",
+        event: "Gala QR Access",
+        holder: "Jane Mukeba",
+        date: "01 juillet 2026",
+        location: "Salle principale",
+        level: "Niveau 1",
+        message: template.cardMessageDefault || "Présentez ce QR à l'entrée",
+        cardId: "QR-1024"
+    };
+
+    return (
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-100 p-3 dark:border-slate-800 dark:bg-slate-900">
+            <div
+                className={`relative mx-auto overflow-hidden rounded-lg bg-white shadow-sm ${isWide ? "aspect-[16/6]" : "aspect-[9/13]"}`}
+                style={{
+                    maxWidth: "100%",
+                    backgroundColor: template.secondaryColor,
+                    backgroundImage: template.backgroundImageUrl ? `url(${template.backgroundImageUrl})` : undefined,
+                    backgroundSize: "cover",
+                    backgroundPosition: "center"
+                }}
+            >
+                <div className="absolute inset-0 bg-white/70" />
+                {elements.map((element) => {
+                    const selected = selectedType === element.type;
+                    const style = {
+                        left: `${(element.x / base.width) * 100}%`,
+                        top: `${(element.y / base.height) * 100}%`,
+                        width: `${(element.width / base.width) * 100}%`,
+                        height: `${(element.height / base.height) * 100}%`,
+                        color: element.color,
+                        fontSize: `${Math.max(8, (element.fontSize / base.width) * 100)}vw`,
+                        fontWeight: element.fontWeight,
+                        textAlign: element.align,
+                        opacity: element.visible ? 1 : 0.28,
+                        borderColor: selected ? "#2563eb" : "transparent"
+                    };
+                    return (
+                        <button
+                            key={element.type}
+                            type="button"
+                            onClick={() => onSelect(element.type)}
+                            className="absolute overflow-hidden rounded-md border border-dashed bg-white/20 px-1 text-left transition-colors hover:border-[#7A90A4]"
+                            style={style}
+                            title={cardElementLabels[element.type] || element.type}
+                        >
+                            {element.type === "qr" ? (
+                                <span className="grid h-full w-full grid-cols-3 gap-0.5 rounded bg-white p-1">
+                                    {Array.from({ length: 9 }).map((_, index) => <span key={index} className={index % 2 ? "bg-slate-300" : "bg-slate-900"} />)}
+                                </span>
+                            ) : element.type === "logo" ? (
+                                <span className="flex h-full items-center justify-center rounded bg-white/80 text-[10px] font-bold text-slate-700">LOGO</span>
+                            ) : (
+                                <span className="block truncate leading-tight">{sampleValues[element.type] || element.label}</span>
+                            )}
+                        </button>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+
 export default function CardTemplatesPage() {
     const [selectedId, setSelectedId] = useState(cardTemplates[0].id);
     const [savedTemplateId, setSavedTemplateId] = useState("");
@@ -126,6 +195,7 @@ export default function CardTemplatesPage() {
     const [uploadingLogo, setUploadingLogo] = useState(false);
     const [statusMessage, setStatusMessage] = useState("");
     const [editor, setEditor] = useState(null);
+    const [selectedElementType, setSelectedElementType] = useState("event");
     const allTemplates = useMemo(() => [...cardTemplates, ...customTemplates], [customTemplates]);
     const selectedTemplate = useMemo(
         () => allTemplates.find(template => template.id === selectedId) || allTemplates[0] || cardTemplates[0],
@@ -144,8 +214,10 @@ export default function CardTemplatesPage() {
         title: template.title || template.name.toUpperCase(),
         cardMessageDefault: template.cardMessageDefault || "Présentez ce QR à l'entrée",
         logoUrl: template.logoUrl || "",
+        backgroundImageUrl: template.backgroundImageUrl || "",
         qrPosition: template.qrPosition || "right",
         visibleFields: { ...defaultVisibleFields, ...(template.visibleFields || {}) },
+        layoutConfig: template.layoutConfig || createDefaultLayoutConfig(template.baseTemplateId || template.id),
         layout: template.layout || "wide"
     });
 
@@ -162,8 +234,10 @@ export default function CardTemplatesPage() {
             secondaryColor: editor.secondaryColor,
             title: editor.title,
             logoUrl: editor.logoUrl,
+            backgroundImageUrl: editor.backgroundImageUrl,
             qrPosition: editor.qrPosition,
             visibleFields: editor.visibleFields,
+            layoutConfig: editor.layoutConfig,
             layout: editor.layout || base.layout,
             fields: Object.entries(editor.visibleFields).filter(([, value]) => value).map(([key]) => key)
         };
@@ -190,6 +264,7 @@ export default function CardTemplatesPage() {
 
     useEffect(() => {
         setEditor(buildEditorFromTemplate(selectedTemplate));
+        setSelectedElementType("event");
     }, [selectedTemplate.id]);
 
     const handleEnableTemplate = async (templateId = selectedTemplate.id) => {
@@ -306,6 +381,27 @@ export default function CardTemplatesPage() {
         }));
     };
 
+    const selectedElement = editor?.layoutConfig?.elements?.find(element => element.type === selectedElementType) || null;
+    const updateSelectedElement = (updates) => {
+        setEditor(prev => ({
+            ...prev,
+            layoutConfig: {
+                ...(prev.layoutConfig || { version: 2, elements: [] }),
+                elements: (prev.layoutConfig?.elements || []).map(element => (
+                    element.type === selectedElementType ? { ...element, ...updates } : element
+                ))
+            }
+        }));
+    };
+
+    const resetLayout = () => {
+        setEditor(prev => ({
+            ...prev,
+            layoutConfig: createDefaultLayoutConfig(prev.baseTemplateId)
+        }));
+        setSelectedElementType("event");
+    };
+
     return (
         <div className="mx-auto max-w-7xl space-y-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -374,6 +470,9 @@ export default function CardTemplatesPage() {
                     <div className="mt-5">
                         <TemplatePreview template={previewTemplate} />
                     </div>
+                    <div className="mt-4">
+                        <CompositionPreview template={previewTemplate} selectedType={selectedElementType} onSelect={setSelectedElementType} />
+                    </div>
 
                     {editor && (
                         <div className="mt-5 space-y-4">
@@ -413,6 +512,11 @@ export default function CardTemplatesPage() {
                                 <input value={editor.logoUrl} onChange={(e) => setEditor({ ...editor, logoUrl: e.target.value })} placeholder="https://..." className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100" />
                             </label>
 
+                            <label className="space-y-1.5 block">
+                                <span className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Image de fond URL</span>
+                                <input value={editor.backgroundImageUrl} onChange={(e) => setEditor({ ...editor, backgroundImageUrl: e.target.value })} placeholder="https://..." className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100" />
+                            </label>
+
                             <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-800 dark:text-slate-200 dark:hover:bg-slate-900">
                                 {uploadingLogo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
                                 Importer un logo
@@ -447,6 +551,98 @@ export default function CardTemplatesPage() {
                                         </button>
                                     ))}
                                 </div>
+                            </div>
+
+                            <div className="rounded-2xl border border-slate-200 p-3 dark:border-slate-800">
+                                <div className="mb-3 flex items-center justify-between gap-3">
+                                    <h3 className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Composition</h3>
+                                    <button
+                                        type="button"
+                                        onClick={resetLayout}
+                                        className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-900"
+                                    >
+                                        Réinitialiser
+                                    </button>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {(editor.layoutConfig?.elements || []).map(element => (
+                                        <button
+                                            key={element.type}
+                                            type="button"
+                                            onClick={() => setSelectedElementType(element.type)}
+                                            className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition-colors ${selectedElementType === element.type ? "border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-200" : "border-slate-200 text-slate-600 hover:border-[#7A90A4] dark:border-slate-800 dark:text-slate-300"}`}
+                                        >
+                                            {cardElementLabels[element.type] || element.label}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                {selectedElement && (
+                                    <div className="mt-4 space-y-3">
+                                        <div className="grid grid-cols-2 gap-3">
+                                            {[
+                                                ["x", "X"],
+                                                ["y", "Y"],
+                                                ["width", "Largeur"],
+                                                ["height", "Hauteur"],
+                                                ["fontSize", "Police"]
+                                            ].map(([key, label]) => (
+                                                <label key={key} className="space-y-1.5">
+                                                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">{label}</span>
+                                                    <input
+                                                        type="number"
+                                                        value={selectedElement[key]}
+                                                        onChange={(event) => updateSelectedElement({ [key]: Number(event.target.value) })}
+                                                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
+                                                    />
+                                                </label>
+                                            ))}
+                                            <label className="space-y-1.5">
+                                                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Couleur</span>
+                                                <input
+                                                    type="color"
+                                                    value={selectedElement.color}
+                                                    onChange={(event) => updateSelectedElement({ color: event.target.value })}
+                                                    className="h-10 w-full rounded-xl border border-slate-200 bg-white p-1 dark:border-slate-800 dark:bg-slate-900"
+                                                />
+                                            </label>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <label className="space-y-1.5">
+                                                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Alignement</span>
+                                                <select
+                                                    value={selectedElement.align}
+                                                    onChange={(event) => updateSelectedElement({ align: event.target.value })}
+                                                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
+                                                >
+                                                    <option value="left">Gauche</option>
+                                                    <option value="center">Centre</option>
+                                                    <option value="right">Droite</option>
+                                                </select>
+                                            </label>
+                                            <label className="space-y-1.5">
+                                                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Graisse</span>
+                                                <select
+                                                    value={selectedElement.fontWeight}
+                                                    onChange={(event) => updateSelectedElement({ fontWeight: event.target.value })}
+                                                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
+                                                >
+                                                    <option value="400">Regular</option>
+                                                    <option value="600">Semi-bold</option>
+                                                    <option value="700">Bold</option>
+                                                    <option value="900">Black</option>
+                                                </select>
+                                            </label>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => updateSelectedElement({ visible: !selectedElement.visible })}
+                                            className={`w-full rounded-xl border px-4 py-2.5 text-sm font-semibold transition-colors ${selectedElement.visible ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-200" : "border-slate-200 text-slate-500 dark:border-slate-800 dark:text-slate-400"}`}
+                                        >
+                                            {selectedElement.visible ? "Visible" : "Masqué"}
+                                        </button>
+                                    </div>
+                                )}
                             </div>
 
                             <button
