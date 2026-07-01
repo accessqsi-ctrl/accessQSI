@@ -29,6 +29,57 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+.process-progress {
+  position: relative;
+  height: 0.4rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgb(226 232 240 / 0.95);
+}
+
+.process-progress span {
+  position: absolute;
+  inset-block: 0;
+  left: -45%;
+  width: 45%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #2563eb, #14b8a6, #7A90A4);
+  animation: process-progress-slide 1.25s ease-in-out infinite;
+}
+
+@keyframes process-progress-slide {
+  0% {
+    transform: translateX(0);
+  }
+
+  100% {
+    transform: translateX(325%);
+  }
+}
+
+.table-row-hover {
+  transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+
+.table-row-hover:hover {
+  background: rgb(122 144 164 / 0.14);
+}
+
+.table-action-neutral {
+  color: #4f6376;
+  border-color: rgb(122 144 164 / 0.28);
+  background: #ffffff;
+}
+
+.table-action-neutral:hover {
+  color: #334455;
+  background: rgb(122 144 164 / 0.16);
+}
+
+.table-action-soft-hover:hover {
+  background: rgb(122 144 164 / 0.16);
+}
+
 ::selection {
   background: #2563eb;
   color: #ffffff;
@@ -40,10 +91,76 @@ select {
   color-scheme: light;
 }
 
+.fixed.inset-0 {
+  color: #0f172a;
+}
+
+.fixed.inset-0 .text-slate-400,
+.fixed.inset-0 .text-slate-500 {
+  color: #475569;
+}
+
+.fixed.inset-0 input:not([type="file"]),
+.fixed.inset-0 textarea,
+.fixed.inset-0 select {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+.fixed.inset-0 input::placeholder,
+.fixed.inset-0 textarea::placeholder {
+  color: #64748b;
+  opacity: 1;
+}
+
 @media (prefers-color-scheme: dark) {
   input,
   textarea,
   select {
     color-scheme: dark;
+  }
+
+  .fixed.inset-0 {
+    color: #f8fafc;
+  }
+
+  .fixed.inset-0 .text-slate-400,
+  .fixed.inset-0 .text-slate-500,
+  .fixed.inset-0 .text-slate-600,
+  .fixed.inset-0 .text-slate-700 {
+    color: #cbd5e1;
+  }
+
+  .fixed.inset-0 input:not([type="file"]),
+  .fixed.inset-0 textarea,
+  .fixed.inset-0 select {
+    background: #0f172a;
+    border-color: #334155;
+    color: #f8fafc;
+  }
+
+  .fixed.inset-0 input::placeholder,
+  .fixed.inset-0 textarea::placeholder {
+    color: #94a3b8;
+  }
+
+  .process-progress {
+    background: rgb(51 65 85 / 0.9);
+  }
+
+  .table-row-hover:hover {
+    background: rgb(122 144 164 / 0.22);
+  }
+
+  .table-action-neutral {
+    color: #cbd5e1;
+    border-color: rgb(122 144 164 / 0.42);
+    background: #0f172a;
+  }
+
+  .table-action-neutral:hover {
+    color: #f8fafc;
+    background: rgb(122 144 164 / 0.26);
   }
 }

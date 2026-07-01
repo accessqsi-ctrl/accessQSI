@@ -30,6 +30,16 @@ export const cardTemplates = [
         fields: ["Nom", "Rôle", "Organisation", "Niveau", "QR"]
     },
     {
+        id: "staff-badge-horizontal",
+        name: "Badge staff horizontal",
+        category: "Organisation",
+        format: "1600 x 600 px",
+        accent: "teal",
+        layout: "wide",
+        description: "Badge horizontal compact pour équipes, sécurité et prestataires.",
+        fields: ["Nom", "Rôle", "Niveau", "Zone", "QR"]
+    },
+    {
         id: "wedding-invite",
         name: "Invitation de mariage",
         category: "Cérémonie",
@@ -48,6 +58,36 @@ export const cardTemplates = [
         layout: "invite",
         description: "Carton vertical pour invités officiels, partenaires et accès premium.",
         fields: ["Invité", "Événement", "Date", "Espace", "QR"]
+    },
+    {
+        id: "vip-pass",
+        name: "Pass VIP",
+        category: "Premium",
+        format: "1600 x 600 px",
+        accent: "violet",
+        layout: "wide",
+        description: "Pass horizontal pour invités VIP, partenaires et accès premium.",
+        fields: ["Invité", "Événement", "Niveau", "Message", "QR"]
+    },
+    {
+        id: "simple-invitation",
+        name: "Invitation simple",
+        category: "Invitation",
+        format: "1200 x 1800 px",
+        accent: "slate",
+        layout: "invite",
+        description: "Invitation sobre pour cérémonies, réunions et accès nominatifs.",
+        fields: ["Invité", "Événement", "Date", "Lieu", "QR"]
+    },
+    {
+        id: "compact-ticket",
+        name: "Ticket compact",
+        category: "Billetterie",
+        format: "1200 x 520 px",
+        accent: "blue",
+        layout: "compact",
+        description: "Ticket court pour impression rapide ou partage mobile.",
+        fields: ["Nom", "Événement", "Date", "QR"]
     }
 ];
 

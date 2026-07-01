@@ -15,7 +15,8 @@ const noopQrController = {
     downloadQrImportTemplate: (req, res) => res.send("fullName,email,phone,accessType,limit,validFrom,validUntil,level\n"),
     importQrsFromCSV: (req, res) => res.status(201).json({ success: true }),
     revokeQr: (req, res) => res.json({ success: true }),
-    restoreQr: (req, res) => res.json({ success: true })
+    restoreQr: (req, res) => res.json({ success: true }),
+    generateCardForExistingQr: (req, res) => res.status(201).json({ success: true })
 };
 
 const loadQrApp = ({ user, qrVerifyService }) => {

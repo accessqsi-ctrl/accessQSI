@@ -256,13 +256,13 @@ export default function DashboardLayout({ children }) {
             {/* Logout Confirmation Modal */}
             {showLogoutModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 w-full max-w-sm mx-4 shadow-xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200">
+                    <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 w-full max-w-sm mx-4 shadow-xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200 text-slate-900 dark:text-slate-100">
                         <div className="flex flex-col items-center text-center">
                             <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-500 flex items-center justify-center mb-4">
                                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
                             </div>
                             <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Se déconnecter ?</h3>
-                            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">Êtes-vous sûr de vouloir vous déconnecter de votre compte QR Access ?</p>
+                            <p className="text-sm text-slate-600 dark:text-slate-300 mb-6">Êtes-vous sûr de vouloir vous déconnecter de votre compte QR Access ?</p>
                             
                             <div className="flex gap-3 w-full">
                                 <button 

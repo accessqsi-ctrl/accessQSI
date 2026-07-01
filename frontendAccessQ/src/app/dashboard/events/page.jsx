@@ -151,9 +151,9 @@ export default function EventsPage() {
                                 </tr>
                             ) : (
                                 filteredEvents.map((event) => (
-                                    <tr key={event.id} className="hover:bg-sky-50 dark:hover:bg-sky-950/35 transition-colors group">
+                                    <tr key={event.id} className="table-row-hover group">
                                         <td className="px-6 py-4 font-medium text-slate-900 dark:text-white">
-                                            <Link href={`/dashboard/events/${event.id}`} className="flex items-center gap-3 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                                            <Link href={`/dashboard/events/${event.id}`} className="flex items-center gap-3 hover:text-[#4f6376] dark:hover:text-[#d7e0e8] transition-colors">
                                                 <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
                                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                                                 </div>
@@ -173,12 +173,12 @@ export default function EventsPage() {
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex items-center justify-end gap-2">
-                                                <Link href={`/dashboard/events/${event.id}`} className="p-1.5 text-sky-600 dark:text-sky-300 bg-white dark:bg-slate-900 border border-sky-100 dark:border-sky-900/50 hover:bg-sky-50 dark:hover:bg-sky-950/40 rounded-lg transition-colors" title="Gérer les QRs">
+                                                <Link href={`/dashboard/events/${event.id}`} className="p-1.5 table-action-neutral border rounded-lg transition-colors" title="Gérer les QRs">
                                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
                                                 </Link>
                                                 {(userRole === "SUPER_ADMIN" || userRole === "ORG_ADMIN") && (
                                                     <>
-                                                        <Link href={`/dashboard/events/${event.id}`} className="p-1.5 text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-sky-50 dark:hover:bg-sky-950/40 rounded-lg transition-colors" title="Modifier">
+                                                        <Link href={`/dashboard/events/${event.id}`} className="p-1.5 text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 table-action-soft-hover rounded-lg transition-colors" title="Modifier">
                                                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
                                                         </Link>
                                                         <Link href={`/dashboard/events/${event.id}`} className="p-1.5 text-red-600 dark:text-red-300 bg-white dark:bg-slate-900 border border-red-100 dark:border-red-900/50 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors" title="Supprimer">

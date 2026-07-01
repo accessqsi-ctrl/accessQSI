@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Loader2, Calendar, MapPin, QrCode, Edit2, Trash2, ArrowLeft, Plus, Download, X, CheckCircle2, FileSpreadsheet, Mail, Phone } from "lucide-react";
+import { Loader2, Calendar, MapPin, QrCode, Edit2, Trash2, ArrowLeft, Plus, Download, X, CheckCircle2, FileSpreadsheet, Mail, Phone, IdCard, Sparkles, Ticket } from "lucide-react";
 import { apiFetch, refreshSession } from "../../../lib/api";
 import { CARD_TEMPLATE_STORAGE_KEY, cardTemplates } from "../../../lib/cardTemplates";
+import LoadingBar from "../../../components/LoadingBar";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -53,6 +54,70 @@ const getSavedCardTemplateId = () => {
     return cardTemplates.some(template => template.id === savedTemplateId) ? savedTemplateId : "";
 };
 
+const templateIconMap = {
+    "event-ticket": Ticket,
+    "compact-ticket": Ticket,
+    "access-pass": FileSpreadsheet,
+    "vip-pass": Sparkles,
+    "staff-card": IdCard,
+    "staff-badge-horizontal": IdCard,
+    "wedding-invite": Mail,
+    "vip-invitation": Sparkles,
+    "simple-invitation": Mail
+};
+
+const templateAccentClasses = {
+    blue: "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900/60 dark:bg-blue-950/25 dark:text-blue-200",
+    amber: "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/25 dark:text-amber-200",
+    emerald: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/25 dark:text-emerald-200",
+    teal: "border-teal-200 bg-teal-50 text-teal-700 dark:border-teal-900/60 dark:bg-teal-950/25 dark:text-teal-200",
+    rose: "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/25 dark:text-rose-200",
+    violet: "border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-900/60 dark:bg-violet-950/25 dark:text-violet-200",
+    slate: "border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+};
+
+function CardTemplatePreview({ template }) {
+    const isQrOnly = !template;
+    const isWide = template?.layout === "wide" || template?.layout === "compact";
+    const accentClass = template ? templateAccentClasses[template.accent] || templateAccentClasses.slate : "border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200";
+
+    return (
+        <div className={`relative overflow-hidden rounded-xl border ${accentClass} ${isWide ? "aspect-[16/6]" : "aspect-[9/13]"}`}>
+            {isQrOnly ? (
+                <div className="flex h-full items-center justify-center">
+                    <div className="grid h-16 w-16 grid-cols-3 gap-1 rounded-lg bg-white p-2 shadow-sm dark:bg-slate-950">
+                        {Array.from({ length: 9 }).map((_, index) => (
+                            <span key={index} className={`rounded-sm ${index % 2 === 0 ? "bg-slate-900 dark:bg-slate-100" : "bg-slate-300 dark:bg-slate-600"}`} />
+                        ))}
+                    </div>
+                </div>
+            ) : (
+                <>
+                    <div className={`absolute left-0 top-0 ${isWide ? "h-full w-[30%]" : "h-[28%] w-full"} bg-current opacity-90`} />
+                    <div className="absolute inset-3 flex flex-col justify-between">
+                        <div className={isWide ? "ml-[34%]" : "mt-[34%]"}>
+                            <div className="h-2.5 w-24 rounded-full bg-slate-900/80 dark:bg-white/80" />
+                            <div className="mt-2 h-2 w-16 rounded-full bg-slate-500/40" />
+                            <div className="mt-2 h-2 w-20 rounded-full bg-slate-500/25" />
+                        </div>
+                        <div className="flex items-end justify-between gap-3">
+                            <div className="space-y-1.5">
+                                <div className="h-2 w-14 rounded-full bg-slate-500/30" />
+                                <div className="h-2 w-10 rounded-full bg-slate-500/20" />
+                            </div>
+                            <div className="grid h-12 w-12 grid-cols-3 gap-0.5 rounded-md bg-white p-1.5 shadow-sm dark:bg-slate-950">
+                                {Array.from({ length: 9 }).map((_, index) => (
+                                    <span key={index} className={`rounded-[2px] ${index % 2 === 0 ? "bg-slate-900 dark:bg-slate-100" : "bg-slate-300 dark:bg-slate-600"}`} />
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </>
+            )}
+        </div>
+    );
+}
+
 export default function EventDetailPage() {
     const params = useParams();
     const router = useRouter();
@@ -89,7 +154,8 @@ export default function EventDetailPage() {
     const [qrForm, setQrForm] = useState({
         fullName: "", email: "", phone: "",
         accessType: 'single', limit: "1",
-        validFrom: "", validUntil: "", level: "1"
+        validFrom: "", validUntil: "", level: "1",
+        cardMessage: ""
     });
     const [generatingQr, setGeneratingQr] = useState(false);
     const [qrError, setQrError] = useState("");
@@ -110,6 +176,15 @@ export default function EventDetailPage() {
     const [qrToRevoke, setQrToRevoke] = useState(null);
     const [revokingId, setRevokingId] = useState(null);
     const [cardTemplateId, setCardTemplateId] = useState("");
+    const [generatedAsset, setGeneratedAsset] = useState(null);
+    const [cardGeneratingId, setCardGeneratingId] = useState(null);
+    const [exportingFormat, setExportingFormat] = useState("");
+    const [downloadingTemplate, setDownloadingTemplate] = useState(false);
+
+    const selectedCardTemplate = useMemo(
+        () => cardTemplates.find(template => template.id === cardTemplateId) || null,
+        [cardTemplateId]
+    );
 
     const fetchAreas = useCallback(async () => {
         try {
@@ -179,6 +254,7 @@ export default function EventDetailPage() {
         setCardTemplateId(savedTemplateId);
         setShowQrModal(true);
         setQrError("");
+        setGeneratedAsset(null);
         if (event && event.EventSchedules && event.EventSchedules.length > 0) {
             const schedules = event.EventSchedules;
             setQrForm(prev => ({
@@ -271,7 +347,7 @@ export default function EventDetailPage() {
             ...qrForm,
             email: qrForm.email.trim().toLowerCase(),
             phone: normalizePhone(qrForm.phone),
-            ...(cardTemplateId ? { cardTemplateId } : {})
+            ...(cardTemplateId ? { cardTemplateId, cardMessage: qrForm.cardMessage.trim() } : {})
         };
         try {
             const res = await apiFetch(`/qr/generate/${eventId}`, {
@@ -281,12 +357,19 @@ export default function EventDetailPage() {
             });
             const data = await res.json();
             if (data.success) {
-                setShowQrModal(false);
-                setQrForm({ ...qrForm, fullName: "", email: "", phone: "", level: "1" });
+                setGeneratedAsset({
+                    qrUrl: data.qrUrl,
+                    cardUrl: data.cardUrl || null,
+                    holder: qrForm.fullName,
+                    templateName: selectedCardTemplate?.name || "QR seul"
+                });
+                setQrForm({ ...qrForm, fullName: "", email: "", phone: "", level: "1", cardMessage: "" });
                 setQrContactTouched({ email: false, phone: false });
                 setQrSubmitAttempted(false);
                 if (data.cardUrl) {
                     showToast("QR Code généré avec une carte prête à télécharger.");
+                } else {
+                    showToast("QR Code généré avec succès.");
                 }
                 // Refresh QR list
                 const qrRes = await apiFetch(`/qr/event/${eventId}`);
@@ -342,6 +425,30 @@ export default function EventDetailPage() {
         }
     };
 
+    const handleGenerateCardForQr = async (qr) => {
+        const savedTemplateId = getSavedCardTemplateId();
+        const templateId = savedTemplateId || "event-ticket";
+        setCardGeneratingId(qr.id);
+        try {
+            const res = await apiFetch(`/qr/card/${qr.id}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ cardTemplateId: templateId })
+            });
+            const data = await res.json();
+            if (data.success) {
+                setQrCodes(qrCodes.map(item => item.id === qr.id ? { ...item, cardUrl: data.cardUrl } : item));
+                showToast("Carte générée et prête à télécharger.");
+            } else {
+                showToast(data.message || "Erreur lors de la génération de la carte.");
+            }
+        } catch {
+            showToast("Erreur de connexion au serveur.");
+        } finally {
+            setCardGeneratingId(null);
+        }
+    };
+
     const handleExport = async (format) => {
         if (format !== "csv") {
             const totalScanLogs = qrCodes.reduce((sum, qr) => sum + (qr.scans_count || 0), 0);
@@ -354,15 +461,25 @@ export default function EventDetailPage() {
             showToast("Aucune donnée de scan n'est disponible pour cet événement.");
             return;
         }
-        const session = await refreshSession();
-        if (!session.ok) return;
-        window.open(`${process.env.NEXT_PUBLIC_API_URL}/export/${format}?event_id=${eventId}`, '_blank');
+        setExportingFormat(format);
+        try {
+            const session = await refreshSession();
+            if (!session.ok) return;
+            window.open(`${process.env.NEXT_PUBLIC_API_URL}/export/${format}?event_id=${eventId}`, '_blank');
+        } finally {
+            setExportingFormat("");
+        }
     };
 
     const handleDownloadTemplate = async () => {
-        const session = await refreshSession();
-        if (!session.ok) return;
-        window.open(`${process.env.NEXT_PUBLIC_API_URL}/qr/template/${eventId}`, '_blank');
+        setDownloadingTemplate(true);
+        try {
+            const session = await refreshSession();
+            if (!session.ok) return;
+            window.open(`${process.env.NEXT_PUBLIC_API_URL}/qr/template/${eventId}`, '_blank');
+        } finally {
+            setDownloadingTemplate(false);
+        }
     };
 
 
@@ -535,24 +652,27 @@ export default function EventDetailPage() {
                     <div className="flex gap-2 flex-shrink-0">
                         <button
                             onClick={() => handleExport('csv')}
+                            disabled={exportingFormat === "csv"}
                             className="inline-flex items-center justify-center p-2.5 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-200 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-95 transition-all shadow-sm"
                             title="Exporter en CSV"
                         >
-                            <Download className="w-5 h-5" />
+                            {exportingFormat === "csv" ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
                         </button>
                         <button
                             onClick={handleDownloadTemplate}
+                            disabled={downloadingTemplate}
                             className="inline-flex items-center justify-center p-2.5 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-200 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-95 transition-all shadow-sm"
                             title="Télécharger le modèle d'import CSV"
                         >
-                            <FileSpreadsheet className="w-5 h-5" />
+                            {downloadingTemplate ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileSpreadsheet className="w-5 h-5" />}
                         </button>
                         <button
                             onClick={() => handleExport('pdf')}
+                            disabled={exportingFormat === "pdf"}
                             className="inline-flex items-center justify-center p-2.5 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-200 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-95 transition-all shadow-sm"
                             title="Exporter en PDF"
                         >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                            {exportingFormat === "pdf" ? <Loader2 className="w-5 h-5 animate-spin" /> : <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>}
                         </button>
                         <button
                             onClick={() => {
@@ -575,6 +695,12 @@ export default function EventDetailPage() {
                     </div>
 
                 </div>
+                {(exportingFormat || downloadingTemplate) && (
+                    <LoadingBar
+                        label={downloadingTemplate ? "Préparation du modèle CSV" : `Préparation export ${exportingFormat.toUpperCase()}`}
+                        className="mt-6"
+                    />
+                )}
             </div>
 
             {/* QR Codes Section */}
@@ -644,7 +770,7 @@ export default function EventDetailPage() {
                                 </tr>
                             ) : (
                                 filteredQrs.map((qr) => (
-                                    <tr key={qr.id} className="hover:bg-sky-50 dark:hover:bg-sky-950/35 transition-colors group">
+                                    <tr key={qr.id} className="table-row-hover group">
                                         <td className="px-6 py-4 font-medium text-slate-900 dark:text-white">{qr.id}</td>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
@@ -666,14 +792,14 @@ export default function EventDetailPage() {
                                         <td className="px-6 py-4 text-slate-500 dark:text-slate-400">{qr.createdAt}</td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex items-center justify-end gap-2">
-                                                <button onClick={() => setSelectedQr(qr)} className="p-1.5 text-sky-600 dark:text-sky-300 bg-white dark:bg-slate-900 border border-sky-100 dark:border-sky-900/50 hover:bg-sky-50 dark:hover:bg-sky-950/40 rounded-lg transition-colors" title="Voir Ticket">
+                                                <button onClick={() => setSelectedQr(qr)} className="p-1.5 table-action-neutral border rounded-lg transition-colors" title="Voir Ticket">
                                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
                                                 </button>
                                                 <a
                                                     href={`${process.env.NEXT_PUBLIC_API_URL}/qrcodes/qr_${qr.token}.png`}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    className="p-1.5 text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-sky-50 dark:hover:bg-sky-950/40 rounded-lg transition-colors inline-block"
+                                                    className="p-1.5 text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 table-action-soft-hover rounded-lg transition-colors inline-block"
                                                     title="Télécharger le QR"
                                                 >
                                                     <Download className="w-5 h-5" />
@@ -688,7 +814,16 @@ export default function EventDetailPage() {
                                                     >
                                                         <FileSpreadsheet className="w-5 h-5" />
                                                     </a>
-                                                ) : null}
+                                                ) : (
+                                                    <button
+                                                        onClick={() => handleGenerateCardForQr(qr)}
+                                                        disabled={cardGeneratingId === qr.id}
+                                                        className="p-1.5 text-violet-600 dark:text-violet-300 bg-white dark:bg-slate-900 border border-violet-100 dark:border-violet-900/50 hover:bg-violet-50 dark:hover:bg-violet-950/40 rounded-lg transition-colors disabled:opacity-50"
+                                                        title="Générer une carte"
+                                                    >
+                                                        {cardGeneratingId === qr.id ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileSpreadsheet className="w-5 h-5" />}
+                                                    </button>
+                                                )}
                                                 {qr.status === 'active' ? (
                                                     <button onClick={() => setQrToRevoke(qr)} disabled={revokingId === qr.id} className="p-1.5 text-red-600 dark:text-red-300 bg-white dark:bg-slate-900 border border-red-100 dark:border-red-900/50 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors disabled:opacity-50" title="Révoquer Accès">
                                                         {revokingId === qr.id ? <Loader2 className="w-5 h-5 animate-spin" /> : <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>}
@@ -712,45 +847,106 @@ export default function EventDetailPage() {
             {/* ── MODAL: Generate QR ── */}
             {showQrModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm overflow-y-auto">
-                    <div className="bg-white dark:bg-slate-950 w-full max-w-lg rounded-3xl shadow-2xl p-6 sm:p-8 relative my-8">
+                    <div className="bg-white dark:bg-slate-950 w-full max-w-3xl rounded-3xl shadow-2xl relative my-8 overflow-hidden text-slate-900 dark:text-slate-100">
                         <button
                             onClick={() => {
                                 setShowQrModal(false);
                                 setQrError("");
                                 setQrSubmitAttempted(false);
                             }}
-                            className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded-xl transition-colors"
+                            className="absolute top-5 right-5 z-10 p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900 rounded-xl transition-colors"
                         >
-                            <X className="w-5 h-5 text-slate-400 dark:text-slate-500" />
+                            <X className="w-5 h-5" />
                         </button>
-                        
-                        <div className="mb-6 pr-8">
-                            <h2 className="text-xl font-bold text-slate-900 dark:text-white">Générer un QR Code</h2>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 truncate">Pour : <span className="font-semibold text-blue-600">{event.title}</span></p>
+
+                        <div className="border-b border-slate-100 dark:border-slate-800 px-6 py-5 sm:px-8">
+                            <div className="flex items-start gap-4 pr-10">
+                                <div className="flex h-11 w-11 flex-none items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300">
+                                    <QrCode className="h-5 w-5" />
+                                </div>
+                                <div className="min-w-0">
+                                    <h2 className="text-xl font-bold text-slate-900 dark:text-white">Générer un QR Code</h2>
+                                    <p className="mt-1 truncate text-sm text-slate-600 dark:text-slate-300">
+                                        Événement : <span className="font-semibold text-slate-900 dark:text-white">{event.title}</span>
+                                    </p>
+                                </div>
+                            </div>
                         </div>
 
-                        <form onSubmit={handleGenerateQr} className="space-y-6">
+                        <form onSubmit={handleGenerateQr}>
+                            <div className="max-h-[72vh] overflow-y-auto px-6 py-6 sm:px-8">
+                                {generatingQr && (
+                                    <LoadingBar label={cardTemplateId ? "Génération du QR et de la carte" : "Génération du QR"} className="mb-5" />
+                                )}
                                 {qrError && (
-                                    <div className="p-4 bg-red-50 text-red-600 rounded-xl text-sm border border-red-100 animate-in fade-in zoom-in duration-300">{qrError}</div>
+                                    <div className="mb-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700 animate-in fade-in zoom-in duration-300 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200">{qrError}</div>
+                                )}
+
+                                {generatedAsset && (
+                                    <div className="mb-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900/60 dark:bg-emerald-950/25">
+                                        <div className="flex items-start gap-3">
+                                            <div className="flex h-10 w-10 flex-none items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-200">
+                                                <CheckCircle2 className="h-5 w-5" />
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                                <h3 className="text-sm font-bold text-emerald-900 dark:text-emerald-100">Support généré</h3>
+                                                <p className="mt-1 text-xs text-emerald-800 dark:text-emerald-200">
+                                                    {generatedAsset.holder} - {generatedAsset.templateName}
+                                                </p>
+                                                <div className="mt-3 flex flex-wrap gap-2">
+                                                    <a
+                                                        href={`${process.env.NEXT_PUBLIC_API_URL}${generatedAsset.qrUrl}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-2 text-xs font-bold text-slate-700 shadow-sm ring-1 ring-emerald-200 transition-colors hover:bg-emerald-100 dark:bg-slate-950 dark:text-slate-100 dark:ring-emerald-900/60 dark:hover:bg-emerald-950/40"
+                                                    >
+                                                        <Download className="h-3.5 w-3.5" />
+                                                        Télécharger QR
+                                                    </a>
+                                                    {generatedAsset.cardUrl && (
+                                                        <a
+                                                            href={`${process.env.NEXT_PUBLIC_API_URL}${generatedAsset.cardUrl}`}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 px-3 py-2 text-xs font-bold text-white shadow-sm transition-colors hover:bg-emerald-800"
+                                                        >
+                                                            <FileSpreadsheet className="h-3.5 w-3.5" />
+                                                            Télécharger carte
+                                                        </a>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 )}
 
                                 <div className="space-y-5">
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Nom complet *</label>
+                                    <section className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
+                                        <div className="mb-4 flex items-center justify-between gap-4">
+                                            <div>
+                                                <h3 className="text-sm font-bold text-slate-900 dark:text-white">Titulaire</h3>
+                                                <p className="text-xs text-slate-600 dark:text-slate-300">Identité et contact de la personne qui utilisera ce QR.</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-4">
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-semibold text-slate-800 dark:text-slate-100">Nom complet *</label>
                                         <input
                                             required
                                             type="text"
-                                            placeholder="John Doe"
+                                                    placeholder="Ex. Jane Smith"
                                             value={qrForm.fullName}
                                             onChange={(e) => setQrForm({ ...qrForm, fullName: e.target.value })}
-                                            className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all"
+                                                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all"
                                         />
-                                    </div>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Email</label>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                                <div className="space-y-2">
+                                                    <label className="text-sm font-semibold text-slate-800 dark:text-slate-100">Email</label>
                                             <div className="relative">
-                                                <Mail className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${showEmailError ? "text-red-500" : "text-slate-400"}`} />
+                                                        <Mail className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${showEmailError ? "text-red-500" : "text-slate-500 dark:text-slate-400"}`} />
                                                 <input
                                                     type="email"
                                                     inputMode="email"
@@ -763,17 +959,18 @@ export default function EventDetailPage() {
                                                         setQrError("");
                                                         setQrForm({ ...qrForm, email: e.target.value });
                                                     }}
-                                                    className={`w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-900 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:bg-white dark:focus:bg-slate-950 transition-all ${showEmailError ? "border-red-300 focus:ring-red-500/20" : "border-slate-200 dark:border-slate-800 focus:ring-blue-500/20"}`}
+                                                            className={`w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-900 border rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:bg-white dark:focus:bg-slate-950 transition-all ${showEmailError ? "border-red-300 focus:ring-red-500/20" : "border-slate-200 dark:border-slate-800 focus:ring-blue-500/20"}`}
                                                 />
                                             </div>
-                                            <p className={`text-xs leading-relaxed ${showEmailError ? "text-red-600" : "text-slate-500 dark:text-slate-400"}`}>
+                                                    <p className={`text-xs leading-relaxed ${showEmailError ? "text-red-600 dark:text-red-300" : "text-slate-600 dark:text-slate-300"}`}>
                                                 {showEmailError ? qrContactErrors.email : "Optionnel. Exemple : nom@entreprise.com"}
                                             </p>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Numéro de téléphone</label>
+                                                </div>
+
+                                                <div className="space-y-2">
+                                                    <label className="text-sm font-semibold text-slate-800 dark:text-slate-100">Numéro de téléphone</label>
                                             <div className="relative">
-                                                <Phone className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${showPhoneError ? "text-red-500" : "text-slate-400"}`} />
+                                                        <Phone className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${showPhoneError ? "text-red-500" : "text-slate-500 dark:text-slate-400"}`} />
                                                 <input
                                                     type="tel"
                                                     inputMode="tel"
@@ -786,29 +983,38 @@ export default function EventDetailPage() {
                                                         setQrError("");
                                                         setQrForm({ ...qrForm, phone: formatInternationalPhone(e.target.value) });
                                                     }}
-                                                    className={`w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-900 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:bg-white dark:focus:bg-slate-950 transition-all ${showPhoneError ? "border-red-300 focus:ring-red-500/20" : "border-slate-200 dark:border-slate-800 focus:ring-blue-500/20"}`}
+                                                            className={`w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-900 border rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:bg-white dark:focus:bg-slate-950 transition-all ${showPhoneError ? "border-red-300 focus:ring-red-500/20" : "border-slate-200 dark:border-slate-800 focus:ring-blue-500/20"}`}
                                                 />
                                             </div>
-                                            <p className={`text-xs leading-relaxed ${showPhoneError ? "text-red-600" : "text-slate-500 dark:text-slate-400"}`}>
+                                                    <p className={`text-xs leading-relaxed ${showPhoneError ? "text-red-600 dark:text-red-300" : "text-slate-600 dark:text-slate-300"}`}>
                                                 {showPhoneError ? qrContactErrors.phone : "Optionnel. Commencez par + et l'indicatif pays."}
                                             </p>
+                                                </div>
+                                            </div>
                                         </div>
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Niveau d'accréditation</label>
+                                    </section>
+
+                                    <section className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
+                                        <div className="mb-4">
+                                            <h3 className="text-sm font-bold text-slate-900 dark:text-white">Accès</h3>
+                                            <p className="text-xs text-slate-600 dark:text-slate-300">Définissez le niveau, le nombre d'utilisations et le support généré.</p>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[180px_minmax(0,1fr)]">
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-semibold text-slate-800 dark:text-slate-100">Niveau</label>
                                     <input
                                         type="number"
                                         min="1"
                                         value={qrForm.level}
                                         onChange={(e) => setQrForm({ ...qrForm, level: e.target.value })}
-                                        className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all"
+                                                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all"
                                     />
-                                </div>
+                                            </div>
 
-                                <div className="space-y-3">
-                                    <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Type d'accès</label>
-                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-semibold text-slate-800 dark:text-slate-100">Type d'accès</label>
+                                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                                         {[
                                             { value: 'single', label: 'Simple', desc: '1 scan' },
                                             { value: 'multi', label: 'Multiple', desc: 'N scans' },
@@ -818,71 +1024,125 @@ export default function EventDetailPage() {
                                                 key={value}
                                                 type="button"
                                                 onClick={() => setQrForm({ ...qrForm, accessType: value, limit: value === 'single' ? "1" : value === 'unlimited' ? "999999" : (qrForm.limit == "1" ? "2" : qrForm.limit) })}
-                                                className={`px-3 py-3 rounded-xl border text-left transition-all ${qrForm.accessType === value ? 'bg-blue-50 border-blue-200 text-blue-700 shadow-sm' : 'bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600'}`}
+                                                            className={`px-3 py-3 rounded-xl border text-left transition-all ${qrForm.accessType === value ? 'bg-blue-50 border-blue-200 text-blue-700 shadow-sm dark:bg-blue-950/35 dark:border-blue-800 dark:text-blue-200' : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 hover:border-[#7A90A4] dark:hover:border-[#7A90A4]'}`}
                                             >
                                                 <div className="text-sm font-bold">{label}</div>
-                                                <div className="text-[10px] opacity-70 font-medium">{desc}</div>
+                                                            <div className="text-[10px] opacity-80 font-medium">{desc}</div>
                                             </button>
                                         ))}
+                                                </div>
                                     </div>
                                 </div>
 
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Support à générer</label>
-                                    <select
-                                        value={cardTemplateId}
-                                        onChange={(e) => setCardTemplateId(e.target.value)}
-                                        className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all"
-                                    >
-                                        <option value="">QR seul</option>
-                                        {cardTemplates.map(template => (
-                                            <option key={template.id} value={template.id}>
-                                                {template.name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                    <div className="flex items-start gap-2 rounded-xl border border-blue-100 bg-blue-50 p-3 text-xs leading-relaxed text-blue-700 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-300">
-                                        <FileSpreadsheet className="mt-0.5 h-4 w-4 flex-none" />
-                                        <p>
-                                            Choisissez une invitation, un pass ou un badge. La carte sera générée avec le QR et disponible dans la liste.
-                                        </p>
-                                    </div>
-                                </div>
+                                        <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+                                            {qrForm.accessType === 'multi' && (
+                                                <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                                                    <label className="text-sm font-semibold text-slate-800 dark:text-slate-100">Nombre de scans</label>
+                                                    <input
+                                                        type="number"
+                                                        min="2"
+                                                        value={qrForm.limit}
+                                                        onChange={(e) => setQrForm({ ...qrForm, limit: e.target.value })}
+                                                        className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all"
+                                                    />
+                                                </div>
+                                            )}
 
-                                {qrForm.accessType === 'multi' && (
-                                    <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                                        <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Nombre de scans</label>
-                                        <input
-                                            type="number"
-                                            min="2"
-                                            value={qrForm.limit}
-                                            onChange={(e) => setQrForm({ ...qrForm, limit: e.target.value })}
-                                            className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all"
-                                        />
-                                    </div>
-                                )}
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-semibold text-slate-800 dark:text-slate-100">Message sur la carte</label>
+                                                <input
+                                                    type="text"
+                                                    value={qrForm.cardMessage}
+                                                    onChange={(e) => setQrForm({ ...qrForm, cardMessage: e.target.value })}
+                                                    placeholder="Ex. Accès VIP, Invité officiel..."
+                                                    disabled={!cardTemplateId}
+                                                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all disabled:opacity-60"
+                                                />
+                                            </div>
+                                        </div>
 
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Valide du</label>
+                                        <div className="mt-5 space-y-3">
+                                            <div className="flex items-center justify-between gap-4">
+                                                <label className="text-sm font-semibold text-slate-800 dark:text-slate-100">Support à générer</label>
+                                                <span className="text-xs font-medium text-slate-600 dark:text-slate-300">{selectedCardTemplate ? selectedCardTemplate.format : "QR seul"}</span>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setCardTemplateId("")}
+                                                    className={`rounded-2xl border p-3 text-left transition-all ${!cardTemplateId ? "border-[#7A90A4] bg-[#7A90A4]/15 ring-2 ring-[#7A90A4]/20" : "border-slate-200 bg-slate-50 hover:border-[#7A90A4] dark:border-slate-800 dark:bg-slate-900"}`}
+                                                >
+                                                    <CardTemplatePreview template={null} />
+                                                    <div className="mt-3 flex items-center gap-2">
+                                                        <QrCode className="h-4 w-4 text-[#7A90A4]" />
+                                                        <div>
+                                                            <p className="text-sm font-bold text-slate-900 dark:text-white">QR seul</p>
+                                                            <p className="text-xs text-slate-600 dark:text-slate-300">Image QR sans support carte.</p>
+                                                        </div>
+                                                    </div>
+                                                </button>
+
+                                                {cardTemplates.map((template) => {
+                                                    const Icon = templateIconMap[template.id] || FileSpreadsheet;
+                                                    const isSelected = cardTemplateId === template.id;
+                                                    return (
+                                                        <button
+                                                            key={template.id}
+                                                            type="button"
+                                                            onClick={() => setCardTemplateId(template.id)}
+                                                            className={`rounded-2xl border p-3 text-left transition-all ${isSelected ? "border-[#7A90A4] bg-[#7A90A4]/15 ring-2 ring-[#7A90A4]/20" : "border-slate-200 bg-slate-50 hover:border-[#7A90A4] dark:border-slate-800 dark:bg-slate-900"}`}
+                                                        >
+                                                            <CardTemplatePreview template={template} />
+                                                            <div className="mt-3 flex items-start gap-2">
+                                                                <Icon className="mt-0.5 h-4 w-4 flex-none text-[#7A90A4]" />
+                                                                <div className="min-w-0">
+                                                                    <p className="truncate text-sm font-bold text-slate-900 dark:text-white">{template.name}</p>
+                                                                    <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-300">{template.category}</p>
+                                                                </div>
+                                                            </div>
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+
+                                        <div className="mt-4 flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs leading-relaxed text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
+                                            <FileSpreadsheet className="mt-0.5 h-4 w-4 flex-none text-[#7A90A4]" />
+                                            <p>{selectedCardTemplate ? `${selectedCardTemplate.name} sera généré avec le QR et disponible dans la liste.` : "Le QR sera généré seul. Vous pourrez créer une carte plus tard depuis la liste."}</p>
+                                        </div>
+                                    </section>
+
+                                    <section className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
+                                        <div className="mb-4">
+                                            <h3 className="text-sm font-bold text-slate-900 dark:text-white">Validité</h3>
+                                            <p className="text-xs text-slate-600 dark:text-slate-300">Les dates sont préremplies depuis l'événement lorsque c'est possible.</p>
+                                        </div>
+                                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-semibold text-slate-800 dark:text-slate-100">Valide du</label>
                                         <input
                                             type="datetime-local"
                                             value={qrForm.validFrom}
                                             onChange={(e) => setQrForm({ ...qrForm, validFrom: e.target.value })}
-                                            className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all text-slate-600 dark:text-slate-300"
+                                                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all"
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Valide jusqu'au</label>
+                                                <label className="text-sm font-semibold text-slate-800 dark:text-slate-100">Valide jusqu'au</label>
                                         <input
                                             type="datetime-local"
                                             value={qrForm.validUntil}
                                             onChange={(e) => setQrForm({ ...qrForm, validUntil: e.target.value })}
-                                            className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all text-slate-600 dark:text-slate-300"
+                                                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all"
                                         />
+                                            </div>
+                                        </div>
+                                    </section>
                                     </div>
                                 </div>
 
+                            <div className="border-t border-slate-100 bg-slate-50 px-6 py-4 dark:border-slate-800 dark:bg-slate-900/60 sm:px-8">
                                 <button
                                     type="submit"
                                     disabled={generatingQr}
@@ -891,6 +1151,7 @@ export default function EventDetailPage() {
                                     {generatingQr ? <Loader2 className="w-5 h-5 animate-spin" /> : <QrCode className="w-5 h-5" />}
                                     {generatingQr ? "Génération en cours..." : "Générer & Sauvegarder"}
                                 </button>
+                            </div>
                             </form>
                     </div>
                 </div>
@@ -900,32 +1161,32 @@ export default function EventDetailPage() {
             {selectedQr && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
                     <div className="bg-white dark:bg-slate-950 w-full max-w-sm rounded-3xl shadow-2xl p-6 relative overflow-hidden text-center animate-in zoom-in duration-300">
-                        <button onClick={() => setSelectedQr(null)} className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded-xl transition-colors">
-                            <X className="w-5 h-5 text-slate-400 dark:text-slate-500" />
+                        <button onClick={() => setSelectedQr(null)} className="absolute top-4 right-4 p-2 hover:bg-slate-100 dark:hover:bg-slate-900 rounded-xl transition-colors">
+                            <X className="w-5 h-5 text-slate-600 dark:text-slate-300" />
                         </button>
-                        <h3 className="text-sm font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-6">Détails du Ticket</h3>
+                        <h3 className="text-sm font-bold text-slate-600 dark:text-slate-300 uppercase tracking-widest mb-6">Détails du Ticket</h3>
 
                         <div className="w-full flex flex-col items-center">
                             <img src={`${process.env.NEXT_PUBLIC_API_URL}/qrcodes/qr_${selectedQr.token}.png`} alt="QR Code" className="w-48 h-48 rounded-2xl border border-slate-100 dark:border-slate-800 p-2 shadow-inner bg-slate-50 dark:bg-slate-900 mb-6 object-contain" />
 
                             <div className="w-full space-y-4 text-left bg-slate-50 dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
                                 <div>
-                                    <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tighter">Titulaire</p>
+                                    <p className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-tighter">Titulaire</p>
                                     <p className="text-sm font-black text-slate-900 dark:text-white truncate">{selectedQr.holder}</p>
                                 </div>
                                 <div>
-                                    <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tighter">Événement</p>
+                                    <p className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-tighter">Événement</p>
                                     <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{event.title}</p>
                                 </div>
                                 <div className="flex justify-between items-end">
                                     <div>
-                                        <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tighter">Statut</p>
+                                        <p className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-tighter">Statut</p>
                                         <p className={`text-xs font-bold capitalize ${selectedQr.status === 'active' ? 'text-emerald-600' : selectedQr.status === 'revoked' ? 'text-red-600' : 'text-slate-600 dark:text-slate-300'}`}>
                                             {selectedQr.status}
                                         </p>
                                     </div>
                                     <div className="text-right">
-                                        <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tighter">Scans</p>
+                                        <p className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-tighter">Scans</p>
                                         <p className="text-xs font-bold text-slate-700 dark:text-slate-200">{selectedQr.scans}</p>
                                     </div>
                                 </div>
@@ -939,6 +1200,9 @@ export default function EventDetailPage() {
             {qrToRevoke && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
                     <div className="bg-white dark:bg-slate-950 w-full max-w-md rounded-2xl shadow-2xl p-6 animate-in zoom-in duration-300">
+                        {revokingId === qrToRevoke.id && (
+                            <LoadingBar label="Révocation en cours" className="mb-5" />
+                        )}
                         <div className="w-12 h-12 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center mb-4">
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>
                         </div>
@@ -979,11 +1243,14 @@ export default function EventDetailPage() {
                     <div className="bg-white dark:bg-slate-950 w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden">
                         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
                             <h2 className="text-lg font-bold text-slate-900 dark:text-white">Modifier l'événement</h2>
-                            <button onClick={() => setShowEditModal(false)} className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors">
-                                <X className="w-5 h-5 text-slate-400 dark:text-slate-500" />
+                            <button onClick={() => setShowEditModal(false)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-900 rounded-lg transition-colors">
+                                <X className="w-5 h-5 text-slate-600 dark:text-slate-300" />
                             </button>
                         </div>
                         <form onSubmit={handleUpdateEvent} className="p-6 space-y-4">
+                            {updatingEvent && (
+                                <LoadingBar label="Mise à jour de l'événement" />
+                            )}
                             {editError && (
                                 <div className="p-3 bg-red-50 text-red-600 rounded-xl text-sm border border-red-100">{editError}</div>
                             )}
@@ -1051,7 +1318,7 @@ export default function EventDetailPage() {
                             <button
                                 type="submit"
                                 disabled={updatingEvent}
-                                className="w-full py-3 bg-slate-900 dark:bg-slate-100 hover:bg-black text-white font-semibold rounded-xl shadow-sm active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-60"
+                                className="w-full py-3 bg-slate-900 text-white hover:bg-black dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white font-semibold rounded-xl shadow-sm active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-60"
                             >
                                 {updatingEvent ? <Loader2 className="w-5 h-5 animate-spin" /> : <Edit2 className="w-5 h-5" />}
                                 {updatingEvent ? "Mise à jour..." : "Enregistrer les modifications"}
@@ -1065,6 +1332,9 @@ export default function EventDetailPage() {
             {showDeleteConfirm && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
                     <div className="bg-white dark:bg-slate-950 w-full max-w-sm rounded-2xl shadow-2xl p-6 text-center">
+                        {isDeleting && (
+                            <LoadingBar label="Suppression en cours" className="mb-5 text-left" />
+                        )}
                         <div className="w-14 h-14 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
                             <Trash2 className="w-7 h-7" />
                         </div>
@@ -1113,13 +1383,16 @@ export default function EventDetailPage() {
             {showImportModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
                     <div className="bg-white dark:bg-slate-950 w-full max-w-md rounded-2xl shadow-2xl p-6 relative">
-                        <button onClick={() => setShowImportModal(false)} className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded-xl transition-colors">
-                            <X className="w-5 h-5 text-slate-400 dark:text-slate-500" />
+                        <button onClick={() => setShowImportModal(false)} className="absolute top-4 right-4 p-2 hover:bg-slate-100 dark:hover:bg-slate-900 rounded-xl transition-colors">
+                            <X className="w-5 h-5 text-slate-600 dark:text-slate-300" />
                         </button>
                         <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Importer des QR Codes</h2>
                         <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">Téléchargez un fichier CSV pour générer des codes QR en masse.</p>
 
                         <form onSubmit={handleImportCSV} className="space-y-4">
+                            {importing && (
+                                <LoadingBar label="Import CSV et génération des QR" />
+                            )}
                             {importError && (
                                 <div className="p-3 bg-red-50 text-red-600 rounded-xl text-sm border border-red-100">{importError}</div>
                             )}
@@ -1141,7 +1414,7 @@ export default function EventDetailPage() {
                                         <Download className="w-6 h-6 rotate-180" />
                                     </div>
                                     <p className="text-sm font-medium text-slate-900 dark:text-white">{importFile ? importFile.name : "Cliquez ou glissez votre fichier CSV ici"}</p>
-                                    <p className="text-xs text-slate-400 dark:text-slate-500">Format .csv uniquement</p>
+                                    <p className="text-xs text-slate-600 dark:text-slate-300">Format .csv uniquement</p>
                                 </div>
                             </div>
 
@@ -1176,12 +1449,12 @@ export default function EventDetailPage() {
             {/* ── CUSTOM TOAST ── */}
             {toast.show && (
                 <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-bottom-5 fade-in duration-300">
-                    <div className="bg-slate-900 dark:bg-slate-100 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 border border-slate-700/50 backdrop-blur-md">
+                    <div className="bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 border border-slate-700/50 dark:border-slate-200 backdrop-blur-md">
                         <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
                             <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                         </div>
                         <p className="text-sm font-bold tracking-tight">{toast.message}</p>
-                        <button onClick={() => setToast({ show: false, message: "" })} className="ml-2 p-1 hover:bg-white/10 rounded-lg transition-colors">
+                        <button onClick={() => setToast({ show: false, message: "" })} className="ml-2 p-1 hover:bg-white/10 dark:hover:bg-slate-200 rounded-lg transition-colors">
                             <X className="w-4 h-4" />
                         </button>
                     </div>

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Loader2 } from "lucide-react";
 import { apiFetch } from "../../../lib/api";
+import LoadingBar from "../../../components/LoadingBar";
 
 export default function NewEventPage() {
     const router = useRouter();
@@ -119,6 +120,9 @@ export default function NewEventPage() {
 
             {/* Form */}
             <form onSubmit={handleSubmit} className="bg-white dark:bg-slate-950 p-6 sm:p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-8">
+                {loading && (
+                    <LoadingBar label="Création de l'événement" />
+                )}
 
                 {/* General Info */}
                 <div className="space-y-6">

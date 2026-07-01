@@ -8,8 +8,12 @@ const templateIcons = {
     "event-ticket": Ticket,
     "access-pass": ShieldCheck,
     "staff-card": IdCard,
+    "staff-badge-horizontal": IdCard,
     "wedding-invite": Mail,
-    "vip-invitation": Sparkles
+    "vip-invitation": Sparkles,
+    "vip-pass": Sparkles,
+    "simple-invitation": Mail,
+    "compact-ticket": Ticket
 };
 
 const accentStyles = {
@@ -47,16 +51,31 @@ const accentStyles = {
         border: "border-violet-200",
         solid: "bg-violet-600",
         soft: "bg-violet-100"
+    },
+    teal: {
+        bg: "bg-teal-50",
+        text: "text-teal-700",
+        border: "border-teal-200",
+        solid: "bg-teal-600",
+        soft: "bg-teal-100"
+    },
+    slate: {
+        bg: "bg-slate-50",
+        text: "text-slate-700",
+        border: "border-slate-200",
+        solid: "bg-slate-700",
+        soft: "bg-slate-100"
     }
 };
 
 function TemplatePreview({ template }) {
     const styles = accentStyles[template.accent];
     const isWide = template.layout === "wide";
+    const isCompact = template.layout === "compact";
     const isStaff = template.layout === "badge";
 
     return (
-        <div className={`relative overflow-hidden border ${styles.border} ${styles.bg} ${isWide ? "aspect-[16/6]" : "aspect-[9/14]"} rounded-xl`}>
+        <div className={`relative overflow-hidden border ${styles.border} ${styles.bg} ${isWide ? "aspect-[16/6]" : isCompact ? "aspect-[12/5]" : "aspect-[9/14]"} rounded-xl`}>
             <div className={`absolute left-0 top-0 h-full ${isWide ? "w-1/3" : "w-full h-1/4"} ${styles.solid}`} />
             <div className="absolute inset-4 flex flex-col justify-between">
                 <div className={isWide ? "ml-[34%]" : "mt-[42%]"}>

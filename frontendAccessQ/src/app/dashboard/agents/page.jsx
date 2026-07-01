@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { apiFetch } from "../../lib/api";
+import LoadingBar from "../../components/LoadingBar";
 
 export default function AgentsPage() {
     const [agents, setAgents] = useState([]);
@@ -290,7 +291,7 @@ export default function AgentsPage() {
                                     const actionBtnClass = isActive ? "p-1.5 rounded-lg transition-colors text-red-600 dark:text-red-300 bg-white dark:bg-slate-900 border border-red-100 dark:border-red-900/50 hover:bg-red-50 dark:hover:bg-red-950/40 disabled:opacity-50" : "p-1.5 rounded-lg transition-colors text-emerald-600 dark:text-emerald-300 bg-white dark:bg-slate-900 border border-emerald-100 dark:border-emerald-900/50 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 disabled:opacity-50";
 
                                     return (
-                                        <tr key={agent.id} className="hover:bg-sky-50 dark:hover:bg-sky-950/35 transition-colors group">
+                                        <tr key={agent.id} className="table-row-hover group">
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-4">
                                                     <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 font-bold uppercase">
@@ -354,7 +355,7 @@ export default function AgentsPage() {
 
             {isAddModalOpen && (
                 <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-white dark:bg-slate-950 rounded-3xl w-full max-w-md p-6 sm:p-8 shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
+                    <div className="bg-white dark:bg-slate-950 rounded-3xl w-full max-w-md p-6 sm:p-8 shadow-2xl relative animate-in fade-in zoom-in-95 duration-200 text-slate-900 dark:text-slate-100">
                         <button
                             onClick={() => {
                                 setIsAddModalOpen(false);
@@ -362,7 +363,7 @@ export default function AgentsPage() {
                                 setShowPassword(false);
                                 setShowConfirmPassword(false);
                             }}
-                            className="absolute top-6 right-6 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
+                            className="absolute top-6 right-6 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors"
                         >
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                         </button>
@@ -375,6 +376,9 @@ export default function AgentsPage() {
                         <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">Créez un compte rattaché à votre organisation.</p>
 
                         <form onSubmit={handleAddAgent} className="space-y-4">
+                            {adding && (
+                                <LoadingBar label="Création du compte agent" />
+                            )}
                             {addError && <div className="p-3 bg-red-50 text-red-600 rounded-lg text-sm">{addError}</div>}
                             {addSuccess && <div className="p-3 bg-emerald-50 text-emerald-600 rounded-lg text-sm">{addSuccess}</div>}
 
@@ -386,7 +390,7 @@ export default function AgentsPage() {
                                     value={addForm.fullName}
                                     onChange={(e) => setAddForm({ ...addForm, fullName: e.target.value })}
                                     placeholder="Ex. Jane Smith"
-                                    className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
+                                    className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:bg-white dark:focus:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
                                 />
                             </div>
                             <div className="space-y-2">
@@ -397,7 +401,7 @@ export default function AgentsPage() {
                                     value={addForm.email}
                                     onChange={(e) => setAddForm({ ...addForm, email: e.target.value })}
                                     placeholder="e.g. jane@example.com"
-                                    className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
+                                    className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:bg-white dark:focus:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
                                 />
                             </div>
                             <div className="space-y-2">
@@ -410,7 +414,7 @@ export default function AgentsPage() {
                                         value={addForm.password}
                                         onChange={(e) => setAddForm({ ...addForm, password: e.target.value })}
                                         placeholder="••••••••"
-                                        className="w-full px-4 py-3 pr-12 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
+                                        className="w-full px-4 py-3 pr-12 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:bg-white dark:focus:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
                                     />
                                     <button
                                         type="button"
@@ -433,7 +437,7 @@ export default function AgentsPage() {
                                         value={addForm.confirmPassword}
                                         onChange={(e) => setAddForm({ ...addForm, confirmPassword: e.target.value })}
                                         placeholder="••••••••"
-                                        className="w-full px-4 py-3 pr-12 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
+                                        className="w-full px-4 py-3 pr-12 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:bg-white dark:focus:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
                                     />
                                     <button
                                         type="button"
@@ -451,7 +455,7 @@ export default function AgentsPage() {
                                 <select
                                     value={addForm.role}
                                     onChange={(e) => setAddForm({ ...addForm, role: e.target.value })}
-                                    className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors text-sm font-medium"
+                                    className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors text-sm font-medium"
                                 >
                                     <option value="ORG_AGENT">Agent (Scan standard)</option>
                                     <option value="OPERATOR">Opérateur (Responsable de zone)</option>
@@ -473,7 +477,10 @@ export default function AgentsPage() {
 
             {confirmAction && confirmAgent && (
                 <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-white dark:bg-slate-950 rounded-2xl w-full max-w-md p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+                    <div className="bg-white dark:bg-slate-950 rounded-2xl w-full max-w-md p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200 text-slate-900 dark:text-slate-100">
+                        {togglingId === confirmAgent.id && (
+                            <LoadingBar label={confirmAction.type === "delete" ? "Suppression de l'agent" : "Mise à jour de l'accès"} className="mb-5" />
+                        )}
                         <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-4 ${confirmAction.type === "delete" || confirmAgentIsActive ? "bg-red-50 text-red-600" : "bg-emerald-50 text-emerald-600"}`}>
                             {confirmAction.type === "delete" || confirmAgentIsActive ? (
                                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>

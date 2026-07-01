@@ -8,6 +8,8 @@ const templates = {
         height: 600,
         accent: "#2563eb",
         soft: "#dbeafe",
+        ink: "#0f172a",
+        surface: "#f8fafc",
         label: "BILLET"
     },
     "access-pass": {
@@ -16,6 +18,8 @@ const templates = {
         height: 600,
         accent: "#d97706",
         soft: "#fef3c7",
+        ink: "#111827",
+        surface: "#fffbeb",
         label: "PASS"
     },
     "staff-card": {
@@ -24,7 +28,19 @@ const templates = {
         height: 1400,
         accent: "#059669",
         soft: "#d1fae5",
+        ink: "#0f172a",
+        surface: "#f8fafc",
         label: "STAFF"
+    },
+    "staff-badge-horizontal": {
+        id: "staff-badge-horizontal",
+        width: 1600,
+        height: 600,
+        accent: "#0f766e",
+        soft: "#ccfbf1",
+        ink: "#0f172a",
+        surface: "#f8fafc",
+        label: "BADGE STAFF"
     },
     "wedding-invite": {
         id: "wedding-invite",
@@ -32,6 +48,8 @@ const templates = {
         height: 1800,
         accent: "#e11d48",
         soft: "#ffe4e6",
+        ink: "#881337",
+        surface: "#fff7f8",
         label: "INVITATION"
     },
     "vip-invitation": {
@@ -40,7 +58,39 @@ const templates = {
         height: 1800,
         accent: "#7c3aed",
         soft: "#ede9fe",
+        ink: "#2e1065",
+        surface: "#faf5ff",
         label: "INVITATION VIP"
+    },
+    "simple-invitation": {
+        id: "simple-invitation",
+        width: 1200,
+        height: 1800,
+        accent: "#334155",
+        soft: "#e2e8f0",
+        ink: "#0f172a",
+        surface: "#f8fafc",
+        label: "INVITATION"
+    },
+    "vip-pass": {
+        id: "vip-pass",
+        width: 1600,
+        height: 600,
+        accent: "#9333ea",
+        soft: "#f3e8ff",
+        ink: "#2e1065",
+        surface: "#faf5ff",
+        label: "PASS VIP"
+    },
+    "compact-ticket": {
+        id: "compact-ticket",
+        width: 1200,
+        height: 520,
+        accent: "#1d4ed8",
+        soft: "#dbeafe",
+        ink: "#0f172a",
+        surface: "#f8fafc",
+        label: "TICKET"
     }
 };
 
@@ -69,6 +119,11 @@ const getEventLocation = (event) => {
     return location || "Zone a definir";
 };
 
+const getCardMessage = (message, fallback = "Présentez ce QR à l'entrée") => {
+    const trimmed = String(message || "").trim();
+    return escapeXml(trimmed || fallback);
+};
+
 const cardFilenameForToken = (token) => `card_${token}.svg`;
 
 const cardPathForToken = (token) => path.join(__dirname, "../statics/cards", cardFilenameForToken(token));
@@ -77,84 +132,121 @@ const cardUrlForToken = (token) => `/cards/${cardFilenameForToken(token)}`;
 
 const hasTemplate = (templateId) => Boolean(templates[templateId]);
 
-const renderHorizontalTicket = ({ template, qrUrl, event, qrRecord }) => {
+const renderHorizontalTicket = ({ template, qrUrl, event, qrRecord, cardMessage }) => {
     const title = escapeXml(event.title);
     const holder = escapeXml(qrRecord.holder_name);
     const date = escapeXml(getEventDate(event));
     const location = escapeXml(getEventLocation(event));
     const level = escapeXml(qrRecord.level || 1);
+    const message = getCardMessage(cardMessage, template.id.includes("pass") ? "Accès à présenter au contrôle" : "Présentez ce QR à l'entrée");
 
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${template.width}" height="${template.height}" viewBox="0 0 ${template.width} ${template.height}">
-<rect width="1600" height="600" fill="#f8fafc"/>
-<rect x="0" y="0" width="510" height="600" fill="${template.accent}"/>
-<circle cx="120" cy="110" r="78" fill="#ffffff" opacity="0.14"/>
-<circle cx="450" cy="510" r="140" fill="#ffffff" opacity="0.10"/>
-<text x="88" y="288" font-family="Arial, sans-serif" font-size="44" font-weight="700" fill="#ffffff">${template.label}</text>
-<text x="88" y="342" font-family="Arial, sans-serif" font-size="24" fill="#bfdbfe">QR Access</text>
-<text x="600" y="128" font-family="Arial, sans-serif" font-size="28" font-weight="700" fill="${template.accent}">${template.label} NUMERIQUE</text>
-<text x="600" y="220" font-family="Arial, sans-serif" font-size="58" font-weight="800" fill="#0f172a">${title}</text>
-<text x="600" y="292" font-family="Arial, sans-serif" font-size="34" fill="#334155">${holder}</text>
-<text x="600" y="374" font-family="Arial, sans-serif" font-size="26" fill="#64748b">${date}</text>
-<text x="600" y="426" font-family="Arial, sans-serif" font-size="26" fill="#64748b">${location}</text>
-<text x="600" y="478" font-family="Arial, sans-serif" font-size="22" font-weight="700" fill="${template.accent}">Niveau ${level}</text>
-<rect x="1248" y="134" width="250" height="250" rx="24" fill="#ffffff" stroke="#e2e8f0" stroke-width="4"/>
-<image href="${qrUrl}" x="1272" y="158" width="202" height="202"/>
-<text x="1248" y="438" font-family="Arial, sans-serif" font-size="22" fill="#64748b">QR-${qrRecord.qr_id}</text>
-<line x1="1138" y1="60" x2="1138" y2="540" stroke="#cbd5e1" stroke-width="3" stroke-dasharray="18 18"/>
+<rect width="${template.width}" height="${template.height}" rx="34" fill="${template.surface}"/>
+<rect x="40" y="40" width="${template.width - 80}" height="${template.height - 80}" rx="28" fill="#ffffff" stroke="#dbe3ea" stroke-width="3"/>
+<rect x="40" y="40" width="420" height="${template.height - 80}" rx="28" fill="${template.accent}"/>
+<path d="M432 40 h28 v${template.height - 80} h-28 a28 28 0 0 0 28 -28 v-${template.height - 136} a28 28 0 0 0 -28 -28z" fill="${template.accent}"/>
+<circle cx="134" cy="134" r="72" fill="#ffffff" opacity="0.14"/>
+<circle cx="400" cy="${template.height - 118}" r="118" fill="#ffffff" opacity="0.10"/>
+<text x="92" y="182" font-family="Arial, sans-serif" font-size="25" font-weight="700" fill="#ffffff" opacity="0.82">QR Access</text>
+<text x="92" y="276" font-family="Arial, sans-serif" font-size="50" font-weight="800" fill="#ffffff">${template.label}</text>
+<text x="92" y="326" font-family="Arial, sans-serif" font-size="22" fill="#ffffff" opacity="0.82">Support numérique sécurisé</text>
+<text x="540" y="120" font-family="Arial, sans-serif" font-size="24" font-weight="800" fill="${template.accent}">${template.label} NUMÉRIQUE</text>
+<text x="540" y="205" font-family="Arial, sans-serif" font-size="54" font-weight="900" fill="${template.ink}">${title}</text>
+<text x="540" y="272" font-family="Arial, sans-serif" font-size="34" font-weight="700" fill="#334155">${holder}</text>
+<rect x="540" y="326" width="470" height="112" rx="22" fill="${template.soft}" opacity="0.62"/>
+<text x="570" y="374" font-family="Arial, sans-serif" font-size="24" font-weight="700" fill="#334155">${date}</text>
+<text x="570" y="414" font-family="Arial, sans-serif" font-size="22" fill="#475569">${location}</text>
+<text x="540" y="492" font-family="Arial, sans-serif" font-size="22" font-weight="800" fill="${template.accent}">Niveau ${level}</text>
+<text x="540" y="536" font-family="Arial, sans-serif" font-size="19" fill="#64748b">${message}</text>
+<rect x="${template.width - 330}" y="128" width="238" height="238" rx="28" fill="#ffffff" stroke="#dbe3ea" stroke-width="4"/>
+<image href="${qrUrl}" x="${template.width - 302}" y="156" width="182" height="182"/>
+<text x="${template.width - 330}" y="424" font-family="Arial, sans-serif" font-size="21" font-weight="700" fill="#475569">QR-${qrRecord.qr_id}</text>
+<line x1="${template.width - 420}" y1="76" x2="${template.width - 420}" y2="${template.height - 76}" stroke="#cbd5e1" stroke-width="3" stroke-dasharray="16 16"/>
 </svg>`;
 };
 
-const renderVerticalCard = ({ template, qrUrl, event, qrRecord }) => {
+const renderVerticalCard = ({ template, qrUrl, event, qrRecord, cardMessage }) => {
     const title = escapeXml(event.title);
     const holder = escapeXml(qrRecord.holder_name);
     const location = escapeXml(getEventLocation(event));
     const level = escapeXml(qrRecord.level || 1);
+    const message = getCardMessage(cardMessage, "Badge à présenter au contrôle");
 
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${template.width}" height="${template.height}" viewBox="0 0 ${template.width} ${template.height}">
-<rect width="${template.width}" height="${template.height}" rx="64" fill="#ffffff"/>
-<rect x="0" y="0" width="${template.width}" height="390" rx="64" fill="${template.accent}"/>
-<rect x="0" y="310" width="${template.width}" height="110" fill="${template.accent}"/>
-<circle cx="450" cy="360" r="150" fill="#ffffff"/>
-<circle cx="450" cy="360" r="124" fill="${template.soft}"/>
-<text x="450" y="384" text-anchor="middle" font-family="Arial, sans-serif" font-size="78" font-weight="800" fill="${template.accent}">${holder.slice(0, 1).toUpperCase()}</text>
-<text x="450" y="178" text-anchor="middle" font-family="Arial, sans-serif" font-size="34" font-weight="700" fill="#ffffff">QR Access</text>
-<text x="450" y="610" text-anchor="middle" font-family="Arial, sans-serif" font-size="54" font-weight="800" fill="#0f172a">${holder}</text>
-<text x="450" y="678" text-anchor="middle" font-family="Arial, sans-serif" font-size="30" fill="#64748b">${template.label} - Niveau ${level}</text>
-<text x="450" y="762" text-anchor="middle" font-family="Arial, sans-serif" font-size="30" fill="#334155">${title}</text>
-<text x="450" y="816" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" fill="#64748b">${location}</text>
-<rect x="275" y="900" width="350" height="350" rx="32" fill="#ffffff" stroke="#e2e8f0" stroke-width="5"/>
-<image href="${qrUrl}" x="310" y="935" width="280" height="280"/>
-<text x="450" y="1306" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" fill="#64748b">QR-${qrRecord.qr_id}</text>
+<rect width="${template.width}" height="${template.height}" rx="64" fill="${template.surface}"/>
+<rect x="54" y="54" width="${template.width - 108}" height="${template.height - 108}" rx="52" fill="#ffffff" stroke="#dbe3ea" stroke-width="4"/>
+<rect x="54" y="54" width="${template.width - 108}" height="360" rx="52" fill="${template.accent}"/>
+<rect x="54" y="330" width="${template.width - 108}" height="120" fill="${template.accent}"/>
+<text x="450" y="154" text-anchor="middle" font-family="Arial, sans-serif" font-size="32" font-weight="800" fill="#ffffff">QR Access</text>
+<text x="450" y="218" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" fill="#ffffff" opacity="0.84">${template.label}</text>
+<circle cx="450" cy="390" r="144" fill="#ffffff"/>
+<circle cx="450" cy="390" r="116" fill="${template.soft}"/>
+<text x="450" y="418" text-anchor="middle" font-family="Arial, sans-serif" font-size="78" font-weight="900" fill="${template.accent}">${holder.slice(0, 1).toUpperCase()}</text>
+<text x="450" y="615" text-anchor="middle" font-family="Arial, sans-serif" font-size="52" font-weight="900" fill="${template.ink}">${holder}</text>
+<text x="450" y="682" text-anchor="middle" font-family="Arial, sans-serif" font-size="29" font-weight="700" fill="${template.accent}">Niveau ${level}</text>
+<text x="450" y="762" text-anchor="middle" font-family="Arial, sans-serif" font-size="29" fill="#334155">${title}</text>
+<text x="450" y="814" text-anchor="middle" font-family="Arial, sans-serif" font-size="23" fill="#64748b">${location}</text>
+<rect x="250" y="890" width="400" height="400" rx="38" fill="#ffffff" stroke="#dbe3ea" stroke-width="6"/>
+<image href="${qrUrl}" x="292" y="932" width="316" height="316"/>
+<text x="450" y="1348" text-anchor="middle" font-family="Arial, sans-serif" font-size="23" font-weight="700" fill="#475569">QR-${qrRecord.qr_id}</text>
+<text x="450" y="1392" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" fill="#64748b">${message}</text>
 </svg>`;
 };
 
-const renderWeddingInvite = ({ template, qrUrl, event, qrRecord }) => {
+const renderWeddingInvite = ({ template, qrUrl, event, qrRecord, cardMessage }) => {
     const title = escapeXml(event.title);
     const holder = escapeXml(qrRecord.holder_name);
     const date = escapeXml(getEventDate(event));
     const location = escapeXml(getEventLocation(event));
+    const message = getCardMessage(cardMessage, "Présentez ce QR à l'entrée");
 
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${template.width}" height="${template.height}" viewBox="0 0 ${template.width} ${template.height}">
-<rect width="1200" height="1800" fill="#fff7f8"/>
-<rect x="70" y="70" width="1060" height="1660" rx="54" fill="#ffffff" stroke="${template.soft}" stroke-width="8"/>
-<circle cx="178" cy="196" r="76" fill="${template.soft}"/>
-<circle cx="1026" cy="1602" r="118" fill="${template.soft}"/>
-<text x="600" y="288" text-anchor="middle" font-family="Georgia, serif" font-size="38" font-style="italic" fill="${template.accent}">${template.label}</text>
-<text x="600" y="420" text-anchor="middle" font-family="Georgia, serif" font-size="74" font-weight="700" fill="#881337">${title}</text>
-<text x="600" y="568" text-anchor="middle" font-family="Arial, sans-serif" font-size="34" fill="#64748b">Invite</text>
-<text x="600" y="636" text-anchor="middle" font-family="Arial, sans-serif" font-size="52" font-weight="700" fill="#0f172a">${holder}</text>
-<text x="600" y="780" text-anchor="middle" font-family="Arial, sans-serif" font-size="34" fill="#334155">${date}</text>
-<text x="600" y="842" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" fill="#64748b">${location}</text>
-<rect x="425" y="1060" width="350" height="350" rx="32" fill="#ffffff" stroke="#fecdd3" stroke-width="5"/>
-<image href="${qrUrl}" x="460" y="1095" width="280" height="280"/>
-<text x="600" y="1512" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" fill="#9f1239">Presentez ce QR a l'entree</text>
+<rect width="1200" height="1800" fill="${template.surface}"/>
+<rect x="70" y="70" width="1060" height="1660" rx="58" fill="#ffffff" stroke="${template.soft}" stroke-width="10"/>
+<rect x="112" y="112" width="976" height="1576" rx="42" fill="none" stroke="${template.accent}" stroke-width="2" opacity="0.28"/>
+<circle cx="176" cy="206" r="82" fill="${template.soft}"/>
+<circle cx="1028" cy="1598" r="132" fill="${template.soft}"/>
+<text x="600" y="252" text-anchor="middle" font-family="Georgia, serif" font-size="38" font-style="italic" fill="${template.accent}">${template.label}</text>
+<text x="600" y="390" text-anchor="middle" font-family="Georgia, serif" font-size="74" font-weight="700" fill="${template.ink}">${title}</text>
+<text x="600" y="542" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" fill="#64748b">Invité</text>
+<text x="600" y="612" text-anchor="middle" font-family="Arial, sans-serif" font-size="54" font-weight="800" fill="#0f172a">${holder}</text>
+<rect x="210" y="720" width="780" height="150" rx="34" fill="${template.soft}" opacity="0.74"/>
+<text x="600" y="780" text-anchor="middle" font-family="Arial, sans-serif" font-size="32" font-weight="700" fill="#334155">${date}</text>
+<text x="600" y="832" text-anchor="middle" font-family="Arial, sans-serif" font-size="26" fill="#64748b">${location}</text>
+<rect x="420" y="1010" width="360" height="360" rx="36" fill="#ffffff" stroke="${template.soft}" stroke-width="7"/>
+<image href="${qrUrl}" x="458" y="1048" width="284" height="284"/>
+<text x="600" y="1464" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" font-weight="700" fill="${template.accent}">${message}</text>
+<text x="600" y="1530" text-anchor="middle" font-family="Arial, sans-serif" font-size="21" fill="#64748b">QR-${qrRecord.qr_id}</text>
+</svg>`;
+};
+
+const renderCompactTicket = ({ template, qrUrl, event, qrRecord, cardMessage }) => {
+    const title = escapeXml(event.title);
+    const holder = escapeXml(qrRecord.holder_name);
+    const date = escapeXml(getEventDate(event));
+    const message = getCardMessage(cardMessage, "Ticket compact à présenter");
+
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${template.width}" height="${template.height}" viewBox="0 0 ${template.width} ${template.height}">
+<rect width="${template.width}" height="${template.height}" rx="30" fill="${template.surface}"/>
+<rect x="36" y="36" width="${template.width - 72}" height="${template.height - 72}" rx="26" fill="#ffffff" stroke="#dbe3ea" stroke-width="3"/>
+<rect x="36" y="36" width="280" height="${template.height - 72}" rx="26" fill="${template.accent}"/>
+<text x="82" y="152" font-family="Arial, sans-serif" font-size="34" font-weight="900" fill="#ffffff">${template.label}</text>
+<text x="82" y="202" font-family="Arial, sans-serif" font-size="19" fill="#ffffff" opacity="0.82">QR Access</text>
+<text x="370" y="132" font-family="Arial, sans-serif" font-size="40" font-weight="900" fill="${template.ink}">${title}</text>
+<text x="370" y="198" font-family="Arial, sans-serif" font-size="28" font-weight="700" fill="#334155">${holder}</text>
+<text x="370" y="258" font-family="Arial, sans-serif" font-size="23" fill="#64748b">${date}</text>
+<text x="370" y="326" font-family="Arial, sans-serif" font-size="20" fill="${template.accent}" font-weight="800">${message}</text>
+<rect x="915" y="96" width="260" height="260" rx="28" fill="#ffffff" stroke="#dbe3ea" stroke-width="4"/>
+<image href="${qrUrl}" x="945" y="126" width="200" height="200"/>
+<text x="915" y="412" font-family="Arial, sans-serif" font-size="20" font-weight="700" fill="#475569">QR-${qrRecord.qr_id}</text>
 </svg>`;
 };
 
 const renderCard = (templateId, payload) => {
     const template = templates[templateId];
-    if (templateId === "event-ticket" || templateId === "access-pass") return renderHorizontalTicket({ template, ...payload });
-    if (templateId === "wedding-invite" || templateId === "vip-invitation") return renderWeddingInvite({ template, ...payload });
+    if (templateId === "compact-ticket") return renderCompactTicket({ template, ...payload });
+    if (["event-ticket", "access-pass", "staff-badge-horizontal", "vip-pass"].includes(templateId)) return renderHorizontalTicket({ template, ...payload });
+    if (["wedding-invite", "vip-invitation", "simple-invitation"].includes(templateId)) return renderWeddingInvite({ template, ...payload });
     return renderVerticalCard({ template, ...payload });
 };
 
@@ -164,7 +256,7 @@ exports.cardPathForToken = cardPathForToken;
 
 exports.cardExistsForToken = (token) => fs.existsSync(cardPathForToken(token));
 
-exports.generateCardForQr = async ({ templateId, event, qrRecord, qrUrl }) => {
+exports.generateCardForQr = async ({ templateId, event, qrRecord, qrUrl, cardMessage }) => {
     if (!hasTemplate(templateId)) {
         throw new Error("Modèle de carte invalide.");
     }
@@ -173,7 +265,7 @@ exports.generateCardForQr = async ({ templateId, event, qrRecord, qrUrl }) => {
     const dir = path.dirname(cardPath);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 
-    const svg = renderCard(templateId, { event, qrRecord, qrUrl });
+    const svg = renderCard(templateId, { event, qrRecord, qrUrl, cardMessage });
     await fs.promises.writeFile(cardPath, svg, "utf8");
     return cardUrlForToken(qrRecord.unique_token);
 };

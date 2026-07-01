@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Loader2, User, Building, Lock, Save, CheckCircle, AlertCircle } from "lucide-react";
 import { apiFetch } from "../../lib/api";
+import LoadingBar from "../../components/LoadingBar";
 
 export default function SettingsPage() {
     const [user, setUser] = useState(null);
@@ -236,6 +237,9 @@ export default function SettingsPage() {
                         </div>
                         <div className="p-6 space-y-6">
                             <form onSubmit={handleUpdateProfile} className="space-y-4">
+                                {profileLoading && (
+                                    <LoadingBar label="Mise à jour du profil" />
+                                )}
                                 {profileStatus.message && (
                                     <div className={`p-4 rounded-xl flex items-center gap-3 text-sm ${
                                         profileStatus.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
@@ -287,6 +291,9 @@ export default function SettingsPage() {
                         </div>
                         <div className="p-6 space-y-6">
                             <form onSubmit={handleUpdatePassword} className="space-y-4">
+                                {pwdLoading && (
+                                    <LoadingBar label="Changement du mot de passe" />
+                                )}
                                 {pwdStatus.message && (
                                     <div className={`p-4 rounded-xl flex items-center gap-3 text-sm ${
                                         pwdStatus.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
@@ -348,6 +355,9 @@ export default function SettingsPage() {
                             </div>
                             <div className="p-6 space-y-6">
                                 <form onSubmit={handleUpdateOrg} className="space-y-4">
+                                    {orgLoading && (
+                                        <LoadingBar label="Mise à jour de l'organisation" />
+                                    )}
                                     {orgStatus.message && (
                                         <div className={`p-4 rounded-xl flex items-center gap-3 text-sm ${
                                             orgStatus.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
@@ -412,16 +422,19 @@ export default function SettingsPage() {
             {/* Delete Confirmation Modal */}
             {showDeleteModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                    <div className="bg-white dark:bg-slate-950 rounded-2xl max-w-md w-full shadow-2xl overflow-hidden animate-in zoom-in-95">
+                    <div className="bg-white dark:bg-slate-950 rounded-2xl max-w-md w-full shadow-2xl overflow-hidden animate-in zoom-in-95 text-slate-900 dark:text-slate-100">
                         <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3">
                             <AlertCircle className="w-6 h-6 text-red-500" />
                             <h3 className="font-bold text-lg text-slate-900 dark:text-white">Confirmation de suppression</h3>
                         </div>
                         <div className="p-6 space-y-4">
+                            {deleteLoading && (
+                                <LoadingBar label="Suppression de l'organisation" />
+                            )}
                             <p className="text-sm text-slate-600 dark:text-slate-300">
                                 Êtes-vous absolument sûr ? Cette action va désactiver l'accès à tous les membres de <strong>{organization?.name}</strong>.
                             </p>
-                            <div className="bg-red-50 text-red-800 p-4 rounded-xl text-sm border border-red-100">
+                            <div className="bg-red-50 dark:bg-red-950/30 text-red-800 dark:text-red-200 p-4 rounded-xl text-sm border border-red-100 dark:border-red-900/60">
                                 Veuillez taper exactement la phrase suivante pour confirmer :<br/>
                                 <strong className="select-all block mt-2 font-mono text-center">"{requiredDeleteText}"</strong>
                             </div>
@@ -433,7 +446,7 @@ export default function SettingsPage() {
                                     setDeleteStatus("");
                                 }}
                                 placeholder="Tapez la phrase ici..."
-                                className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all text-sm"
+                                className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:bg-white dark:focus:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all text-sm"
                             />
                             {deleteStatus && (
                                 <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
@@ -450,7 +463,7 @@ export default function SettingsPage() {
                                     setDeleteStatus("");
                                 }}
                                 disabled={deleteLoading}
-                                className="px-4 py-2 text-slate-600 dark:text-slate-300 hover:bg-slate-200 font-medium rounded-xl transition-all text-sm"
+                                className="px-4 py-2 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium rounded-xl transition-all text-sm"
                             >
                                 Annuler
                             </button>

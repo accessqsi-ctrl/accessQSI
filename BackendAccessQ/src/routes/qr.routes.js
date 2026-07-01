@@ -33,6 +33,9 @@ router.get("/event/:event_id", qrController.getQrsByEvent);
 // Générer un QR code pour un événement spécifique
 router.post("/generate/:event_id", qrController.generateQrForEvent);
 
+// Générer une carte pour un QR existant
+router.post("/card/:id", qrController.generateCardForExistingQr);
+
 // Importer des QR codes depuis un CSV
 router.post("/import/:event_id", upload.single('file'), qrController.importQrsFromCSV);
 

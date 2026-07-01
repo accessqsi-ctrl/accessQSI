@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Loader2, Plus, Trash2, Edit2, MapPin } from "lucide-react";
 import { apiFetch } from "../../lib/api";
+import LoadingBar from "../../components/LoadingBar";
 
 export default function AreasPage() {
     const [areas, setAreas] = useState([]);
@@ -12,6 +13,7 @@ export default function AreasPage() {
     const [editingArea, setEditingArea] = useState(null);
     const [areaToDelete, setAreaToDelete] = useState(null);
     const [deletingAreaId, setDeletingAreaId] = useState(null);
+    const [savingArea, setSavingArea] = useState(false);
     const [formData, setFormData] = useState({ area_name: "", accreditation_level: 1 });
 
     const fetchAreas = async () => {
@@ -46,6 +48,7 @@ export default function AreasPage() {
             : "/areas";
         const method = editingArea ? "PUT" : "POST";
 
+        setSavingArea(true);
         try {
             const res = await apiFetch(url, {
                 method,
@@ -61,6 +64,8 @@ export default function AreasPage() {
             }
         } catch (err) {
             console.error("Error saving area:", err);
+        } finally {
+            setSavingArea(false);
         }
     };
 
@@ -130,7 +135,7 @@ export default function AreasPage() {
                                 </tr>
                             ) : (
                                 areas.map((area) => (
-                                    <tr key={area.area_id} className="hover:bg-sky-50 dark:hover:bg-sky-950/35 transition-colors group">
+                                    <tr key={area.area_id} className="table-row-hover group">
                                         <td className="px-6 py-4 font-medium text-slate-900 dark:text-white flex items-center gap-3">
                                             <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
                                                 <MapPin className="w-5 h-5" />
@@ -144,7 +149,7 @@ export default function AreasPage() {
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex items-center justify-end gap-2">
-                                                <button onClick={() => openEditModal(area)} className="p-1.5 text-sky-600 dark:text-sky-300 bg-white dark:bg-slate-900 border border-sky-100 dark:border-sky-900/50 hover:bg-sky-50 dark:hover:bg-sky-950/40 rounded-lg transition-colors">
+                                                <button onClick={() => openEditModal(area)} className="p-1.5 table-action-neutral border rounded-lg transition-colors">
                                                     <Edit2 className="w-4 h-4" />
                                                 </button>
                                                 <button onClick={() => setAreaToDelete(area)} className="p-1.5 text-red-600 dark:text-red-300 bg-white dark:bg-slate-900 border border-red-100 dark:border-red-900/50 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors">
@@ -162,13 +167,16 @@ export default function AreasPage() {
 
             {isModalOpen && (
                 <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-white dark:bg-slate-950 rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+                    <div className="bg-white dark:bg-slate-950 rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200 text-slate-900 dark:text-slate-100">
                         <div className="p-6 border-b border-slate-100 dark:border-slate-800">
                             <h2 className="text-xl font-bold text-slate-900 dark:text-white">
                                 {editingArea ? "Modifier la zone" : "Nouvelle zone"}
                             </h2>
                         </div>
                         <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                            {savingArea && (
+                                <LoadingBar label={editingArea ? "Mise à jour de la zone" : "Création de la zone"} />
+                            )}
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Nom de la zone</label>
                                 <input
@@ -176,7 +184,7 @@ export default function AreasPage() {
                                     required
                                     value={formData.area_name}
                                     onChange={(e) => setFormData({ ...formData, area_name: e.target.value })}
-                                    className="w-full px-4 py-2 border border-slate-200 dark:border-slate-800 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                                    className="w-full px-4 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
                                     placeholder="Ex: Entrée Principale, Server Room..."
                                 />
                             </div>
@@ -189,22 +197,24 @@ export default function AreasPage() {
                                     max="10"
                                     value={formData.accreditation_level}
                                     onChange={(e) => setFormData({ ...formData, accreditation_level: Number(e.target.value) })}
-                                    className="w-full px-4 py-2 border border-slate-200 dark:border-slate-800 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                                    className="w-full px-4 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
                                 />
                             </div>
                             <div className="flex gap-3 pt-4">
                                 <button
                                     type="button"
                                     onClick={() => setIsModalOpen(false)}
+                                    disabled={savingArea}
                                     className="flex-1 px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-medium rounded-xl hover:bg-slate-200 transition-colors"
                                 >
                                     Annuler
                                 </button>
                                 <button
                                     type="submit"
-                                    className="flex-1 px-4 py-2 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 shadow-sm transition-colors"
+                                    disabled={savingArea}
+                                    className="flex-1 px-4 py-2 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 shadow-sm transition-colors disabled:opacity-60"
                                 >
-                                    {editingArea ? "Enregistrer" : "Créer"}
+                                    {savingArea ? "Traitement..." : editingArea ? "Enregistrer" : "Créer"}
                                 </button>
                             </div>
                         </form>
@@ -214,7 +224,10 @@ export default function AreasPage() {
 
             {areaToDelete && (
                 <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-white dark:bg-slate-950 rounded-2xl shadow-xl w-full max-w-md p-6 animate-in fade-in zoom-in duration-200">
+                    <div className="bg-white dark:bg-slate-950 rounded-2xl shadow-xl w-full max-w-md p-6 animate-in fade-in zoom-in duration-200 text-slate-900 dark:text-slate-100">
+                        {deletingAreaId === areaToDelete.area_id && (
+                            <LoadingBar label="Suppression de la zone" className="mb-5" />
+                        )}
                         <div className="w-12 h-12 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center mb-4">
                             <Trash2 className="w-6 h-6" />
                         </div>

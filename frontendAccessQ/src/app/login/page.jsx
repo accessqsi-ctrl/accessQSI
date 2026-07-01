@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import LoadingBar from "../components/LoadingBar";
 
 export default function Login() {
     const router = useRouter();
@@ -103,6 +104,9 @@ export default function Login() {
                     )}
 
                     <form onSubmit={handleSubmit} className="space-y-6">
+                        {loading && (
+                            <LoadingBar label="Connexion au tableau de bord" />
+                        )}
                         {/* Email Address */}
                         <div className="space-y-1.5">
                             <label className="text-sm font-semibold text-slate-700 dark:text-slate-200 block mb-1">

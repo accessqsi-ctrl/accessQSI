@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import LoadingBar from "../components/LoadingBar";
 
 export default function Register() {
     const [formData, setFormData] = useState({
@@ -142,6 +143,9 @@ export default function Register() {
                     )}
 
                     <form onSubmit={handleSubmit} className="space-y-6">
+                        {loading && (
+                            <LoadingBar label={hasOrganization ? "Création de l'organisation" : "Création du compte"} />
+                        )}
                         {/* Full Name */}
                         <div className="space-y-1.5">
                             <label className="text-sm font-semibold text-slate-700 dark:text-slate-200 block mb-1">

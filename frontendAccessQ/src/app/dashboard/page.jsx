@@ -5,6 +5,7 @@ import Link from "next/link";
 import { CalendarPlus, CheckCircle2, Download, Loader2, MapPinned, QrCode, TrendingUp, UserPlus, Users, X } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { apiFetch, refreshSession } from "../lib/api";
+import LoadingBar from "../components/LoadingBar";
 
 const ONBOARDING_STORAGE_KEY = "qrAccessDashboardOnboardingDismissed";
 
@@ -55,6 +56,7 @@ export default function Dashboard() {
     const [error, setError] = useState("");
     const [toast, setToast] = useState({ show: false, message: "" });
     const [showOnboarding, setShowOnboarding] = useState(false);
+    const [exportingFormat, setExportingFormat] = useState("");
 
 
     const handleExport = async (format) => {
@@ -63,9 +65,14 @@ export default function Dashboard() {
             setTimeout(() => setToast({ show: false, message: "" }), 4000);
             return;
         }
-        const session = await refreshSession();
-        if (!session.ok) return;
-        window.open(`${process.env.NEXT_PUBLIC_API_URL}/export/${format}`, '_blank');
+        setExportingFormat(format);
+        try {
+            const session = await refreshSession();
+            if (!session.ok) return;
+            window.open(`${process.env.NEXT_PUBLIC_API_URL}/export/${format}`, '_blank');
+        } finally {
+            setExportingFormat("");
+        }
     };
 
 
@@ -145,20 +152,25 @@ export default function Dashboard() {
                     <div className="flex gap-3">
                         <button 
                             onClick={() => handleExport('csv')}
-                            className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold rounded-xl transition-colors border border-slate-200 dark:border-slate-800"
+                            disabled={exportingFormat === "csv"}
+                            className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold rounded-xl transition-colors border border-slate-200 dark:border-slate-800 disabled:opacity-60"
                         >
-                            <Download className="w-4 h-4" />
+                            {exportingFormat === "csv" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                             CSV
                         </button>
                         <button 
                             onClick={() => handleExport('pdf')}
-                            className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-900 dark:text-white font-semibold rounded-xl shadow-sm transition-colors border border-slate-200 dark:border-slate-800"
+                            disabled={exportingFormat === "pdf"}
+                            className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-900 dark:text-white font-semibold rounded-xl shadow-sm transition-colors border border-slate-200 dark:border-slate-800 disabled:opacity-60"
                         >
-                            <Download className="w-4 h-4" />
+                            {exportingFormat === "pdf" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                             PDF
                         </button>
                     </div>
                 </div>
+                {exportingFormat && (
+                    <LoadingBar label={`Préparation export ${exportingFormat.toUpperCase()}`} className="relative z-10 mt-6" />
+                )}
             </div>
 
             {showOnboarding && (
@@ -374,7 +386,7 @@ export default function Dashboard() {
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-200 text-sm">
                             {stats.recentScans && stats.recentScans.length > 0 ? (
                                 stats.recentScans.map((scan) => (
-                                    <tr key={scan.id} className="hover:bg-sky-50 dark:hover:bg-sky-950/35 transition-colors">
+                                    <tr key={scan.id} className="table-row-hover">
                                         <td className="px-8 py-4 font-medium text-slate-900 dark:text-white tracking-tight font-mono">{scan.code}</td>
                                         <td className="px-8 py-4">{scan.event}</td>
                                         <td className="px-8 py-4">{scan.agent}</td>

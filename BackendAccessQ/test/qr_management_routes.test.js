@@ -152,15 +152,82 @@ test("POST /qr/generate/:event_id can generate a card from a selected template",
     const res = await request(app, "POST", "/qr/generate/5", {
         fullName: "Jane Holder",
         accessType: "single",
-        cardTemplateId: "event-ticket"
+        cardTemplateId: "event-ticket",
+        cardMessage: "Accès VIP"
     });
 
     assert.equal(res.status, 201);
     assert.equal(res.body.success, true);
     assert.equal(res.body.cardUrl, "/cards/card-token.svg");
     assert.equal(cardArgs.templateId, "event-ticket");
+    assert.equal(cardArgs.cardMessage, "Accès VIP");
     assert.equal(cardArgs.qrRecord.holder_name, "Jane Holder");
     assert.match(cardArgs.qrUrl, /^\/qrcodes\/qr_.+\.png$/);
+});
+
+test("POST /qr/card/:id generates a card for an existing QR in the user's organization", async () => {
+    let cardArgs = null;
+    const app = loadQrManagementApp({
+        user: { user_id: 7, role: "ORG_ADMIN", org_id: 42 },
+        eventService: {
+            findById: async (orgId, eventId) => ({ event_id: eventId, title: "Concert" })
+        },
+        qrService: {
+            getQrById: async () => ({
+                qr_id: 10,
+                event_id: 5,
+                unique_token: "token-10",
+                holder_name: "Jane Holder",
+                status: "active",
+                scans_count: 0,
+                usage_limit: 1,
+                deleted_at: null
+            })
+        },
+        cardTemplateService: {
+            hasTemplate: (templateId) => templateId === "staff-card",
+            generateCardForQr: async (args) => {
+                cardArgs = args;
+                return "/cards/card-token-10.svg";
+            }
+        }
+    });
+
+    const res = await request(app, "POST", "/qr/card/10", {
+        cardTemplateId: "staff-card",
+        cardMessage: "Badge staff"
+    });
+
+    assert.equal(res.status, 201);
+    assert.equal(res.body.success, true);
+    assert.equal(res.body.cardUrl, "/cards/card-token-10.svg");
+    assert.equal(cardArgs.templateId, "staff-card");
+    assert.equal(cardArgs.cardMessage, "Badge staff");
+    assert.equal(cardArgs.qrRecord.unique_token, "token-10");
+});
+
+test("POST /qr/card/:id rejects unknown card templates", async () => {
+    let lookupCalled = false;
+    const app = loadQrManagementApp({
+        user: { user_id: 7, role: "ORG_ADMIN", org_id: 42 },
+        eventService: {},
+        qrService: {
+            getQrById: async () => {
+                lookupCalled = true;
+            }
+        },
+        cardTemplateService: {
+            hasTemplate: () => false
+        }
+    });
+
+    const res = await request(app, "POST", "/qr/card/10", {
+        cardTemplateId: "unknown"
+    });
+
+    assert.equal(res.status, 400);
+    assert.equal(res.body.success, false);
+    assert.equal(lookupCalled, false);
 });
 
 test("PUT /qr/revoke/:id refuses QR codes outside the user's organization", async () => {
@@ -331,5 +398,5 @@ test("GET /qr/template/:event_id downloads a CSV import template for an event in
     assert.deepEqual(eventLookup, { orgId: 42, eventId: 5 });
     assert.match(res.headers["content-type"], /text\/csv/);
     assert.equal(res.headers["content-disposition"], 'attachment; filename="modele_import_qr_evenement_5.csv"');
-    assert.equal(res.body, "fullName,email,phone,accessType,limit,validFrom,validUntil,level\n");
+    assert.equal(res.body, "fullName,email,phone,accessType,limit,validFrom,validUntil,level,cardTemplateId,cardMessage\n");
 });
