@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { BadgeCheck, Copy, Crown, IdCard, Loader2, Mail, QrCode, Save, ShieldCheck, Sparkles, Ticket, Trash2, Upload } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { BadgeCheck, Copy, Crown, IdCard, Layers, Loader2, Mail, QrCode, Save, ShieldCheck, Sparkles, Ticket, Trash2, Upload } from "lucide-react";
 import { apiFetch } from "../../lib/api";
 import LoadingBar from "../../components/LoadingBar";
 import { CARD_TEMPLATE_STORAGE_KEY, cardElementLabels, cardTemplates, createDefaultLayoutConfig, defaultVisibleFields, getBaseCardTemplate, normalizeCustomCardTemplate } from "../../lib/cardTemplates";
@@ -116,10 +116,12 @@ function TemplatePreview({ template }) {
     );
 }
 
-function CompositionPreview({ template, selectedType, onSelect }) {
+function CompositionPreview({ template, selectedType, onSelect, onUpdate }) {
+    const previewRef = useRef(null);
+    const [interaction, setInteraction] = useState(null);
     const base = getBaseCardTemplate(template.baseTemplateId || template.id);
     const isWide = base.layout === "wide" || base.layout === "compact";
-    const elements = template.layoutConfig?.elements || [];
+    const elements = [...(template.layoutConfig?.elements || [])].sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
     const sampleValues = {
         logo: "Logo",
         title: template.title || "INVITATION",
@@ -132,9 +134,49 @@ function CompositionPreview({ template, selectedType, onSelect }) {
         cardId: "QR-1024"
     };
 
+    const startInteraction = (event, element, mode) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (element.locked) return;
+        onSelect(element.type);
+        event.currentTarget.setPointerCapture?.(event.pointerId);
+        setInteraction({
+            mode,
+            type: element.type,
+            pointerId: event.pointerId,
+            startX: event.clientX,
+            startY: event.clientY,
+            original: { ...element }
+        });
+    };
+
+    const handlePointerMove = (event) => {
+        if (!interaction || !previewRef.current) return;
+        const rect = previewRef.current.getBoundingClientRect();
+        const dx = ((event.clientX - interaction.startX) / rect.width) * base.width;
+        const dy = ((event.clientY - interaction.startY) / rect.height) * base.height;
+        if (interaction.mode === "resize") {
+            onUpdate(interaction.type, {
+                width: Math.max(20, Math.round(interaction.original.width + dx)),
+                height: Math.max(20, Math.round(interaction.original.height + dy))
+            });
+            return;
+        }
+        onUpdate(interaction.type, {
+            x: Math.max(0, Math.round(interaction.original.x + dx)),
+            y: Math.max(0, Math.round(interaction.original.y + dy))
+        });
+    };
+
+    const stopInteraction = () => setInteraction(null);
+
     return (
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-100 p-3 dark:border-slate-800 dark:bg-slate-900">
             <div
+                ref={previewRef}
+                onPointerMove={handlePointerMove}
+                onPointerUp={stopInteraction}
+                onPointerCancel={stopInteraction}
                 className={`relative mx-auto overflow-hidden rounded-lg bg-white shadow-sm ${isWide ? "aspect-[16/6]" : "aspect-[9/13]"}`}
                 style={{
                     maxWidth: "100%",
@@ -157,14 +199,15 @@ function CompositionPreview({ template, selectedType, onSelect }) {
                         fontWeight: element.fontWeight,
                         textAlign: element.align,
                         opacity: element.visible ? 1 : 0.28,
-                        borderColor: selected ? "#2563eb" : "transparent"
+                        borderColor: selected ? "#2563eb" : "transparent",
+                        zIndex: element.zIndex || 0
                     };
                     return (
                         <button
                             key={element.type}
                             type="button"
-                            onClick={() => onSelect(element.type)}
-                            className="absolute overflow-hidden rounded-md border border-dashed bg-white/20 px-1 text-left transition-colors hover:border-[#7A90A4]"
+                            onPointerDown={(event) => startInteraction(event, element, "move")}
+                            className={`absolute overflow-hidden rounded-md border border-dashed bg-white/20 px-1 text-left transition-colors hover:border-[#7A90A4] ${element.locked ? "cursor-not-allowed" : "cursor-move"}`}
                             style={style}
                             title={cardElementLabels[element.type] || element.type}
                         >
@@ -176,6 +219,12 @@ function CompositionPreview({ template, selectedType, onSelect }) {
                                 <span className="flex h-full items-center justify-center rounded bg-white/80 text-[10px] font-bold text-slate-700">LOGO</span>
                             ) : (
                                 <span className="block truncate leading-tight">{sampleValues[element.type] || element.label}</span>
+                            )}
+                            {selected && !element.locked && (
+                                <span
+                                    onPointerDown={(event) => startInteraction(event, element, "resize")}
+                                    className="absolute bottom-0 right-0 h-3 w-3 cursor-se-resize rounded-tl bg-blue-600"
+                                />
                             )}
                         </button>
                     );
@@ -193,6 +242,7 @@ export default function CardTemplatesPage() {
     const [saving, setSaving] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [uploadingLogo, setUploadingLogo] = useState(false);
+    const [uploadingBackground, setUploadingBackground] = useState(false);
     const [statusMessage, setStatusMessage] = useState("");
     const [editor, setEditor] = useState(null);
     const [selectedElementType, setSelectedElementType] = useState("event");
@@ -358,6 +408,27 @@ export default function CardTemplatesPage() {
         }
     };
 
+    const handleBackgroundUpload = async (file) => {
+        if (!file) return;
+        const formData = new FormData();
+        formData.append("background", file);
+        setUploadingBackground(true);
+        try {
+            const res = await apiFetch("/card-templates/background", {
+                method: "POST",
+                body: formData
+            });
+            const data = await res.json();
+            if (data.success) {
+                setEditor(prev => ({ ...prev, backgroundImageUrl: data.backgroundImageUrl }));
+                setStatusMessage("Image de fond ajoutée.");
+                setTimeout(() => setStatusMessage(""), 3000);
+            }
+        } finally {
+            setUploadingBackground(false);
+        }
+    };
+
     const handleDeleteCustom = async () => {
         if (!editor?.customId) return;
         setDeleting(true);
@@ -382,16 +453,20 @@ export default function CardTemplatesPage() {
     };
 
     const selectedElement = editor?.layoutConfig?.elements?.find(element => element.type === selectedElementType) || null;
-    const updateSelectedElement = (updates) => {
+    const updateElementByType = (type, updates) => {
         setEditor(prev => ({
             ...prev,
             layoutConfig: {
-                ...(prev.layoutConfig || { version: 2, elements: [] }),
+                ...(prev.layoutConfig || { version: 2, backgroundOpacity: 0.72, elements: [] }),
                 elements: (prev.layoutConfig?.elements || []).map(element => (
-                    element.type === selectedElementType ? { ...element, ...updates } : element
+                    element.type === type ? { ...element, ...updates } : element
                 ))
             }
         }));
+    };
+
+    const updateSelectedElement = (updates) => {
+        updateElementByType(selectedElementType, updates);
     };
 
     const resetLayout = () => {
@@ -400,6 +475,35 @@ export default function CardTemplatesPage() {
             layoutConfig: createDefaultLayoutConfig(prev.baseTemplateId)
         }));
         setSelectedElementType("event");
+    };
+
+    const updateBackgroundOpacity = (value) => {
+        setEditor(prev => ({
+            ...prev,
+            layoutConfig: {
+                ...(prev.layoutConfig || createDefaultLayoutConfig(prev.baseTemplateId)),
+                backgroundOpacity: Number(value)
+            }
+        }));
+    };
+
+    const moveLayer = (type, direction) => {
+        const elements = editor?.layoutConfig?.elements || [];
+        const current = elements.find(element => element.type === type);
+        if (!current) return;
+        updateElementByType(type, { zIndex: Math.max(0, (current.zIndex || 0) + direction) });
+    };
+
+    const alignSelected = (mode) => {
+        if (!selectedElement) return;
+        const base = getBaseCardTemplate(editor.baseTemplateId);
+        const updates = {
+            centerH: { x: Math.round((base.width - selectedElement.width) / 2) },
+            centerV: { y: Math.round((base.height - selectedElement.height) / 2) },
+            left: { x: 80, align: "left" },
+            right: { x: Math.max(0, base.width - selectedElement.width - 80), align: "right" }
+        }[mode];
+        if (updates) updateSelectedElement(updates);
     };
 
     return (
@@ -471,7 +575,7 @@ export default function CardTemplatesPage() {
                         <TemplatePreview template={previewTemplate} />
                     </div>
                     <div className="mt-4">
-                        <CompositionPreview template={previewTemplate} selectedType={selectedElementType} onSelect={setSelectedElementType} />
+                        <CompositionPreview template={previewTemplate} selectedType={selectedElementType} onSelect={setSelectedElementType} onUpdate={updateElementByType} />
                     </div>
 
                     {editor && (
@@ -518,6 +622,30 @@ export default function CardTemplatesPage() {
                             </label>
 
                             <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-800 dark:text-slate-200 dark:hover:bg-slate-900">
+                                {uploadingBackground ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                                Importer une image de fond
+                                <input
+                                    type="file"
+                                    accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                                    className="sr-only"
+                                    onChange={(event) => handleBackgroundUpload(event.target.files?.[0])}
+                                />
+                            </label>
+
+                            <label className="space-y-1.5 block">
+                                <span className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Opacité fond</span>
+                                <input
+                                    type="range"
+                                    min="0"
+                                    max="1"
+                                    step="0.05"
+                                    value={editor.layoutConfig?.backgroundOpacity ?? 0.72}
+                                    onChange={(event) => updateBackgroundOpacity(event.target.value)}
+                                    className="w-full accent-blue-600"
+                                />
+                            </label>
+
+                            <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-800 dark:text-slate-200 dark:hover:bg-slate-900">
                                 {uploadingLogo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
                                 Importer un logo
                                 <input
@@ -555,7 +683,10 @@ export default function CardTemplatesPage() {
 
                             <div className="rounded-2xl border border-slate-200 p-3 dark:border-slate-800">
                                 <div className="mb-3 flex items-center justify-between gap-3">
-                                    <h3 className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Composition</h3>
+                                    <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">
+                                        <Layers className="h-3.5 w-3.5" />
+                                        Calques
+                                    </h3>
                                     <button
                                         type="button"
                                         onClick={resetLayout}
@@ -564,21 +695,30 @@ export default function CardTemplatesPage() {
                                         Réinitialiser
                                     </button>
                                 </div>
-                                <div className="grid grid-cols-2 gap-2">
-                                    {(editor.layoutConfig?.elements || []).map(element => (
+                                <div className="space-y-2">
+                                    {[...(editor.layoutConfig?.elements || [])].sort((a, b) => (b.zIndex || 0) - (a.zIndex || 0)).map(element => (
                                         <button
                                             key={element.type}
                                             type="button"
                                             onClick={() => setSelectedElementType(element.type)}
-                                            className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition-colors ${selectedElementType === element.type ? "border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-200" : "border-slate-200 text-slate-600 hover:border-[#7A90A4] dark:border-slate-800 dark:text-slate-300"}`}
+                                            className={`flex w-full items-center justify-between gap-2 rounded-xl border px-3 py-2 text-left text-xs font-semibold transition-colors ${selectedElementType === element.type ? "border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-200" : "border-slate-200 text-slate-600 hover:border-[#7A90A4] dark:border-slate-800 dark:text-slate-300"}`}
                                         >
-                                            {cardElementLabels[element.type] || element.label}
+                                            <span>{cardElementLabels[element.type] || element.label}</span>
+                                            <span className="text-[10px] opacity-70">
+                                                {element.visible ? "visible" : "masqué"}{element.locked ? " / verrouillé" : ""}
+                                            </span>
                                         </button>
                                     ))}
                                 </div>
 
                                 {selectedElement && (
                                     <div className="mt-4 space-y-3">
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <button type="button" onClick={() => alignSelected("centerH")} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-900">Centrer H</button>
+                                            <button type="button" onClick={() => alignSelected("centerV")} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-900">Centrer V</button>
+                                            <button type="button" onClick={() => alignSelected("left")} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-900">Gauche</button>
+                                            <button type="button" onClick={() => alignSelected("right")} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-900">Droite</button>
+                                        </div>
                                         <div className="grid grid-cols-2 gap-3">
                                             {[
                                                 ["x", "X"],
@@ -597,6 +737,18 @@ export default function CardTemplatesPage() {
                                                     />
                                                 </label>
                                             ))}
+                                            <label className="space-y-1.5">
+                                                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Opacité</span>
+                                                <input
+                                                    type="number"
+                                                    min="0"
+                                                    max="1"
+                                                    step="0.05"
+                                                    value={selectedElement.opacity ?? 1}
+                                                    onChange={(event) => updateSelectedElement({ opacity: Number(event.target.value) })}
+                                                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
+                                                />
+                                            </label>
                                             <label className="space-y-1.5">
                                                 <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Couleur</span>
                                                 <input
@@ -634,12 +786,23 @@ export default function CardTemplatesPage() {
                                                 </select>
                                             </label>
                                         </div>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <button type="button" onClick={() => moveLayer(selectedElement.type, 1)} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-900">Avant</button>
+                                            <button type="button" onClick={() => moveLayer(selectedElement.type, -1)} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-900">Arrière</button>
+                                        </div>
                                         <button
                                             type="button"
                                             onClick={() => updateSelectedElement({ visible: !selectedElement.visible })}
                                             className={`w-full rounded-xl border px-4 py-2.5 text-sm font-semibold transition-colors ${selectedElement.visible ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-200" : "border-slate-200 text-slate-500 dark:border-slate-800 dark:text-slate-400"}`}
                                         >
                                             {selectedElement.visible ? "Visible" : "Masqué"}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => updateSelectedElement({ locked: !selectedElement.locked })}
+                                            className={`w-full rounded-xl border px-4 py-2.5 text-sm font-semibold transition-colors ${selectedElement.locked ? "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200" : "border-slate-200 text-slate-500 dark:border-slate-800 dark:text-slate-400"}`}
+                                        >
+                                            {selectedElement.locked ? "Verrouillé" : "Déverrouillé"}
                                         </button>
                                     </div>
                                 )}

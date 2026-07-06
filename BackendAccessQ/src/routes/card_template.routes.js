@@ -28,6 +28,7 @@ router.put("/custom/default/clear", adminOnly, cardTemplateController.clearDefau
 router.delete("/default", adminOnly, cardTemplateController.clearDefaultCustomTemplate);
 router.post("/custom/:id/duplicate", adminOnly, cardTemplateController.duplicateCustomTemplate);
 router.post("/logo", adminOnly, upload.single("logo"), cardTemplateController.uploadLogo);
+router.post("/background", adminOnly, upload.single("background"), cardTemplateController.uploadBackground);
 router.put("/custom/:id", adminOnly, cardTemplateController.updateCustomTemplate);
 router.delete("/custom/:id", adminOnly, cardTemplateController.deleteCustomTemplate);
 router.put("/custom/:id/default", adminOnly, cardTemplateController.setDefaultCustomTemplate);

@@ -60,12 +60,22 @@ test("POST /card-templates/custom creates a custom template for admins", async (
         secondaryColor: "#dbeafe",
         title: "INVITATION",
         qrPosition: "right",
-        visibleFields: { holder: true }
+        visibleFields: { holder: true },
+        layoutConfig: {
+            version: 2,
+            backgroundOpacity: 0.6,
+            elements: [
+                { type: "event", x: 100, y: 120, width: 500, height: 80, fontSize: 42, fontWeight: "900", color: "#2563eb", align: "left", visible: true, locked: true, opacity: 0.8, zIndex: 4 }
+            ]
+        }
     });
 
     assert.equal(res.status, 201);
     assert.equal(payload.orgId, 42);
     assert.equal(payload.body.name, "Ticket corporate");
+    assert.equal(payload.body.layoutConfig.elements[0].locked, true);
+    assert.equal(payload.body.layoutConfig.elements[0].opacity, 0.8);
+    assert.equal(payload.body.layoutConfig.elements[0].zIndex, 4);
     assert.equal(res.body.template.templateId, "custom:6");
 });
 

@@ -118,6 +118,13 @@ export const cardElementLabels = {
     cardId: "ID carte"
 };
 
+const withLayerDefaults = (elements) => elements.map((element, index) => ({
+    zIndex: index + 1,
+    locked: false,
+    opacity: 1,
+    ...element
+}));
+
 export const createDefaultLayoutConfig = (baseTemplateId = "event-ticket") => {
     const base = getBaseCardTemplate(baseTemplateId);
     const wide = base.layout === "wide" || base.layout === "compact";
@@ -126,40 +133,49 @@ export const createDefaultLayoutConfig = (baseTemplateId = "event-ticket") => {
     if (wide) {
         return {
             version: 2,
-            elements: [
-                { type: "logo", label: "Logo", x: 80, y: 80, width: 86, height: 86, fontSize: 24, fontWeight: "700", color: "#ffffff", align: "left", visible: true },
-                { type: "title", label: "Titre", x: 90, y: 215, width: 330, height: 70, fontSize: 48, fontWeight: "900", color: "#ffffff", align: "left", visible: true },
-                { type: "event", label: "Événement", x: 540, y: 118, width: 650, height: 72, fontSize: 52, fontWeight: "900", color: "#0f172a", align: "left", visible: true },
-                { type: "holder", label: "Titulaire", x: 540, y: 230, width: 520, height: 46, fontSize: 34, fontWeight: "700", color: "#334155", align: "left", visible: true },
-                { type: "date", label: "Date", x: 540, y: 332, width: 420, height: 34, fontSize: 24, fontWeight: "700", color: "#334155", align: "left", visible: true },
-                { type: "location", label: "Lieu", x: 540, y: 390, width: 420, height: 32, fontSize: 22, fontWeight: "500", color: "#475569", align: "left", visible: true },
-                { type: "level", label: "Niveau", x: 540, y: 486, width: 240, height: 32, fontSize: 22, fontWeight: "800", color: "#2563eb", align: "left", visible: true },
-                { type: "message", label: "Message", x: 540, y: 532, width: 520, height: 30, fontSize: 19, fontWeight: "500", color: "#64748b", align: "left", visible: true },
-                { type: "qr", label: "QR", x: 1268, y: 126, width: 238, height: 238, fontSize: 20, fontWeight: "700", color: "#475569", align: "left", visible: true },
-                { type: "cardId", label: "ID carte", x: 1268, y: 422, width: 220, height: 30, fontSize: 21, fontWeight: "700", color: "#475569", align: "left", visible: true }
-            ]
+            backgroundOpacity: 0.72,
+            elements: withLayerDefaults([
+                { type: "logo", label: "Logo", x: 80, y: 80, width: 86, height: 86, fontSize: 24, fontWeight: "700", color: "#ffffff", align: "left", visible: true, locked: false, opacity: 1 },
+                { type: "title", label: "Titre", x: 90, y: 215, width: 330, height: 70, fontSize: 48, fontWeight: "900", color: "#ffffff", align: "left", visible: true, locked: false, opacity: 1 },
+                { type: "event", label: "Événement", x: 540, y: 118, width: 650, height: 72, fontSize: 52, fontWeight: "900", color: "#0f172a", align: "left", visible: true, locked: false, opacity: 1 },
+                { type: "holder", label: "Titulaire", x: 540, y: 230, width: 520, height: 46, fontSize: 34, fontWeight: "700", color: "#334155", align: "left", visible: true, locked: false, opacity: 1 },
+                { type: "date", label: "Date", x: 540, y: 332, width: 420, height: 34, fontSize: 24, fontWeight: "700", color: "#334155", align: "left", visible: true, locked: false, opacity: 1 },
+                { type: "location", label: "Lieu", x: 540, y: 390, width: 420, height: 32, fontSize: 22, fontWeight: "500", color: "#475569", align: "left", visible: true, locked: false, opacity: 1 },
+                { type: "level", label: "Niveau", x: 540, y: 486, width: 240, height: 32, fontSize: 22, fontWeight: "800", color: "#2563eb", align: "left", visible: true, locked: false, opacity: 1 },
+                { type: "message", label: "Message", x: 540, y: 532, width: 520, height: 30, fontSize: 19, fontWeight: "500", color: "#64748b", align: "left", visible: true, locked: false, opacity: 1 },
+                { type: "qr", label: "QR", x: 1268, y: 126, width: 238, height: 238, fontSize: 20, fontWeight: "700", color: "#475569", align: "left", visible: true, locked: false, opacity: 1 },
+                { type: "cardId", label: "ID carte", x: 1268, y: 422, width: 220, height: 30, fontSize: 21, fontWeight: "700", color: "#475569", align: "left", visible: true, locked: false, opacity: 1 }
+            ])
         };
     }
 
     return {
         version: 2,
-        elements: [
-            { type: "logo", label: "Logo", x: badge ? 78 : 130, y: badge ? 78 : 128, width: 72, height: 72, fontSize: 22, fontWeight: "700", color: "#ffffff", align: "left", visible: true },
-            { type: "title", label: "Titre", x: 180, y: badge ? 150 : 230, width: badge ? 540 : 840, height: 52, fontSize: badge ? 24 : 38, fontWeight: "800", color: badge ? "#ffffff" : "#e11d48", align: "center", visible: true },
-            { type: "event", label: "Événement", x: badge ? 110 : 150, y: badge ? 740 : 360, width: badge ? 680 : 900, height: 82, fontSize: badge ? 30 : 68, fontWeight: "800", color: "#0f172a", align: "center", visible: true },
-            { type: "holder", label: "Titulaire", x: badge ? 110 : 180, y: badge ? 595 : 590, width: badge ? 680 : 840, height: 66, fontSize: badge ? 52 : 54, fontWeight: "900", color: "#0f172a", align: "center", visible: true },
-            { type: "date", label: "Date", x: badge ? 170 : 240, y: badge ? 805 : 775, width: badge ? 560 : 720, height: 44, fontSize: 30, fontWeight: "700", color: "#334155", align: "center", visible: true },
-            { type: "location", label: "Lieu", x: badge ? 170 : 240, y: badge ? 850 : 830, width: badge ? 560 : 720, height: 36, fontSize: 24, fontWeight: "500", color: "#64748b", align: "center", visible: true },
-            { type: "level", label: "Niveau", x: badge ? 250 : 260, y: badge ? 675 : 910, width: badge ? 400 : 680, height: 40, fontSize: 28, fontWeight: "800", color: "#2563eb", align: "center", visible: true },
-            { type: "message", label: "Message", x: badge ? 120 : 180, y: badge ? 1360 : 1460, width: badge ? 660 : 840, height: 34, fontSize: badge ? 20 : 24, fontWeight: "700", color: "#64748b", align: "center", visible: true },
-            { type: "qr", label: "QR", x: badge ? 250 : 420, y: badge ? 910 : 1010, width: badge ? 400 : 360, height: badge ? 400 : 360, fontSize: 20, fontWeight: "700", color: "#475569", align: "center", visible: true },
-            { type: "cardId", label: "ID carte", x: badge ? 250 : 420, y: badge ? 1328 : 1530, width: badge ? 400 : 360, height: 34, fontSize: 21, fontWeight: "700", color: "#475569", align: "center", visible: true }
-        ]
+        backgroundOpacity: 0.72,
+        elements: withLayerDefaults([
+            { type: "logo", label: "Logo", x: badge ? 78 : 130, y: badge ? 78 : 128, width: 72, height: 72, fontSize: 22, fontWeight: "700", color: "#ffffff", align: "left", visible: true, locked: false, opacity: 1 },
+            { type: "title", label: "Titre", x: 180, y: badge ? 150 : 230, width: badge ? 540 : 840, height: 52, fontSize: badge ? 24 : 38, fontWeight: "800", color: badge ? "#ffffff" : "#e11d48", align: "center", visible: true, locked: false, opacity: 1 },
+            { type: "event", label: "Événement", x: badge ? 110 : 150, y: badge ? 740 : 360, width: badge ? 680 : 900, height: 82, fontSize: badge ? 30 : 68, fontWeight: "800", color: "#0f172a", align: "center", visible: true, locked: false, opacity: 1 },
+            { type: "holder", label: "Titulaire", x: badge ? 110 : 180, y: badge ? 595 : 590, width: badge ? 680 : 840, height: 66, fontSize: badge ? 52 : 54, fontWeight: "900", color: "#0f172a", align: "center", visible: true, locked: false, opacity: 1 },
+            { type: "date", label: "Date", x: badge ? 170 : 240, y: badge ? 805 : 775, width: badge ? 560 : 720, height: 44, fontSize: 30, fontWeight: "700", color: "#334155", align: "center", visible: true, locked: false, opacity: 1 },
+            { type: "location", label: "Lieu", x: badge ? 170 : 240, y: badge ? 850 : 830, width: badge ? 560 : 720, height: 36, fontSize: 24, fontWeight: "500", color: "#64748b", align: "center", visible: true, locked: false, opacity: 1 },
+            { type: "level", label: "Niveau", x: badge ? 250 : 260, y: badge ? 675 : 910, width: badge ? 400 : 680, height: 40, fontSize: 28, fontWeight: "800", color: "#2563eb", align: "center", visible: true, locked: false, opacity: 1 },
+            { type: "message", label: "Message", x: badge ? 120 : 180, y: badge ? 1360 : 1460, width: badge ? 660 : 840, height: 34, fontSize: badge ? 20 : 24, fontWeight: "700", color: "#64748b", align: "center", visible: true, locked: false, opacity: 1 },
+            { type: "qr", label: "QR", x: badge ? 250 : 420, y: badge ? 910 : 1010, width: badge ? 400 : 360, height: badge ? 400 : 360, fontSize: 20, fontWeight: "700", color: "#475569", align: "center", visible: true, locked: false, opacity: 1 },
+            { type: "cardId", label: "ID carte", x: badge ? 250 : 420, y: badge ? 1328 : 1530, width: badge ? 400 : 360, height: 34, fontSize: 21, fontWeight: "700", color: "#475569", align: "center", visible: true, locked: false, opacity: 1 }
+        ])
     };
 };
 
 export const normalizeCustomCardTemplate = (template) => {
     const baseTemplate = getBaseCardTemplate(template.baseTemplateId);
+    const layoutConfig = template.layoutConfig
+        ? {
+            version: 2,
+            backgroundOpacity: template.layoutConfig.backgroundOpacity ?? 0.72,
+            elements: withLayerDefaults(template.layoutConfig.elements || [])
+        }
+        : null;
 
     return {
         ...baseTemplate,
@@ -177,7 +193,7 @@ export const normalizeCustomCardTemplate = (template) => {
         backgroundImageUrl: template.backgroundImageUrl || "",
         qrPosition: template.qrPosition || "right",
         visibleFields: { ...defaultVisibleFields, ...(template.visibleFields || {}) },
-        layoutConfig: template.layoutConfig || null,
+        layoutConfig,
         layout: template.layout || baseTemplate.layout,
         format: baseTemplate.format,
         description: `Variante de ${baseTemplate.name}`,

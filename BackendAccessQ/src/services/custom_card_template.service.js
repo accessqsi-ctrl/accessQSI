@@ -27,10 +27,11 @@ const normalizeLayoutConfig = (value = null) => {
 
     return {
         version: 2,
+        backgroundOpacity: boundedNumber(value.backgroundOpacity, 0.7, 0, 1),
         elements: elements
             .filter(element => element && layoutElementTypes.has(element.type))
             .slice(0, 16)
-            .map((element) => ({
+            .map((element, index) => ({
                 type: element.type,
                 label: String(element.label || element.type).slice(0, 40),
                 x: boundedNumber(element.x, 80, 0, 2000),
@@ -41,7 +42,10 @@ const normalizeLayoutConfig = (value = null) => {
                 fontWeight: String(element.fontWeight || "700").slice(0, 12),
                 color: colorPattern.test(String(element.color || "")) ? element.color : "#0f172a",
                 align: alignments.has(element.align) ? element.align : "left",
-                visible: element.visible !== false
+                visible: element.visible !== false,
+                locked: element.locked === true,
+                opacity: boundedNumber(element.opacity, 1, 0, 1),
+                zIndex: boundedNumber(element.zIndex, index + 1, 0, 100)
             }))
     };
 };

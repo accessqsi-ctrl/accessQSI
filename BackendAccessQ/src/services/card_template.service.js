@@ -173,7 +173,7 @@ const renderTextElement = (element, value) => {
     const anchor = element.align === "center" ? "middle" : element.align === "right" ? "end" : "start";
     const x = element.align === "center" ? element.x + element.width / 2 : element.align === "right" ? element.x + element.width : element.x;
     const y = element.y + element.fontSize;
-    return `<text x="${x}" y="${y}" text-anchor="${anchor}" font-family="Arial, sans-serif" font-size="${element.fontSize}" font-weight="${escapeXml(element.fontWeight)}" fill="${escapeXml(element.color)}">${text}</text>`;
+    return `<text x="${x}" y="${y}" text-anchor="${anchor}" font-family="Arial, sans-serif" font-size="${element.fontSize}" font-weight="${escapeXml(element.fontWeight)}" fill="${escapeXml(element.color)}" opacity="${element.opacity ?? 1}">${text}</text>`;
 };
 
 const getLayoutValue = ({ element, template, event, qrRecord, cardMessage }) => {
@@ -192,23 +192,27 @@ const getLayoutValue = ({ element, template, event, qrRecord, cardMessage }) => 
 
 const renderLayoutCard = ({ template, qrUrl, event, qrRecord, cardMessage }) => {
     const elements = Array.isArray(template.layoutConfig?.elements) ? template.layoutConfig.elements : [];
+    const backgroundOpacity = template.layoutConfig?.backgroundOpacity ?? 0.72;
     const background = template.backgroundImageUrl
-        ? `<image href="${escapeXml(template.backgroundImageUrl)}" x="0" y="0" width="${template.width}" height="${template.height}" preserveAspectRatio="xMidYMid slice" opacity="0.92"/>`
+        ? `<image href="${escapeXml(template.backgroundImageUrl)}" x="0" y="0" width="${template.width}" height="${template.height}" preserveAspectRatio="xMidYMid slice" opacity="${backgroundOpacity}"/>
+<rect width="${template.width}" height="${template.height}" rx="34" fill="#ffffff" opacity="${Math.max(0, 1 - backgroundOpacity) * 0.7}"/>`
         : `<rect width="${template.width}" height="${template.height}" rx="34" fill="${template.surface}"/>
 <rect x="40" y="40" width="${template.width - 80}" height="${template.height - 80}" rx="28" fill="#ffffff" stroke="${template.soft}" stroke-width="4"/>`;
 
     const renderedElements = elements
         .filter(element => element.visible !== false)
+        .slice()
+        .sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0))
         .map((element) => {
             if (element.type === "qr") {
-                return `<rect x="${element.x}" y="${element.y}" width="${element.width}" height="${element.height}" rx="24" fill="#ffffff" stroke="${template.soft}" stroke-width="5"/>
-<image href="${qrUrl}" x="${element.x + 18}" y="${element.y + 18}" width="${Math.max(20, element.width - 36)}" height="${Math.max(20, element.height - 36)}" preserveAspectRatio="xMidYMid meet"/>`;
+                return `<g opacity="${element.opacity ?? 1}"><rect x="${element.x}" y="${element.y}" width="${element.width}" height="${element.height}" rx="24" fill="#ffffff" stroke="${template.soft}" stroke-width="5"/>
+<image href="${qrUrl}" x="${element.x + 18}" y="${element.y + 18}" width="${Math.max(20, element.width - 36)}" height="${Math.max(20, element.height - 36)}" preserveAspectRatio="xMidYMid meet"/></g>`;
             }
             if (element.type === "logo") {
                 const logoUrl = template.logoUrl;
                 if (!logoUrl) return "";
-                return `<rect x="${element.x}" y="${element.y}" width="${element.width}" height="${element.height}" rx="18" fill="#ffffff" opacity="0.94"/>
-<image href="${escapeXml(logoUrl)}" x="${element.x + 8}" y="${element.y + 8}" width="${Math.max(20, element.width - 16)}" height="${Math.max(20, element.height - 16)}" preserveAspectRatio="xMidYMid meet"/>`;
+                return `<g opacity="${element.opacity ?? 1}"><rect x="${element.x}" y="${element.y}" width="${element.width}" height="${element.height}" rx="18" fill="#ffffff" opacity="0.94"/>
+<image href="${escapeXml(logoUrl)}" x="${element.x + 8}" y="${element.y + 8}" width="${Math.max(20, element.width - 16)}" height="${Math.max(20, element.height - 16)}" preserveAspectRatio="xMidYMid meet"/></g>`;
             }
             return renderTextElement(element, getLayoutValue({ element, template, event, qrRecord, cardMessage }));
         })

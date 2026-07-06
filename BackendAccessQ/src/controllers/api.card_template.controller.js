@@ -161,3 +161,26 @@ exports.uploadLogo = async (req, res) => {
         res.status(500).json({ success: false, message: "Erreur lors de l'envoi du logo." });
     }
 };
+
+exports.uploadBackground = async (req, res) => {
+    try {
+        const orgId = requireOrg(req, res);
+        if (!orgId) return;
+
+        if (!req.file) {
+            return res.status(400).json({ success: false, message: "Image de fond requise." });
+        }
+
+        const extension = path.extname(req.file.originalname || "").toLowerCase() || ".png";
+        const filename = `background_${orgId}_${crypto.randomUUID()}${extension}`;
+        const targetDir = path.join(__dirname, "../statics/card-backgrounds");
+        const targetPath = path.join(targetDir, filename);
+        if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
+
+        await fs.promises.rename(req.file.path, targetPath);
+        res.status(201).json({ success: true, backgroundImageUrl: `/card-backgrounds/${filename}` });
+    } catch (error) {
+        if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+        res.status(500).json({ success: false, message: "Erreur lors de l'envoi de l'image de fond." });
+    }
+};
