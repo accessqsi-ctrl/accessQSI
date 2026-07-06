@@ -67,6 +67,14 @@ test("POST /card-templates/custom creates a custom template for admins", async (
             elements: [
                 { type: "event", x: 100, y: 120, width: 500, height: 80, fontSize: 42, fontWeight: "900", color: "#2563eb", align: "left", visible: true, locked: true, opacity: 0.8, zIndex: 4 }
             ]
+        },
+        canvasScene: {
+            version: 3,
+            canvas: { width: 1600, height: 600, backgroundColor: "#ffffff" },
+            objects: [
+                { id: "event", type: "text", label: "Événement", field: "event", text: "{{event}}", x: 120, y: 100, width: 600, height: 70, fontSize: 48, fill: "#0f172a", visible: true, locked: false, zIndex: 2 },
+                { id: "qr", type: "qr", label: "QR", x: 1250, y: 120, width: 240, height: 240, visible: true, locked: false, zIndex: 4 }
+            ]
         }
     });
 
@@ -76,6 +84,8 @@ test("POST /card-templates/custom creates a custom template for admins", async (
     assert.equal(payload.body.layoutConfig.elements[0].locked, true);
     assert.equal(payload.body.layoutConfig.elements[0].opacity, 0.8);
     assert.equal(payload.body.layoutConfig.elements[0].zIndex, 4);
+    assert.equal(payload.body.canvasScene.canvas.width, 1600);
+    assert.equal(payload.body.canvasScene.objects[0].type, "text");
     assert.equal(res.body.template.templateId, "custom:6");
 });
 

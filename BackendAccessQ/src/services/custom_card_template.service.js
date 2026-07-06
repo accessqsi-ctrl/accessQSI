@@ -5,6 +5,7 @@ const colorPattern = /^#[0-9a-fA-F]{6}$/;
 const qrPositions = new Set(["right", "left", "center"]);
 const visibleFieldKeys = ["holder", "event", "date", "location", "level", "message", "qr"];
 const layoutElementTypes = new Set(["logo", "title", "event", "holder", "date", "location", "level", "message", "qr", "cardId"]);
+const canvasObjectTypes = new Set(["text", "qr", "logo", "image", "background", "rect", "line"]);
 const alignments = new Set(["left", "center", "right"]);
 
 const boundedNumber = (value, fallback, min, max) => {
@@ -46,6 +47,50 @@ const normalizeLayoutConfig = (value = null) => {
                 locked: element.locked === true,
                 opacity: boundedNumber(element.opacity, 1, 0, 1),
                 zIndex: boundedNumber(element.zIndex, index + 1, 0, 100)
+            }))
+    };
+};
+
+const normalizeCanvasScene = (value = null, baseTemplate = null, existing = null) => {
+    const source = value && typeof value === "object" ? value : existing;
+    if (!source || typeof source !== "object") return null;
+
+    const canvas = source.canvas && typeof source.canvas === "object" ? source.canvas : {};
+    const objects = Array.isArray(source.objects) ? source.objects : [];
+    const width = boundedNumber(canvas.width, baseTemplate?.width || 1200, 240, 2400);
+    const height = boundedNumber(canvas.height, baseTemplate?.height || 800, 240, 2600);
+    const backgroundColor = colorPattern.test(String(canvas.backgroundColor || "")) ? canvas.backgroundColor : "#ffffff";
+
+    return {
+        version: 3,
+        canvas: { width, height, backgroundColor },
+        objects: objects
+            .filter(object => object && canvasObjectTypes.has(object.type))
+            .slice(0, 80)
+            .map((object, index) => ({
+                id: String(object.id || `${object.type}-${index + 1}`).slice(0, 80),
+                type: object.type,
+                label: String(object.label || object.type).slice(0, 80),
+                field: String(object.field || "").slice(0, 40) || null,
+                text: String(object.text || "").slice(0, 240),
+                src: String(object.src || "").trim().slice(0, 500) || null,
+                x: boundedNumber(object.x, 80, -2400, 2400),
+                y: boundedNumber(object.y, 80, -2600, 2600),
+                width: boundedNumber(object.width, object.type === "line" ? 260 : 220, 1, 2400),
+                height: boundedNumber(object.height, object.type === "line" ? 0 : 80, -2600, 2600),
+                rotation: boundedNumber(object.rotation, 0, -360, 360),
+                opacity: boundedNumber(object.opacity, 1, 0, 1),
+                zIndex: boundedNumber(object.zIndex, index + 1, 0, 1000),
+                locked: object.locked === true,
+                visible: object.visible !== false,
+                fill: colorPattern.test(String(object.fill || "")) ? object.fill : "#0f172a",
+                stroke: colorPattern.test(String(object.stroke || "")) ? object.stroke : "#cbd5e1",
+                strokeWidth: boundedNumber(object.strokeWidth, object.type === "line" ? 4 : 0, 0, 40),
+                fontSize: boundedNumber(object.fontSize, 32, 6, 220),
+                fontFamily: String(object.fontFamily || "Arial").slice(0, 60),
+                fontWeight: String(object.fontWeight || "700").slice(0, 12),
+                align: alignments.has(object.align) ? object.align : "left",
+                cornerRadius: boundedNumber(object.cornerRadius, 0, 0, 160)
             }))
     };
 };
@@ -93,6 +138,7 @@ const normalizePayload = (payload = {}, existing = null) => {
         qr_position: qrPosition,
         visible_fields: normalizeVisibleFields(payload.visibleFields || existing?.visible_fields),
         layout_config: normalizeLayoutConfig(payload.layoutConfig ?? existing?.layout_config),
+        canvas_scene: normalizeCanvasScene(payload.canvasScene ?? existing?.canvas_scene, baseTemplate, existing?.canvas_scene),
         layout: String(payload.layout || existing?.layout || baseTemplate.layout || "wide").trim().slice(0, 32)
     };
 };
@@ -111,6 +157,7 @@ const toApiTemplate = (template) => ({
     qrPosition: template.qr_position,
     visibleFields: template.visible_fields,
     layoutConfig: template.layout_config || null,
+    canvasScene: template.canvas_scene || null,
     layout: template.layout,
     isDefault: template.is_default,
     createdAt: template.created_at,
@@ -196,6 +243,7 @@ exports.duplicateForOrg = async (orgId, id) => {
             qr_position: existing.qr_position,
             visible_fields: existing.visible_fields,
             layout_config: existing.layout_config,
+            canvas_scene: existing.canvas_scene,
             layout: existing.layout
         }
     });
@@ -278,6 +326,7 @@ exports.resolveCustomForRender = async (orgId, templateId) => {
             qrPosition: template.qr_position,
             visibleFields: template.visible_fields,
             layoutConfig: template.layout_config,
+            canvasScene: template.canvas_scene,
             layout: template.layout
         }
     };

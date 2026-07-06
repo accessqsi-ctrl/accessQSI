@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BadgeCheck, Copy, Crown, IdCard, Layers, Loader2, Mail, QrCode, Save, ShieldCheck, Sparkles, Ticket, Trash2, Upload } from "lucide-react";
+import { Group, Image as KonvaImage, Layer, Line, Rect, Stage, Text, Transformer } from "react-konva";
 import { apiFetch } from "../../lib/api";
 import LoadingBar from "../../components/LoadingBar";
-import { CARD_TEMPLATE_STORAGE_KEY, cardElementLabels, cardTemplates, createDefaultLayoutConfig, defaultVisibleFields, getBaseCardTemplate, normalizeCustomCardTemplate } from "../../lib/cardTemplates";
+import { CARD_TEMPLATE_STORAGE_KEY, cardElementLabels, cardTemplates, createDefaultCanvasScene, createDefaultLayoutConfig, defaultVisibleFields, getBaseCardTemplate, normalizeCustomCardTemplate } from "../../lib/cardTemplates";
 
 const templateIcons = {
     "event-ticket": Ticket,
@@ -234,6 +235,216 @@ function CompositionPreview({ template, selectedType, onSelect, onUpdate }) {
     );
 }
 
+function useCanvasImage(src) {
+    const [image, setImage] = useState(null);
+
+    useEffect(() => {
+        if (!src) {
+            setImage(null);
+            return undefined;
+        }
+        const img = new window.Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => setImage(img);
+        img.onerror = () => setImage(null);
+        img.src = src;
+        return () => {
+            img.onload = null;
+            img.onerror = null;
+        };
+    }, [src]);
+
+    return image;
+}
+
+function QrPlaceholder({ object, selected, onSelect, onDragEnd, onTransformEnd }) {
+    return (
+        <Group
+            id={object.id}
+            x={object.x}
+            y={object.y}
+            width={object.width}
+            height={object.height}
+            rotation={object.rotation || 0}
+            opacity={object.opacity ?? 1}
+            draggable={!object.locked}
+            visible={object.visible !== false}
+            onClick={onSelect}
+            onTap={onSelect}
+            onDragEnd={onDragEnd}
+            onTransformEnd={onTransformEnd}
+        >
+            <Rect width={object.width} height={object.height} fill="#ffffff" stroke={selected ? "#2563eb" : object.stroke || "#cbd5e1"} strokeWidth={selected ? 6 : object.strokeWidth || 4} cornerRadius={object.cornerRadius || 18} />
+            {Array.from({ length: 25 }).map((_, index) => (
+                <Rect
+                    key={index}
+                    x={18 + (index % 5) * ((object.width - 36) / 5)}
+                    y={18 + Math.floor(index / 5) * ((object.height - 36) / 5)}
+                    width={Math.max(4, (object.width - 52) / 5)}
+                    height={Math.max(4, (object.height - 52) / 5)}
+                    fill={index % 2 === 0 || index % 7 === 0 ? "#0f172a" : "#e2e8f0"}
+                />
+            ))}
+        </Group>
+    );
+}
+
+function CanvasImageObject({ object, selected, fallbackSrc, onSelect, onDragEnd, onTransformEnd }) {
+    const image = useCanvasImage(object.src || fallbackSrc);
+    const common = {
+        id: object.id,
+        x: object.x,
+        y: object.y,
+        width: object.width,
+        height: object.height,
+        rotation: object.rotation || 0,
+        opacity: object.opacity ?? 1,
+        draggable: !object.locked,
+        visible: object.visible !== false,
+        onClick: onSelect,
+        onTap: onSelect,
+        onDragEnd,
+        onTransformEnd
+    };
+
+    if (!image) {
+        return (
+            <Group {...common}>
+                <Rect width={object.width} height={object.height} fill="#f8fafc" stroke={selected ? "#2563eb" : "#cbd5e1"} strokeWidth={selected ? 5 : 2} cornerRadius={object.cornerRadius || 12} />
+                <Text text={object.type === "logo" ? "LOGO" : "IMAGE"} width={object.width} height={object.height} align="center" verticalAlign="middle" fill="#64748b" fontStyle="bold" fontSize={Math.min(28, Math.max(12, object.height / 4))} />
+            </Group>
+        );
+    }
+
+    return <KonvaImage image={image} {...common} stroke={selected ? "#2563eb" : undefined} strokeWidth={selected ? 4 : 0} />;
+}
+
+function CanvasObject({ object, selected, logoUrl, backgroundImageUrl, onSelect, onChange }) {
+    const handleDragEnd = (event) => onChange(object.id, { x: Math.round(event.target.x()), y: Math.round(event.target.y()) });
+    const handleTransformEnd = (event) => {
+        const node = event.target;
+        const scaleX = node.scaleX();
+        const scaleY = node.scaleY();
+        node.scaleX(1);
+        node.scaleY(1);
+        onChange(object.id, {
+            x: Math.round(node.x()),
+            y: Math.round(node.y()),
+            width: Math.max(5, Math.round((object.width || node.width()) * scaleX)),
+            height: Math.max(0, Math.round((object.height || node.height()) * scaleY)),
+            rotation: Math.round(node.rotation())
+        });
+    };
+    const common = {
+        id: object.id,
+        x: object.x,
+        y: object.y,
+        width: object.width,
+        height: object.height,
+        rotation: object.rotation || 0,
+        opacity: object.opacity ?? 1,
+        draggable: !object.locked,
+        visible: object.visible !== false,
+        onClick: onSelect,
+        onTap: onSelect,
+        onDragEnd: handleDragEnd,
+        onTransformEnd: handleTransformEnd
+    };
+
+    if (object.type === "qr") return <QrPlaceholder object={object} selected={selected} onSelect={onSelect} onDragEnd={handleDragEnd} onTransformEnd={handleTransformEnd} />;
+    if (["logo", "image", "background"].includes(object.type)) {
+        return <CanvasImageObject object={object} selected={selected} fallbackSrc={object.type === "logo" ? logoUrl : backgroundImageUrl} onSelect={onSelect} onDragEnd={handleDragEnd} onTransformEnd={handleTransformEnd} />;
+    }
+    if (object.type === "line") {
+        return <Line {...common} points={[0, 0, object.width, object.height]} stroke={selected ? "#2563eb" : object.stroke || object.fill || "#0f172a"} strokeWidth={selected ? Math.max(5, object.strokeWidth || 4) : object.strokeWidth || 4} lineCap="round" />;
+    }
+    if (object.type === "rect") {
+        return <Rect {...common} fill={object.fill || "#ffffff"} stroke={selected ? "#2563eb" : object.stroke || "#cbd5e1"} strokeWidth={selected ? Math.max(4, object.strokeWidth || 2) : object.strokeWidth || 0} cornerRadius={object.cornerRadius || 0} />;
+    }
+    return (
+        <Text
+            {...common}
+            text={object.text || object.label}
+            fill={object.fill || "#0f172a"}
+            fontFamily={object.fontFamily || "Arial"}
+            fontSize={object.fontSize || 32}
+            fontStyle={String(object.fontWeight || "700") >= "700" ? "bold" : "normal"}
+            align={object.align || "left"}
+            verticalAlign="top"
+            stroke={selected ? "#2563eb" : undefined}
+            strokeWidth={selected ? 0.6 : 0}
+        />
+    );
+}
+
+function KonvaCanvasEditor({ scene, logoUrl, backgroundImageUrl, selectedObjectId, zoom, onSelect, onSceneChange }) {
+    const transformerRef = useRef(null);
+    const stageRef = useRef(null);
+    const canvas = scene?.canvas || { width: 1200, height: 800, backgroundColor: "#ffffff" };
+    const objects = [...(scene?.objects || [])].sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
+    const stageWidth = Math.min(820, canvas.width * zoom);
+    const scale = stageWidth / canvas.width;
+    const stageHeight = canvas.height * scale;
+
+    useEffect(() => {
+        const transformer = transformerRef.current;
+        const stage = stageRef.current;
+        if (!transformer || !stage) return;
+        const selectedNode = selectedObjectId ? stage.findOne(`#${selectedObjectId}`) : null;
+        transformer.nodes(selectedNode ? [selectedNode] : []);
+        transformer.getLayer()?.batchDraw();
+    }, [selectedObjectId, objects]);
+
+    const updateObject = (objectId, updates) => {
+        onSceneChange({
+            ...scene,
+            objects: (scene.objects || []).map(object => object.id === objectId ? { ...object, ...updates } : object)
+        });
+    };
+
+    return (
+        <div className="overflow-auto rounded-2xl border border-slate-200 bg-slate-100 p-4 dark:border-slate-800 dark:bg-slate-900">
+            <div className="mx-auto w-fit rounded-xl bg-white shadow-sm">
+                <Stage
+                    ref={stageRef}
+                    width={stageWidth}
+                    height={stageHeight}
+                    scaleX={scale}
+                    scaleY={scale}
+                    onMouseDown={(event) => {
+                        if (event.target === event.target.getStage()) onSelect("");
+                    }}
+                    onTouchStart={(event) => {
+                        if (event.target === event.target.getStage()) onSelect("");
+                    }}
+                >
+                    <Layer>
+                        <Rect width={canvas.width} height={canvas.height} fill={canvas.backgroundColor || "#ffffff"} />
+                        {objects.map(object => (
+                            <CanvasObject
+                                key={object.id}
+                                object={object}
+                                selected={selectedObjectId === object.id}
+                                logoUrl={logoUrl}
+                                backgroundImageUrl={backgroundImageUrl}
+                                onSelect={() => !object.locked && onSelect(object.id)}
+                                onChange={updateObject}
+                            />
+                        ))}
+                        <Transformer
+                            ref={transformerRef}
+                            rotateEnabled
+                            keepRatio={false}
+                            enabledAnchors={["top-left", "top-right", "bottom-left", "bottom-right", "middle-left", "middle-right", "top-center", "bottom-center"]}
+                            boundBoxFunc={(oldBox, newBox) => (newBox.width < 8 || newBox.height < 8 ? oldBox : newBox)}
+                        />
+                    </Layer>
+                </Stage>
+            </div>
+        </div>
+    );
+}
+
 export default function CardTemplatesPage() {
     const [selectedId, setSelectedId] = useState(cardTemplates[0].id);
     const [savedTemplateId, setSavedTemplateId] = useState("");
@@ -246,6 +457,10 @@ export default function CardTemplatesPage() {
     const [statusMessage, setStatusMessage] = useState("");
     const [editor, setEditor] = useState(null);
     const [selectedElementType, setSelectedElementType] = useState("event");
+    const [selectedObjectId, setSelectedObjectId] = useState("event");
+    const [canvasHistory, setCanvasHistory] = useState([]);
+    const [canvasHistoryIndex, setCanvasHistoryIndex] = useState(0);
+    const [canvasZoom, setCanvasZoom] = useState(0.52);
     const allTemplates = useMemo(() => [...cardTemplates, ...customTemplates], [customTemplates]);
     const selectedTemplate = useMemo(
         () => allTemplates.find(template => template.id === selectedId) || allTemplates[0] || cardTemplates[0],
@@ -268,6 +483,7 @@ export default function CardTemplatesPage() {
         qrPosition: template.qrPosition || "right",
         visibleFields: { ...defaultVisibleFields, ...(template.visibleFields || {}) },
         layoutConfig: template.layoutConfig || createDefaultLayoutConfig(template.baseTemplateId || template.id),
+        canvasScene: template.canvasScene || createDefaultCanvasScene(template.baseTemplateId || template.id),
         layout: template.layout || "wide"
     });
 
@@ -288,6 +504,7 @@ export default function CardTemplatesPage() {
             qrPosition: editor.qrPosition,
             visibleFields: editor.visibleFields,
             layoutConfig: editor.layoutConfig,
+            canvasScene: editor.canvasScene,
             layout: editor.layout || base.layout,
             fields: Object.entries(editor.visibleFields).filter(([, value]) => value).map(([key]) => key)
         };
@@ -313,8 +530,12 @@ export default function CardTemplatesPage() {
     }, []);
 
     useEffect(() => {
-        setEditor(buildEditorFromTemplate(selectedTemplate));
+        const nextEditor = buildEditorFromTemplate(selectedTemplate);
+        setEditor(nextEditor);
         setSelectedElementType("event");
+        setSelectedObjectId(nextEditor.canvasScene?.objects?.find(object => object.type === "text" && object.field === "event")?.id || nextEditor.canvasScene?.objects?.[0]?.id || "");
+        setCanvasHistory([nextEditor.canvasScene]);
+        setCanvasHistoryIndex(0);
     }, [selectedTemplate.id]);
 
     const handleEnableTemplate = async (templateId = selectedTemplate.id) => {
@@ -408,7 +629,7 @@ export default function CardTemplatesPage() {
         }
     };
 
-    const handleBackgroundUpload = async (file) => {
+    const handleBackgroundUpload = async (file, mode = "backgroundUrl") => {
         if (!file) return;
         const formData = new FormData();
         formData.append("background", file);
@@ -420,8 +641,39 @@ export default function CardTemplatesPage() {
             });
             const data = await res.json();
             if (data.success) {
-                setEditor(prev => ({ ...prev, backgroundImageUrl: data.backgroundImageUrl }));
-                setStatusMessage("Image de fond ajoutée.");
+                const imageUrl = data.backgroundImageUrl;
+                if (mode === "imageObject" || mode === "backgroundObject") {
+                    const canvas = editor.canvasScene?.canvas || createDefaultCanvasScene(editor.baseTemplateId).canvas;
+                    const object = {
+                        id: `${mode}-${Date.now()}`,
+                        type: mode === "backgroundObject" ? "background" : "image",
+                        label: mode === "backgroundObject" ? "Image de fond" : "Image",
+                        src: imageUrl,
+                        x: mode === "backgroundObject" ? 0 : Math.round(canvas.width * 0.18),
+                        y: mode === "backgroundObject" ? 0 : Math.round(canvas.height * 0.18),
+                        width: mode === "backgroundObject" ? canvas.width : Math.round(canvas.width * 0.34),
+                        height: mode === "backgroundObject" ? canvas.height : Math.round(canvas.height * 0.28),
+                        rotation: 0,
+                        opacity: mode === "backgroundObject" ? 0.9 : 1,
+                        zIndex: mode === "backgroundObject" ? 0 : Math.max(1, ...(editor.canvasScene?.objects || []).map(object => object.zIndex || 0)) + 1,
+                        locked: false,
+                        visible: true,
+                        fill: "#ffffff",
+                        stroke: "#cbd5e1",
+                        strokeWidth: 0,
+                        cornerRadius: 0
+                    };
+                    commitCanvasScene({
+                        ...(editor.canvasScene || createDefaultCanvasScene(editor.baseTemplateId)),
+                        objects: mode === "backgroundObject"
+                            ? [object, ...(editor.canvasScene?.objects || []).filter(item => item.type !== "background")]
+                            : [...(editor.canvasScene?.objects || []), object]
+                    });
+                    setSelectedObjectId(object.id);
+                } else {
+                    setEditor(prev => ({ ...prev, backgroundImageUrl: imageUrl }));
+                }
+                setStatusMessage(mode === "imageObject" ? "Image ajoutée au canvas." : "Image de fond ajoutée.");
                 setTimeout(() => setStatusMessage(""), 3000);
             }
         } finally {
@@ -506,6 +758,121 @@ export default function CardTemplatesPage() {
         if (updates) updateSelectedElement(updates);
     };
 
+    const selectedObject = editor?.canvasScene?.objects?.find(object => object.id === selectedObjectId) || null;
+    const commitCanvasScene = (nextScene) => {
+        setEditor(prev => ({ ...prev, canvasScene: nextScene }));
+        setCanvasHistory(prev => {
+            const nextHistory = [...prev.slice(0, canvasHistoryIndex + 1), nextScene].slice(-40);
+            setCanvasHistoryIndex(nextHistory.length - 1);
+            return nextHistory;
+        });
+    };
+
+    const updateCanvasObject = (objectId, updates) => {
+        const scene = editor?.canvasScene || createDefaultCanvasScene(editor.baseTemplateId);
+        commitCanvasScene({
+            ...scene,
+            objects: (scene.objects || []).map(object => object.id === objectId ? { ...object, ...updates } : object)
+        });
+    };
+
+    const updateCanvasSettings = (updates) => {
+        const scene = editor?.canvasScene || createDefaultCanvasScene(editor.baseTemplateId);
+        commitCanvasScene({ ...scene, canvas: { ...scene.canvas, ...updates } });
+    };
+
+    const undoCanvas = () => {
+        if (canvasHistoryIndex <= 0) return;
+        const nextIndex = canvasHistoryIndex - 1;
+        setCanvasHistoryIndex(nextIndex);
+        setEditor(prev => ({ ...prev, canvasScene: canvasHistory[nextIndex] }));
+    };
+
+    const redoCanvas = () => {
+        if (canvasHistoryIndex >= canvasHistory.length - 1) return;
+        const nextIndex = canvasHistoryIndex + 1;
+        setCanvasHistoryIndex(nextIndex);
+        setEditor(prev => ({ ...prev, canvasScene: canvasHistory[nextIndex] }));
+    };
+
+    const resetCanvasScene = () => {
+        const scene = createDefaultCanvasScene(editor.baseTemplateId);
+        commitCanvasScene(scene);
+        setSelectedObjectId(scene.objects?.[0]?.id || "");
+    };
+
+    const addCanvasObject = (type) => {
+        const scene = editor.canvasScene || createDefaultCanvasScene(editor.baseTemplateId);
+        const canvas = scene.canvas;
+        const id = `${type}-${Date.now()}`;
+        const baseObject = {
+            id,
+            type,
+            label: type === "text" ? "Texte libre" : type.toUpperCase(),
+            text: type === "text" ? "Nouveau texte" : "",
+            x: Math.round(canvas.width * 0.35),
+            y: Math.round(canvas.height * 0.35),
+            width: type === "line" ? 280 : ["qr", "logo"].includes(type) ? 220 : 300,
+            height: type === "line" ? 0 : ["qr", "logo"].includes(type) ? 220 : type === "rect" ? 120 : 70,
+            rotation: 0,
+            opacity: 1,
+            zIndex: Math.max(1, ...scene.objects.map(object => object.zIndex || 0)) + 1,
+            locked: false,
+            visible: true,
+            fill: type === "rect" ? "#dbeafe" : "#0f172a",
+            stroke: type === "line" ? "#2563eb" : "#cbd5e1",
+            strokeWidth: type === "line" ? 5 : type === "rect" ? 0 : 4,
+            fontSize: 34,
+            fontFamily: "Arial",
+            fontWeight: "700",
+            align: "left",
+            cornerRadius: type === "rect" ? 18 : 0
+        };
+        commitCanvasScene({ ...scene, objects: [...scene.objects, baseObject] });
+        setSelectedObjectId(id);
+    };
+
+    const duplicateCanvasObject = () => {
+        if (!selectedObject) return;
+        const scene = editor.canvasScene;
+        const copy = {
+            ...selectedObject,
+            id: `${selectedObject.type}-${Date.now()}`,
+            label: `${selectedObject.label || selectedObject.type} copie`,
+            x: selectedObject.x + 28,
+            y: selectedObject.y + 28,
+            zIndex: Math.max(1, ...scene.objects.map(object => object.zIndex || 0)) + 1
+        };
+        commitCanvasScene({ ...scene, objects: [...scene.objects, copy] });
+        setSelectedObjectId(copy.id);
+    };
+
+    const deleteCanvasObject = () => {
+        if (!selectedObject) return;
+        const scene = editor.canvasScene;
+        const objects = scene.objects.filter(object => object.id !== selectedObject.id);
+        commitCanvasScene({ ...scene, objects });
+        setSelectedObjectId(objects[0]?.id || "");
+    };
+
+    const moveCanvasLayer = (objectId, direction) => {
+        const object = editor.canvasScene?.objects?.find(item => item.id === objectId);
+        if (!object) return;
+        updateCanvasObject(objectId, { zIndex: Math.max(0, (object.zIndex || 0) + direction) });
+    };
+
+    const alignCanvasObject = (mode) => {
+        if (!selectedObject) return;
+        const canvas = editor.canvasScene.canvas;
+        const updates = {
+            centerH: { x: Math.round((canvas.width - selectedObject.width) / 2) },
+            centerV: { y: Math.round((canvas.height - selectedObject.height) / 2) },
+            left: { x: 40 },
+            right: { x: Math.max(0, canvas.width - selectedObject.width - 40) }
+        }[mode];
+        if (updates) updateCanvasObject(selectedObject.id, updates);
+    };
+
     return (
         <div className="mx-auto max-w-7xl space-y-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -531,8 +898,8 @@ export default function CardTemplatesPage() {
                 </div>
             )}
 
-            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
-                <section className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-6 lg:grid-cols-[360px_minmax(0,1fr)]">
+                <section className="grid gap-4">
                     {allTemplates.map((template) => {
                         const Icon = templateIcons[template.id] || Ticket;
                         const styles = accentStyles[template.accent] || accentStyles.slate;
@@ -583,6 +950,128 @@ export default function CardTemplatesPage() {
                             {(saving || deleting) && (
                                 <LoadingBar label={saving ? "Sauvegarde du modèle" : "Suppression du modèle"} />
                             )}
+
+                            <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
+                                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                                    <div>
+                                        <h3 className="text-sm font-bold text-slate-900 dark:text-white">Canvas V3</h3>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400">Édition libre avec déplacement, resize et rotation.</p>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                        <button type="button" onClick={undoCanvas} disabled={canvasHistoryIndex <= 0} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-900">Annuler</button>
+                                        <button type="button" onClick={redoCanvas} disabled={canvasHistoryIndex >= canvasHistory.length - 1} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-900">Rétablir</button>
+                                        <button type="button" onClick={resetCanvasScene} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-900">Réinitialiser</button>
+                                    </div>
+                                </div>
+
+                                <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
+                                    <div className="space-y-3">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            {["text", "qr", "logo", "rect", "line"].map(type => (
+                                                <button key={type} type="button" onClick={() => addCanvasObject(type)} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:border-[#7A90A4] dark:border-slate-800 dark:text-slate-300">
+                                                    + {type}
+                                                </button>
+                                            ))}
+                                            <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:border-[#7A90A4] dark:border-slate-800 dark:text-slate-300">
+                                                {uploadingBackground ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                                                Image
+                                                <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="sr-only" onChange={(event) => handleBackgroundUpload(event.target.files?.[0], "imageObject")} />
+                                            </label>
+                                            <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:border-[#7A90A4] dark:border-slate-800 dark:text-slate-300">
+                                                {uploadingBackground ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                                                Fond
+                                                <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="sr-only" onChange={(event) => handleBackgroundUpload(event.target.files?.[0], "backgroundObject")} />
+                                            </label>
+                                            <div className="ml-auto flex items-center gap-2">
+                                                <button type="button" onClick={() => setCanvasZoom(value => Math.max(0.25, Number((value - 0.08).toFixed(2))))} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 dark:border-slate-800 dark:text-slate-300">-</button>
+                                                <span className="w-12 text-center text-xs font-semibold text-slate-500">{Math.round(canvasZoom * 100)}%</span>
+                                                <button type="button" onClick={() => setCanvasZoom(value => Math.min(1.2, Number((value + 0.08).toFixed(2))))} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 dark:border-slate-800 dark:text-slate-300">+</button>
+                                            </div>
+                                        </div>
+
+                                        <KonvaCanvasEditor
+                                            scene={editor.canvasScene}
+                                            logoUrl={editor.logoUrl}
+                                            backgroundImageUrl={editor.backgroundImageUrl}
+                                            selectedObjectId={selectedObjectId}
+                                            zoom={canvasZoom}
+                                            onSelect={setSelectedObjectId}
+                                            onSceneChange={commitCanvasScene}
+                                        />
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        <div className="rounded-2xl border border-slate-200 p-3 dark:border-slate-800">
+                                            <div className="flex items-center justify-between">
+                                                <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">
+                                                    <Layers className="h-3.5 w-3.5" />
+                                                    Calques V3
+                                                </h4>
+                                                <div className="flex gap-1">
+                                                    <button type="button" onClick={duplicateCanvasObject} disabled={!selectedObject} className="rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-600 disabled:opacity-40 dark:border-slate-800 dark:text-slate-300">Copier</button>
+                                                    <button type="button" onClick={deleteCanvasObject} disabled={!selectedObject} className="rounded-lg border border-red-200 px-2 py-1 text-xs font-semibold text-red-600 disabled:opacity-40 dark:border-red-900/60 dark:text-red-300">Suppr.</button>
+                                                </div>
+                                            </div>
+                                            <div className="mt-3 max-h-72 space-y-2 overflow-auto pr-1">
+                                                {[...(editor.canvasScene?.objects || [])].sort((a, b) => (b.zIndex || 0) - (a.zIndex || 0)).map(object => (
+                                                    <div key={object.id} className={`rounded-xl border px-3 py-2 text-xs transition-colors ${selectedObjectId === object.id ? "border-blue-300 bg-blue-50 text-blue-800 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-200" : "border-slate-200 text-slate-600 hover:border-[#7A90A4] dark:border-slate-800 dark:text-slate-300"}`}>
+                                                        <button type="button" onClick={() => setSelectedObjectId(object.id)} className="flex w-full items-center justify-between gap-2 text-left font-semibold">
+                                                            <span className="truncate">{object.label || object.type}</span>
+                                                            <span className="text-[10px] opacity-70">z{object.zIndex || 0}</span>
+                                                        </button>
+                                                        <div className="mt-2 grid grid-cols-4 gap-1">
+                                                            <button type="button" onClick={() => updateCanvasObject(object.id, { visible: object.visible === false })} className="rounded-lg border border-slate-200 px-1.5 py-1 dark:border-slate-700">{object.visible === false ? "voir" : "hide"}</button>
+                                                            <button type="button" onClick={() => updateCanvasObject(object.id, { locked: !object.locked })} className="rounded-lg border border-slate-200 px-1.5 py-1 dark:border-slate-700">{object.locked ? "lock" : "free"}</button>
+                                                            <button type="button" onClick={() => moveCanvasLayer(object.id, 1)} className="rounded-lg border border-slate-200 px-1.5 py-1 dark:border-slate-700">+</button>
+                                                            <button type="button" onClick={() => moveCanvasLayer(object.id, -1)} className="rounded-lg border border-slate-200 px-1.5 py-1 dark:border-slate-700">-</button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        {selectedObject && (
+                                            <div className="rounded-2xl border border-slate-200 p-3 dark:border-slate-800">
+                                                <h4 className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Objet sélectionné</h4>
+                                                <div className="mt-3 grid grid-cols-2 gap-2">
+                                                    {["x", "y", "width", "height", "rotation", "opacity"].map(key => (
+                                                        <label key={key} className="space-y-1">
+                                                            <span className="text-[11px] font-semibold text-slate-500">{key}</span>
+                                                            <input type="number" step={key === "opacity" ? "0.05" : "1"} value={selectedObject[key] ?? 0} onChange={(event) => updateCanvasObject(selectedObject.id, { [key]: Number(event.target.value) })} className="w-full rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100" />
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                                {selectedObject.type === "text" && (
+                                                    <div className="mt-3 space-y-2">
+                                                        <input value={selectedObject.text || ""} onChange={(event) => updateCanvasObject(selectedObject.id, { text: event.target.value })} className="w-full rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100" />
+                                                        <div className="grid grid-cols-2 gap-2">
+                                                            <input type="number" value={selectedObject.fontSize || 32} onChange={(event) => updateCanvasObject(selectedObject.id, { fontSize: Number(event.target.value) })} className="w-full rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100" />
+                                                            <input type="color" value={selectedObject.fill || "#0f172a"} onChange={(event) => updateCanvasObject(selectedObject.id, { fill: event.target.value })} className="h-8 w-full rounded-lg border border-slate-200 bg-white p-1 dark:border-slate-800 dark:bg-slate-900" />
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                {["rect", "line"].includes(selectedObject.type) && (
+                                                    <div className="mt-3 grid grid-cols-2 gap-2">
+                                                        <input type="color" value={selectedObject.fill || "#0f172a"} onChange={(event) => updateCanvasObject(selectedObject.id, { fill: event.target.value })} className="h-8 w-full rounded-lg border border-slate-200 bg-white p-1 dark:border-slate-800 dark:bg-slate-900" />
+                                                        <input type="color" value={selectedObject.stroke || "#cbd5e1"} onChange={(event) => updateCanvasObject(selectedObject.id, { stroke: event.target.value })} className="h-8 w-full rounded-lg border border-slate-200 bg-white p-1 dark:border-slate-800 dark:bg-slate-900" />
+                                                    </div>
+                                                )}
+                                                <div className="mt-3 grid grid-cols-2 gap-2">
+                                                    <button type="button" onClick={() => alignCanvasObject("centerH")} className="rounded-xl border border-slate-200 px-2 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:text-slate-300">Centrer H</button>
+                                                    <button type="button" onClick={() => alignCanvasObject("centerV")} className="rounded-xl border border-slate-200 px-2 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:text-slate-300">Centrer V</button>
+                                                    <button type="button" onClick={() => alignCanvasObject("left")} className="rounded-xl border border-slate-200 px-2 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:text-slate-300">Gauche</button>
+                                                    <button type="button" onClick={() => alignCanvasObject("right")} className="rounded-xl border border-slate-200 px-2 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:text-slate-300">Droite</button>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        <label className="space-y-1.5 block">
+                                            <span className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Fond canvas</span>
+                                            <input type="color" value={editor.canvasScene?.canvas?.backgroundColor || "#ffffff"} onChange={(event) => updateCanvasSettings({ backgroundColor: event.target.value })} className="h-10 w-full rounded-xl border border-slate-200 bg-white p-1 dark:border-slate-800 dark:bg-slate-900" />
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
 
                             <div className="grid grid-cols-1 gap-3">
                                 <label className="space-y-1.5">

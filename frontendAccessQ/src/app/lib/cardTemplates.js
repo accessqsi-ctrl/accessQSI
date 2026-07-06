@@ -167,6 +167,68 @@ export const createDefaultLayoutConfig = (baseTemplateId = "event-ticket") => {
     };
 };
 
+const createCanvasObject = (object) => ({
+    rotation: 0,
+    opacity: 1,
+    locked: false,
+    visible: true,
+    stroke: "#cbd5e1",
+    strokeWidth: 0,
+    fontFamily: "Arial",
+    fontWeight: "700",
+    align: "left",
+    cornerRadius: 0,
+    ...object
+});
+
+export const createDefaultCanvasScene = (baseTemplateId = "event-ticket") => {
+    const base = getBaseCardTemplate(baseTemplateId);
+    const wide = base.layout === "wide" || base.layout === "compact";
+    const badge = base.layout === "badge";
+    const width = wide ? (base.layout === "compact" ? 1200 : 1600) : badge ? 900 : 1200;
+    const height = wide ? (base.layout === "compact" ? 520 : 600) : badge ? 1400 : 1800;
+    const accent = base.accent === "amber" ? "#d97706" : base.accent === "emerald" ? "#059669" : base.accent === "rose" ? "#e11d48" : base.accent === "violet" ? "#7c3aed" : base.accent === "teal" ? "#0f766e" : base.accent === "slate" ? "#334155" : "#2563eb";
+    const soft = base.accent === "amber" ? "#fef3c7" : base.accent === "emerald" ? "#d1fae5" : base.accent === "rose" ? "#ffe4e6" : base.accent === "violet" ? "#ede9fe" : base.accent === "teal" ? "#ccfbf1" : base.accent === "slate" ? "#e2e8f0" : "#dbeafe";
+
+    if (wide) {
+        return {
+            version: 3,
+            canvas: { width, height, backgroundColor: "#f8fafc" },
+            objects: [
+                createCanvasObject({ id: "panel-accent", type: "rect", label: "Bande couleur", x: 40, y: 40, width: 420, height: height - 80, fill: accent, cornerRadius: 28, zIndex: 1 }),
+                createCanvasObject({ id: "panel-main", type: "rect", label: "Fond contenu", x: 460, y: 40, width: width - 500, height: height - 80, fill: "#ffffff", stroke: soft, strokeWidth: 4, cornerRadius: 28, zIndex: 2 }),
+                createCanvasObject({ id: "brand", type: "text", label: "Marque", text: "QR Access", x: 92, y: 118, width: 280, height: 34, fontSize: 25, fill: "#ffffff", opacity: 0.82, zIndex: 3 }),
+                createCanvasObject({ id: "title", type: "text", label: "Titre", field: "title", text: "{{title}}", x: 92, y: 220, width: 310, height: 70, fontSize: 50, fontWeight: "900", fill: "#ffffff", zIndex: 4 }),
+                createCanvasObject({ id: "event", type: "text", label: "Événement", field: "event", text: "{{event}}", x: 540, y: 130, width: 610, height: 70, fontSize: 54, fontWeight: "900", fill: "#0f172a", zIndex: 5 }),
+                createCanvasObject({ id: "holder", type: "text", label: "Titulaire", field: "holder", text: "{{holder}}", x: 540, y: 242, width: 520, height: 48, fontSize: 34, fill: "#334155", zIndex: 6 }),
+                createCanvasObject({ id: "date", type: "text", label: "Date", field: "date", text: "{{date}}", x: 540, y: 354, width: 440, height: 34, fontSize: 24, fill: "#334155", zIndex: 7 }),
+                createCanvasObject({ id: "location", type: "text", label: "Lieu", field: "location", text: "{{location}}", x: 540, y: 410, width: 440, height: 32, fontSize: 22, fontWeight: "500", fill: "#475569", zIndex: 8 }),
+                createCanvasObject({ id: "level", type: "text", label: "Niveau", field: "level", text: "{{level}}", x: 540, y: 492, width: 260, height: 32, fontSize: 22, fontWeight: "800", fill: accent, zIndex: 9 }),
+                createCanvasObject({ id: "message", type: "text", label: "Message", field: "message", text: "{{message}}", x: 540, y: 536, width: 540, height: 30, fontSize: 19, fontWeight: "500", fill: "#64748b", zIndex: 10 }),
+                createCanvasObject({ id: "qr", type: "qr", label: "QR", x: width - 332, y: 126, width: 238, height: 238, stroke: soft, strokeWidth: 5, cornerRadius: 24, zIndex: 11 }),
+                createCanvasObject({ id: "card-id", type: "text", label: "ID carte", field: "cardId", text: "{{cardId}}", x: width - 332, y: 420, width: 230, height: 30, fontSize: 21, fill: "#475569", zIndex: 12 })
+            ]
+        };
+    }
+
+    return {
+        version: 3,
+        canvas: { width, height, backgroundColor: "#ffffff" },
+        objects: [
+            createCanvasObject({ id: "border", type: "rect", label: "Cadre", x: 54, y: 54, width: width - 108, height: height - 108, fill: "#ffffff", stroke: soft, strokeWidth: 8, cornerRadius: 52, zIndex: 1 }),
+            createCanvasObject({ id: "title", type: "text", label: "Titre", field: "title", text: "{{title}}", x: 120, y: badge ? 154 : 230, width: width - 240, height: 58, fontSize: badge ? 32 : 40, fontWeight: "800", fill: accent, align: "center", zIndex: 2 }),
+            createCanvasObject({ id: "holder", type: "text", label: "Titulaire", field: "holder", text: "{{holder}}", x: 120, y: badge ? 590 : 590, width: width - 240, height: 72, fontSize: badge ? 52 : 54, fontWeight: "900", fill: "#0f172a", align: "center", zIndex: 3 }),
+            createCanvasObject({ id: "event", type: "text", label: "Événement", field: "event", text: "{{event}}", x: 120, y: badge ? 750 : 380, width: width - 240, height: 76, fontSize: badge ? 30 : 68, fontWeight: "800", fill: "#0f172a", align: "center", zIndex: 4 }),
+            createCanvasObject({ id: "date", type: "text", label: "Date", field: "date", text: "{{date}}", x: 170, y: badge ? 820 : 780, width: width - 340, height: 44, fontSize: 30, fill: "#334155", align: "center", zIndex: 5 }),
+            createCanvasObject({ id: "location", type: "text", label: "Lieu", field: "location", text: "{{location}}", x: 170, y: badge ? 870 : 838, width: width - 340, height: 36, fontSize: 24, fontWeight: "500", fill: "#64748b", align: "center", zIndex: 6 }),
+            createCanvasObject({ id: "level", type: "text", label: "Niveau", field: "level", text: "{{level}}", x: 220, y: badge ? 680 : 920, width: width - 440, height: 40, fontSize: 28, fontWeight: "800", fill: accent, align: "center", zIndex: 7 }),
+            createCanvasObject({ id: "qr", type: "qr", label: "QR", x: Math.round((width - (badge ? 400 : 360)) / 2), y: badge ? 930 : 1040, width: badge ? 400 : 360, height: badge ? 400 : 360, stroke: soft, strokeWidth: 7, cornerRadius: 36, zIndex: 8 }),
+            createCanvasObject({ id: "message", type: "text", label: "Message", field: "message", text: "{{message}}", x: 130, y: badge ? 1355 : 1470, width: width - 260, height: 36, fontSize: badge ? 20 : 24, fill: "#64748b", align: "center", zIndex: 9 }),
+            createCanvasObject({ id: "card-id", type: "text", label: "ID carte", field: "cardId", text: "{{cardId}}", x: 240, y: badge ? 1320 : 1535, width: width - 480, height: 34, fontSize: 21, fill: "#475569", align: "center", zIndex: 10 })
+        ]
+    };
+};
+
 export const normalizeCustomCardTemplate = (template) => {
     const baseTemplate = getBaseCardTemplate(template.baseTemplateId);
     const layoutConfig = template.layoutConfig
@@ -197,6 +259,7 @@ export const normalizeCustomCardTemplate = (template) => {
         layout: template.layout || baseTemplate.layout,
         format: baseTemplate.format,
         description: `Variante de ${baseTemplate.name}`,
+        canvasScene: template.canvasScene || createDefaultCanvasScene(template.baseTemplateId),
         fields: Object.entries({ ...defaultVisibleFields, ...(template.visibleFields || {}) })
             .filter(([, visible]) => visible)
             .map(([field]) => field)

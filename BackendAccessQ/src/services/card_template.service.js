@@ -154,6 +154,7 @@ const buildTemplate = (templateId, customization = null) => {
         qrPosition: customization.qrPosition || "right",
         visibleFields: customization.visibleFields || {},
         layoutConfig: customization.layoutConfig || null,
+        canvasScene: customization.canvasScene || null,
         cardMessageDefault: customization.cardMessageDefault || ""
     };
 };
@@ -188,6 +189,92 @@ const getLayoutValue = ({ element, template, event, qrRecord, cardMessage }) => 
         cardId: `QR-${qrRecord.qr_id}`
     };
     return values[element.type] || element.label || "";
+};
+
+const getCanvasValue = ({ object, template, event, qrRecord, cardMessage }) => {
+    const values = {
+        title: template.label,
+        event: event.title,
+        holder: qrRecord.holder_name || "Invité",
+        date: getEventDate(event),
+        location: getEventLocation(event),
+        level: `Niveau ${qrRecord.level || 1}`,
+        message: String(cardMessage || template.cardMessageDefault || "Présentez ce QR à l'entrée").trim(),
+        cardId: `QR-${qrRecord.qr_id}`
+    };
+    const field = object.field && values[object.field] ? values[object.field] : "";
+    const rawText = String(object.text || field || object.label || "");
+    return rawText.replace(/\{\{\s*(title|event|holder|date|location|level|message|cardId)\s*\}\}/g, (_, key) => values[key] || "");
+};
+
+const transformForObject = (object) => {
+    const rotation = Number(object.rotation || 0);
+    if (!rotation) return "";
+    const cx = Number(object.x || 0) + Number(object.width || 0) / 2;
+    const cy = Number(object.y || 0) + Number(object.height || 0) / 2;
+    return ` transform="rotate(${rotation} ${cx} ${cy})"`;
+};
+
+const renderCanvasText = ({ object, template, event, qrRecord, cardMessage }) => {
+    const anchor = object.align === "center" ? "middle" : object.align === "right" ? "end" : "start";
+    const x = object.align === "center" ? object.x + object.width / 2 : object.align === "right" ? object.x + object.width : object.x;
+    const y = object.y + object.fontSize;
+    return `<text x="${x}" y="${y}" text-anchor="${anchor}" font-family="${escapeXml(object.fontFamily || "Arial")}, sans-serif" font-size="${object.fontSize}" font-weight="${escapeXml(object.fontWeight || "700")}" fill="${escapeXml(object.fill || template.ink)}">${escapeXml(getCanvasValue({ object, template, event, qrRecord, cardMessage }))}</text>`;
+};
+
+const renderCanvasScene = ({ template, qrUrl, event, qrRecord, cardMessage }) => {
+    const scene = template.canvasScene;
+    const canvas = scene?.canvas || {};
+    const width = Number(canvas.width || template.width);
+    const height = Number(canvas.height || template.height);
+    const backgroundColor = escapeXml(canvas.backgroundColor || template.surface || "#ffffff");
+    const objects = Array.isArray(scene?.objects) ? scene.objects : [];
+    const renderedObjects = objects
+        .filter(object => object && object.visible !== false)
+        .slice()
+        .sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0))
+        .map((object) => {
+            const opacity = object.opacity ?? 1;
+            const transform = transformForObject(object);
+            const common = `opacity="${opacity}"${transform}`;
+
+            if (object.type === "background") {
+                const src = object.src || template.backgroundImageUrl;
+                if (src) return `<image href="${escapeXml(src)}" x="${object.x}" y="${object.y}" width="${object.width}" height="${object.height}" preserveAspectRatio="xMidYMid slice" ${common}/>`;
+                return `<rect x="${object.x}" y="${object.y}" width="${object.width}" height="${object.height}" fill="${escapeXml(object.fill || backgroundColor)}" ${common}/>`;
+            }
+
+            if (object.type === "image" || object.type === "logo") {
+                const src = object.src || (object.type === "logo" ? template.logoUrl : "");
+                if (!src) return "";
+                return `<image href="${escapeXml(src)}" x="${object.x}" y="${object.y}" width="${object.width}" height="${object.height}" preserveAspectRatio="xMidYMid meet" ${common}/>`;
+            }
+
+            if (object.type === "qr") {
+                return `<g ${common}><rect x="${object.x}" y="${object.y}" width="${object.width}" height="${object.height}" rx="${object.cornerRadius || 18}" fill="#ffffff" stroke="${escapeXml(object.stroke || template.soft)}" stroke-width="${object.strokeWidth || 4}"/>
+<image href="${qrUrl}" x="${object.x + 16}" y="${object.y + 16}" width="${Math.max(20, object.width - 32)}" height="${Math.max(20, object.height - 32)}" preserveAspectRatio="xMidYMid meet"/></g>`;
+            }
+
+            if (object.type === "rect") {
+                return `<rect x="${object.x}" y="${object.y}" width="${object.width}" height="${object.height}" rx="${object.cornerRadius || 0}" fill="${escapeXml(object.fill || "#ffffff")}" stroke="${escapeXml(object.stroke || "none")}" stroke-width="${object.strokeWidth || 0}" ${common}/>`;
+            }
+
+            if (object.type === "line") {
+                return `<line x1="${object.x}" y1="${object.y}" x2="${object.x + object.width}" y2="${object.y + object.height}" stroke="${escapeXml(object.stroke || object.fill || template.accent)}" stroke-width="${object.strokeWidth || 4}" stroke-linecap="round" ${common}/>`;
+            }
+
+            if (object.type === "text") {
+                return `<g ${common}>${renderCanvasText({ object, template, event, qrRecord, cardMessage })}</g>`;
+            }
+
+            return "";
+        })
+        .join("\n");
+
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+<rect width="${width}" height="${height}" fill="${backgroundColor}"/>
+${renderedObjects}
+</svg>`;
 };
 
 const renderLayoutCard = ({ template, qrUrl, event, qrRecord, cardMessage }) => {
@@ -343,6 +430,7 @@ ${isFieldVisible(template, "qr") ? `<rect x="915" y="96" width="260" height="260
 
 const renderCard = (templateId, payload) => {
     const template = buildTemplate(templateId, payload.customization);
+    if (template.canvasScene?.objects?.length) return renderCanvasScene({ template, ...payload });
     if (template.layoutConfig?.elements?.length) return renderLayoutCard({ template, ...payload });
     if (templateId === "compact-ticket") return renderCompactTicket({ template, ...payload });
     if (["event-ticket", "access-pass", "staff-badge-horizontal", "vip-pass"].includes(templateId)) return renderHorizontalTicket({ template, ...payload });

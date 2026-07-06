@@ -61,6 +61,7 @@ model CardTemplateCustom {
   qr_position          String
   visible_fields       Json
   layout_config        Json?
+  canvas_scene         Json?
   layout               String
   is_default           Boolean      @default(false)
   deleted_at           DateTime?
