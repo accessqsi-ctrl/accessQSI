@@ -1,93 +1,20 @@
 export const cardTemplates = [
     {
-        id: "event-ticket",
-        name: "Billet événement",
-        category: "Billetterie",
-        format: "1600 x 600 px",
-        accent: "blue",
-        layout: "wide",
-        description: "Support horizontal pour concerts, conférences et accès VIP.",
-        fields: ["Nom", "Événement", "Date", "Zone", "QR"]
-    },
-    {
-        id: "access-pass",
-        name: "Pass d'accès",
-        category: "Contrôle d'accès",
-        format: "1600 x 600 px",
-        accent: "amber",
-        layout: "wide",
-        description: "Pass lisible à l'entrée pour invités, exposants et accès temporaires.",
-        fields: ["Nom", "Événement", "Niveau", "Validité", "QR"]
-    },
-    {
-        id: "staff-card",
-        name: "Carte du personnel",
-        category: "Organisation",
-        format: "900 x 1400 px",
-        accent: "emerald",
-        layout: "badge",
-        description: "Badge vertical avec identité, rôle et niveau d'accréditation.",
-        fields: ["Nom", "Rôle", "Organisation", "Niveau", "QR"]
-    },
-    {
-        id: "staff-badge-horizontal",
-        name: "Badge staff horizontal",
-        category: "Organisation",
-        format: "1600 x 600 px",
-        accent: "teal",
-        layout: "wide",
-        description: "Badge horizontal compact pour équipes, sécurité et prestataires.",
-        fields: ["Nom", "Rôle", "Niveau", "Zone", "QR"]
-    },
-    {
-        id: "wedding-invite",
-        name: "Invitation de mariage",
+        id: "wedding-modern-navy-beige",
+        name: "Invitation mariage bleu marine",
         category: "Cérémonie",
-        format: "1200 x 1800 px",
-        accent: "rose",
+        format: "1240 x 1748 px",
+        accent: "navy",
         layout: "invite",
-        description: "Invitation élégante avec QR de validation à l'entrée.",
-        fields: ["Invité", "Couple", "Date", "Lieu", "QR"]
-    },
-    {
-        id: "vip-invitation",
-        name: "Invitation VIP",
-        category: "Invitation",
-        format: "1200 x 1800 px",
-        accent: "violet",
-        layout: "invite",
-        description: "Carton vertical pour invités officiels, partenaires et accès premium.",
-        fields: ["Invité", "Événement", "Date", "Espace", "QR"]
-    },
-    {
-        id: "vip-pass",
-        name: "Pass VIP",
-        category: "Premium",
-        format: "1600 x 600 px",
-        accent: "violet",
-        layout: "wide",
-        description: "Pass horizontal pour invités VIP, partenaires et accès premium.",
-        fields: ["Invité", "Événement", "Niveau", "Message", "QR"]
-    },
-    {
-        id: "simple-invitation",
-        name: "Invitation simple",
-        category: "Invitation",
-        format: "1200 x 1800 px",
-        accent: "slate",
-        layout: "invite",
-        description: "Invitation sobre pour cérémonies, réunions et accès nominatifs.",
-        fields: ["Invité", "Événement", "Date", "Lieu", "QR"]
-    },
-    {
-        id: "compact-ticket",
-        name: "Ticket compact",
-        category: "Billetterie",
-        format: "1200 x 520 px",
-        accent: "blue",
-        layout: "compact",
-        description: "Ticket court pour impression rapide ou partage mobile.",
-        fields: ["Nom", "Événement", "Date", "QR"]
+        previewImage: "/card-backgrounds/wedding-modern-navy-beige.png",
+        description: "Invitation florale bleu marine et beige avec date, adresse et QR de validation.",
+        fields: ["Invité", "Nom 1", "Nom 2", "Date", "Heure", "Zone", "Adresse", "QR"],
+        formFields: [
+            { key: "spouseOne", label: "Nom 1", placeholder: "Ex. Lionel", required: true },
+            { key: "spouseTwo", label: "Nom 2", placeholder: "Ex. Grâce", required: true },
+            { key: "zone", label: "Zone", placeholder: "Ex. Salle principale", required: true },
+            { key: "address", label: "Adresse", placeholder: "Ex. Av. Kasa-Vubu, Lubumbashi", required: true }
+        ]
     }
 ];
 

@@ -51,7 +51,7 @@ const validateQrContact = ({ email, phone }) => {
 
 const getSavedCardTemplateId = () => {
     const savedTemplateId = window.localStorage.getItem(CARD_TEMPLATE_STORAGE_KEY) || "";
-    return savedTemplateId;
+    return cardTemplates.some(template => template.id === savedTemplateId) ? savedTemplateId : "";
 };
 
 const templateIconMap = {
@@ -62,6 +62,7 @@ const templateIconMap = {
     "staff-card": IdCard,
     "staff-badge-horizontal": IdCard,
     "wedding-invite": Mail,
+    "wedding-modern-navy-beige": Mail,
     "vip-invitation": Sparkles,
     "simple-invitation": Mail
 };
@@ -72,6 +73,7 @@ const templateAccentClasses = {
     emerald: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/25 dark:text-emerald-200",
     teal: "border-teal-200 bg-teal-50 text-teal-700 dark:border-teal-900/60 dark:bg-teal-950/25 dark:text-teal-200",
     rose: "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/25 dark:text-rose-200",
+    navy: "border-blue-200 bg-blue-50 text-[#080d5f] dark:border-blue-900/60 dark:bg-blue-950/25 dark:text-blue-200",
     violet: "border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-900/60 dark:bg-violet-950/25 dark:text-violet-200",
     slate: "border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
 };
@@ -156,7 +158,8 @@ export default function EventDetailPage() {
         fullName: "", email: "", phone: "",
         accessType: 'single', limit: "1",
         validFrom: "", validUntil: "", level: "1",
-        cardMessage: ""
+        cardMessage: "",
+        cardData: {}
     });
     const [generatingQr, setGeneratingQr] = useState(false);
     const [qrError, setQrError] = useState("");
@@ -182,12 +185,13 @@ export default function EventDetailPage() {
     const [exportingFormat, setExportingFormat] = useState("");
     const [downloadingTemplate, setDownloadingTemplate] = useState(false);
     const [customCardTemplates, setCustomCardTemplates] = useState([]);
-    const allCardTemplates = useMemo(() => [...cardTemplates, ...customCardTemplates], [customCardTemplates]);
+    const allCardTemplates = useMemo(() => cardTemplates, []);
 
     const selectedCardTemplate = useMemo(
         () => allCardTemplates.find(template => template.id === cardTemplateId) || null,
         [allCardTemplates, cardTemplateId]
     );
+    const selectedTemplateFormFields = selectedCardTemplate?.formFields || [];
 
     const fetchAreas = useCallback(async () => {
         try {
@@ -259,7 +263,7 @@ export default function EventDetailPage() {
                 if (templatesData.success) {
                     setCustomCardTemplates((templatesData.templates || []).map(normalizeCustomCardTemplate));
                 }
-                if (defaultData.success && defaultData.defaultTemplateId) {
+                if (defaultData.success && defaultData.defaultTemplateId && cardTemplates.some(template => template.id === defaultData.defaultTemplateId)) {
                     window.localStorage.setItem(CARD_TEMPLATE_STORAGE_KEY, defaultData.defaultTemplateId);
                     setCardTemplateId(defaultData.defaultTemplateId);
                 } else if (defaultData.success) {
@@ -376,7 +380,8 @@ export default function EventDetailPage() {
             ...qrForm,
             email: qrForm.email.trim().toLowerCase(),
             phone: normalizePhone(qrForm.phone),
-            ...(cardTemplateId ? { cardTemplateId, cardMessage: qrForm.cardMessage.trim() } : {})
+            cardTemplateId,
+            ...(cardTemplateId ? { cardMessage: qrForm.cardMessage.trim(), cardData: qrForm.cardData } : {})
         };
         try {
             const res = await apiFetch(`/qr/generate/${eventId}`, {
@@ -1022,6 +1027,37 @@ export default function EventDetailPage() {
                                             </div>
                                         </div>
                                     </section>
+
+                                    {selectedTemplateFormFields.length > 0 && (
+                                        <section className="rounded-2xl border border-blue-200 bg-blue-50/60 p-4 dark:border-blue-900/60 dark:bg-blue-950/20">
+                                            <div className="mb-4">
+                                                <h3 className="text-sm font-bold text-slate-900 dark:text-white">Informations de l'invitation</h3>
+                                                <p className="text-xs text-slate-600 dark:text-slate-300">
+                                                    Ces champs rempliront automatiquement le modèle {selectedCardTemplate.name}.
+                                                </p>
+                                            </div>
+                                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                                {selectedTemplateFormFields.map(field => (
+                                                    <div key={field.key} className={field.key === "address" ? "space-y-2 sm:col-span-2" : "space-y-2"}>
+                                                        <label className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                                                            {field.label}{field.required ? " *" : ""}
+                                                        </label>
+                                                        <input
+                                                            required={field.required}
+                                                            type="text"
+                                                            value={qrForm.cardData?.[field.key] || ""}
+                                                            placeholder={field.placeholder}
+                                                            onChange={(e) => setQrForm({
+                                                                ...qrForm,
+                                                                cardData: { ...(qrForm.cardData || {}), [field.key]: e.target.value }
+                                                            })}
+                                                            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-500 transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-400 dark:focus:bg-slate-950"
+                                                        />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </section>
+                                    )}
 
                                     <section className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
                                         <div className="mb-4">

@@ -215,7 +215,13 @@ test("POST /qr/generate/:event_id can generate a card from a custom template", a
     const res = await request(app, "POST", "/qr/generate/5", {
         fullName: "Jane Holder",
         accessType: "single",
-        cardTemplateId: "custom:12"
+        cardTemplateId: "custom:12",
+        cardData: {
+            spouseOne: "Nom 1",
+            spouseTwo: "Nom 2",
+            zone: "Salle",
+            address: "Adresse"
+        }
     });
 
     assert.equal(res.status, 201);
@@ -223,6 +229,12 @@ test("POST /qr/generate/:event_id can generate a card from a custom template", a
     assert.equal(cardArgs.templateId, "event-ticket");
     assert.deepEqual(cardArgs.customization, customTemplate);
     assert.equal(cardArgs.customization.customization.layoutConfig.version, 2);
+    assert.deepEqual(cardArgs.cardData, {
+        spouseOne: "Nom 1",
+        spouseTwo: "Nom 2",
+        zone: "Salle",
+        address: "Adresse"
+    });
 });
 
 test("POST /qr/card/:id generates a card for an existing QR in the user's organization", async () => {

@@ -103,6 +103,7 @@ model QrCode {
   holder_name  String?
   holder_email String?
   holder_phone String?
+  card_data    Json?
   event        Event     @relation(fields: [event_id], references: [event_id])
   scan_logs    ScanLog[]
 

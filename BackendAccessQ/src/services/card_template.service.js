@@ -52,6 +52,16 @@ const templates = {
         surface: "#fff7f8",
         label: "INVITATION"
     },
+    "wedding-modern-navy-beige": {
+        id: "wedding-modern-navy-beige",
+        width: 1240,
+        height: 1748,
+        accent: "#080d5f",
+        soft: "#e7bd62",
+        ink: "#080d5f",
+        surface: "#ffffff",
+        label: "INVITATION MARIAGE"
+    },
     "vip-invitation": {
         id: "vip-invitation",
         width: 1200,
@@ -117,6 +127,25 @@ const getEventLocation = (event) => {
     const schedules = event?.EventSchedules || [];
     const location = schedules.map(schedule => schedule.area?.area_name).filter(Boolean).join(", ");
     return location || "Zone a definir";
+};
+
+const getEventStartDate = (event) => {
+    const schedule = event?.EventSchedules?.[0];
+    const date = schedule?.start_date ? new Date(schedule.start_date) : null;
+    return date && !Number.isNaN(date.getTime()) ? date : null;
+};
+
+const getWeddingCardData = (qrRecord, cardData = {}) => {
+    const source = {
+        ...(qrRecord?.card_data && typeof qrRecord.card_data === "object" ? qrRecord.card_data : {}),
+        ...(cardData && typeof cardData === "object" ? cardData : {})
+    };
+    return {
+        spouseOne: String(source.spouseOne || source.nom1 || "NOM 1").trim(),
+        spouseTwo: String(source.spouseTwo || source.nom2 || "NOM 2").trim(),
+        zone: String(source.zone || "ZONE").trim(),
+        address: String(source.address || source.adresse || "Adresse").trim()
+    };
 };
 
 const getCardMessage = (message, fallback = "Présentez ce QR à l'entrée") => {
@@ -405,6 +434,43 @@ ${isFieldVisible(template, "qr") ? `<rect x="420" y="1010" width="360" height="3
 </svg>`;
 };
 
+const renderModernNavyWeddingInvite = ({ template, qrUrl, event, qrRecord, cardData }) => {
+    const data = getWeddingCardData(qrRecord, cardData);
+    const date = getEventStartDate(event);
+    const dayName = date ? date.toLocaleDateString("fr-FR", { weekday: "long" }).toUpperCase() : "DIMANCHE";
+    const month = date ? date.toLocaleDateString("fr-FR", { month: "short" }).replace(".", "").toUpperCase() : "DÉC";
+    const day = date ? String(date.getDate()).padStart(2, "0") : "15";
+    const year = date ? String(date.getFullYear()) : "2030";
+    const hour = date ? `${String(date.getHours()).padStart(2, "0")}H${String(date.getMinutes()).padStart(2, "0")}` : "19H00";
+    const backgroundUrl = "/card-backgrounds/wedding-modern-navy-beige.png";
+
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${template.width}" height="${template.height}" viewBox="0 0 ${template.width} ${template.height}">
+<image href="${backgroundUrl}" x="0" y="0" width="${template.width}" height="${template.height}" preserveAspectRatio="xMidYMid slice"/>
+<text x="620" y="407" text-anchor="middle" font-family="Arial, sans-serif" font-size="34" font-style="italic" font-weight="700" letter-spacing="3" fill="${template.ink}">JE T'INVITE À NOTRE MARIAGE</text>
+<text x="620" y="616" text-anchor="middle" font-family="Georgia, serif" font-size="118" font-style="italic" font-weight="700" letter-spacing="18" fill="${template.ink}">${escapeXml(data.spouseOne.toUpperCase())}</text>
+<line x1="387" y1="706" x2="475" y2="706" stroke="${template.soft}" stroke-width="3"/>
+<text x="620" y="718" text-anchor="middle" font-family="Georgia, serif" font-size="54" font-style="italic" fill="${template.ink}">&amp;</text>
+<line x1="760" y1="706" x2="846" y2="706" stroke="${template.soft}" stroke-width="3"/>
+<text x="620" y="880" text-anchor="middle" font-family="Georgia, serif" font-size="118" font-style="italic" font-weight="700" letter-spacing="18" fill="${template.ink}">${escapeXml(data.spouseTwo.toUpperCase())}</text>
+<text x="620" y="994" text-anchor="middle" font-family="Georgia, serif" font-size="46" font-style="italic" font-weight="700" fill="#404040">${escapeXml(month)}</text>
+<text x="620" y="1120" text-anchor="middle" font-family="Georgia, serif" font-size="138" font-style="italic" font-weight="700" fill="${template.soft}">${escapeXml(day)}</text>
+<text x="620" y="1196" text-anchor="middle" font-family="Georgia, serif" font-size="45" font-style="italic" fill="#404040">${escapeXml(year)}</text>
+<line x1="286" y1="1028" x2="503" y2="1028" stroke="${template.ink}" stroke-width="3"/>
+<line x1="286" y1="1134" x2="503" y2="1134" stroke="${template.ink}" stroke-width="3"/>
+<text x="395" y="1092" text-anchor="middle" font-family="Georgia, serif" font-size="38" font-style="italic" font-weight="700" fill="#404040">${escapeXml(dayName)}</text>
+<line x1="729" y1="1028" x2="958" y2="1028" stroke="${template.ink}" stroke-width="3"/>
+<line x1="729" y1="1134" x2="958" y2="1134" stroke="${template.ink}" stroke-width="3"/>
+<text x="844" y="1092" text-anchor="middle" font-family="Georgia, serif" font-size="38" font-style="italic" font-weight="700" fill="#404040">${escapeXml(hour)}</text>
+<text x="620" y="1296" text-anchor="middle" font-family="Arial, sans-serif" font-size="31" font-weight="900" fill="${template.ink}">${escapeXml(data.zone.toUpperCase())}</text>
+<text x="620" y="1358" text-anchor="middle" font-family="Arial Narrow, Arial, sans-serif" font-size="44" font-weight="700" fill="${template.ink}">${escapeXml(data.address)}</text>
+<g>
+<rect x="935" y="1186" width="180" height="180" rx="18" fill="#ffffff" opacity="0.94" stroke="${template.soft}" stroke-width="3"/>
+<image href="${qrUrl}" x="955" y="1206" width="140" height="140" preserveAspectRatio="xMidYMid meet"/>
+<text x="1025" y="1392" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="700" fill="${template.ink}">QR-${qrRecord.qr_id}</text>
+</g>
+</svg>`;
+};
+
 const renderCompactTicket = ({ template, qrUrl, event, qrRecord, cardMessage }) => {
     const title = escapeXml(event.title);
     const holder = escapeXml(qrRecord.holder_name);
@@ -432,6 +498,7 @@ const renderCard = (templateId, payload) => {
     const template = buildTemplate(templateId, payload.customization);
     if (template.canvasScene?.objects?.length) return renderCanvasScene({ template, ...payload });
     if (template.layoutConfig?.elements?.length) return renderLayoutCard({ template, ...payload });
+    if (templateId === "wedding-modern-navy-beige") return renderModernNavyWeddingInvite({ template, ...payload });
     if (templateId === "compact-ticket") return renderCompactTicket({ template, ...payload });
     if (["event-ticket", "access-pass", "staff-badge-horizontal", "vip-pass"].includes(templateId)) return renderHorizontalTicket({ template, ...payload });
     if (["wedding-invite", "vip-invitation", "simple-invitation"].includes(templateId)) return renderWeddingInvite({ template, ...payload });
@@ -447,7 +514,7 @@ exports.cardPathForToken = cardPathForToken;
 
 exports.cardExistsForToken = (token) => fs.existsSync(cardPathForToken(token));
 
-exports.generateCardForQr = async ({ templateId, event, qrRecord, qrUrl, cardMessage, customization }) => {
+exports.generateCardForQr = async ({ templateId, event, qrRecord, qrUrl, cardMessage, cardData, customization }) => {
     const baseTemplateId = customization?.baseTemplateId || templateId;
     const renderCustomization = customization?.baseTemplateId ? customization.customization : customization;
 
@@ -459,7 +526,7 @@ exports.generateCardForQr = async ({ templateId, event, qrRecord, qrUrl, cardMes
     const dir = path.dirname(cardPath);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 
-    const svg = renderCard(baseTemplateId, { event, qrRecord, qrUrl, cardMessage, customization: renderCustomization });
+    const svg = renderCard(baseTemplateId, { event, qrRecord, qrUrl, cardMessage, cardData, customization: renderCustomization });
     await fs.promises.writeFile(cardPath, svg, "utf8");
     return cardUrlForToken(qrRecord.unique_token);
 };

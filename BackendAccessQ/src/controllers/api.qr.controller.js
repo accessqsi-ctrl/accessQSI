@@ -43,6 +43,16 @@ const resolveCardTemplate = async (orgId, cardTemplateId) => {
     };
 };
 
+const normalizeCardData = (value = {}) => {
+    const source = value && typeof value === "object" ? value : {};
+    return {
+        spouseOne: String(source.spouseOne || "").trim().slice(0, 80),
+        spouseTwo: String(source.spouseTwo || "").trim().slice(0, 80),
+        zone: String(source.zone || "").trim().slice(0, 80),
+        address: String(source.address || "").trim().slice(0, 140)
+    };
+};
+
 // Générer un QR Code
 exports.generateQrForEvent = async (req, res) => {
     try {
@@ -53,7 +63,9 @@ exports.generateQrForEvent = async (req, res) => {
         const orgId = req.user.org_id;
         const eventId = Number(req.params.event_id);
         const { fullName, email, phone, accessType, limit, validFrom, validUntil, level, cardMessage } = req.body;
-        const cardTemplateId = req.body.cardTemplateId || await customCardTemplateService.getDefaultForOrg(orgId);
+        const hasRequestedTemplate = Object.prototype.hasOwnProperty.call(req.body, "cardTemplateId");
+        const cardTemplateId = hasRequestedTemplate ? req.body.cardTemplateId : await customCardTemplateService.getDefaultForOrg(orgId);
+        const cardData = normalizeCardData(req.body.cardData);
 
         if (!fullName || !accessType) {
             return res.status(400).json({ success: false, message: "Nom complet et Type d'accès requis" });
@@ -89,6 +101,7 @@ exports.generateQrForEvent = async (req, res) => {
             holder_name: fullName,
             holder_email: email || null,
             holder_phone: phone || null,
+            card_data: cardTemplateId ? cardData : undefined,
             event_id: event.event_id
         });
 
@@ -105,7 +118,8 @@ exports.generateQrForEvent = async (req, res) => {
                 event,
                 qrRecord,
                 qrUrl,
-                cardMessage
+                cardMessage,
+                cardData
             });
         }
 
@@ -419,6 +433,7 @@ exports.generateCardForExistingQr = async (req, res) => {
         const orgId = req.user.org_id;
         const qrId = Number(req.params.id);
         const { cardMessage } = req.body;
+        const cardData = normalizeCardData(req.body.cardData);
         const cardTemplateId = req.body.cardTemplateId || await customCardTemplateService.getDefaultForOrg(orgId);
 
         const resolvedCardTemplate = await resolveCardTemplate(orgId, cardTemplateId);
@@ -446,7 +461,8 @@ exports.generateCardForExistingQr = async (req, res) => {
             event,
             qrRecord,
             qrUrl,
-            cardMessage
+            cardMessage,
+            cardData
         });
 
         return res.status(201).json({
