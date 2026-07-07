@@ -54,6 +54,12 @@ const getSavedCardTemplateId = () => {
     return cardTemplates.some(template => template.id === savedTemplateId) ? savedTemplateId : "";
 };
 
+const getCardDownloadUrl = (cardUrl) => {
+    if (!cardUrl) return "";
+    const filename = cardUrl.split("/").pop();
+    return `${process.env.NEXT_PUBLIC_API_URL}/cards/${filename}/download`;
+};
+
 const templateIconMap = {
     "event-ticket": Ticket,
     "compact-ticket": Ticket,
@@ -840,11 +846,10 @@ export default function EventDetailPage() {
                                                 </a>
                                                 {qr.cardUrl ? (
                                                     <a
-                                                        href={`${process.env.NEXT_PUBLIC_API_URL}${qr.cardUrl}`}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
+                                                        href={getCardDownloadUrl(qr.cardUrl)}
+                                                        download
                                                         className="p-1.5 text-emerald-600 dark:text-emerald-300 bg-white dark:bg-slate-900 border border-emerald-100 dark:border-emerald-900/50 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded-lg transition-colors inline-block"
-                                                        title="Télécharger la carte"
+                                                        title="Télécharger l'invitation"
                                                     >
                                                         <FileSpreadsheet className="w-5 h-5" />
                                                     </a>
@@ -939,13 +944,12 @@ export default function EventDetailPage() {
                                                     </a>
                                                     {generatedAsset.cardUrl && (
                                                         <a
-                                                            href={`${process.env.NEXT_PUBLIC_API_URL}${generatedAsset.cardUrl}`}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
+                                                            href={getCardDownloadUrl(generatedAsset.cardUrl)}
+                                                            download
                                                             className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 px-3 py-2 text-xs font-bold text-white shadow-sm transition-colors hover:bg-emerald-800"
                                                         >
                                                             <FileSpreadsheet className="h-3.5 w-3.5" />
-                                                            Télécharger carte
+                                                            Télécharger invitation
                                                         </a>
                                                     )}
                                                 </div>

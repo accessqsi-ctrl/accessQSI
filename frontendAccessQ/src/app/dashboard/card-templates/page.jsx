@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Crown, Loader2, Mail, Save } from "lucide-react";
+import { CheckCircle2, Crown, Download, Loader2, Mail, Save } from "lucide-react";
 import { apiFetch } from "../../lib/api";
 import LoadingBar from "../../components/LoadingBar";
 import { CARD_TEMPLATE_STORAGE_KEY, cardTemplates } from "../../lib/cardTemplates";
@@ -9,12 +9,14 @@ import { CARD_TEMPLATE_STORAGE_KEY, cardTemplates } from "../../lib/cardTemplate
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "";
 
 function WeddingTemplatePreview({ template }) {
+    const imageUrl = template.previewImage ? `${apiBaseUrl}${template.previewImage}` : "";
+
     return (
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
             <div className="relative mx-auto aspect-[1240/1748] max-h-[560px] w-full overflow-hidden bg-white">
                 {template.previewImage ? (
                     <img
-                        src={`${apiBaseUrl}${template.previewImage}`}
+                        src={imageUrl}
                         alt={template.name}
                         className="h-full w-full object-cover"
                     />
@@ -30,6 +32,18 @@ function WeddingTemplatePreview({ template }) {
                     <p className="font-serif text-4xl font-bold italic tracking-[0.16em] text-[#080d5f] sm:text-6xl">NOM 2</p>
                 </div>
             </div>
+            {imageUrl && (
+                <div className="border-t border-slate-200 p-3 dark:border-slate-800">
+                    <a
+                        href={imageUrl}
+                        download="invitation-mariage-bleu-marine.png"
+                        className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition-colors hover:border-[#7A90A4] hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-900"
+                    >
+                        <Download className="h-4 w-4" />
+                        Télécharger l'image du modèle
+                    </a>
+                </div>
+            )}
         </div>
     );
 }

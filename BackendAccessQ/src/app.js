@@ -20,6 +20,7 @@ if (trustProxyValue) {
 
 
 const path = require("path");
+const fs = require("fs");
 const cookieParser = require("cookie-parser");
 
 const { generalLimiter } = require('./middleware/limMiddleware');
@@ -106,6 +107,20 @@ app.use(requestLogger);
 
 
 // ===== Fichiers statiques =====
+app.get("/cards/:filename/download", (req, res) => {
+    const filename = String(req.params.filename || "");
+    if (!/^card_[a-zA-Z0-9_.-]+\.svg$/.test(filename)) {
+        return res.status(400).json({ success: false, message: "Nom de fichier invalide" });
+    }
+
+    const cardPath = path.join(__dirname, "statics/cards", filename);
+    if (!fs.existsSync(cardPath)) {
+        return res.status(404).json({ success: false, message: "Carte introuvable" });
+    }
+
+    return res.download(cardPath, filename);
+});
+
 app.use(express.static(path.join(__dirname, "statics")));
 
 // Importer les différentes routes depuis le dossier src/routes/
