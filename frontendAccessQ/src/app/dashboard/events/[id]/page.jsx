@@ -164,8 +164,7 @@ export default function EventDetailPage() {
         fullName: "", email: "", phone: "",
         accessType: 'single', limit: "1",
         validFrom: "", validUntil: "", level: "1",
-        cardMessage: "",
-        cardData: {}
+        cardMessage: ""
     });
     const [generatingQr, setGeneratingQr] = useState(false);
     const [qrError, setQrError] = useState("");
@@ -197,7 +196,6 @@ export default function EventDetailPage() {
         () => allCardTemplates.find(template => template.id === cardTemplateId) || null,
         [allCardTemplates, cardTemplateId]
     );
-    const selectedTemplateFormFields = selectedCardTemplate?.formFields || [];
 
     const fetchAreas = useCallback(async () => {
         try {
@@ -387,7 +385,7 @@ export default function EventDetailPage() {
             email: qrForm.email.trim().toLowerCase(),
             phone: normalizePhone(qrForm.phone),
             cardTemplateId,
-            ...(cardTemplateId ? { cardMessage: qrForm.cardMessage.trim(), cardData: qrForm.cardData } : {})
+            ...(cardTemplateId ? { cardMessage: qrForm.cardMessage.trim() } : {})
         };
         try {
             const res = await apiFetch(`/qr/generate/${eventId}`, {
@@ -1031,37 +1029,6 @@ export default function EventDetailPage() {
                                             </div>
                                         </div>
                                     </section>
-
-                                    {selectedTemplateFormFields.length > 0 && (
-                                        <section className="rounded-2xl border border-blue-200 bg-blue-50/60 p-4 dark:border-blue-900/60 dark:bg-blue-950/20">
-                                            <div className="mb-4">
-                                                <h3 className="text-sm font-bold text-slate-900 dark:text-white">Informations de l'invitation</h3>
-                                                <p className="text-xs text-slate-600 dark:text-slate-300">
-                                                    Ces champs rempliront automatiquement le modèle {selectedCardTemplate.name}.
-                                                </p>
-                                            </div>
-                                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                                                {selectedTemplateFormFields.map(field => (
-                                                    <div key={field.key} className={field.key === "address" ? "space-y-2 sm:col-span-2" : "space-y-2"}>
-                                                        <label className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-                                                            {field.label}{field.required ? " *" : ""}
-                                                        </label>
-                                                        <input
-                                                            required={field.required}
-                                                            type="text"
-                                                            value={qrForm.cardData?.[field.key] || ""}
-                                                            placeholder={field.placeholder}
-                                                            onChange={(e) => setQrForm({
-                                                                ...qrForm,
-                                                                cardData: { ...(qrForm.cardData || {}), [field.key]: e.target.value }
-                                                            })}
-                                                            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-500 transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-400 dark:focus:bg-slate-950"
-                                                        />
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </section>
-                                    )}
 
                                     <section className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
                                         <div className="mb-4">
