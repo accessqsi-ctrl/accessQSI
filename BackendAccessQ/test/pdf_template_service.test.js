@@ -57,9 +57,11 @@ test("generateDocument creates a PDF from a registered template id", async () =>
     const result = await service.generateDocument({
         templateId: "badge-horizontal",
         values: {
-            fullName: "Élodie Kabeya",
-            company: "AccessQ",
-            identifier: "VIP-2026"
+            modelName: "Badge VIP"
+        },
+        context: {
+            orgId: 42,
+            organizationName: "AccessQ"
         }
     });
 
@@ -68,6 +70,12 @@ test("generateDocument creates a PDF from a registered template id", async () =>
     assert.ok(fs.statSync(outputPath).size > 500);
 
     fs.unlinkSync(outputPath);
+});
+
+test("generateIdentifier creates server-side identifiers without user input", () => {
+    const identifier = service.generateIdentifier({ templateId: "badge-horizontal", orgId: 42 });
+
+    assert.match(identifier, /^BADGEHOR-42-[A-F0-9]{8}$/);
 });
 
 test("generateDocument rejects unknown template ids", async () => {

@@ -5,16 +5,12 @@ import { Download, FileText, ImagePlus, Loader2, RefreshCw, Send } from "lucide-
 import { apiFetch, apiUrl } from "../../lib/api";
 
 const fieldLabels = {
-    fullName: "Nom complet",
-    company: "Organisation",
-    identifier: "Identifiant",
+    modelName: "Nom du modèle",
     photo: "Photo"
 };
 
 const emptyValues = {
-    fullName: "",
-    company: "",
-    identifier: "",
+    modelName: "",
     photo: ""
 };
 
@@ -31,7 +27,10 @@ export default function PdfTemplatesPage() {
     const [values, setValues] = useState(emptyValues);
     const [loading, setLoading] = useState(true);
     const [generating, setGenerating] = useState(false);
+    const [previewLoading, setPreviewLoading] = useState(false);
+    const [previewObjectUrl, setPreviewObjectUrl] = useState("");
     const [error, setError] = useState("");
+    const [previewError, setPreviewError] = useState("");
     const [generatedDocument, setGeneratedDocument] = useState(null);
 
     useEffect(() => {
@@ -67,9 +66,47 @@ export default function PdfTemplatesPage() {
         [selectedTemplate]
     );
 
-    const previewUrl = selectedTemplateId
-        ? apiUrl(`/pdf-templates/${selectedTemplateId}/preview`)
-        : "";
+    useEffect(() => {
+        if (!selectedTemplateId) {
+            setPreviewObjectUrl("");
+            setPreviewError("");
+            return undefined;
+        }
+
+        let active = true;
+        let objectUrl = "";
+
+        const loadPreview = async () => {
+            setPreviewLoading(true);
+            setPreviewError("");
+
+            try {
+                const res = await apiFetch(`/pdf-templates/${selectedTemplateId}/preview`, {
+                    method: "GET"
+                });
+
+                if (!res.ok) {
+                    setPreviewError("Impossible de charger la prévisualisation du modèle.");
+                    return;
+                }
+
+                const blob = await res.blob();
+                objectUrl = URL.createObjectURL(blob);
+                if (active) setPreviewObjectUrl(objectUrl);
+            } catch {
+                setPreviewError("Erreur lors du chargement de la prévisualisation.");
+            } finally {
+                if (active) setPreviewLoading(false);
+            }
+        };
+
+        loadPreview();
+
+        return () => {
+            active = false;
+            if (objectUrl) URL.revokeObjectURL(objectUrl);
+        };
+    }, [selectedTemplateId]);
 
     const handleInputChange = (fieldName, value) => {
         setValues(current => ({ ...current, [fieldName]: value }));
@@ -143,7 +180,7 @@ export default function PdfTemplatesPage() {
                 <div>
                     <h1 className="text-2xl font-black text-slate-950 dark:text-white">Modèles PDF</h1>
                     <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300">
-                        Choisissez un modèle, remplissez le formulaire, prévisualisez le document et téléchargez le PDF final.
+                        Choisissez un modèle, donnez-lui un nom, prévisualisez le document et téléchargez le PDF final.
                     </p>
                 </div>
                 <button
@@ -174,7 +211,7 @@ export default function PdfTemplatesPage() {
                         </div>
                         <div>
                             <h2 className="text-base font-black text-slate-950 dark:text-white">Formulaire</h2>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">Les modèles PDF remplacent temporairement les anciens modèles SVG.</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">Organisation et identifiant sont ajoutés automatiquement.</p>
                         </div>
                     </div>
 
@@ -228,6 +265,10 @@ export default function PdfTemplatesPage() {
                             </div>
                         ))}
 
+                        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs leading-5 text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+                            Le document sera automatiquement rattaché à votre organisation. L'identifiant unique est généré par le serveur au moment de la création du PDF.
+                        </div>
+
                         <button
                             type="submit"
                             disabled={generating || !selectedTemplateId}
@@ -259,13 +300,21 @@ export default function PdfTemplatesPage() {
                         <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Aperçu du modèle sélectionné avant génération.</p>
                     </div>
                     <div className="h-[680px] overflow-hidden rounded-xl border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-900">
-                        {previewUrl ? (
+                        {previewLoading ? (
+                            <div className="flex h-full items-center justify-center">
+                                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                            </div>
+                        ) : previewObjectUrl ? (
                             <iframe
-                                key={previewUrl}
-                                src={previewUrl}
+                                key={previewObjectUrl}
+                                src={previewObjectUrl}
                                 title="Prévisualisation du modèle PDF"
                                 className="h-full w-full"
                             />
+                        ) : previewError ? (
+                            <div className="flex h-full items-center justify-center px-6 text-center text-sm font-semibold text-red-600 dark:text-red-300">
+                                {previewError}
+                            </div>
                         ) : (
                             <div className="flex h-full items-center justify-center text-sm font-semibold text-slate-500">
                                 Aucun modèle sélectionné.

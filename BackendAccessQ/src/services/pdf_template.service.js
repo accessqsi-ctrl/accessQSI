@@ -27,15 +27,17 @@ const listTemplates = () => Object.values(pdfTemplates).map((template) => ({
     id: template.id,
     name: template.name,
     description: template.description || "",
-    fields: Object.fromEntries(Object.entries(template.fields || {}).map(([key, field]) => [
-        key,
-        {
-            type: field.type,
-            required: field.required === true,
-            label: field.label || key,
-            align: field.align || "left"
-        }
-    ]))
+    fields: Object.fromEntries(Object.entries(template.fields || {})
+        .filter(([, field]) => field.input !== false)
+        .map(([key, field]) => [
+            key,
+            {
+                type: field.type,
+                required: field.required === true,
+                label: field.label || key,
+                align: field.align || "left"
+            }
+        ]))
 }));
 
 function resolveNormalizedField(page, field) {
@@ -202,6 +204,21 @@ const generatedFilename = (templateId) => {
     return `document_${safeTemplateId}_${Date.now()}_${crypto.randomBytes(6).toString("hex")}.pdf`;
 };
 
+const generateIdentifier = ({ templateId, orgId }) => {
+    const safeTemplateId = String(templateId || "doc")
+        .replace(/[^a-zA-Z0-9]/g, "")
+        .slice(0, 8)
+        .toUpperCase() || "DOC";
+    const safeOrgId = String(orgId || "ORG").replace(/[^a-zA-Z0-9]/g, "");
+    return `${safeTemplateId}-${safeOrgId}-${crypto.randomBytes(4).toString("hex").toUpperCase()}`;
+};
+
+const buildRenderValues = ({ template, values, context = {} }) => ({
+    ...values,
+    company: context.organizationName || (context.orgId ? `Organisation ${context.orgId}` : ""),
+    identifier: generateIdentifier({ templateId: template.id, orgId: context.orgId })
+});
+
 const assertRequiredFields = (template, values) => {
     for (const [key, field] of Object.entries(template.fields || {})) {
         if (field.required && !sanitizeText(values[key])) {
@@ -212,7 +229,7 @@ const assertRequiredFields = (template, values) => {
     }
 };
 
-const generateDocument = async ({ templateId, values = {} }) => {
+const generateDocument = async ({ templateId, values = {}, context = {} }) => {
     const template = getTemplate(templateId);
     if (!template) {
         const error = new Error("Modèle PDF invalide.");
@@ -227,7 +244,9 @@ const generateDocument = async ({ templateId, values = {} }) => {
         throw error;
     }
 
-    assertRequiredFields(template, values);
+    const renderValues = buildRenderValues({ template, values, context });
+
+    assertRequiredFields(template, renderValues);
 
     const sourceBytes = await fs.promises.readFile(sourcePath);
     const pdfDoc = await PDFDocument.load(sourceBytes);
@@ -241,7 +260,7 @@ const generateDocument = async ({ templateId, values = {} }) => {
         if (field.type === "text") {
             drawTextInZone({
                 page,
-                text: values[key],
+                text: renderValues[key],
                 font: field.fontWeight === "bold" ? fonts.bold : fonts.regular,
                 field
             });
@@ -251,7 +270,7 @@ const generateDocument = async ({ templateId, values = {} }) => {
             await drawImageInZone({
                 pdfDoc,
                 page,
-                imageValue: values[key],
+                imageValue: renderValues[key],
                 field
             });
         }
@@ -278,6 +297,7 @@ module.exports = {
     resolveNormalizedField,
     drawTextInZone,
     generateDocument,
+    generateIdentifier,
     templatePathForId,
     generatedPathForFilename
 };

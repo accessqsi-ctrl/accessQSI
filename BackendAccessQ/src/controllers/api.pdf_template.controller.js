@@ -1,4 +1,5 @@
 const fs = require("fs");
+const prisma = require("../prisma/client");
 const pdfTemplateService = require("../services/pdf_template.service");
 
 exports.listTemplates = async (req, res) => {
@@ -18,9 +19,18 @@ exports.generatePdf = async (req, res) => {
             return res.status(401).json({ success: false, message: "Non autorisé" });
         }
 
+        const organization = await prisma.organization.findUnique({
+            where: { org_id: req.user.org_id },
+            select: { name: true }
+        });
+
         const result = await pdfTemplateService.generateDocument({
             templateId: req.body.templateId,
-            values: req.body.values || {}
+            values: req.body.values || {},
+            context: {
+                orgId: req.user.org_id,
+                organizationName: organization?.name || ""
+            }
         });
 
         return res.status(201).json({

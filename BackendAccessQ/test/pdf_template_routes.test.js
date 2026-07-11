@@ -8,10 +8,17 @@ const {
     request
 } = require("./helpers/http");
 
-const loadPdfTemplateApp = ({ user, service }) => {
+const loadPdfTemplateApp = ({ user, service, prisma = {} }) => {
     clearSrcModules();
     mockModule("src/middleware/authMiddleware", authAs(user));
     mockModule("src/services/pdf_template.service", service);
+    mockModule("src/prisma/client", {
+        organization: {
+            findUnique: async () => ({ name: "AccessQ" }),
+            ...(prisma.organization || {})
+        },
+        ...prisma
+    });
 
     const router = require("../src/routes/pdf_template.routes");
     return mountRouter("/pdf-templates", router);
@@ -24,7 +31,7 @@ test("GET /pdf-templates lists registered templates without exposing filenames",
             listTemplates: () => [{
                 id: "badge-horizontal",
                 name: "Badge horizontal",
-                fields: { fullName: { type: "text", required: true } }
+                fields: { modelName: { type: "text", required: true, label: "Nom du modèle" } }
             }]
         }
     });
@@ -35,9 +42,11 @@ test("GET /pdf-templates lists registered templates without exposing filenames",
     assert.equal(res.body.success, true);
     assert.equal(res.body.templates[0].id, "badge-horizontal");
     assert.equal(res.body.templates[0].filename, undefined);
+    assert.equal(res.body.templates[0].fields.company, undefined);
+    assert.equal(res.body.templates[0].fields.identifier, undefined);
 });
 
-test("POST /pdf-templates/generate sends only template id and values to the service", async () => {
+test("POST /pdf-templates/generate attaches organization context on the backend", async () => {
     let args = null;
     const app = loadPdfTemplateApp({
         user: { user_id: 1, org_id: 42, role: "ORG_ADMIN" },
@@ -55,13 +64,17 @@ test("POST /pdf-templates/generate sends only template id and values to the serv
 
     const res = await request(app, "POST", "/pdf-templates/generate", {
         templateId: "badge-horizontal",
-        values: { fullName: "Junior" }
+        values: { modelName: "Badge VIP", company: "Ignored", identifier: "Ignored" }
     });
 
     assert.equal(res.status, 201);
     assert.deepEqual(args, {
         templateId: "badge-horizontal",
-        values: { fullName: "Junior" }
+        values: { modelName: "Badge VIP", company: "Ignored", identifier: "Ignored" },
+        context: {
+            orgId: 42,
+            organizationName: "AccessQ"
+        }
     });
     assert.equal(res.body.document.filename, "document_badge-horizontal_1_abcdefabcdef.pdf");
 });

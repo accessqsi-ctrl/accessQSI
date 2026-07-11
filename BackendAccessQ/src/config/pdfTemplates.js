@@ -5,8 +5,9 @@ const pdfTemplates = {
         description: "Badge court pour visiteurs, agents ou accès temporaires.",
         filename: "badge-horizontal.pdf",
         fields: {
-            fullName: {
+            modelName: {
                 type: "text",
+                label: "Nom du modèle",
                 page: 0,
                 x: 0.34,
                 y: 0.58,
@@ -19,6 +20,9 @@ const pdfTemplates = {
             },
             company: {
                 type: "text",
+                label: "Organisation",
+                input: false,
+                auto: "organizationName",
                 page: 0,
                 x: 0.34,
                 y: 0.46,
@@ -29,6 +33,9 @@ const pdfTemplates = {
             },
             identifier: {
                 type: "text",
+                label: "Identifiant",
+                input: false,
+                auto: "identifier",
                 page: 0,
                 x: 0.34,
                 y: 0.34,
@@ -54,8 +61,9 @@ const pdfTemplates = {
         description: "Invitation portrait pour conférences, cérémonies et événements privés.",
         filename: "invitation-event.pdf",
         fields: {
-            fullName: {
+            modelName: {
                 type: "text",
+                label: "Nom du modèle",
                 page: 0,
                 x: 0.16,
                 y: 0.53,
@@ -68,6 +76,9 @@ const pdfTemplates = {
             },
             company: {
                 type: "text",
+                label: "Organisation",
+                input: false,
+                auto: "organizationName",
                 page: 0,
                 x: 0.18,
                 y: 0.46,
@@ -78,6 +89,9 @@ const pdfTemplates = {
             },
             identifier: {
                 type: "text",
+                label: "Identifiant",
+                input: false,
+                auto: "identifier",
                 page: 0,
                 x: 0.18,
                 y: 0.2,
@@ -94,8 +108,9 @@ const pdfTemplates = {
         description: "Carte compacte pour collaborateurs, membres ou prestataires.",
         filename: "access-card.pdf",
         fields: {
-            fullName: {
+            modelName: {
                 type: "text",
+                label: "Nom du modèle",
                 page: 0,
                 x: 0.14,
                 y: 0.42,
@@ -108,6 +123,9 @@ const pdfTemplates = {
             },
             company: {
                 type: "text",
+                label: "Organisation",
+                input: false,
+                auto: "organizationName",
                 page: 0,
                 x: 0.14,
                 y: 0.32,
@@ -118,6 +136,9 @@ const pdfTemplates = {
             },
             identifier: {
                 type: "text",
+                label: "Identifiant",
+                input: false,
+                auto: "identifier",
                 page: 0,
                 x: 0.14,
                 y: 0.18,
