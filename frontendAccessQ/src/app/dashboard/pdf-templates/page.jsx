@@ -141,9 +141,9 @@ export default function PdfTemplatesPage() {
         <div className="mx-auto max-w-7xl space-y-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                 <div>
-                    <h1 className="text-2xl font-black text-slate-950 dark:text-white">Générateur PDF</h1>
+                    <h1 className="text-2xl font-black text-slate-950 dark:text-white">Modèles PDF</h1>
                     <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300">
-                        Choisissez un modèle enregistré côté serveur, remplissez le formulaire, prévisualisez le fond et générez un PDF final.
+                        Choisissez un modèle, remplissez le formulaire, prévisualisez le document et téléchargez le PDF final.
                     </p>
                 </div>
                 <button
@@ -174,7 +174,7 @@ export default function PdfTemplatesPage() {
                         </div>
                         <div>
                             <h2 className="text-base font-black text-slate-950 dark:text-white">Formulaire</h2>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">Le frontend envoie seulement le `templateId`.</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">Les modèles PDF remplacent temporairement les anciens modèles SVG.</p>
                         </div>
                     </div>
 
@@ -256,7 +256,7 @@ export default function PdfTemplatesPage() {
                 <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950">
                     <div className="mb-4">
                         <h2 className="text-base font-black text-slate-950 dark:text-white">Prévisualisation du modèle</h2>
-                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Le PDF affiché est résolu par `templateId`, sans chemin fichier côté frontend.</p>
+                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Aperçu du modèle sélectionné avant génération.</p>
                     </div>
                     <div className="h-[680px] overflow-hidden rounded-xl border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-900">
                         {previewUrl ? (

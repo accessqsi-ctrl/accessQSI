@@ -5,7 +5,6 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Loader2, Calendar, MapPin, QrCode, Edit2, Trash2, ArrowLeft, Plus, Download, X, CheckCircle2, FileSpreadsheet, FileText, Mail, Phone, IdCard, Sparkles, Ticket } from "lucide-react";
 import { apiFetch, refreshSession } from "../../../lib/api";
-import { CARD_TEMPLATE_STORAGE_KEY, cardTemplates, normalizeCustomCardTemplate } from "../../../lib/cardTemplates";
 import LoadingBar from "../../../components/LoadingBar";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -47,11 +46,6 @@ const validateQrContact = ({ email, phone }) => {
     }
 
     return errors;
-};
-
-const getSavedCardTemplateId = () => {
-    const savedTemplateId = window.localStorage.getItem(CARD_TEMPLATE_STORAGE_KEY) || "";
-    return cardTemplates.some(template => template.id === savedTemplateId) ? savedTemplateId : "";
 };
 
 const getCardDownloadUrl = (cardUrl) => {
@@ -184,18 +178,10 @@ export default function EventDetailPage() {
     const [selectedQr, setSelectedQr] = useState(null);
     const [qrToRevoke, setQrToRevoke] = useState(null);
     const [revokingId, setRevokingId] = useState(null);
-    const [cardTemplateId, setCardTemplateId] = useState("");
     const [generatedAsset, setGeneratedAsset] = useState(null);
     const [cardGeneratingId, setCardGeneratingId] = useState(null);
     const [exportingFormat, setExportingFormat] = useState("");
     const [downloadingTemplate, setDownloadingTemplate] = useState(false);
-    const [customCardTemplates, setCustomCardTemplates] = useState([]);
-    const allCardTemplates = useMemo(() => cardTemplates, []);
-
-    const selectedCardTemplate = useMemo(
-        () => allCardTemplates.find(template => template.id === cardTemplateId) || null,
-        [allCardTemplates, cardTemplateId]
-    );
 
     const fetchAreas = useCallback(async () => {
         try {
@@ -255,40 +241,7 @@ export default function EventDetailPage() {
         }
     }, [eventId, fetchAll, fetchAreas]);
 
-    useEffect(() => {
-        const fetchCustomTemplates = async () => {
-            try {
-                const [templatesRes, defaultRes] = await Promise.all([
-                    apiFetch("/card-templates/custom"),
-                    apiFetch("/card-templates/default")
-                ]);
-                const templatesData = await templatesRes.json();
-                const defaultData = await defaultRes.json();
-                if (templatesData.success) {
-                    setCustomCardTemplates((templatesData.templates || []).map(normalizeCustomCardTemplate));
-                }
-                if (defaultData.success && defaultData.defaultTemplateId && cardTemplates.some(template => template.id === defaultData.defaultTemplateId)) {
-                    window.localStorage.setItem(CARD_TEMPLATE_STORAGE_KEY, defaultData.defaultTemplateId);
-                    setCardTemplateId(defaultData.defaultTemplateId);
-                } else if (defaultData.success) {
-                    window.localStorage.removeItem(CARD_TEMPLATE_STORAGE_KEY);
-                    setCardTemplateId("");
-                }
-            } catch {
-                setCustomCardTemplates([]);
-            }
-        };
-        fetchCustomTemplates();
-    }, []);
-
-    useEffect(() => {
-        const savedTemplateId = getSavedCardTemplateId();
-        setCardTemplateId(savedTemplateId);
-    }, []);
-
     const openQrGenerationModal = () => {
-        const savedTemplateId = getSavedCardTemplateId();
-        setCardTemplateId(savedTemplateId);
         setShowQrModal(true);
         setQrError("");
         setGeneratedAsset(null);
@@ -384,8 +337,7 @@ export default function EventDetailPage() {
             ...qrForm,
             email: qrForm.email.trim().toLowerCase(),
             phone: normalizePhone(qrForm.phone),
-            cardTemplateId,
-            ...(cardTemplateId ? { cardMessage: qrForm.cardMessage.trim() } : {})
+            cardTemplateId: ""
         };
         try {
             const res = await apiFetch(`/qr/generate/${eventId}`, {
@@ -400,16 +352,12 @@ export default function EventDetailPage() {
                     cardUrl: data.cardUrl || null,
                     cardPdfUrl: data.cardPdfUrl || null,
                     holder: qrForm.fullName,
-                    templateName: selectedCardTemplate?.name || "QR seul"
+                    templateName: "QR seul"
                 });
                 setQrForm({ ...qrForm, fullName: "", email: "", phone: "", level: "1", cardMessage: "" });
                 setQrContactTouched({ email: false, phone: false });
                 setQrSubmitAttempted(false);
-                if (data.cardUrl) {
-                    showToast("QR Code généré avec une carte prête à télécharger.");
-                } else {
-                    showToast("QR Code généré avec succès.");
-                }
+                showToast("QR Code généré avec succès.");
                 // Refresh QR list
                 const qrRes = await apiFetch(`/qr/event/${eventId}`);
                 const qrData = await qrRes.json();
@@ -465,27 +413,7 @@ export default function EventDetailPage() {
     };
 
     const handleGenerateCardForQr = async (qr) => {
-        const savedTemplateId = getSavedCardTemplateId();
-        const templateId = savedTemplateId || "event-ticket";
-        setCardGeneratingId(qr.id);
-        try {
-            const res = await apiFetch(`/qr/card/${qr.id}`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ cardTemplateId: templateId })
-            });
-            const data = await res.json();
-            if (data.success) {
-                setQrCodes(qrCodes.map(item => item.id === qr.id ? { ...item, cardUrl: data.cardUrl, cardPdfUrl: data.cardPdfUrl || null } : item));
-                showToast("Carte générée et prête à télécharger.");
-            } else {
-                showToast(data.message || "Erreur lors de la génération de la carte.");
-            }
-        } catch {
-            showToast("Erreur de connexion au serveur.");
-        } finally {
-            setCardGeneratingId(null);
-        }
+        showToast("Les anciens modèles de cartes sont suspendus. Utilisez le module Modèles pour générer un PDF.");
     };
 
     const handleExport = async (format) => {
@@ -914,7 +842,7 @@ export default function EventDetailPage() {
                         <form onSubmit={handleGenerateQr}>
                             <div className="max-h-[72vh] overflow-y-auto px-6 py-6 sm:px-8">
                                 {generatingQr && (
-                                    <LoadingBar label={cardTemplateId ? "Génération du QR et de la carte" : "Génération du QR"} className="mb-5" />
+                                    <LoadingBar label="Génération du QR" className="mb-5" />
                                 )}
                                 {qrError && (
                                     <div className="mb-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700 animate-in fade-in zoom-in duration-300 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200">{qrError}</div>
@@ -1085,16 +1013,8 @@ export default function EventDetailPage() {
                                                 </div>
                                             )}
 
-                                            <div className="space-y-2">
-                                                <label className="text-sm font-semibold text-slate-800 dark:text-slate-100">Message sur la carte</label>
-                                                <input
-                                                    type="text"
-                                                    value={qrForm.cardMessage}
-                                                    onChange={(e) => setQrForm({ ...qrForm, cardMessage: e.target.value })}
-                                                    placeholder="Ex. Accès VIP, Invité officiel..."
-                                                    disabled={!cardTemplateId}
-                                                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all disabled:opacity-60"
-                                                />
+                                            <div className="rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-800 dark:border-blue-900/50 dark:bg-blue-950/25 dark:text-blue-100">
+                                                Les documents personnalisés sont générés dans le module Modèles.
                                             </div>
                                         </div>
 
@@ -1105,10 +1025,10 @@ export default function EventDetailPage() {
                                                 </div>
                                                 <div className="min-w-0">
                                                     <p className="text-sm font-bold text-slate-900 dark:text-white">
-                                                        {selectedCardTemplate ? selectedCardTemplate.name : "QR seul"}
+                                                        QR seul
                                                     </p>
                                                     <p className="text-xs text-slate-600 dark:text-slate-300">
-                                                        {selectedCardTemplate ? "Modèle par défaut appliqué" : "Aucun modèle par défaut défini"}
+                                                        Les anciens modèles SVG sont suspendus temporairement.
                                                     </p>
                                                 </div>
                                             </div>
@@ -1116,13 +1036,13 @@ export default function EventDetailPage() {
                                                 href="/dashboard/card-templates"
                                                 className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-800"
                                             >
-                                                Changer le modèle
+                                                Ouvrir les modèles PDF
                                             </Link>
                                         </div>
 
                                         <div className="mt-4 flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs leading-relaxed text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
                                             <FileSpreadsheet className="mt-0.5 h-4 w-4 flex-none text-[#7A90A4]" />
-                                            <p>{selectedCardTemplate ? `${selectedCardTemplate.name} sera généré avec le QR et disponible dans la liste.` : "Le QR sera généré seul. Définissez un modèle par défaut dans le menu Modèle pour créer une carte automatiquement."}</p>
+                                            <p>Le QR est généré seul pour garantir une version stable. Les invitations, badges et cartes PDF se génèrent depuis le module Modèles.</p>
                                         </div>
                                     </section>
 

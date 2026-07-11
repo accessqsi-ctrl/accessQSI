@@ -124,7 +124,7 @@ const useCases = [
   {
     title: "Événements et cérémonies",
     audience: "Mariages, conférences, concerts, galas",
-    description: "Créez des invitations PDF avec QR code, contrôlez chaque entrée et évitez les invitations dupliquées ou transférées sans autorisation.",
+    description: "Créez des invitations avec QR code, contrôlez chaque entrée et évitez les invitations dupliquées ou transférées sans autorisation.",
     points: ["Billets personnalisés", "Contrôle à l'entrée", "Accès VIP ou zones réservées"]
   },
   {
@@ -244,8 +244,7 @@ export default function Home() {
         <div className="container mx-auto max-w-7xl px-6">
           <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
             <div>
-              <p className="mb-3 text-sm font-black uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-300">Cas d'utilisation</p>
-              <h2 className="text-3xl font-black tracking-tight text-slate-950 dark:text-white md:text-5xl">
+               <h2 className="text-3xl font-black tracking-tight text-slate-950 dark:text-white md:text-5xl">
                 Un même outil pour tous les accès qui doivent rester sous contrôle
               </h2>
               <p className="mt-5 text-lg leading-8 text-slate-600 dark:text-slate-300">
