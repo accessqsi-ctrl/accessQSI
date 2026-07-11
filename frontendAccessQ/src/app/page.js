@@ -120,6 +120,51 @@ function AccueilDeuxPanel() {
   );
 }
 
+const useCases = [
+  {
+    title: "Événements et cérémonies",
+    audience: "Mariages, conférences, concerts, galas",
+    description: "Créez des invitations PDF avec QR code, contrôlez chaque entrée et évitez les invitations dupliquées ou transférées sans autorisation.",
+    points: ["Billets personnalisés", "Contrôle à l'entrée", "Accès VIP ou zones réservées"]
+  },
+  {
+    title: "Entreprises et sites privés",
+    audience: "Bureaux, entrepôts, chantiers, visiteurs",
+    description: "Gérez les accès temporaires des employés, prestataires et visiteurs avec une traçabilité claire de chaque passage.",
+    points: ["Badges journaliers", "Accès par niveau", "Révocation immédiate"]
+  },
+  {
+    title: "Écoles et formations",
+    audience: "Campus, examens, séminaires, ateliers",
+    description: "Sécurisez les présences, les accès aux salles et les inscriptions sans dépendre de listes papier difficiles à maintenir.",
+    points: ["Présence vérifiable", "Salles autorisées", "Historique des scans"]
+  },
+  {
+    title: "Églises et organisations",
+    audience: "Cultes, retraites, conférences, programmes",
+    description: "Organisez les flux d'entrée, les zones d'accueil et les accès spéciaux pour les équipes, invités et participants.",
+    points: ["Accueil fluide", "Équipes identifiées", "Zones séparées"]
+  },
+  {
+    title: "Hôtels et hébergements",
+    audience: "Résidences, locations, espaces partagés",
+    description: "Remettez des accès numériques limités dans le temps pour les clients, les visiteurs et les services internes.",
+    points: ["Validité par séjour", "Accès temporaires", "Contrôle discret"]
+  },
+  {
+    title: "ONG et opérations terrain",
+    audience: "Distributions, missions, centres d'aide",
+    description: "Vérifiez les bénéficiaires, agents et zones d'intervention avec des QR codes simples à scanner même sur le terrain.",
+    points: ["Bénéficiaires uniques", "Limites d'usage", "Rapports exportables"]
+  }
+];
+
+const marketingStats = [
+  ["Moins de fraude", "Codes uniques, révocables et limités"],
+  ["Entrées plus rapides", "Scan mobile et décision instantanée"],
+  ["Meilleure image", "Invitations PDF propres et personnalisables"]
+];
+
 export default function Home() {
   return (
     <div className="flex min-h-screen flex-col bg-white text-slate-900 dark:bg-slate-900 dark:text-white font-sans overflow-hidden">
@@ -171,6 +216,21 @@ export default function Home() {
           <p className="max-w-2xl mx-auto text-lg md:text-xl text-slate-500 dark:text-slate-400 leading-relaxed">
             Générez, gérez et vérifiez des QR codes sécurisés. Vos administrateurs et agents peuvent contrôler les accès physiques ou numériques avec une visibilité claire et fiable.
           </p>
+
+          <div className="flex flex-col justify-center gap-3 sm:flex-row">
+            <Link
+              href="/register"
+              className="inline-flex items-center justify-center rounded-full bg-slate-900 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-slate-900/15 transition-all hover:bg-slate-800 active:scale-95 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100"
+            >
+              Essayer QR Access
+            </Link>
+            <a
+              href="#use-cases"
+              className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-6 py-3 text-sm font-bold text-slate-700 transition-all hover:border-blue-300 hover:text-blue-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-blue-500 dark:hover:text-blue-200"
+            >
+              Voir les cas d'utilisation
+            </a>
+          </div>
         </div>
 
         <div className="relative z-10 w-full max-w-5xl mx-auto mt-12 mb-12 rounded-2xl border border-slate-200/50 dark:border-slate-700/70 bg-white dark:bg-slate-800 shadow-2xl shadow-blue-900/5 overflow-hidden p-2 lg:p-4">
@@ -179,6 +239,53 @@ export default function Home() {
           </div>
         </div>
       </main>
+
+      <section id="use-cases" className="w-full border-t border-slate-200 bg-white py-24 dark:border-slate-700 dark:bg-slate-900">
+        <div className="container mx-auto max-w-7xl px-6">
+          <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
+            <div>
+              <p className="mb-3 text-sm font-black uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-300">Cas d'utilisation</p>
+              <h2 className="text-3xl font-black tracking-tight text-slate-950 dark:text-white md:text-5xl">
+                Un même outil pour tous les accès qui doivent rester sous contrôle
+              </h2>
+              <p className="mt-5 text-lg leading-8 text-slate-600 dark:text-slate-300">
+                QR Access remplace les listes papier, les invitations faciles à copier et les contrôles improvisés par un système clair : un QR, une règle, une décision immédiate.
+              </p>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-3">
+              {marketingStats.map(([title, description]) => (
+                <div key={title} className="rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-700 dark:bg-slate-800">
+                  <p className="text-base font-black text-slate-950 dark:text-white">{title}</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-14 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+            {useCases.map((useCase) => (
+              <article key={useCase.title} className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl hover:shadow-slate-200/70 dark:border-slate-700 dark:bg-slate-950 dark:hover:border-blue-700 dark:hover:shadow-slate-950/30">
+                <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-200">
+                  <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-7 4h8m-9 4h10a2 2 0 002-2V7.5L14.5 3H7a2 2 0 00-2 2v13a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-emerald-700 dark:text-emerald-300">{useCase.audience}</p>
+                <h3 className="mt-3 text-xl font-black text-slate-950 dark:text-white">{useCase.title}</h3>
+                <p className="mt-3 flex-1 text-sm leading-7 text-slate-600 dark:text-slate-300">{useCase.description}</p>
+                <div className="mt-6 flex flex-wrap gap-2">
+                  {useCase.points.map((point) => (
+                    <span key={point} className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+                      {point}
+                    </span>
+                  ))}
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
 
       <section id="features" className="w-full py-24 bg-slate-50 dark:bg-slate-800 relative z-20 border-t border-slate-200/60 dark:border-slate-700/70 overflow-hidden">
         <div className="container mx-auto px-6 max-w-7xl relative z-10">
