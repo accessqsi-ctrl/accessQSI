@@ -28,6 +28,18 @@ const ensureQrImageForToken = async ({ uniqueToken, eventId }) => {
     return qrUrlForToken(uniqueToken);
 };
 
+const cardPdfUrlForToken = (token) => (
+    typeof cardTemplateService.cardPdfUrlForToken === "function"
+        ? cardTemplateService.cardPdfUrlForToken(token)
+        : `/cards/card_${token}.pdf`
+);
+
+const cardPdfExistsForToken = (token) => (
+    typeof cardTemplateService.cardPdfExistsForToken === "function"
+        ? cardTemplateService.cardPdfExistsForToken(token)
+        : false
+);
+
 const resolveCardTemplate = async (orgId, cardTemplateId) => {
     if (!cardTemplateId) return null;
     if (cardTemplateService.hasTemplate(cardTemplateId)) {
@@ -110,6 +122,7 @@ exports.generateQrForEvent = async (req, res) => {
             eventId: event.event_id
         });
         let cardUrl = null;
+        let cardPdfUrl = null;
 
         if (cardTemplateId) {
             cardUrl = await cardTemplateService.generateCardForQr({
@@ -121,6 +134,7 @@ exports.generateQrForEvent = async (req, res) => {
                 cardMessage,
                 cardData
             });
+            cardPdfUrl = cardPdfUrlForToken(uniqueToken);
         }
 
         return res.status(201).json({
@@ -128,6 +142,7 @@ exports.generateQrForEvent = async (req, res) => {
             message: 'QR Code généré et sauvegardé avec succès',
             qrUrl: qrUrl,
             cardUrl,
+            cardPdfUrl,
             qrCode: qrRecord,
             event: { id: event.event_id, title: event.title }
         });
@@ -163,6 +178,7 @@ exports.getAllQrs = async (req, res) => {
                 scans: `${qr.scans_count} / ${qr.usage_limit > 9999 ? '∞' : qr.usage_limit}`,
                 token: qr.unique_token,
                 cardUrl: cardTemplateService.cardExistsForToken(qr.unique_token) ? cardTemplateService.cardUrlForToken(qr.unique_token) : null,
+                cardPdfUrl: cardPdfExistsForToken(qr.unique_token) ? cardPdfUrlForToken(qr.unique_token) : null,
                 createdAt: new Date(qr.valid_from || new Date()).toLocaleDateString() // Using valid_from roughly as creation or start
             };
         });
@@ -206,6 +222,7 @@ exports.getQrsByEvent = async (req, res) => {
                 usage_limit: qr.usage_limit,
                 token: qr.unique_token,
                 cardUrl: cardTemplateService.cardExistsForToken(qr.unique_token) ? cardTemplateService.cardUrlForToken(qr.unique_token) : null,
+                cardPdfUrl: cardPdfExistsForToken(qr.unique_token) ? cardPdfUrlForToken(qr.unique_token) : null,
                 createdAt: new Date(qr.valid_from || new Date()).toLocaleDateString()
             };
         });
@@ -468,7 +485,8 @@ exports.generateCardForExistingQr = async (req, res) => {
         return res.status(201).json({
             success: true,
             message: "Carte générée avec succès",
-            cardUrl
+            cardUrl,
+            cardPdfUrl: cardPdfUrlForToken(qrRecord.unique_token)
         });
     } catch (error) {
         console.error("Erreur lors de la génération de la carte :", error);

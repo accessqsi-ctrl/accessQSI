@@ -1,5 +1,7 @@
 const fs = require("fs");
 const path = require("path");
+const PDFDocument = require("pdfkit");
+const SVGtoPDF = require("svg-to-pdfkit");
 
 const templates = {
     "event-ticket": {
@@ -155,9 +157,15 @@ const getCardMessage = (message, fallback = "Présentez ce QR à l'entrée") => 
 
 const cardFilenameForToken = (token) => `card_${token}.svg`;
 
+const cardPdfFilenameForToken = (token) => `card_${token}.pdf`;
+
 const cardPathForToken = (token) => path.join(__dirname, "../statics/cards", cardFilenameForToken(token));
 
+const cardPdfPathForToken = (token) => path.join(__dirname, "../statics/cards", cardPdfFilenameForToken(token));
+
 const cardUrlForToken = (token) => `/cards/${cardFilenameForToken(token)}`;
+
+const cardPdfUrlForToken = (token) => `/cards/${cardPdfFilenameForToken(token)}`;
 
 const hasTemplate = (templateId) => Boolean(templates[templateId]);
 
@@ -505,14 +513,62 @@ const renderCard = (templateId, payload) => {
     return renderVerticalCard({ template, ...payload });
 };
 
+const localImagePathForHref = (href) => {
+    const cleanHref = String(href || "").split("?")[0].trim();
+    if (!cleanHref || cleanHref.startsWith("data:") || /^https?:\/\//i.test(cleanHref)) {
+        return cleanHref;
+    }
+
+    const normalizedHref = cleanHref.startsWith("/") ? cleanHref.slice(1) : cleanHref;
+    const candidate = path.resolve(__dirname, "../statics", normalizedHref);
+    const staticsRoot = path.resolve(__dirname, "../statics");
+
+    if (!candidate.startsWith(staticsRoot) || !fs.existsSync(candidate)) {
+        return cleanHref;
+    }
+
+    return candidate;
+};
+
+const writeSvgPdf = async ({ svg, pdfPath, width, height }) => {
+    await new Promise((resolve, reject) => {
+        const doc = new PDFDocument({
+            size: [width, height],
+            margin: 0,
+            autoFirstPage: true
+        });
+        const stream = fs.createWriteStream(pdfPath);
+
+        stream.on("finish", resolve);
+        stream.on("error", reject);
+        doc.on("error", reject);
+        doc.pipe(stream);
+
+        SVGtoPDF(doc, svg, 0, 0, {
+            width,
+            height,
+            assumePt: true,
+            preserveAspectRatio: "xMidYMid meet",
+            imageCallback: localImagePathForHref,
+            warningCallback: () => {}
+        });
+
+        doc.end();
+    });
+};
+
 exports.hasTemplate = hasTemplate;
 exports.getTemplate = getTemplate;
 exports.extractCustomTemplateId = extractCustomTemplateId;
 exports.standardTemplates = templates;
 exports.cardUrlForToken = cardUrlForToken;
+exports.cardPdfUrlForToken = cardPdfUrlForToken;
 exports.cardPathForToken = cardPathForToken;
+exports.cardPdfPathForToken = cardPdfPathForToken;
 
 exports.cardExistsForToken = (token) => fs.existsSync(cardPathForToken(token));
+
+exports.cardPdfExistsForToken = (token) => fs.existsSync(cardPdfPathForToken(token));
 
 exports.generateCardForQr = async ({ templateId, event, qrRecord, qrUrl, cardMessage, cardData, customization }) => {
     const baseTemplateId = customization?.baseTemplateId || templateId;
@@ -523,10 +579,15 @@ exports.generateCardForQr = async ({ templateId, event, qrRecord, qrUrl, cardMes
     }
 
     const cardPath = cardPathForToken(qrRecord.unique_token);
+    const pdfPath = cardPdfPathForToken(qrRecord.unique_token);
     const dir = path.dirname(cardPath);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 
+    const template = buildTemplate(baseTemplateId, renderCustomization);
+    const width = Number(template.canvasScene?.canvas?.width || template.width);
+    const height = Number(template.canvasScene?.canvas?.height || template.height);
     const svg = renderCard(baseTemplateId, { event, qrRecord, qrUrl, cardMessage, cardData, customization: renderCustomization });
     await fs.promises.writeFile(cardPath, svg, "utf8");
+    await writeSvgPdf({ svg, pdfPath, width, height });
     return cardUrlForToken(qrRecord.unique_token);
 };

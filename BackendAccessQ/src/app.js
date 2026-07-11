@@ -109,7 +109,7 @@ app.use(requestLogger);
 // ===== Fichiers statiques =====
 app.get("/cards/:filename/download", (req, res) => {
     const filename = String(req.params.filename || "");
-    if (!/^card_[a-zA-Z0-9_.-]+\.svg$/.test(filename)) {
+    if (!/^card_[a-zA-Z0-9_.-]+\.(svg|pdf)$/.test(filename)) {
         return res.status(400).json({ success: false, message: "Nom de fichier invalide" });
     }
 

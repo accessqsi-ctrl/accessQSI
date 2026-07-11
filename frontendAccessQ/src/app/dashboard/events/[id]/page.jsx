@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Loader2, Calendar, MapPin, QrCode, Edit2, Trash2, ArrowLeft, Plus, Download, X, CheckCircle2, FileSpreadsheet, Mail, Phone, IdCard, Sparkles, Ticket } from "lucide-react";
+import { Loader2, Calendar, MapPin, QrCode, Edit2, Trash2, ArrowLeft, Plus, Download, X, CheckCircle2, FileSpreadsheet, FileText, Mail, Phone, IdCard, Sparkles, Ticket } from "lucide-react";
 import { apiFetch, refreshSession } from "../../../lib/api";
 import { CARD_TEMPLATE_STORAGE_KEY, cardTemplates, normalizeCustomCardTemplate } from "../../../lib/cardTemplates";
 import LoadingBar from "../../../components/LoadingBar";
@@ -398,6 +398,7 @@ export default function EventDetailPage() {
                 setGeneratedAsset({
                     qrUrl: data.qrUrl,
                     cardUrl: data.cardUrl || null,
+                    cardPdfUrl: data.cardPdfUrl || null,
                     holder: qrForm.fullName,
                     templateName: selectedCardTemplate?.name || "QR seul"
                 });
@@ -475,7 +476,7 @@ export default function EventDetailPage() {
             });
             const data = await res.json();
             if (data.success) {
-                setQrCodes(qrCodes.map(item => item.id === qr.id ? { ...item, cardUrl: data.cardUrl } : item));
+                setQrCodes(qrCodes.map(item => item.id === qr.id ? { ...item, cardUrl: data.cardUrl, cardPdfUrl: data.cardPdfUrl || null } : item));
                 showToast("Carte générée et prête à télécharger.");
             } else {
                 showToast(data.message || "Erreur lors de la génération de la carte.");
@@ -842,14 +843,14 @@ export default function EventDetailPage() {
                                                 >
                                                     <Download className="w-5 h-5" />
                                                 </a>
-                                                {qr.cardUrl ? (
+                                                {(qr.cardPdfUrl || qr.cardUrl) ? (
                                                     <a
-                                                        href={getCardDownloadUrl(qr.cardUrl)}
+                                                        href={getCardDownloadUrl(qr.cardPdfUrl || qr.cardUrl)}
                                                         download
                                                         className="p-1.5 text-emerald-600 dark:text-emerald-300 bg-white dark:bg-slate-900 border border-emerald-100 dark:border-emerald-900/50 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded-lg transition-colors inline-block"
-                                                        title="Télécharger l'invitation"
+                                                        title={qr.cardPdfUrl ? "Télécharger l'invitation PDF" : "Télécharger l'invitation"}
                                                     >
-                                                        <FileSpreadsheet className="w-5 h-5" />
+                                                        {qr.cardPdfUrl ? <FileText className="w-5 h-5" /> : <FileSpreadsheet className="w-5 h-5" />}
                                                     </a>
                                                 ) : (
                                                     <button
@@ -940,14 +941,14 @@ export default function EventDetailPage() {
                                                         <Download className="h-3.5 w-3.5" />
                                                         Télécharger QR
                                                     </a>
-                                                    {generatedAsset.cardUrl && (
+                                                    {(generatedAsset.cardPdfUrl || generatedAsset.cardUrl) && (
                                                         <a
-                                                            href={getCardDownloadUrl(generatedAsset.cardUrl)}
+                                                            href={getCardDownloadUrl(generatedAsset.cardPdfUrl || generatedAsset.cardUrl)}
                                                             download
                                                             className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 px-3 py-2 text-xs font-bold text-white shadow-sm transition-colors hover:bg-emerald-800"
                                                         >
-                                                            <FileSpreadsheet className="h-3.5 w-3.5" />
-                                                            Télécharger invitation
+                                                            <FileText className="h-3.5 w-3.5" />
+                                                            Télécharger PDF
                                                         </a>
                                                     )}
                                                 </div>
