@@ -184,10 +184,17 @@ export default function EventDetailPage() {
     const [downloadingTemplate, setDownloadingTemplate] = useState(false);
     const [pdfTemplates, setPdfTemplates] = useState([]);
     const [selectedPdfTemplateId, setSelectedPdfTemplateId] = useState("");
+    const [cardTemplates, setCardTemplates] = useState([]);
+    const [selectedCardTemplateId, setSelectedCardTemplateId] = useState("");
 
     const selectedPdfTemplate = useMemo(
         () => pdfTemplates.find(template => template.id === selectedPdfTemplateId) || null,
         [pdfTemplates, selectedPdfTemplateId]
+    );
+
+    const selectedCardTemplate = useMemo(
+        () => cardTemplates.find(template => template.templateId === selectedCardTemplateId) || null,
+        [cardTemplates, selectedCardTemplateId]
     );
 
     const fetchAreas = useCallback(async () => {
@@ -249,21 +256,36 @@ export default function EventDetailPage() {
     }, [eventId, fetchAll, fetchAreas]);
 
     useEffect(() => {
-        const fetchPdfTemplates = async () => {
+        const fetchCreationTemplates = async () => {
             try {
-                const res = await apiFetch("/pdf-templates");
-                const data = await res.json();
-                if (data.success) {
-                    const templates = data.templates || [];
+                const [pdfRes, cardRes] = await Promise.all([
+                    apiFetch("/pdf-templates"),
+                    apiFetch("/card-templates/custom")
+                ]);
+                const [pdfData, cardData] = await Promise.all([pdfRes.json(), cardRes.json()]);
+
+                if (pdfData.success) {
+                    const templates = pdfData.templates || [];
                     setPdfTemplates(templates);
                     setSelectedPdfTemplateId(current => current || templates[0]?.id || "");
                 }
+
+                if (cardData.success) {
+                    const templates = cardData.templates || [];
+                    setCardTemplates(templates);
+                    setSelectedCardTemplateId(current => {
+                        if (current && templates.some(template => template.templateId === current)) return current;
+                        if (templates.some(template => template.templateId === cardData.defaultTemplateId)) return cardData.defaultTemplateId;
+                        return templates[0]?.templateId || "";
+                    });
+                }
             } catch {
                 setPdfTemplates([]);
+                setCardTemplates([]);
             }
         };
 
-        fetchPdfTemplates();
+        fetchCreationTemplates();
     }, []);
 
     const openQrGenerationModal = () => {
@@ -363,7 +385,7 @@ export default function EventDetailPage() {
             ...qrForm,
             email: qrForm.email.trim().toLowerCase(),
             phone: normalizePhone(qrForm.phone),
-            cardTemplateId: ""
+            cardTemplateId: selectedCardTemplateId
         };
         try {
             const res = await apiFetch(`/qr/generate/${eventId}`, {
@@ -399,12 +421,12 @@ export default function EventDetailPage() {
                     cardPdfUrl: data.cardPdfUrl || null,
                     document: generatedDocument,
                     holder: holderName,
-                    templateName: selectedPdfTemplate ? selectedPdfTemplate.name : "QR seul"
+                    templateName: selectedCardTemplate?.name || (selectedPdfTemplate ? selectedPdfTemplate.name : "QR seul")
                 });
                 setQrForm({ ...qrForm, fullName: "", email: "", phone: "", level: "1", cardMessage: "" });
                 setQrContactTouched({ email: false, phone: false });
                 setQrSubmitAttempted(false);
-                showToast(generatedDocument ? "QR Code et PDF générés avec succès." : "QR Code généré avec succès.");
+                showToast(selectedCardTemplateId ? "QR Code et carte générés avec succès." : generatedDocument ? "QR Code et PDF générés avec succès." : "QR Code généré avec succès.");
                 // Refresh QR list
                 const qrRes = await apiFetch(`/qr/event/${eventId}`);
                 const qrData = await qrRes.json();
@@ -1071,6 +1093,27 @@ export default function EventDetailPage() {
                                             )}
 
                                             <div className="space-y-2">
+                                                <label className="text-sm font-semibold text-slate-800 dark:text-slate-100">Modèle de carte</label>
+                                                <select
+                                                    value={selectedCardTemplateId}
+                                                    onChange={(e) => setSelectedCardTemplateId(e.target.value)}
+                                                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all"
+                                                >
+                                                    <option value="">QR seul, sans carte</option>
+                                                    {cardTemplates.map(template => (
+                                                        <option key={template.templateId} value={template.templateId}>
+                                                            {template.name}{template.templateId === selectedCardTemplateId && template.isDefault ? " — par défaut" : ""}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                                <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+                                                    {cardTemplates.length > 0
+                                                        ? "La carte personnalisée sera générée avec le QR et les informations du titulaire."
+                                                        : "Aucun modèle personnalisé disponible. Créez-en un dans le module Modèles."}
+                                                </p>
+                                            </div>
+
+                                            <div className="space-y-2">
                                                 <label className="text-sm font-semibold text-slate-800 dark:text-slate-100">Modèle PDF</label>
                                                 <select
                                                     value={selectedPdfTemplateId}
@@ -1095,10 +1138,12 @@ export default function EventDetailPage() {
                                                 </div>
                                                 <div className="min-w-0">
                                                     <p className="text-sm font-bold text-slate-900 dark:text-white">
-                                                        {selectedPdfTemplate ? selectedPdfTemplate.name : "QR seul"}
+                                                        {selectedCardTemplate ? selectedCardTemplate.name : selectedPdfTemplate ? selectedPdfTemplate.name : "QR seul"}
                                                     </p>
                                                     <p className="text-xs text-slate-600 dark:text-slate-300">
-                                                        {selectedPdfTemplate ? "QR + document PDF générés ensemble" : "Aucun document PDF ne sera généré"}
+                                                        {selectedCardTemplate
+                                                            ? `QR + carte personnalisée${selectedPdfTemplate ? " + document PDF" : ""}`
+                                                            : selectedPdfTemplate ? "QR + document PDF générés ensemble" : "Aucun support supplémentaire ne sera généré"}
                                                     </p>
                                                 </div>
                                             </div>
@@ -1106,13 +1151,13 @@ export default function EventDetailPage() {
                                                 href="/dashboard/card-templates"
                                                 className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-800"
                                             >
-                                                Ouvrir les modèles PDF
+                                                Gérer les modèles
                                             </Link>
                                         </div>
 
                                         <div className="mt-4 flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs leading-relaxed text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
                                             <FileSpreadsheet className="mt-0.5 h-4 w-4 flex-none text-[#7A90A4]" />
-                                            <p>Choisissez un modèle PDF ici pour créer le QR et son document téléchargeable en une seule action.</p>
+                                            <p>Choisissez un modèle de carte créé par votre organisation. Le modèle défini par défaut est présélectionné automatiquement.</p>
                                         </div>
                                     </section>
 
