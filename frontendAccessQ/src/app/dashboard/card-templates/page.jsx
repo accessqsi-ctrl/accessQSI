@@ -1,1 +1,156 @@
-export { default } from "../pdf-templates/page";
+"use client";
+
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Check, Copy, Loader2, Pencil, Plus, Save, Star, Trash2, X } from "lucide-react";
+import { apiFetch } from "../../lib/api";
+
+const BASE_TEMPLATES = [
+    { id: "event-ticket", name: "Billet événement", format: "Horizontal", accent: "#2563eb", soft: "#dbeafe" },
+    { id: "access-pass", name: "Pass d’accès", format: "Horizontal", accent: "#d97706", soft: "#fef3c7" },
+    { id: "staff-card", name: "Carte staff", format: "Vertical", accent: "#059669", soft: "#d1fae5" },
+    { id: "staff-badge-horizontal", name: "Badge staff", format: "Horizontal", accent: "#0f766e", soft: "#ccfbf1" },
+    { id: "wedding-invite", name: "Invitation mariage", format: "Vertical", accent: "#e11d48", soft: "#ffe4e6" },
+    { id: "wedding-modern-navy-beige", name: "Mariage bleu marine", format: "Vertical", accent: "#080d5f", soft: "#e7bd62" },
+    { id: "vip-invitation", name: "Invitation VIP", format: "Vertical", accent: "#7c3aed", soft: "#ede9fe" },
+    { id: "simple-invitation", name: "Invitation simple", format: "Vertical", accent: "#334155", soft: "#e2e8f0" },
+    { id: "vip-pass", name: "Pass VIP", format: "Horizontal", accent: "#9333ea", soft: "#f3e8ff" },
+    { id: "compact-ticket", name: "Ticket compact", format: "Horizontal", accent: "#1d4ed8", soft: "#dbeafe" }
+];
+
+const initialForm = {
+    name: "", baseTemplateId: "event-ticket", title: "INVITATION",
+    primaryColor: "#2563eb", secondaryColor: "#dbeafe", cardMessageDefault: "Présentez ce QR à l’entrée",
+    qrPosition: "right", visibleFields: { holder: true, event: true, date: true, location: true, level: true, message: true, qr: true }
+};
+
+const fields = [
+    ["holder", "Titulaire"], ["event", "Événement"], ["date", "Date"], ["location", "Lieu"],
+    ["level", "Niveau"], ["message", "Message"], ["qr", "Code QR"]
+];
+
+async function jsonRequest(path, options) {
+    const response = await apiFetch(path, options);
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.success) throw new Error(data.message || "Une erreur est survenue.");
+    return data;
+}
+
+function TemplatePreview({ template }) {
+    const vertical = BASE_TEMPLATES.find(item => item.id === template.baseTemplateId)?.format === "Vertical";
+    const visible = template.visibleFields || initialForm.visibleFields;
+    return (
+        <div className={`mx-auto overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-slate-200 ${vertical ? "aspect-[2/3] w-56" : "aspect-[8/3] w-full max-w-lg"}`}>
+            <div className="flex h-full" style={{ background: `linear-gradient(135deg, ${template.secondaryColor}, #fff 62%)` }}>
+                <div className="flex w-[34%] flex-col justify-between p-5 text-white" style={{ backgroundColor: template.primaryColor }}>
+                    <span className="text-[9px] font-black uppercase tracking-[.25em] opacity-70">QR Access</span>
+                    <strong className="break-words text-lg leading-tight">{template.title || "INVITATION"}</strong>
+                    <span className="text-[8px] opacity-70">Accès sécurisé</span>
+                </div>
+                <div className="flex min-w-0 flex-1 flex-col justify-center gap-2 p-5 text-slate-800">
+                    {visible.event && <strong className="truncate text-base">Nom de l’événement</strong>}
+                    {visible.holder && <span className="truncate text-sm font-bold">Marie Kabongo</span>}
+                    {visible.date && <span className="text-[10px] text-slate-500">12 juillet 2026 · 18:00</span>}
+                    {visible.location && <span className="truncate text-[10px] text-slate-500">Salle principale</span>}
+                    <div className={`mt-1 flex items-end gap-3 ${template.qrPosition === "left" ? "flex-row-reverse justify-end" : template.qrPosition === "center" ? "justify-center" : "justify-between"}`}>
+                        {visible.level && <span className="rounded-full px-2 py-1 text-[8px] font-black" style={{ color: template.primaryColor, backgroundColor: template.secondaryColor }}>NIVEAU 1</span>}
+                        {visible.qr && <div className="grid h-14 w-14 grid-cols-5 gap-0.5 rounded bg-white p-1 ring-1 ring-slate-200">{Array.from({ length: 25 }, (_, i) => <i key={i} className={(i * 7 + i % 3) % 4 ? "bg-slate-900" : "bg-white"} />)}</div>}
+                    </div>
+                    {visible.message && <span className="truncate text-[8px] text-slate-400">{template.cardMessageDefault}</span>}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+export default function CardTemplatesPage() {
+    const [templates, setTemplates] = useState([]);
+    const [defaultId, setDefaultId] = useState("");
+    const [form, setForm] = useState(initialForm);
+    const [editingId, setEditingId] = useState(null);
+    const [showEditor, setShowEditor] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [busy, setBusy] = useState("");
+    const [notice, setNotice] = useState(null);
+
+    const load = useCallback(async () => {
+        try {
+            const data = await jsonRequest("/card-templates/custom");
+            setTemplates(data.templates || []);
+            setDefaultId(data.defaultTemplateId || "");
+        } catch (error) { setNotice({ type: "error", text: error.message }); }
+        finally { setLoading(false); }
+    }, []);
+
+    useEffect(() => { load(); }, [load]);
+    const preview = useMemo(() => ({ ...form }), [form]);
+
+    const changeBase = (id) => {
+        const base = BASE_TEMPLATES.find(item => item.id === id);
+        setForm(current => ({ ...current, baseTemplateId: id, primaryColor: base.accent, secondaryColor: base.soft }));
+    };
+    const openNew = () => { setEditingId(null); setForm(initialForm); setShowEditor(true); setNotice(null); };
+    const openEdit = (template) => { setEditingId(template.id); setForm({ ...initialForm, ...template }); setShowEditor(true); setNotice(null); };
+    const closeEditor = () => { setShowEditor(false); setEditingId(null); };
+
+    const save = async (event) => {
+        event.preventDefault(); setBusy("save"); setNotice(null);
+        try {
+            await jsonRequest(editingId ? `/card-templates/custom/${editingId}` : "/card-templates/custom", {
+                method: editingId ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form)
+            });
+            await load(); closeEditor(); setNotice({ type: "success", text: editingId ? "Modèle mis à jour." : "Modèle créé." });
+        } catch (error) { setNotice({ type: "error", text: error.message }); }
+        finally { setBusy(""); }
+    };
+
+    const action = async (key, path, method, success) => {
+        setBusy(key); setNotice(null);
+        try { await jsonRequest(path, { method }); await load(); setNotice({ type: "success", text: success }); }
+        catch (error) { setNotice({ type: "error", text: error.message }); }
+        finally { setBusy(""); }
+    };
+
+    if (loading) return <div className="flex min-h-[55vh] items-center justify-center"><Loader2 className="h-9 w-9 animate-spin text-blue-600" /></div>;
+
+    return (
+        <div className="mx-auto max-w-7xl space-y-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                <div><h1 className="text-2xl font-black text-slate-950 dark:text-white">Modèles de cartes</h1><p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Créez une identité visuelle cohérente pour vos billets, badges et invitations.</p></div>
+                <button onClick={openNew} className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-black text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700"><Plus className="h-4 w-4" /> Nouveau modèle</button>
+            </div>
+
+            {notice && <div role="status" className={`rounded-xl border px-4 py-3 text-sm font-semibold ${notice.type === "error" ? "border-red-200 bg-red-50 text-red-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"}`}>{notice.text}</div>}
+
+            {templates.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center dark:border-slate-700 dark:bg-slate-950"><div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600"><Plus /></div><h2 className="font-black text-slate-900 dark:text-white">Aucun modèle personnalisé</h2><p className="mt-2 text-sm text-slate-500">Créez votre premier modèle à partir de l’un des 10 formats disponibles.</p><button onClick={openNew} className="mt-5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white">Créer un modèle</button></div>
+            ) : (
+                <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">{templates.map(template => (
+                    <article key={template.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                        <div className="bg-slate-100 p-5 dark:bg-slate-900"><TemplatePreview template={template} /></div>
+                        <div className="p-5"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><h2 className="truncate font-black text-slate-900 dark:text-white">{template.name}</h2><p className="mt-1 text-xs text-slate-500">{BASE_TEMPLATES.find(item => item.id === template.baseTemplateId)?.name}</p></div>{defaultId === template.templateId && <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-1 text-[10px] font-black text-amber-700"><Star className="h-3 w-3 fill-current" /> PAR DÉFAUT</span>}</div>
+                            <div className="mt-5 grid grid-cols-4 gap-2">
+                                <button title="Modifier" onClick={() => openEdit(template)} className="rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-50"><Pencil className="mx-auto h-4 w-4" /></button>
+                                <button title="Dupliquer" disabled={!!busy} onClick={() => action(`copy-${template.id}`, `/card-templates/custom/${template.id}/duplicate`, "POST", "Modèle dupliqué.")} className="rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-50"><Copy className="mx-auto h-4 w-4" /></button>
+                                <button title="Définir par défaut" disabled={!!busy || defaultId === template.templateId} onClick={() => action(`default-${template.id}`, `/card-templates/custom/${template.id}/default`, "PUT", "Modèle défini par défaut.")} className="rounded-lg border border-slate-200 p-2 text-amber-600 hover:bg-amber-50 disabled:opacity-40"><Star className="mx-auto h-4 w-4" /></button>
+                                <button title="Supprimer" disabled={!!busy} onClick={() => window.confirm(`Supprimer « ${template.name} » ?`) && action(`delete-${template.id}`, `/card-templates/custom/${template.id}`, "DELETE", "Modèle supprimé.")} className="rounded-lg border border-red-100 p-2 text-red-600 hover:bg-red-50"><Trash2 className="mx-auto h-4 w-4" /></button>
+                            </div>
+                        </div>
+                    </article>
+                ))}</div>
+            )}
+
+            {showEditor && <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/55 p-0 backdrop-blur-sm sm:items-center sm:p-5"><div role="dialog" aria-modal="true" className="max-h-[95vh] w-full max-w-5xl overflow-y-auto rounded-t-3xl bg-white shadow-2xl dark:bg-slate-950 sm:rounded-3xl"><div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white/95 px-6 py-4 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95"><div><h2 className="text-lg font-black dark:text-white">{editingId ? "Modifier le modèle" : "Nouveau modèle"}</h2><p className="text-xs text-slate-500">Les modifications apparaissent immédiatement dans l’aperçu.</p></div><button onClick={closeEditor} aria-label="Fermer" className="rounded-xl p-2 text-slate-500 hover:bg-slate-100"><X /></button></div>
+                <form onSubmit={save} className="grid gap-8 p-6 lg:grid-cols-[1fr_1.1fr]"><div className="space-y-5">
+                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-200">Nom du modèle<input required maxLength={80} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Ex. Pass VIP entreprise" className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-900" /></label>
+                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-200">Format de base<select value={form.baseTemplateId} onChange={e => changeBase(e.target.value)} className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-700 dark:bg-slate-900">{BASE_TEMPLATES.map(item => <option key={item.id} value={item.id}>{item.name} · {item.format}</option>)}</select></label>
+                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-200">Titre<input value={form.title} maxLength={80} onChange={e => setForm({ ...form, title: e.target.value })} className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-700 dark:bg-slate-900" /></label>
+                    <div className="grid grid-cols-2 gap-4">{[["primaryColor", "Couleur principale"], ["secondaryColor", "Couleur secondaire"]].map(([key, label]) => <label key={key} className="text-sm font-bold text-slate-700 dark:text-slate-200">{label}<span className="mt-2 flex rounded-xl border border-slate-200 bg-slate-50 p-2"><input type="color" value={form[key]} onChange={e => setForm({ ...form, [key]: e.target.value })} className="h-8 w-10 cursor-pointer border-0 bg-transparent" /><input value={form[key]} onChange={e => setForm({ ...form, [key]: e.target.value })} pattern="#[0-9a-fA-F]{6}" className="min-w-0 flex-1 bg-transparent px-2 font-mono text-xs outline-none" /></span></label>)}</div>
+                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-200">Position du QR<select value={form.qrPosition} onChange={e => setForm({ ...form, qrPosition: e.target.value })} className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-700 dark:bg-slate-900"><option value="right">À droite</option><option value="left">À gauche</option><option value="center">Au centre</option></select></label>
+                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-200">Message par défaut<textarea rows="2" maxLength={160} value={form.cardMessageDefault} onChange={e => setForm({ ...form, cardMessageDefault: e.target.value })} className="mt-2 w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-700 dark:bg-slate-900" /></label>
+                    <fieldset><legend className="text-sm font-bold text-slate-700 dark:text-slate-200">Informations affichées</legend><div className="mt-2 grid grid-cols-2 gap-2">{fields.map(([key, label]) => <label key={key} className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold dark:border-slate-700"><input type="checkbox" checked={form.visibleFields[key]} onChange={e => setForm({ ...form, visibleFields: { ...form.visibleFields, [key]: e.target.checked } })} className="accent-blue-600" />{label}</label>)}</div></fieldset>
+                </div><div className="flex min-h-96 flex-col justify-center rounded-2xl bg-slate-100 p-6 dark:bg-slate-900"><span className="mb-5 text-center text-xs font-black uppercase tracking-widest text-slate-400">Aperçu</span><TemplatePreview template={preview} /></div>
+                <div className="flex justify-end gap-3 border-t border-slate-200 pt-5 lg:col-span-2 dark:border-slate-800"><button type="button" onClick={closeEditor} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-600">Annuler</button><button disabled={busy === "save"} className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-black text-white disabled:opacity-60">{busy === "save" ? <Loader2 className="h-4 w-4 animate-spin" /> : editingId ? <Save className="h-4 w-4" /> : <Check className="h-4 w-4" />}{editingId ? "Enregistrer" : "Créer le modèle"}</button></div>
+                </form></div></div>}
+        </div>
+    );
+}

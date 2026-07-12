@@ -182,6 +182,13 @@ export default function EventDetailPage() {
     const [cardGeneratingId, setCardGeneratingId] = useState(null);
     const [exportingFormat, setExportingFormat] = useState("");
     const [downloadingTemplate, setDownloadingTemplate] = useState(false);
+    const [pdfTemplates, setPdfTemplates] = useState([]);
+    const [selectedPdfTemplateId, setSelectedPdfTemplateId] = useState("");
+
+    const selectedPdfTemplate = useMemo(
+        () => pdfTemplates.find(template => template.id === selectedPdfTemplateId) || null,
+        [pdfTemplates, selectedPdfTemplateId]
+    );
 
     const fetchAreas = useCallback(async () => {
         try {
@@ -240,6 +247,24 @@ export default function EventDetailPage() {
             fetchAreas();
         }
     }, [eventId, fetchAll, fetchAreas]);
+
+    useEffect(() => {
+        const fetchPdfTemplates = async () => {
+            try {
+                const res = await apiFetch("/pdf-templates");
+                const data = await res.json();
+                if (data.success) {
+                    const templates = data.templates || [];
+                    setPdfTemplates(templates);
+                    setSelectedPdfTemplateId(current => current || templates[0]?.id || "");
+                }
+            } catch {
+                setPdfTemplates([]);
+            }
+        };
+
+        fetchPdfTemplates();
+    }, []);
 
     const openQrGenerationModal = () => {
         setShowQrModal(true);
@@ -333,6 +358,7 @@ export default function EventDetailPage() {
             return;
         }
         setGeneratingQr(true);
+        const holderName = qrForm.fullName.trim();
         const payload = {
             ...qrForm,
             email: qrForm.email.trim().toLowerCase(),
@@ -347,17 +373,38 @@ export default function EventDetailPage() {
             });
             const data = await res.json();
             if (data.success) {
+                let generatedDocument = null;
+                if (selectedPdfTemplateId) {
+                    const pdfRes = await apiFetch("/pdf-templates/generate", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            templateId: selectedPdfTemplateId,
+                            values: {
+                                modelName: holderName
+                            }
+                        })
+                    });
+                    const pdfData = await pdfRes.json();
+                    if (pdfData.success) {
+                        generatedDocument = pdfData.document;
+                    } else {
+                        showToast(pdfData.message || "QR généré, mais le PDF n'a pas pu être créé.");
+                    }
+                }
+
                 setGeneratedAsset({
                     qrUrl: data.qrUrl,
                     cardUrl: data.cardUrl || null,
                     cardPdfUrl: data.cardPdfUrl || null,
-                    holder: qrForm.fullName,
-                    templateName: "QR seul"
+                    document: generatedDocument,
+                    holder: holderName,
+                    templateName: selectedPdfTemplate ? selectedPdfTemplate.name : "QR seul"
                 });
                 setQrForm({ ...qrForm, fullName: "", email: "", phone: "", level: "1", cardMessage: "" });
                 setQrContactTouched({ email: false, phone: false });
                 setQrSubmitAttempted(false);
-                showToast("QR Code généré avec succès.");
+                showToast(generatedDocument ? "QR Code et PDF générés avec succès." : "QR Code généré avec succès.");
                 // Refresh QR list
                 const qrRes = await apiFetch(`/qr/event/${eventId}`);
                 const qrData = await qrRes.json();
@@ -879,6 +926,16 @@ export default function EventDetailPage() {
                                                             Télécharger PDF
                                                         </a>
                                                     )}
+                                                    {generatedAsset.document?.downloadUrl && (
+                                                        <a
+                                                            href={`${process.env.NEXT_PUBLIC_API_URL}${generatedAsset.document.downloadUrl}`}
+                                                            download
+                                                            className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 px-3 py-2 text-xs font-bold text-white shadow-sm transition-colors hover:bg-emerald-800"
+                                                        >
+                                                            <FileText className="h-3.5 w-3.5" />
+                                                            Télécharger document
+                                                        </a>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
@@ -1013,8 +1070,21 @@ export default function EventDetailPage() {
                                                 </div>
                                             )}
 
-                                            <div className="rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-800 dark:border-blue-900/50 dark:bg-blue-950/25 dark:text-blue-100">
-                                                Les documents personnalisés sont générés dans le module Modèles.
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-semibold text-slate-800 dark:text-slate-100">Modèle PDF</label>
+                                                <select
+                                                    value={selectedPdfTemplateId}
+                                                    onChange={(e) => setSelectedPdfTemplateId(e.target.value)}
+                                                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all"
+                                                >
+                                                    <option value="">Aucun document PDF</option>
+                                                    {pdfTemplates.map(template => (
+                                                        <option key={template.id} value={template.id}>{template.name}</option>
+                                                    ))}
+                                                </select>
+                                                <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+                                                    Le PDF sera généré automatiquement avec le nom saisi dans le formulaire.
+                                                </p>
                                             </div>
                                         </div>
 
@@ -1025,10 +1095,10 @@ export default function EventDetailPage() {
                                                 </div>
                                                 <div className="min-w-0">
                                                     <p className="text-sm font-bold text-slate-900 dark:text-white">
-                                                        QR seul
+                                                        {selectedPdfTemplate ? selectedPdfTemplate.name : "QR seul"}
                                                     </p>
                                                     <p className="text-xs text-slate-600 dark:text-slate-300">
-                                                        Les anciens modèles SVG sont suspendus temporairement.
+                                                        {selectedPdfTemplate ? "QR + document PDF générés ensemble" : "Aucun document PDF ne sera généré"}
                                                     </p>
                                                 </div>
                                             </div>
@@ -1042,7 +1112,7 @@ export default function EventDetailPage() {
 
                                         <div className="mt-4 flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs leading-relaxed text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
                                             <FileSpreadsheet className="mt-0.5 h-4 w-4 flex-none text-[#7A90A4]" />
-                                            <p>Le QR est généré seul pour garantir une version stable. Les invitations, badges et cartes PDF se génèrent depuis le module Modèles.</p>
+                                            <p>Choisissez un modèle PDF ici pour créer le QR et son document téléchargeable en une seule action.</p>
                                         </div>
                                     </section>
 
