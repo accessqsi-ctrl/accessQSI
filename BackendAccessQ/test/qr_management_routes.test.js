@@ -13,7 +13,10 @@ const loadQrManagementApp = ({ user, eventService, qrService, qrcode = {}, cardT
     clearSrcModules();
     mockModule("src/middleware/authMiddleware", authAs(user));
     mockModule("src/services/event.service", eventService);
-    mockModule("src/services/qr.service", qrService);
+    mockModule("src/services/qr.service", {
+        updateQr: async (id, data) => ({ qr_id: id, ...data }),
+        ...qrService
+    });
     mockModule("src/services/card_template.service", {
         hasTemplate: () => false,
         cardExistsForToken: () => false,
@@ -172,8 +175,10 @@ test("POST /qr/generate/:event_id can generate a card from a selected template",
 
 test("POST /qr/generate/:event_id can generate a card from a custom template", async () => {
     let cardArgs = null;
+    let createdData = null;
     const customTemplate = {
         baseTemplateId: "event-ticket",
+        version: 4,
         customization: {
             title: "INVITÉ OFFICIEL",
             primaryColor: "#123456",
@@ -194,7 +199,10 @@ test("POST /qr/generate/:event_id can generate a card from a custom template", a
             findById: async (orgId, eventId) => ({ event_id: eventId, title: "Concert" })
         },
         qrService: {
-            createQr: async (data) => ({ qr_id: 9, ...data })
+            createQr: async (data) => {
+                createdData = data;
+                return { qr_id: 9, ...data };
+            }
         },
         cardTemplateService: {
             hasTemplate: (templateId) => templateId === "event-ticket",
@@ -229,6 +237,11 @@ test("POST /qr/generate/:event_id can generate a card from a custom template", a
     assert.equal(cardArgs.templateId, "event-ticket");
     assert.deepEqual(cardArgs.customization, customTemplate);
     assert.equal(cardArgs.customization.customization.layoutConfig.version, 2);
+    assert.equal(createdData.card_template_id, "custom:12");
+    assert.equal(createdData.card_template_version, 4);
+    assert.equal(createdData.card_template_snapshot.schemaVersion, 1);
+    assert.equal(createdData.card_template_snapshot.sourceTemplateId, "custom:12");
+    assert.equal(createdData.card_template_snapshot.customization.customization.title, "INVITÉ OFFICIEL");
     assert.deepEqual(cardArgs.cardData, {
         spouseOne: "Nom 1",
         spouseTwo: "Nom 2",

@@ -30,25 +30,25 @@ model UserQ {
 }
 
 model Organization {
-  org_id            Int       @id @default(autoincrement())
-  name              String
-  created_at        DateTime  @default(now())
-  deleted_at        DateTime?
-  is_active         Boolean   @default(true)
-  subscription_plan Int?
+  org_id                   Int                  @id @default(autoincrement())
+  name                     String
+  created_at               DateTime             @default(now())
+  deleted_at               DateTime?
+  is_active                Boolean              @default(true)
+  subscription_plan        Int?
   default_card_template_id String?
-  areas             Area[]
-  card_templates    CardTemplateCustom[]
-  events            Event[]
-  plan              Plan?     @relation(fields: [subscription_plan], references: [plan_id])
-  usersQ            UserQ[]
+  areas                    Area[]
+  card_templates           CardTemplateCustom[]
+  events                   Event[]
+  plan                     Plan?                @relation(fields: [subscription_plan], references: [plan_id])
+  usersQ                   UserQ[]
 
   @@index([deleted_at])
   @@map("organizations")
 }
 
 model CardTemplateCustom {
-  id                   Int          @id @default(autoincrement())
+  id                   Int                   @id @default(autoincrement())
   org_id               Int
   base_template_id     String
   name                 String
@@ -63,15 +63,31 @@ model CardTemplateCustom {
   layout_config        Json?
   canvas_scene         Json?
   layout               String
-  is_default           Boolean      @default(false)
+  is_default           Boolean               @default(false)
+  version              Int                   @default(1)
+  status               String                @default("DRAFT")
   deleted_at           DateTime?
-  created_at           DateTime     @default(now())
-  updated_at           DateTime     @updatedAt
-  organization         Organization @relation(fields: [org_id], references: [org_id])
+  created_at           DateTime              @default(now())
+  updated_at           DateTime              @updatedAt
+  organization         Organization          @relation(fields: [org_id], references: [org_id])
+  versions             CardTemplateVersion[]
 
   @@index([org_id, deleted_at])
   @@index([org_id, is_default])
   @@map("card_template_customs")
+}
+
+model CardTemplateVersion {
+  id          Int                @id @default(autoincrement())
+  template_id Int
+  version     Int
+  snapshot    Json
+  created_at  DateTime           @default(now())
+  template    CardTemplateCustom @relation(fields: [template_id], references: [id], onDelete: Cascade)
+
+  @@unique([template_id, version])
+  @@index([template_id, created_at])
+  @@map("card_template_versions")
 }
 
 model Event {
@@ -90,24 +106,32 @@ model Event {
 }
 
 model QrCode {
-  qr_id        Int       @id @default(autoincrement())
-  event_id     Int
-  unique_token String    @unique
-  status       QrStatus
-  usage_limit  Int       @default(1)
-  scans_count  Int       @default(0)
-  valid_from   DateTime?
-  valid_until  DateTime?
-  deleted_at   DateTime?
-  level        Int?
-  holder_name  String?
-  holder_email String?
-  holder_phone String?
-  card_data    Json?
-  event        Event     @relation(fields: [event_id], references: [event_id])
-  scan_logs    ScanLog[]
+  qr_id                  Int       @id @default(autoincrement())
+  event_id               Int
+  unique_token           String    @unique
+  status                 QrStatus
+  usage_limit            Int       @default(1)
+  scans_count            Int       @default(0)
+  valid_from             DateTime?
+  valid_until            DateTime?
+  deleted_at             DateTime?
+  level                  Int?
+  holder_name            String?
+  holder_email           String?
+  holder_phone           String?
+  card_data              Json?
+  card_template_id       String?
+  card_template_version  Int?
+  card_template_snapshot Json?
+  card_generated_at      DateTime?
+  card_message           String?
+  card_generation_status String?
+  card_generation_error  String?
+  event                  Event     @relation(fields: [event_id], references: [event_id])
+  scan_logs              ScanLog[]
 
   @@index([event_id, status, deleted_at])
+  @@index([card_template_id])
   @@map("qr_codes")
 }
 

@@ -160,9 +160,25 @@ const toApiTemplate = (template) => ({
     canvasScene: template.canvas_scene || null,
     layout: template.layout,
     isDefault: template.is_default,
+    version: template.version || 1,
+    status: template.status || "DRAFT",
     createdAt: template.created_at,
     updatedAt: template.updated_at
 });
+
+exports.previewPayload = (payload) => {
+    const normalized = normalizePayload(payload);
+    return cardTemplateService.renderPreview({
+        templateId: normalized.base_template_id,
+        customization: {
+            primaryColor: normalized.primary_color, secondaryColor: normalized.secondary_color,
+            title: normalized.title, cardMessageDefault: normalized.card_message_default,
+            logoUrl: normalized.logo_url, backgroundImageUrl: normalized.background_image_url,
+            qrPosition: normalized.qr_position, visibleFields: normalized.visible_fields,
+            layoutConfig: normalized.layout_config, canvasScene: normalized.canvas_scene, layout: normalized.layout
+        }
+    });
+};
 
 exports.listForOrg = async (orgId) => {
     const [organization, templates] = await Promise.all([
@@ -191,6 +207,7 @@ exports.createForOrg = async (orgId, payload) => {
     const template = await prisma.cardTemplateCustom.create({
         data: { ...data, org_id: orgId }
     });
+    await prisma.cardTemplateVersion.create({ data: { template_id: template.id, version: 1, snapshot: JSON.parse(JSON.stringify(toApiTemplate(template))) } });
     return toApiTemplate(template);
 };
 
@@ -200,9 +217,26 @@ exports.updateForOrg = async (orgId, id, payload) => {
 
     const template = await prisma.cardTemplateCustom.update({
         where: { id: existing.id },
-        data: normalizePayload(payload, existing)
+        data: {
+            ...normalizePayload(payload, existing),
+            version: { increment: 1 }
+        }
     });
+    await prisma.cardTemplateVersion.create({ data: { template_id: template.id, version: template.version, snapshot: JSON.parse(JSON.stringify(toApiTemplate(template))) } });
     return toApiTemplate(template);
+};
+
+exports.listVersionsForOrg = async (orgId, id) => {
+    const template = await exports.findByIdForOrg(orgId, id);
+    if (!template) return null;
+    return prisma.cardTemplateVersion.findMany({ where: { template_id: template.id }, orderBy: { version: "desc" } });
+};
+
+exports.setStatusForOrg = async (orgId, id, status) => {
+    if (!["DRAFT", "PUBLISHED", "ARCHIVED"].includes(status)) return null;
+    const existing = await exports.findByIdForOrg(orgId, id);
+    if (!existing) return null;
+    return toApiTemplate(await prisma.cardTemplateCustom.update({ where: { id: existing.id }, data: { status } }));
 };
 
 exports.deleteForOrg = async (orgId, id) => {
@@ -244,7 +278,8 @@ exports.duplicateForOrg = async (orgId, id) => {
             visible_fields: existing.visible_fields,
             layout_config: existing.layout_config,
             canvas_scene: existing.canvas_scene,
-            layout: existing.layout
+            layout: existing.layout,
+            version: 1
         }
     });
 
@@ -314,6 +349,7 @@ exports.resolveCustomForRender = async (orgId, templateId) => {
 
     return {
         baseTemplateId: template.base_template_id,
+        version: template.version || 1,
         customization: {
             id: template.id,
             name: template.name,

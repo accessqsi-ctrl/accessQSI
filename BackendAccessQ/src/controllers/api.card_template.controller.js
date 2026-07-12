@@ -23,6 +23,31 @@ exports.listCustomTemplates = async (req, res) => {
     }
 };
 
+exports.previewTemplate = async (req, res) => {
+    try {
+        const orgId = requireOrg(req, res);
+        if (!orgId) return;
+        const svg = customCardTemplateService.previewPayload(req.body);
+        res.type("image/svg+xml").status(200).send(svg);
+    } catch (error) {
+        res.status(error.statusCode || 400).json({ success: false, message: error.message || "Aperçu impossible." });
+    }
+};
+
+exports.listVersions = async (req, res) => {
+    const orgId = requireOrg(req, res); if (!orgId) return;
+    const versions = await customCardTemplateService.listVersionsForOrg(orgId, req.params.id);
+    if (!versions) return res.status(404).json({ success: false, message: "Modèle introuvable." });
+    res.json({ success: true, versions });
+};
+
+exports.setStatus = async (req, res) => {
+    const orgId = requireOrg(req, res); if (!orgId) return;
+    const template = await customCardTemplateService.setStatusForOrg(orgId, req.params.id, req.body.status);
+    if (!template) return res.status(400).json({ success: false, message: "Statut ou modèle invalide." });
+    res.json({ success: true, template });
+};
+
 exports.createCustomTemplate = async (req, res) => {
     try {
         const orgId = requireOrg(req, res);

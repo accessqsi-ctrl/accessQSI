@@ -570,6 +570,18 @@ exports.cardExistsForToken = (token) => fs.existsSync(cardPathForToken(token));
 
 exports.cardPdfExistsForToken = (token) => fs.existsSync(cardPdfPathForToken(token));
 
+exports.renderPreview = ({ templateId, customization }) => renderCard(templateId, {
+    event: {
+        title: "Nom de l’événement",
+        EventSchedules: [{ start_date: "2026-07-12T18:00:00.000Z", area: { area_name: "Salle principale" } }]
+    },
+    qrRecord: { qr_id: 1, holder_name: "Marie Kabongo", level: 1, card_data: {} },
+    qrUrl: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Crect width='200' height='200' fill='white'/%3E%3Cpath d='M10 10h60v60H10zM130 10h60v60h-60zM10 130h60v60H10zM90 90h20v20H90zM130 100h50v20h-50zM100 140h20v50h-20zM140 140h50v50h-50z' fill='black'/%3E%3C/svg%3E",
+    cardMessage: customization?.cardMessageDefault || "Présentez ce QR à l’entrée",
+    cardData: {},
+    customization
+});
+
 exports.generateCardForQr = async ({ templateId, event, qrRecord, qrUrl, cardMessage, cardData, customization }) => {
     const baseTemplateId = customization?.baseTemplateId || templateId;
     const renderCustomization = customization?.baseTemplateId ? customization.customization : customization;

@@ -37,27 +37,28 @@ async function jsonRequest(path, options) {
 
 function TemplatePreview({ template }) {
     const vertical = BASE_TEMPLATES.find(item => item.id === template.baseTemplateId)?.format === "Vertical";
-    const visible = template.visibleFields || initialForm.visibleFields;
+    const [previewUrl, setPreviewUrl] = useState("");
+    const [previewError, setPreviewError] = useState(false);
+
+    useEffect(() => {
+        let active = true;
+        let objectUrl = "";
+        const timer = setTimeout(async () => {
+            try {
+                const response = await apiFetch("/card-templates/preview", {
+                    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(template)
+                });
+                if (!response.ok) throw new Error();
+                objectUrl = URL.createObjectURL(await response.blob());
+                if (active) { setPreviewUrl(objectUrl); setPreviewError(false); }
+            } catch { if (active) setPreviewError(true); }
+        }, 250);
+        return () => { active = false; clearTimeout(timer); if (objectUrl) URL.revokeObjectURL(objectUrl); };
+    }, [template]);
+
     return (
         <div className={`mx-auto overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-slate-200 ${vertical ? "aspect-[2/3] w-56" : "aspect-[8/3] w-full max-w-lg"}`}>
-            <div className="flex h-full" style={{ background: `linear-gradient(135deg, ${template.secondaryColor}, #fff 62%)` }}>
-                <div className="flex w-[34%] flex-col justify-between p-5 text-white" style={{ backgroundColor: template.primaryColor }}>
-                    <span className="text-[9px] font-black uppercase tracking-[.25em] opacity-70">QR Access</span>
-                    <strong className="break-words text-lg leading-tight">{template.title || "INVITATION"}</strong>
-                    <span className="text-[8px] opacity-70">Accès sécurisé</span>
-                </div>
-                <div className="flex min-w-0 flex-1 flex-col justify-center gap-2 p-5 text-slate-800">
-                    {visible.event && <strong className="truncate text-base">Nom de l’événement</strong>}
-                    {visible.holder && <span className="truncate text-sm font-bold">Marie Kabongo</span>}
-                    {visible.date && <span className="text-[10px] text-slate-500">12 juillet 2026 · 18:00</span>}
-                    {visible.location && <span className="truncate text-[10px] text-slate-500">Salle principale</span>}
-                    <div className={`mt-1 flex items-end gap-3 ${template.qrPosition === "left" ? "flex-row-reverse justify-end" : template.qrPosition === "center" ? "justify-center" : "justify-between"}`}>
-                        {visible.level && <span className="rounded-full px-2 py-1 text-[8px] font-black" style={{ color: template.primaryColor, backgroundColor: template.secondaryColor }}>NIVEAU 1</span>}
-                        {visible.qr && <div className="grid h-14 w-14 grid-cols-5 gap-0.5 rounded bg-white p-1 ring-1 ring-slate-200">{Array.from({ length: 25 }, (_, i) => <i key={i} className={(i * 7 + i % 3) % 4 ? "bg-slate-900" : "bg-white"} />)}</div>}
-                    </div>
-                    {visible.message && <span className="truncate text-[8px] text-slate-400">{template.cardMessageDefault}</span>}
-                </div>
-            </div>
+            {previewUrl ? <img src={previewUrl} alt={`Aperçu fidèle de ${template.name || "la carte"}`} className="h-full w-full object-contain" /> : <div className="flex h-full items-center justify-center bg-slate-50 text-xs font-semibold text-slate-400">{previewError ? "Aperçu indisponible" : <Loader2 className="h-5 w-5 animate-spin" />}</div>}
         </div>
     );
 }
@@ -103,9 +104,9 @@ export default function CardTemplatesPage() {
         finally { setBusy(""); }
     };
 
-    const action = async (key, path, method, success) => {
+    const action = async (key, path, method, success, body) => {
         setBusy(key); setNotice(null);
-        try { await jsonRequest(path, { method }); await load(); setNotice({ type: "success", text: success }); }
+        try { await jsonRequest(path, { method, ...(body ? { headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {}) }); await load(); setNotice({ type: "success", text: success }); }
         catch (error) { setNotice({ type: "error", text: error.message }); }
         finally { setBusy(""); }
     };
@@ -127,10 +128,11 @@ export default function CardTemplatesPage() {
                 <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">{templates.map(template => (
                     <article key={template.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
                         <div className="bg-slate-100 p-5 dark:bg-slate-900"><TemplatePreview template={template} /></div>
-                        <div className="p-5"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><h2 className="truncate font-black text-slate-900 dark:text-white">{template.name}</h2><p className="mt-1 text-xs text-slate-500">{BASE_TEMPLATES.find(item => item.id === template.baseTemplateId)?.name}</p></div>{defaultId === template.templateId && <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-1 text-[10px] font-black text-amber-700"><Star className="h-3 w-3 fill-current" /> PAR DÉFAUT</span>}</div>
-                            <div className="mt-5 grid grid-cols-4 gap-2">
+                        <div className="p-5"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><h2 className="truncate font-black text-slate-900 dark:text-white">{template.name}</h2><p className="mt-1 text-xs text-slate-500">{BASE_TEMPLATES.find(item => item.id === template.baseTemplateId)?.name} · version {template.version || 1}</p></div>{defaultId === template.templateId && <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-1 text-[10px] font-black text-amber-700"><Star className="h-3 w-3 fill-current" /> PAR DÉFAUT</span>}</div>
+                            <div className="mt-5 grid grid-cols-5 gap-2">
                                 <button title="Modifier" onClick={() => openEdit(template)} className="rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-50"><Pencil className="mx-auto h-4 w-4" /></button>
                                 <button title="Dupliquer" disabled={!!busy} onClick={() => action(`copy-${template.id}`, `/card-templates/custom/${template.id}/duplicate`, "POST", "Modèle dupliqué.")} className="rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-50"><Copy className="mx-auto h-4 w-4" /></button>
+                                <button title={template.status === "PUBLISHED" ? "Archiver" : "Publier"} disabled={!!busy} onClick={() => action(`status-${template.id}`, `/card-templates/custom/${template.id}/status`, "PUT", template.status === "PUBLISHED" ? "Modèle archivé." : "Modèle publié.", { status: template.status === "PUBLISHED" ? "ARCHIVED" : "PUBLISHED" })} className="rounded-lg border border-slate-200 p-2 text-emerald-600 hover:bg-emerald-50">{template.status === "PUBLISHED" ? <X className="mx-auto h-4 w-4" /> : <Check className="mx-auto h-4 w-4" />}</button>
                                 <button title="Définir par défaut" disabled={!!busy || defaultId === template.templateId} onClick={() => action(`default-${template.id}`, `/card-templates/custom/${template.id}/default`, "PUT", "Modèle défini par défaut.")} className="rounded-lg border border-slate-200 p-2 text-amber-600 hover:bg-amber-50 disabled:opacity-40"><Star className="mx-auto h-4 w-4" /></button>
                                 <button title="Supprimer" disabled={!!busy} onClick={() => window.confirm(`Supprimer « ${template.name} » ?`) && action(`delete-${template.id}`, `/card-templates/custom/${template.id}`, "DELETE", "Modèle supprimé.")} className="rounded-lg border border-red-100 p-2 text-red-600 hover:bg-red-50"><Trash2 className="mx-auto h-4 w-4" /></button>
                             </div>

@@ -43,15 +43,36 @@ const cardPdfExistsForToken = (token) => (
 const resolveCardTemplate = async (orgId, cardTemplateId) => {
     if (!cardTemplateId) return null;
     if (cardTemplateService.hasTemplate(cardTemplateId)) {
-        return { templateId: cardTemplateId };
+        return { sourceTemplateId: cardTemplateId, templateId: cardTemplateId, version: 1 };
     }
 
     const customTemplate = await customCardTemplateService.resolveCustomForRender(orgId, cardTemplateId);
     if (!customTemplate) return null;
 
     return {
+        sourceTemplateId: cardTemplateId,
         templateId: customTemplate.baseTemplateId,
+        version: customTemplate.version || 1,
         customization: customTemplate
+    };
+};
+
+const createTemplateSnapshot = (resolvedTemplate) => resolvedTemplate ? {
+    schemaVersion: 1,
+    sourceTemplateId: resolvedTemplate.sourceTemplateId,
+    baseTemplateId: resolvedTemplate.templateId,
+    version: resolvedTemplate.version || 1,
+    customization: resolvedTemplate.customization || null
+} : null;
+
+const resolveTemplateSnapshot = (snapshot) => {
+    if (!snapshot || typeof snapshot !== "object" || snapshot.schemaVersion !== 1) return null;
+    if (!snapshot.sourceTemplateId || !snapshot.baseTemplateId) return null;
+    return {
+        sourceTemplateId: snapshot.sourceTemplateId,
+        templateId: snapshot.baseTemplateId,
+        version: Number(snapshot.version) || 1,
+        customization: snapshot.customization || undefined
     };
 };
 
@@ -114,6 +135,11 @@ exports.generateQrForEvent = async (req, res) => {
             holder_email: email || null,
             holder_phone: phone || null,
             card_data: cardTemplateId ? cardData : undefined,
+            card_template_id: cardTemplateId || null,
+            card_template_version: resolvedCardTemplate?.version || null,
+            card_template_snapshot: createTemplateSnapshot(resolvedCardTemplate),
+            card_message: cardTemplateId ? String(cardMessage || "").trim().slice(0, 160) || null : null,
+            card_generation_status: cardTemplateId ? "PENDING" : null,
             event_id: event.event_id
         });
 
@@ -125,16 +151,23 @@ exports.generateQrForEvent = async (req, res) => {
         let cardPdfUrl = null;
 
         if (cardTemplateId) {
-            cardUrl = await cardTemplateService.generateCardForQr({
-                templateId: resolvedCardTemplate.templateId,
-                customization: resolvedCardTemplate.customization,
-                event,
-                qrRecord,
-                qrUrl,
-                cardMessage,
-                cardData
-            });
-            cardPdfUrl = cardPdfUrlForToken(uniqueToken);
+            try {
+                cardUrl = await cardTemplateService.generateCardForQr({
+                    templateId: resolvedCardTemplate.templateId,
+                    customization: resolvedCardTemplate.customization,
+                    event, qrRecord, qrUrl, cardMessage, cardData
+                });
+                cardPdfUrl = cardPdfUrlForToken(uniqueToken);
+                await qrService.updateQr(qrRecord.qr_id, {
+                    card_generated_at: new Date(), card_generation_status: "READY", card_generation_error: null
+                });
+            } catch (generationError) {
+                await qrService.updateQr(qrRecord.qr_id, {
+                    card_generation_status: "FAILED",
+                    card_generation_error: String(generationError.message || "Échec de génération").slice(0, 500)
+                });
+                throw generationError;
+            }
         }
 
         return res.status(201).json({
@@ -373,6 +406,33 @@ exports.importQrsFromCSV = async (req, res) => {
 
         const rows = await processStream;
         const createdQrs = [];
+        const validationErrors = [];
+        const resolvedTemplates = new Map();
+
+        for (const [index, row] of rows.entries()) {
+            const line = index + 2;
+            const fullName = String(row.fullName || row.name || row.nom || "").trim();
+            const accessType = row.accessType || "single";
+            const cardTemplateId = row.cardTemplateId || row.card_template_id || row.templateId || "";
+            if (!fullName) validationErrors.push({ line, field: "fullName", message: "Nom complet requis." });
+            if (!["single", "multi", "unlimited"].includes(accessType)) validationErrors.push({ line, field: "accessType", message: "Type d’accès invalide." });
+            if (row.validFrom && Number.isNaN(new Date(row.validFrom).getTime())) validationErrors.push({ line, field: "validFrom", message: "Date de début invalide." });
+            if (row.validUntil && Number.isNaN(new Date(row.validUntil).getTime())) validationErrors.push({ line, field: "validUntil", message: "Date de fin invalide." });
+            if (cardTemplateId && !resolvedTemplates.has(cardTemplateId)) {
+                resolvedTemplates.set(cardTemplateId, await resolveCardTemplate(orgId, cardTemplateId));
+            }
+            if (cardTemplateId && !resolvedTemplates.get(cardTemplateId)) validationErrors.push({ line, field: "cardTemplateId", message: "Modèle introuvable ou non autorisé." });
+        }
+
+        if (validationErrors.length) {
+            if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+            return res.status(422).json({
+                success: false,
+                message: "Import annulé : aucune ligne n’a été créée.",
+                totalRows: rows.length,
+                errors: validationErrors
+            });
+        }
 
         for (const row of rows) {
             const fullName = row.fullName || row.name || row.nom;
@@ -386,9 +446,7 @@ exports.importQrsFromCSV = async (req, res) => {
             const cardTemplateId = row.cardTemplateId || row.card_template_id || row.templateId || "";
             const cardMessage = row.cardMessage || row.card_message || "";
 
-            if (!fullName) continue;
-            const resolvedCardTemplate = cardTemplateId ? await resolveCardTemplate(orgId, cardTemplateId) : null;
-            if (cardTemplateId && !resolvedCardTemplate) continue;
+            const resolvedCardTemplate = cardTemplateId ? resolvedTemplates.get(cardTemplateId) : null;
 
             const uniqueToken = crypto.randomUUID();
             let usageLimit = 1;
@@ -405,6 +463,11 @@ exports.importQrsFromCSV = async (req, res) => {
                 holder_name: fullName,
                 holder_email: email || null,
                 holder_phone: phone || null,
+                card_template_id: cardTemplateId || null,
+                card_template_version: resolvedCardTemplate?.version || null,
+                card_template_snapshot: createTemplateSnapshot(resolvedCardTemplate),
+                card_message: cardTemplateId ? String(cardMessage).trim().slice(0, 160) || null : null,
+                card_generation_status: cardTemplateId ? "PENDING" : null,
                 event_id: eventId
             });
 
@@ -419,6 +482,9 @@ exports.importQrsFromCSV = async (req, res) => {
                     qrUrl,
                     cardMessage
                 });
+                await qrService.updateQr(qrRecord.qr_id, {
+                    card_generated_at: new Date(), card_generation_status: "READY", card_generation_error: null
+                });
             }
 
             createdQrs.push(qrRecord);
@@ -430,7 +496,9 @@ exports.importQrsFromCSV = async (req, res) => {
         return res.status(201).json({
             success: true,
             message: `${createdQrs.length} QR Codes importés avec succès`,
-            count: createdQrs.length
+            count: createdQrs.length,
+            totalRows: rows.length,
+            errors: []
         });
 
 
@@ -449,12 +517,13 @@ exports.generateCardForExistingQr = async (req, res) => {
 
         const orgId = req.user.org_id;
         const qrId = Number(req.params.id);
-        const { cardMessage } = req.body;
-        const cardData = normalizeCardData(req.body.cardData);
-        const cardTemplateId = req.body.cardTemplateId || await customCardTemplateService.getDefaultForOrg(orgId);
-
-        const resolvedCardTemplate = await resolveCardTemplate(orgId, cardTemplateId);
-        if (!cardTemplateId || !resolvedCardTemplate) {
+        const requestedCardMessage = req.body.cardMessage;
+        const requestedCardData = req.body.cardData;
+        const requestedTemplateId = String(req.body.cardTemplateId || "").trim();
+        const requestedTemplate = requestedTemplateId
+            ? await resolveCardTemplate(orgId, requestedTemplateId)
+            : null;
+        if (requestedTemplateId && !requestedTemplate) {
             return res.status(400).json({ success: false, message: "Modèle de carte invalide." });
         }
 
@@ -462,10 +531,20 @@ exports.generateCardForExistingQr = async (req, res) => {
         if (!qrRecord || qrRecord.deleted_at) {
             return res.status(404).json({ success: false, message: "QR Code introuvable" });
         }
+        const cardData = normalizeCardData(requestedCardData ?? qrRecord.card_data);
+        const cardMessage = String(requestedCardMessage ?? qrRecord.card_message ?? "").trim().slice(0, 160);
 
         const event = await eventService.findById(orgId, qrRecord.event_id);
         if (!event) {
             return res.status(403).json({ success: false, message: "Accès refusé" });
+        }
+
+        const fallbackTemplateId = requestedTemplateId || qrRecord.card_template_id || await customCardTemplateService.getDefaultForOrg(orgId);
+        const resolvedCardTemplate = !requestedTemplateId
+            ? resolveTemplateSnapshot(qrRecord.card_template_snapshot) || await resolveCardTemplate(orgId, fallbackTemplateId)
+            : requestedTemplate;
+        if (!fallbackTemplateId || !resolvedCardTemplate) {
+            return res.status(400).json({ success: false, message: "Modèle de carte invalide." });
         }
 
         const qrUrl = fs.existsSync(qrPathForToken(qrRecord.unique_token))
@@ -480,6 +559,17 @@ exports.generateCardForExistingQr = async (req, res) => {
             qrUrl,
             cardMessage,
             cardData
+        });
+
+        await qrService.updateQr(qrId, {
+            card_template_id: resolvedCardTemplate.sourceTemplateId,
+            card_template_version: resolvedCardTemplate.version || 1,
+            card_template_snapshot: createTemplateSnapshot(resolvedCardTemplate),
+            card_generated_at: new Date(),
+            card_message: cardMessage || null,
+            card_generation_status: "READY",
+            card_generation_error: null,
+            card_data: cardData
         });
 
         return res.status(201).json({
