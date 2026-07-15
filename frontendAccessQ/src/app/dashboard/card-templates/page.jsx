@@ -6,14 +6,8 @@ import { apiFetch } from "../../lib/api";
 
 const BASE_TEMPLATES = [
     { id: "event-ticket", name: "Billet événement", format: "Horizontal", accent: "#2563eb", soft: "#dbeafe" },
-    { id: "access-pass", name: "Pass d’accès", format: "Horizontal", accent: "#d97706", soft: "#fef3c7" },
     { id: "staff-card", name: "Carte staff", format: "Vertical", accent: "#059669", soft: "#d1fae5" },
-    { id: "staff-badge-horizontal", name: "Badge staff", format: "Horizontal", accent: "#0f766e", soft: "#ccfbf1" },
     { id: "wedding-invite", name: "Invitation mariage", format: "Vertical", accent: "#e11d48", soft: "#ffe4e6" },
-    { id: "wedding-modern-navy-beige", name: "Mariage bleu marine", format: "Vertical", accent: "#080d5f", soft: "#e7bd62" },
-    { id: "vip-invitation", name: "Invitation VIP", format: "Vertical", accent: "#7c3aed", soft: "#ede9fe" },
-    { id: "simple-invitation", name: "Invitation simple", format: "Vertical", accent: "#334155", soft: "#e2e8f0" },
-    { id: "vip-pass", name: "Pass VIP", format: "Horizontal", accent: "#9333ea", soft: "#f3e8ff" },
     { id: "compact-ticket", name: "Ticket compact", format: "Horizontal", accent: "#1d4ed8", soft: "#dbeafe" }
 ];
 
@@ -27,6 +21,7 @@ const fields = [
     ["holder", "Titulaire"], ["event", "Événement"], ["date", "Date"], ["location", "Lieu"],
     ["level", "Niveau"], ["message", "Message"], ["qr", "Code QR"]
 ];
+const MODEL_WORKFLOW_ONBOARDING_KEY = "qrAccessModelWorkflowOnboardingDismissed";
 
 async function jsonRequest(path, options) {
     const response = await apiFetch(path, options);
@@ -72,6 +67,12 @@ export default function CardTemplatesPage() {
     const [loading, setLoading] = useState(true);
     const [busy, setBusy] = useState("");
     const [notice, setNotice] = useState(null);
+    const [showWorkflowGuide, setShowWorkflowGuide] = useState(false);
+    const [templateToDelete, setTemplateToDelete] = useState(null);
+
+    useEffect(() => {
+        setShowWorkflowGuide(localStorage.getItem(MODEL_WORKFLOW_ONBOARDING_KEY) !== "true");
+    }, []);
 
     const load = useCallback(async () => {
         try {
@@ -120,25 +121,51 @@ export default function CardTemplatesPage() {
                 <button onClick={openNew} className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-black text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700"><Plus className="h-4 w-4" /> Nouveau modèle</button>
             </div>
 
+            {showWorkflowGuide && (
+                <section className="relative rounded-2xl border border-blue-200 bg-blue-50 p-5 dark:border-blue-900/60 dark:bg-blue-950/20">
+                    <button type="button" aria-label="Fermer le guide" onClick={() => { localStorage.setItem(MODEL_WORKFLOW_ONBOARDING_KEY, "true"); setShowWorkflowGuide(false); }} className="absolute right-3 top-3 rounded-lg p-2 text-blue-500 hover:bg-blue-100 dark:hover:bg-blue-950"><X className="h-4 w-4" /></button>
+                    <h2 className="pr-10 font-black text-blue-950 dark:text-blue-100">Le cycle d’un modèle</h2>
+                    <div className="mt-4 grid gap-3 text-sm text-blue-900 dark:text-blue-200 md:grid-cols-3">
+                        <div className="rounded-xl bg-white/70 p-4 dark:bg-slate-950/40"><strong>1. Créez un brouillon</strong><p className="mt-1 text-xs leading-5 opacity-80">Personnalisez-le et contrôlez l’aperçu. Le brouillon reste modifiable.</p></div>
+                        <div className="rounded-xl bg-white/70 p-4 dark:bg-slate-950/40"><strong>2. Publiez-le</strong><p className="mt-1 text-xs leading-5 opacity-80">Il devient disponible pour les QR et son contenu est définitivement protégé.</p></div>
+                        <div className="rounded-xl bg-white/70 p-4 dark:bg-slate-950/40"><strong>3. Dupliquez pour évoluer</strong><p className="mt-1 text-xs leading-5 opacity-80">La copie est un nouveau brouillon indépendant que vous pouvez modifier.</p></div>
+                    </div>
+                </section>
+            )}
+
             {notice && <div role="status" className={`rounded-xl border px-4 py-3 text-sm font-semibold ${notice.type === "error" ? "border-red-200 bg-red-50 text-red-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"}`}>{notice.text}</div>}
 
             {templates.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center dark:border-slate-700 dark:bg-slate-950"><div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600"><Plus /></div><h2 className="font-black text-slate-900 dark:text-white">Aucun modèle personnalisé</h2><p className="mt-2 text-sm text-slate-500">Créez votre premier modèle à partir de l’un des 10 formats disponibles.</p><button onClick={openNew} className="mt-5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white">Créer un modèle</button></div>
+                <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center dark:border-slate-700 dark:bg-slate-950"><div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600"><Plus /></div><h2 className="font-black text-slate-900 dark:text-white">Aucun modèle personnalisé</h2><p className="mt-2 text-sm text-slate-500">Créez votre premier modèle à partir de l’un des 4 formats disponibles.</p><button onClick={openNew} className="mt-5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white">Créer un modèle</button></div>
             ) : (
                 <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">{templates.map(template => (
                     <article key={template.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
                         <div className="bg-slate-100 p-5 dark:bg-slate-900"><TemplatePreview template={template} /></div>
-                        <div className="p-5"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><h2 className="truncate font-black text-slate-900 dark:text-white">{template.name}</h2><p className="mt-1 text-xs text-slate-500">{BASE_TEMPLATES.find(item => item.id === template.baseTemplateId)?.name} · version {template.version || 1}</p></div>{defaultId === template.templateId && <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-1 text-[10px] font-black text-amber-700"><Star className="h-3 w-3 fill-current" /> PAR DÉFAUT</span>}</div>
+                        <div className="p-5"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><h2 className="truncate font-black text-slate-900 dark:text-white">{template.name}</h2><p className="mt-1 text-xs text-slate-500">{BASE_TEMPLATES.find(item => item.id === template.baseTemplateId)?.name} · {template.status === "DRAFT" ? "Brouillon" : template.status === "ARCHIVED" ? "Archivé" : "Publié"}</p></div>{defaultId === template.templateId && <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-1 text-[10px] font-black text-amber-700"><Star className="h-3 w-3 fill-current" /> PAR DÉFAUT</span>}</div>
                             <div className="mt-5 grid grid-cols-5 gap-2">
-                                <button title="Modifier" onClick={() => openEdit(template)} className="rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-50"><Pencil className="mx-auto h-4 w-4" /></button>
+                                <button title={template.status === "DRAFT" ? "Modifier" : "Dupliquez ce modèle pour le modifier"} disabled={template.status !== "DRAFT"} onClick={() => openEdit(template)} className="rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-35"><Pencil className="mx-auto h-4 w-4" /></button>
                                 <button title="Dupliquer" disabled={!!busy} onClick={() => action(`copy-${template.id}`, `/card-templates/custom/${template.id}/duplicate`, "POST", "Modèle dupliqué.")} className="rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-50"><Copy className="mx-auto h-4 w-4" /></button>
-                                <button title={template.status === "PUBLISHED" ? "Archiver" : "Publier"} disabled={!!busy} onClick={() => action(`status-${template.id}`, `/card-templates/custom/${template.id}/status`, "PUT", template.status === "PUBLISHED" ? "Modèle archivé." : "Modèle publié.", { status: template.status === "PUBLISHED" ? "ARCHIVED" : "PUBLISHED" })} className="rounded-lg border border-slate-200 p-2 text-emerald-600 hover:bg-emerald-50">{template.status === "PUBLISHED" ? <X className="mx-auto h-4 w-4" /> : <Check className="mx-auto h-4 w-4" />}</button>
-                                <button title="Définir par défaut" disabled={!!busy || defaultId === template.templateId} onClick={() => action(`default-${template.id}`, `/card-templates/custom/${template.id}/default`, "PUT", "Modèle défini par défaut.")} className="rounded-lg border border-slate-200 p-2 text-amber-600 hover:bg-amber-50 disabled:opacity-40"><Star className="mx-auto h-4 w-4" /></button>
-                                <button title="Supprimer" disabled={!!busy} onClick={() => window.confirm(`Supprimer « ${template.name} » ?`) && action(`delete-${template.id}`, `/card-templates/custom/${template.id}`, "DELETE", "Modèle supprimé.")} className="rounded-lg border border-red-100 p-2 text-red-600 hover:bg-red-50"><Trash2 className="mx-auto h-4 w-4" /></button>
+                                <button title={template.status === "DRAFT" ? "Publier" : template.status === "PUBLISHED" ? "Archiver" : "Modèle archivé"} disabled={!!busy || template.status === "ARCHIVED"} onClick={() => action(`status-${template.id}`, `/card-templates/custom/${template.id}/status`, "PUT", template.status === "PUBLISHED" ? "Modèle archivé." : "Modèle publié.", { status: template.status === "PUBLISHED" ? "ARCHIVED" : "PUBLISHED" })} className="rounded-lg border border-slate-200 p-2 text-emerald-600 hover:bg-emerald-50 disabled:opacity-35">{template.status === "PUBLISHED" ? <X className="mx-auto h-4 w-4" /> : <Check className="mx-auto h-4 w-4" />}</button>
+                                <button title="Définir par défaut" disabled={!!busy || defaultId === template.templateId || template.status !== "PUBLISHED"} onClick={() => action(`default-${template.id}`, `/card-templates/custom/${template.id}/default`, "PUT", "Modèle défini par défaut.")} className="rounded-lg border border-slate-200 p-2 text-amber-600 hover:bg-amber-50 disabled:opacity-40"><Star className="mx-auto h-4 w-4" /></button>
+                                <button title="Supprimer" disabled={!!busy} onClick={() => setTemplateToDelete(template)} className="rounded-lg border border-red-100 p-2 text-red-600 hover:bg-red-50"><Trash2 className="mx-auto h-4 w-4" /></button>
                             </div>
                         </div>
                     </article>
                 ))}</div>
+            )}
+
+            {templateToDelete && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm">
+                    <div role="dialog" aria-modal="true" aria-labelledby="delete-template-title" className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-950">
+                        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-red-600 dark:bg-red-950/50 dark:text-red-300"><Trash2 className="h-5 w-5" /></div>
+                        <h2 id="delete-template-title" className="mt-4 text-center text-lg font-black text-slate-950 dark:text-white">Confirmer la suppression</h2>
+                        <p className="mt-2 text-center text-sm leading-6 text-slate-600 dark:text-slate-300">Voulez-vous vraiment supprimer le modèle « {templateToDelete.name} » ?</p>
+                        <div className="mt-6 grid grid-cols-2 gap-3">
+                            <button type="button" disabled={!!busy} onClick={() => setTemplateToDelete(null)} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-900">Non, annuler</button>
+                            <button type="button" disabled={!!busy} onClick={async () => { const template = templateToDelete; setTemplateToDelete(null); await action(`delete-${template.id}`, `/card-templates/custom/${template.id}`, "DELETE", "Modèle supprimé."); }} className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-black text-white hover:bg-red-700 disabled:opacity-60"><Trash2 className="h-4 w-4" />Oui, supprimer</button>
+                        </div>
+                    </div>
+                </div>
             )}
 
             {showEditor && <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/55 p-0 backdrop-blur-sm sm:items-center sm:p-5"><div role="dialog" aria-modal="true" className="max-h-[95vh] w-full max-w-5xl overflow-y-auto rounded-t-3xl bg-white shadow-2xl dark:bg-slate-950 sm:rounded-3xl"><div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white/95 px-6 py-4 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95"><div><h2 className="text-lg font-black dark:text-white">{editingId ? "Modifier le modèle" : "Nouveau modèle"}</h2><p className="text-xs text-slate-500">Les modifications apparaissent immédiatement dans l’aperçu.</p></div><button onClick={closeEditor} aria-label="Fermer" className="rounded-xl p-2 text-slate-500 hover:bg-slate-100"><X /></button></div>

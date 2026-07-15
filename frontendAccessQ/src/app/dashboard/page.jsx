@@ -2,27 +2,34 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { CalendarPlus, CheckCircle2, Download, Loader2, MapPinned, QrCode, TrendingUp, UserPlus, Users, X } from "lucide-react";
+import { CalendarPlus, CheckCircle2, Copy, Download, Loader2, MapPinned, Palette, QrCode, TrendingUp, UserPlus, Users, X } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { apiFetch, refreshSession } from "../lib/api";
 import LoadingBar from "../components/LoadingBar";
 
-const ONBOARDING_STORAGE_KEY = "qrAccessDashboardOnboardingDismissed";
+const ONBOARDING_STORAGE_KEY = "qrAccessDashboardOnboardingV2Dismissed";
 
 const onboardingSteps = [
-    {
-        title: "Créer un événement",
-        description: "Ajoutez le nom, la date et les accès à contrôler.",
-        href: "/dashboard/events/new",
-        action: "Nouvel événement",
-        icon: CalendarPlus
-    },
     {
         title: "Préparer les zones",
         description: "Définissez les entrées, salles ou espaces autorisés.",
         href: "/dashboard/areas",
         action: "Gérer les zones",
         icon: MapPinned
+    },
+    {
+        title: "Créer un modèle",
+        description: "Préparez votre carte en brouillon, vérifiez son aperçu puis publiez-la.",
+        href: "/dashboard/card-templates",
+        action: "Gérer les modèles",
+        icon: Palette
+    },
+    {
+        title: "Créer un événement",
+        description: "Ajoutez le nom, la date et les accès à contrôler.",
+        href: "/dashboard/events/new",
+        action: "Nouvel événement",
+        icon: CalendarPlus
     },
     {
         title: "Générer des QR codes",
@@ -173,7 +180,14 @@ export default function Dashboard() {
                 )}
             </div>
 
-            {showOnboarding && (
+            {stats.onboarding && !stats.onboarding.complete && (
+                <section className="flex flex-col gap-4 rounded-2xl border border-blue-200 bg-blue-50 p-5 dark:border-blue-900/50 dark:bg-blue-950/20 sm:flex-row sm:items-center">
+                    <div className="min-w-0 flex-1"><p className="text-sm font-black text-blue-950 dark:text-blue-100">Configuration de votre organisation · {stats.onboarding.percentage}%</p><div className="mt-2 h-2 overflow-hidden rounded-full bg-blue-100 dark:bg-blue-950"><div className="h-full rounded-full bg-blue-600" style={{ width: `${stats.onboarding.percentage}%` }} /></div><p className="mt-2 text-xs text-blue-700 dark:text-blue-300">{stats.onboarding.completed} étape{stats.onboarding.completed > 1 ? "s" : ""} sur {stats.onboarding.total} terminée{stats.onboarding.completed > 1 ? "s" : ""}.</p></div>
+                    <Link href="/dashboard/getting-started" className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-700">Continuer la configuration</Link>
+                </section>
+            )}
+
+            {false && showOnboarding && (
                 <section className="relative overflow-hidden rounded-2xl border border-blue-100 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
                     <button
                         type="button"
@@ -195,7 +209,7 @@ export default function Dashboard() {
                         </p>
                     </div>
 
-                    <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                    <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
                         {onboardingSteps.map((step) => {
                             const Icon = step.icon;
                             return (
@@ -214,6 +228,21 @@ export default function Dashboard() {
                                 </div>
                             );
                         })}
+                    </div>
+
+                    <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-5 dark:border-amber-900/60 dark:bg-amber-950/20">
+                        <div className="flex items-start gap-3">
+                            <Copy className="mt-0.5 h-5 w-5 flex-none text-amber-700 dark:text-amber-300" />
+                            <div>
+                                <h4 className="font-bold text-amber-950 dark:text-amber-100">Comment faire évoluer un modèle ?</h4>
+                                <div className="mt-3 grid gap-3 text-sm text-amber-900 dark:text-amber-200 md:grid-cols-3">
+                                    <p><strong>1. Brouillon :</strong> créez et modifiez librement votre modèle tant qu’il n’est pas publié.</p>
+                                    <p><strong>2. Publication :</strong> le modèle devient disponible pour les QR et ne peut plus être modifié.</p>
+                                    <p><strong>3. Évolution :</strong> dupliquez le modèle publié, modifiez la copie puis publiez-la.</p>
+                                </div>
+                                <p className="mt-3 text-xs leading-5 text-amber-800 dark:text-amber-300">Cette règle protège les cartes déjà remises : leur apparence ne change jamais après leur génération.</p>
+                            </div>
+                        </div>
                     </div>
                 </section>
             )}

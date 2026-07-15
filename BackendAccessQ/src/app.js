@@ -96,7 +96,6 @@ app.use(cors({
 }));
 
 // ===== Middlewares globaux =====
-app.use(generalLimiter); // Filet de sécurité global contre les abus et DDoS basiques
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -122,6 +121,10 @@ app.get("/cards/:filename/download", (req, res) => {
 });
 
 app.use(express.static(path.join(__dirname, "statics")));
+
+// Le limiteur concerne uniquement les API. Les images, QR, SVG et PDF statiques
+// ne doivent pas consommer le quota de navigation d'un utilisateur.
+app.use(generalLimiter);
 
 // Importer les différentes routes depuis le dossier src/routes/
 const userRoutes = require("./routes/user.routes");

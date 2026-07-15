@@ -8,6 +8,7 @@ import { CheckCircle, XCircle, Loader2 } from "lucide-react";
 function VerifyEmailContent() {
     const searchParams = useSearchParams();
     const token = searchParams.get("token");
+    const requestedEmail = searchParams.get("email") || "";
     const hasToken = Boolean(token);
 
     const [status, setStatus] = useState(hasToken ? "loading" : "error"); // loading, success, error
@@ -16,6 +17,19 @@ function VerifyEmailContent() {
             ? "Vérification de votre adresse e-mail en cours..."
             : "Lien de vérification invalide ou manquant."
     );
+    const [email, setEmail] = useState(requestedEmail);
+    const [resending, setResending] = useState(false);
+
+    const resend = async (event) => {
+        event.preventDefault(); setResending(true);
+        try {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/user/resend-verification`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) });
+            const data = await res.json();
+            setMessage(data.message || "Demande traitée.");
+            if (data.success) setStatus("success");
+        } catch { setMessage("Service momentanément indisponible."); }
+        finally { setResending(false); }
+    };
 
     useEffect(() => {
         if (!token) {
@@ -76,6 +90,14 @@ function VerifyEmailContent() {
                     <p className="text-slate-600 dark:text-slate-300 mb-8 max-w-sm mx-auto">
                         {message}
                     </p>
+
+                    {status === "error" && (
+                        <form onSubmit={resend} className="mb-4 space-y-3 text-left">
+                            <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200">Adresse e-mail</label>
+                            <input type="email" required value={email} onChange={event => setEmail(event.target.value)} placeholder="nom@domaine.com" className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-900" />
+                            <button disabled={resending} className="w-full rounded-lg bg-blue-600 px-4 py-3 text-sm font-bold text-white disabled:opacity-60">{resending ? "Envoi en cours..." : "Renvoyer le lien"}</button>
+                        </form>
+                    )}
 
                     {(status === "success" || status === "error") && (
                         <Link

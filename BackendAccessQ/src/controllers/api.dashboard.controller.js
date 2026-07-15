@@ -1,5 +1,27 @@
 const prisma = require("../prisma/client");
 
+const getOnboardingProgress = async (orgId) => {
+    const [areas, models, events, qrs, agents] = await Promise.all([
+        prisma.area.count({ where: { org_id: orgId, deleted_at: null } }),
+        prisma.cardTemplateCustom.count({ where: { org_id: orgId, deleted_at: null, status: "PUBLISHED" } }),
+        prisma.event.count({ where: { org_id: orgId, deleted_at: null } }),
+        prisma.qrCode.count({ where: { event: { org_id: orgId }, deleted_at: null } }),
+        prisma.userQ.count({ where: { org_id: orgId, role: { in: ["ORG_AGENT", "OPERATOR"] }, deleted_at: null, is_active: true } })
+    ]);
+    const steps = { areas: areas > 0, models: models > 0, events: events > 0, qrs: qrs > 0, agents: agents > 0 };
+    const completed = Object.values(steps).filter(Boolean).length;
+    return { steps, completed, total: 5, percentage: completed * 20, complete: completed === 5 };
+};
+
+exports.getOnboardingProgress = async (req, res) => {
+    try {
+        if (!req.user?.org_id) return res.status(401).json({ success: false, message: "Non autorisé" });
+        return res.json({ success: true, data: await getOnboardingProgress(req.user.org_id) });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: "Impossible de charger la progression." });
+    }
+};
+
 exports.getOverviewStats = async (req, res) => {
     try {
         // Vérifier que l'utilisateur est authentifié et a une organisation
@@ -138,6 +160,7 @@ exports.getOverviewStats = async (req, res) => {
             time: scan.scanned_at,
             status: scan.status
         }));
+        const onboarding = await getOnboardingProgress(orgId);
 
         return res.status(200).json({
             success: true,
@@ -149,7 +172,8 @@ exports.getOverviewStats = async (req, res) => {
                 activeAgents: activeAgentsCount,
                 recentScans: formattedScans,
                 scansByDay: scansByDay,
-                topAgents: topAgents
+                topAgents: topAgents,
+                onboarding
             }
         });
 

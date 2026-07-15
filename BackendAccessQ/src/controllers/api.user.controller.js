@@ -5,9 +5,11 @@ const userService = require("../services/user.service");
 const emailService = require("../services/email.service");
 const prisma = require("../prisma/client");
 const { getSessionCookieOptions } = require("../config/security");
+const { getPrivateKey, getPublicKey } = require("../config/jwtKeys");
 const logger = require("../utils/logger");
 const PasswordValidator = require('password-validator');
 const pm = new PasswordValidator();
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 pm
     .is().min(8)
@@ -26,6 +28,9 @@ const parsedSaltRounds = Number.parseInt(process.env.SALT_ROUNDS, 10);
 const BCRYPT_SALT_ROUNDS = Number.isInteger(parsedSaltRounds) && parsedSaltRounds >= 4 && parsedSaltRounds <= 31
     ? parsedSaltRounds
     : 10;
+const VERIFICATION_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
+const VERIFICATION_RESEND_COOLDOWN_MS = 60 * 1000;
+const newVerificationToken = () => crypto.randomBytes(32).toString("hex");
 
 const durationToMs = (duration, fallbackMs) => {
     if (!duration || typeof duration !== "string") return fallbackMs;
@@ -78,13 +83,13 @@ const buildTokenPayload = (user, tokenType) => ({
 const issueSession = (res, user) => {
     const accessToken = jwt.sign(
         buildTokenPayload(user, "access"),
-        process.env.PRIVATE_KEY,
+        getPrivateKey(),
         { expiresIn: ACCESS_TOKEN_EXPIRES_IN, algorithm: "RS256" }
     );
 
     const refreshToken = jwt.sign(
         buildTokenPayload(user, "refresh"),
-        process.env.PRIVATE_KEY,
+        getPrivateKey(),
         { expiresIn: REFRESH_TOKEN_EXPIRES_IN, algorithm: "RS256" }
     );
 
@@ -126,6 +131,8 @@ exports.login = async (req, res) => {
         if (!user.is_verified) {
             return res.status(403).json({
                 success: false,
+                code: "EMAIL_NOT_VERIFIED",
+                canResend: true,
                 message: "Veuillez vérifier votre adresse email avant de vous connecter. Consultez votre boîte de réception."
             });
         }
@@ -167,7 +174,7 @@ exports.refreshSession = async (req, res) => {
         return res.status(401).json({ success: false, message: "Session expirée. Veuillez vous reconnecter." });
     }
 
-    jwt.verify(refreshToken, process.env.PUBLIC_KEY, { algorithms: ["RS256"] }, (err, decoded) => {
+    jwt.verify(refreshToken, getPublicKey(), { algorithms: ["RS256"] }, (err, decoded) => {
         if (err || decoded.token_type !== "refresh") {
             logger.warn("session.refresh_failed", {
                 reason: err ? "invalid_refresh_token" : "wrong_token_type",
@@ -221,7 +228,7 @@ exports.signin = async (req, res) => {
             const clef = crypto.randomUUID(); // Génération d'une clef unique
 
             // --- NOUVEAU: GÉNÉRATION DU TOKEN DE VÉRIFICATION ---
-            const verificationToken = crypto.randomBytes(32).toString('hex');
+            const verificationToken = newVerificationToken();
 
             const orgData = { name: organizationName };
             const userData = {
@@ -231,19 +238,30 @@ exports.signin = async (req, res) => {
                 password_hash: hashed,
                 role: "ORG_ADMIN",
                 is_verified: false,
-                verification_token: verificationToken
+                verification_token: verificationToken,
+                verification_token_expires_at: new Date(Date.now() + VERIFICATION_TOKEN_TTL_MS)
             };
 
             const result = await userService.createOrgAndAdminUser(orgData, userData);
 
             // Envoi de l'e-mail simulé
-            await emailService.sendVerificationEmail(email, fullName, verificationToken);
+            const emailSent = await emailService.sendVerificationEmail(email, fullName, verificationToken);
+            if (emailSent) {
+                await prisma.userQ.update({ where: { user_id: result.user.user_id }, data: { verification_email_sent_at: new Date() } });
+            }
 
             return res.status(201).json({
                 success: true,
-                message: "Inscription réussie ! Un e-mail de confirmation vous a été envoyé. Veuillez vérifier votre boîte de réception pour activer votre compte.",
+                emailSent,
+                email,
+                message: emailSent
+                    ? "Compte créé. Un e-mail de vérification vous a été envoyé."
+                    : "Compte créé, mais l’e-mail n’a pas pu être envoyé. Vous pouvez demander un nouvel envoi.",
             });
         } else {
+            if (!user.is_verified) {
+                return res.status(409).json({ success: false, code: "EMAIL_NOT_VERIFIED", canResend: true, email, message: "Ce compte existe déjà mais son adresse n’est pas vérifiée." });
+            }
             return res.status(400).json({
                 success: false,
                 message: "Cet email est déjà pris"
@@ -268,7 +286,7 @@ exports.verifyEmail = async (req, res) => {
 
         // Trouver l'utilisateur par son token de vérification
         const user = await prisma.userQ.findFirst({
-            where: { verification_token: token }
+            where: { verification_token: token, verification_token_expires_at: { gt: new Date() }, is_verified: false }
         });
 
         if (!user) {
@@ -280,7 +298,8 @@ exports.verifyEmail = async (req, res) => {
             where: { user_id: user.user_id },
             data: {
                 is_verified: true,
-                verification_token: null // Nettoyer le token une fois utilisé
+                verification_token: null,
+                verification_token_expires_at: null
             }
         });
 
@@ -292,6 +311,27 @@ exports.verifyEmail = async (req, res) => {
     } catch (error) {
         console.error("Erreur de vérification : ", error);
         return res.status(500).json({ success: false, message: "Erreur serveur lors de la vérification de l'e-mail." });
+    }
+};
+
+exports.resendVerificationEmail = async (req, res) => {
+    try {
+        const email = String(req.body.email || "").trim().toLowerCase();
+        if (!email || !emailPattern.test(email)) return res.status(400).json({ success: false, message: "Adresse e-mail invalide." });
+        const user = await userService.findByEmail(email);
+        if (!user || user.is_verified) return res.status(202).json({ success: true, message: "Si ce compte nécessite une vérification, un e-mail sera envoyé." });
+        const lastSent = user.verification_email_sent_at ? new Date(user.verification_email_sent_at).getTime() : 0;
+        const retryAfter = Math.ceil((lastSent + VERIFICATION_RESEND_COOLDOWN_MS - Date.now()) / 1000);
+        if (retryAfter > 0) return res.status(429).json({ success: false, retryAfter, message: `Veuillez patienter ${retryAfter} secondes avant un nouvel envoi.` });
+        const token = newVerificationToken();
+        await prisma.userQ.update({ where: { user_id: user.user_id }, data: { verification_token: token, verification_token_expires_at: new Date(Date.now() + VERIFICATION_TOKEN_TTL_MS) } });
+        const sent = await emailService.sendVerificationEmail(user.email, user.full_name, token);
+        if (!sent) return res.status(503).json({ success: false, message: "Le service d’e-mail est temporairement indisponible. Veuillez réessayer." });
+        await prisma.userQ.update({ where: { user_id: user.user_id }, data: { verification_email_sent_at: new Date() } });
+        return res.status(202).json({ success: true, message: "Un nouvel e-mail de vérification a été envoyé." });
+    } catch (error) {
+        logger.error("verification_email.resend_failed", { error, request_id: req.requestId });
+        return res.status(500).json({ success: false, message: "Impossible de renvoyer l’e-mail pour le moment." });
     }
 };
 

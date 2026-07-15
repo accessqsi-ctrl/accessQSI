@@ -25,7 +25,8 @@ const loadUserApp = ({
         generalLimiter: passThroughLimiter,
         loginLimiter: passThroughLimiter,
         signinLimiter: passThroughLimiter,
-        refreshLimiter: passThroughLimiter
+        refreshLimiter: passThroughLimiter,
+        verificationEmailLimiter: passThroughLimiter
     });
     mockModule("src/services/user.service", userService);
     mockModule("src/services/email.service", {
@@ -278,8 +279,25 @@ test("POST /user/verify-email activates a user and clears the verification token
     assert.equal(res.body.success, true);
     assert.deepEqual(updateArgs, {
         where: { user_id: 7 },
-        data: { is_verified: true, verification_token: null }
+        data: { is_verified: true, verification_token: null, verification_token_expires_at: null }
     });
+});
+
+test("POST /user/resend-verification rotates the token and sends a new email", async () => {
+    const updates = [];
+    let sentToken = null;
+    const app = loadUserApp({
+        userService: { findByEmail: async () => ({ user_id: 7, email: "admin@example.com", full_name: "Admin", is_verified: false, verification_email_sent_at: null }) },
+        prisma: { userQ: { update: async (args) => { updates.push(args); return {}; } } },
+        emailService: { sendVerificationEmail: async (email, name, token) => { sentToken = token; return true; } }
+    });
+    const res = await request(app, "POST", "/user/resend-verification", { email: "admin@example.com" });
+    assert.equal(res.status, 202);
+    assert.equal(res.body.success, true);
+    assert.equal(typeof sentToken, "string");
+    assert.equal(updates[0].data.verification_token, sentToken);
+    assert.ok(updates[0].data.verification_token_expires_at instanceof Date);
+    assert.ok(updates[1].data.verification_email_sent_at instanceof Date);
 });
 
 test("GET /user/profile returns the authenticated user profile", async () => {

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Loader2, Calendar, MapPin, QrCode, Edit2, Trash2, ArrowLeft, Plus, Download, X, CheckCircle2, FileSpreadsheet, FileText, Mail, Phone, IdCard, Sparkles, Ticket } from "lucide-react";
+import { Loader2, Calendar, MapPin, QrCode, Edit2, Trash2, ArrowLeft, Plus, Download, X, CheckCircle2, FileSpreadsheet, FileText, Mail, Phone, IdCard, Ticket } from "lucide-react";
 import { apiFetch, refreshSession } from "../../../lib/api";
 import LoadingBar from "../../../components/LoadingBar";
 
@@ -57,14 +57,8 @@ const getCardDownloadUrl = (cardUrl) => {
 const templateIconMap = {
     "event-ticket": Ticket,
     "compact-ticket": Ticket,
-    "access-pass": FileSpreadsheet,
-    "vip-pass": Sparkles,
     "staff-card": IdCard,
-    "staff-badge-horizontal": IdCard,
     "wedding-invite": Mail,
-    "wedding-modern-navy-beige": Mail,
-    "vip-invitation": Sparkles,
-    "simple-invitation": Mail
 };
 
 const templateAccentClasses = {
@@ -1054,7 +1048,7 @@ export default function EventDetailPage() {
                                                     <option value="">QR seul, sans carte</option>
                                                     {cardTemplates.map(template => (
                                                         <option key={template.templateId} value={template.templateId}>
-                                                            {template.name} · v{template.version || 1}{template.isDefault ? " — par défaut" : ""}
+                                                            {template.name}{template.isDefault ? " — par défaut" : ""}
                                                         </option>
                                                     ))}
                                                 </select>

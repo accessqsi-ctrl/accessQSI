@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const logger = require("../utils/logger");
+const { getPublicKey } = require("../config/jwtKeys");
 
 function authenticateToken(req, res, next) {
   const authHeader = req.headers["authorization"];
@@ -16,7 +17,7 @@ function authenticateToken(req, res, next) {
     return res.status(401).json({ message: "Accès refusé. Token manquant." });
   }
 
-  jwt.verify(token, process.env.PUBLIC_KEY, { algorithms: ["RS256"] }, (err, user) => {
+  jwt.verify(token, getPublicKey(), { algorithms: ["RS256"] }, (err, user) => {
     if (err) {
       logger.warn("auth.denied", {
         reason: "invalid_token",

@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "main": "server.js",
   "scripts": {
+    "prestart": "prisma generate",
     "start": "node server.js",
     "test": "node --test",
     "prisma:generate": "prisma generate"

@@ -42,8 +42,8 @@ const cardPdfExistsForToken = (token) => (
 
 const resolveCardTemplate = async (orgId, cardTemplateId) => {
     if (!cardTemplateId) return null;
-    if (cardTemplateService.hasTemplate(cardTemplateId)) {
-        return { sourceTemplateId: cardTemplateId, templateId: cardTemplateId, version: 1 };
+    if (cardTemplateService.isTemplateAvailable?.(cardTemplateId) || (!cardTemplateService.isTemplateAvailable && cardTemplateService.hasTemplate(cardTemplateId))) {
+        return { sourceTemplateId: cardTemplateId, templateId: cardTemplateId };
     }
 
     const customTemplate = await customCardTemplateService.resolveCustomForRender(orgId, cardTemplateId);
@@ -52,7 +52,6 @@ const resolveCardTemplate = async (orgId, cardTemplateId) => {
     return {
         sourceTemplateId: cardTemplateId,
         templateId: customTemplate.baseTemplateId,
-        version: customTemplate.version || 1,
         customization: customTemplate
     };
 };
@@ -61,7 +60,6 @@ const createTemplateSnapshot = (resolvedTemplate) => resolvedTemplate ? {
     schemaVersion: 1,
     sourceTemplateId: resolvedTemplate.sourceTemplateId,
     baseTemplateId: resolvedTemplate.templateId,
-    version: resolvedTemplate.version || 1,
     customization: resolvedTemplate.customization || null
 } : null;
 
@@ -71,7 +69,6 @@ const resolveTemplateSnapshot = (snapshot) => {
     return {
         sourceTemplateId: snapshot.sourceTemplateId,
         templateId: snapshot.baseTemplateId,
-        version: Number(snapshot.version) || 1,
         customization: snapshot.customization || undefined
     };
 };
@@ -136,7 +133,6 @@ exports.generateQrForEvent = async (req, res) => {
             holder_phone: phone || null,
             card_data: cardTemplateId ? cardData : undefined,
             card_template_id: cardTemplateId || null,
-            card_template_version: resolvedCardTemplate?.version || null,
             card_template_snapshot: createTemplateSnapshot(resolvedCardTemplate),
             card_message: cardTemplateId ? String(cardMessage || "").trim().slice(0, 160) || null : null,
             card_generation_status: cardTemplateId ? "PENDING" : null,
@@ -464,7 +460,6 @@ exports.importQrsFromCSV = async (req, res) => {
                 holder_email: email || null,
                 holder_phone: phone || null,
                 card_template_id: cardTemplateId || null,
-                card_template_version: resolvedCardTemplate?.version || null,
                 card_template_snapshot: createTemplateSnapshot(resolvedCardTemplate),
                 card_message: cardTemplateId ? String(cardMessage).trim().slice(0, 160) || null : null,
                 card_generation_status: cardTemplateId ? "PENDING" : null,
@@ -563,7 +558,6 @@ exports.generateCardForExistingQr = async (req, res) => {
 
         await qrService.updateQr(qrId, {
             card_template_id: resolvedCardTemplate.sourceTemplateId,
-            card_template_version: resolvedCardTemplate.version || 1,
             card_template_snapshot: createTemplateSnapshot(resolvedCardTemplate),
             card_generated_at: new Date(),
             card_message: cardMessage || null,

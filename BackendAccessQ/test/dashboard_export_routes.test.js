@@ -34,6 +34,8 @@ const loadExportApp = ({ user, prisma, csvWriter, PDFDocument }) => {
 test("GET /dashboard/stats returns overview stats scoped to the authenticated organization", async () => {
     const calls = [];
     const prisma = {
+        area: { count: async ({ where }) => { calls.push(["area.count", where.org_id]); return 1; } },
+        cardTemplateCustom: { count: async ({ where }) => { calls.push(["cardTemplate.count", where.org_id]); return 1; } },
         qrCode: {
             count: async ({ where }) => {
                 calls.push(["qrCode.count", where.event.org_id]);
@@ -103,6 +105,8 @@ test("GET /dashboard/stats returns overview stats scoped to the authenticated or
 
 test("GET /dashboard/stats tolerates missing dashboard relations", async () => {
     const prisma = {
+        area: { count: async () => 0 },
+        cardTemplateCustom: { count: async () => 0 },
         qrCode: {
             count: async () => 1,
             aggregate: async () => ({ _sum: { scans_count: 1 } })

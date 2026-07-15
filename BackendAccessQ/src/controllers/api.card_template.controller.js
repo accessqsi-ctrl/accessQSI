@@ -34,13 +34,6 @@ exports.previewTemplate = async (req, res) => {
     }
 };
 
-exports.listVersions = async (req, res) => {
-    const orgId = requireOrg(req, res); if (!orgId) return;
-    const versions = await customCardTemplateService.listVersionsForOrg(orgId, req.params.id);
-    if (!versions) return res.status(404).json({ success: false, message: "Modèle introuvable." });
-    res.json({ success: true, versions });
-};
-
 exports.setStatus = async (req, res) => {
     const orgId = requireOrg(req, res); if (!orgId) return;
     const template = await customCardTemplateService.setStatusForOrg(orgId, req.params.id, req.body.status);

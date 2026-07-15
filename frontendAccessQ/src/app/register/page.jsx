@@ -23,8 +23,9 @@ export default function Register() {
     };
 
     const [error, setError] = useState("");
-    const [success, setSuccess] = useState(false);
+    const [success, setSuccess] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [resending, setResending] = useState(false);
     const [hasOrganization, setHasOrganization] = useState(true);
 
     // Strict Password Validator matching the backend rules
@@ -71,11 +72,9 @@ export default function Register() {
             const data = await res.json();
 
             if (data.success) {
-                setSuccess(true);
-                // Redirect user after short delay or instantly
-                setTimeout(() => {
-                    window.location.href = "/login";
-                }, 2000);
+                setSuccess({ email: data.email || formData.email, message: data.message, emailSent: data.emailSent !== false });
+            } else if (data.code === "EMAIL_NOT_VERIFIED" && data.canResend) {
+                setSuccess({ email: data.email || formData.email, message: data.message, emailSent: false });
             } else {
                 setError(data.message || "Erreur lors de la création du compte.");
             }
@@ -85,6 +84,17 @@ export default function Register() {
         } finally {
             setLoading(false);
         }
+    };
+
+    const resendVerification = async () => {
+        setResending(true); setError("");
+        try {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/user/resend-verification`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: success.email }) });
+            const data = await res.json();
+            if (!data.success) throw new Error(data.message || "Nouvel envoi impossible.");
+            setSuccess(current => ({ ...current, emailSent: true, message: data.message }));
+        } catch (err) { setError(err.message); }
+        finally { setResending(false); }
     };
 
     return (
@@ -137,8 +147,12 @@ export default function Register() {
                     )}
 
                     {success && (
-                        <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-lg text-sm text-center font-medium">
-                            Compte créé. Redirection vers la connexion...
+                        <div className="mb-6 space-y-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-center text-sm font-medium text-emerald-700">
+                            <p>{success.message}</p>
+                            <p className="text-xs">Adresse : {success.email}</p>
+                            <button type="button" disabled={resending} onClick={resendVerification} className="rounded-lg bg-emerald-700 px-4 py-2 text-xs font-bold text-white disabled:opacity-60">
+                                {resending ? "Envoi en cours..." : "Renvoyer l’e-mail de vérification"}
+                            </button>
                         </div>
                     )}
 

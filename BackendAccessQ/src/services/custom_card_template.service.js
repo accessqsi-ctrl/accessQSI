@@ -95,10 +95,10 @@ const normalizeCanvasScene = (value = null, baseTemplate = null, existing = null
     };
 };
 
-const normalizePayload = (payload = {}, existing = null) => {
+const normalizePayload = (payload = {}, existing = null, options = {}) => {
     const baseTemplateId = String(payload.baseTemplateId || existing?.base_template_id || "").trim();
     const baseTemplate = cardTemplateService.getTemplate(baseTemplateId);
-    if (!baseTemplate) {
+    if (!baseTemplate || (!options.allowUnavailable && !cardTemplateService.isTemplateAvailable(baseTemplateId))) {
         const error = new Error("Modèle de base invalide.");
         error.statusCode = 400;
         throw error;
@@ -160,14 +160,13 @@ const toApiTemplate = (template) => ({
     canvasScene: template.canvas_scene || null,
     layout: template.layout,
     isDefault: template.is_default,
-    version: template.version || 1,
     status: template.status || "DRAFT",
     createdAt: template.created_at,
     updatedAt: template.updated_at
 });
 
 exports.previewPayload = (payload) => {
-    const normalized = normalizePayload(payload);
+    const normalized = normalizePayload(payload, null, { allowUnavailable: String(payload.templateId || "").startsWith("custom:") });
     return cardTemplateService.renderPreview({
         templateId: normalized.base_template_id,
         customization: {
@@ -207,35 +206,32 @@ exports.createForOrg = async (orgId, payload) => {
     const template = await prisma.cardTemplateCustom.create({
         data: { ...data, org_id: orgId }
     });
-    await prisma.cardTemplateVersion.create({ data: { template_id: template.id, version: 1, snapshot: JSON.parse(JSON.stringify(toApiTemplate(template))) } });
     return toApiTemplate(template);
 };
 
 exports.updateForOrg = async (orgId, id, payload) => {
     const existing = await exports.findByIdForOrg(orgId, id);
     if (!existing) return null;
+    if ((existing.status || "DRAFT") !== "DRAFT") {
+        const error = new Error("Un modèle publié ou archivé est immuable. Dupliquez-le pour créer une nouvelle variante.");
+        error.statusCode = 409;
+        throw error;
+    }
 
     const template = await prisma.cardTemplateCustom.update({
         where: { id: existing.id },
-        data: {
-            ...normalizePayload(payload, existing),
-            version: { increment: 1 }
-        }
+        data: normalizePayload(payload, existing)
     });
-    await prisma.cardTemplateVersion.create({ data: { template_id: template.id, version: template.version, snapshot: JSON.parse(JSON.stringify(toApiTemplate(template))) } });
     return toApiTemplate(template);
-};
-
-exports.listVersionsForOrg = async (orgId, id) => {
-    const template = await exports.findByIdForOrg(orgId, id);
-    if (!template) return null;
-    return prisma.cardTemplateVersion.findMany({ where: { template_id: template.id }, orderBy: { version: "desc" } });
 };
 
 exports.setStatusForOrg = async (orgId, id, status) => {
     if (!["DRAFT", "PUBLISHED", "ARCHIVED"].includes(status)) return null;
     const existing = await exports.findByIdForOrg(orgId, id);
     if (!existing) return null;
+    const current = existing.status || "DRAFT";
+    const transitionAllowed = (current === "DRAFT" && status === "PUBLISHED") || (current === "PUBLISHED" && status === "ARCHIVED");
+    if (!transitionAllowed) return null;
     return toApiTemplate(await prisma.cardTemplateCustom.update({ where: { id: existing.id }, data: { status } }));
 };
 
@@ -261,7 +257,7 @@ exports.deleteForOrg = async (orgId, id) => {
 
 exports.duplicateForOrg = async (orgId, id) => {
     const existing = await exports.findByIdForOrg(orgId, id);
-    if (!existing) return null;
+    if (!existing || !cardTemplateService.isTemplateAvailable(existing.base_template_id)) return null;
 
     const template = await prisma.cardTemplateCustom.create({
         data: {
@@ -279,7 +275,7 @@ exports.duplicateForOrg = async (orgId, id) => {
             layout_config: existing.layout_config,
             canvas_scene: existing.canvas_scene,
             layout: existing.layout,
-            version: 1
+            status: "DRAFT"
         }
     });
 
@@ -291,13 +287,13 @@ exports.setDefaultForOrg = async (orgId, templateId) => {
     if (!normalizedTemplateId) return null;
 
     let customId = null;
-    if (cardTemplateService.hasTemplate(normalizedTemplateId)) {
+    if (cardTemplateService.isTemplateAvailable(normalizedTemplateId)) {
         customId = null;
     } else {
         customId = cardTemplateService.extractCustomTemplateId(normalizedTemplateId);
         if (!customId) return null;
         const existing = await exports.findByIdForOrg(orgId, customId);
-        if (!existing) return null;
+        if (!existing || (existing.status || "DRAFT") !== "PUBLISHED") return null;
     }
 
     await prisma.$transaction([
@@ -345,11 +341,10 @@ exports.resolveCustomForRender = async (orgId, templateId) => {
     if (!customId) return null;
 
     const template = await exports.findByIdForOrg(orgId, customId);
-    if (!template) return null;
+    if (!template || (template.status || "DRAFT") !== "PUBLISHED") return null;
 
     return {
         baseTemplateId: template.base_template_id,
-        version: template.version || 1,
         customization: {
             id: template.id,
             name: template.name,

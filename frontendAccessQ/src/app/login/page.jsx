@@ -44,6 +44,10 @@ export default function Login() {
                 // We no longer manually sore it in localStorage.
                 router.push("/dashboard");
             } else {
+                if (data.code === "EMAIL_NOT_VERIFIED" && data.canResend) {
+                    router.push(`/verify-email?email=${encodeURIComponent(formData.email)}`);
+                    return;
+                }
                 setError(data.message || "Identifiants incorrects.");
             }
         } catch (err) {

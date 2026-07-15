@@ -178,7 +178,6 @@ test("POST /qr/generate/:event_id can generate a card from a custom template", a
     let createdData = null;
     const customTemplate = {
         baseTemplateId: "event-ticket",
-        version: 4,
         customization: {
             title: "INVITÉ OFFICIEL",
             primaryColor: "#123456",
@@ -238,7 +237,6 @@ test("POST /qr/generate/:event_id can generate a card from a custom template", a
     assert.deepEqual(cardArgs.customization, customTemplate);
     assert.equal(cardArgs.customization.customization.layoutConfig.version, 2);
     assert.equal(createdData.card_template_id, "custom:12");
-    assert.equal(createdData.card_template_version, 4);
     assert.equal(createdData.card_template_snapshot.schemaVersion, 1);
     assert.equal(createdData.card_template_snapshot.sourceTemplateId, "custom:12");
     assert.equal(createdData.card_template_snapshot.customization.customization.title, "INVITÉ OFFICIEL");

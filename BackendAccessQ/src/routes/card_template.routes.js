@@ -22,7 +22,6 @@ router.use(authMiddleware);
 
 router.get("/custom", cardTemplateController.listCustomTemplates);
 router.post("/preview", adminOnly, cardTemplateController.previewTemplate);
-router.get("/custom/:id/versions", cardTemplateController.listVersions);
 router.put("/custom/:id/status", adminOnly, cardTemplateController.setStatus);
 router.post("/custom", adminOnly, cardTemplateController.createCustomTemplate);
 router.get("/default", cardTemplateController.getDefaultTemplate);

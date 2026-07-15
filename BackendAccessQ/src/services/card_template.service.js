@@ -168,6 +168,10 @@ const cardUrlForToken = (token) => `/cards/${cardFilenameForToken(token)}`;
 const cardPdfUrlForToken = (token) => `/cards/${cardPdfFilenameForToken(token)}`;
 
 const hasTemplate = (templateId) => Boolean(templates[templateId]);
+const availableTemplateIds = new Set([
+    "event-ticket", "staff-card", "wedding-invite", "compact-ticket"
+]);
+const isTemplateAvailable = (templateId) => availableTemplateIds.has(String(templateId || ""));
 
 const extractCustomTemplateId = (templateId) => {
     const match = String(templateId || "").match(/^custom:(\d+)$/);
@@ -558,6 +562,7 @@ const writeSvgPdf = async ({ svg, pdfPath, width, height }) => {
 };
 
 exports.hasTemplate = hasTemplate;
+exports.isTemplateAvailable = isTemplateAvailable;
 exports.getTemplate = getTemplate;
 exports.extractCustomTemplateId = extractCustomTemplateId;
 exports.standardTemplates = templates;

@@ -3,12 +3,14 @@ const rateLimit = require("express-rate-limit");
 // Limiteur global (filet de sécurité contre les abus et attaques DDoS basiques)
 // Appliqué à toutes les routes dans app.js. Les limites sont généreuses pour ne pas
 // gêner les utilisateurs légitimes, mais suffisantes pour bloquer les bots agressifs.
+const configuredGeneralMax = Number.parseInt(process.env.GENERAL_RATE_LIMIT_MAX, 10);
 const generalLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 200,
+    max: Number.isInteger(configuredGeneralMax) && configuredGeneralMax > 0 ? configuredGeneralMax : 2000,
     message: { success: false, message: "Trop de requêtes, veuillez réessayer plus tard." },
-    standardHeaders: false,
+    standardHeaders: "draft-7",
     legacyHeaders: false,
+    skip: () => process.env.NODE_ENV !== "production",
 });
 
 // Limiteur pour les routes d'authentification (anti brute-force)
@@ -39,4 +41,12 @@ const refreshLimiter = rateLimit({
     legacyHeaders: false,
 });
 
-module.exports = { generalLimiter, loginLimiter, signinLimiter, refreshLimiter };
+const verificationEmailLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 5,
+    message: { success: false, message: "Trop de demandes. Veuillez réessayer dans une heure." },
+    standardHeaders: false,
+    legacyHeaders: false,
+});
+
+module.exports = { generalLimiter, loginLimiter, signinLimiter, refreshLimiter, verificationEmailLimiter };

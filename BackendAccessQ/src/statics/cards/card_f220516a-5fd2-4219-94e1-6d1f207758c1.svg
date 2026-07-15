@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="1748" viewBox="0 0 1240 1748">
+<image href="/card-backgrounds/wedding-modern-navy-beige.png" x="0" y="0" width="1240" height="1748" preserveAspectRatio="xMidYMid slice"/>
+<text x="620" y="407" text-anchor="middle" font-family="Arial, sans-serif" font-size="34" font-style="italic" font-weight="700" letter-spacing="3" fill="#080d5f">JE T'INVITE À NOTRE MARIAGE</text>
+<text x="620" y="616" text-anchor="middle" font-family="Georgia, serif" font-size="118" font-style="italic" font-weight="700" letter-spacing="18" fill="#080d5f">NOM 1</text>
+<line x1="387" y1="706" x2="475" y2="706" stroke="#e7bd62" stroke-width="3"/>
+<text x="620" y="718" text-anchor="middle" font-family="Georgia, serif" font-size="54" font-style="italic" fill="#080d5f">&amp;</text>
+<line x1="760" y1="706" x2="846" y2="706" stroke="#e7bd62" stroke-width="3"/>
+<text x="620" y="880" text-anchor="middle" font-family="Georgia, serif" font-size="118" font-style="italic" font-weight="700" letter-spacing="18" fill="#080d5f">NOM 2</text>
+<text x="620" y="994" text-anchor="middle" font-family="Georgia, serif" font-size="46" font-style="italic" font-weight="700" fill="#404040">JUIL</text>
+<text x="620" y="1120" text-anchor="middle" font-family="Georgia, serif" font-size="138" font-style="italic" font-weight="700" fill="#e7bd62">14</text>
+<text x="620" y="1196" text-anchor="middle" font-family="Georgia, serif" font-size="45" font-style="italic" fill="#404040">2026</text>
+<line x1="286" y1="1028" x2="503" y2="1028" stroke="#080d5f" stroke-width="3"/>
+<line x1="286" y1="1134" x2="503" y2="1134" stroke="#080d5f" stroke-width="3"/>
+<text x="395" y="1092" text-anchor="middle" font-family="Georgia, serif" font-size="38" font-style="italic" font-weight="700" fill="#404040">MARDI</text>
+<line x1="729" y1="1028" x2="958" y2="1028" stroke="#080d5f" stroke-width="3"/>
+<line x1="729" y1="1134" x2="958" y2="1134" stroke="#080d5f" stroke-width="3"/>
+<text x="844" y="1092" text-anchor="middle" font-family="Georgia, serif" font-size="38" font-style="italic" font-weight="700" fill="#404040">10H35</text>
+<text x="620" y="1296" text-anchor="middle" font-family="Arial, sans-serif" font-size="31" font-weight="900" fill="#080d5f">ZONE</text>
+<text x="620" y="1358" text-anchor="middle" font-family="Arial Narrow, Arial, sans-serif" font-size="44" font-weight="700" fill="#080d5f">Adresse</text>
+<g>
+<rect x="935" y="1186" width="180" height="180" rx="18" fill="#ffffff" opacity="0.94" stroke="#e7bd62" stroke-width="3"/>
+<image href="/qrcodes/qr_f220516a-5fd2-4219-94e1-6d1f207758c1.png" x="955" y="1206" width="140" height="140" preserveAspectRatio="xMidYMid meet"/>
+<text x="1025" y="1392" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="700" fill="#080d5f">QR-2</text>
+</g>
+</svg>

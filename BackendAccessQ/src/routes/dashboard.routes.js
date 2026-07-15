@@ -8,5 +8,6 @@ router.use(authMiddleware);
 
 // GET /api/dashboard/stats
 router.get('/stats', dashboardController.getOverviewStats);
+router.get('/onboarding', dashboardController.getOnboardingProgress);
 
 module.exports = router;
