@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, CalendarPlus, Check, Copy, Loader2, MapPinned, Palette, QrCode, UserPlus } from "lucide-react";
+import { ArrowRight, CalendarPlus, Check, Loader2, MapPinned, Palette, Pencil, QrCode, UserPlus } from "lucide-react";
 import { apiFetch } from "../../lib/api";
 
 const steps = [
@@ -37,6 +37,6 @@ export default function GettingStartedPage() {
             <div className="min-w-0 flex-1"><p className="text-xs font-black uppercase tracking-wider text-slate-400">Étape {index + 1}</p><h2 className="font-black text-slate-900 dark:text-white">{step.title}</h2><p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{done ? "Étape terminée." : step.description}</p></div>
             <Link href={step.href} className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">{done ? "Consulter" : step.action}<ArrowRight className="h-4 w-4" /></Link>
         </article>; })}</div>
-        <section className="rounded-2xl border border-amber-200 bg-amber-50 p-6 dark:border-amber-900/50 dark:bg-amber-950/15"><div className="flex gap-3"><Copy className="h-5 w-5 flex-none text-amber-700" /><div><h2 className="font-black text-amber-950 dark:text-amber-100">Règle des modèles</h2><p className="mt-2 text-sm leading-6 text-amber-900 dark:text-amber-200">Modifiez librement un brouillon. Après publication, le modèle devient immuable. Pour le faire évoluer, dupliquez-le, modifiez la copie puis publiez cette nouvelle variante.</p></div></div></section>
+        <section className="rounded-2xl border border-amber-200 bg-amber-50 p-6 dark:border-amber-900/50 dark:bg-amber-950/15"><div className="flex gap-3"><Pencil className="h-5 w-5 flex-none text-amber-700" /><div><h2 className="font-black text-amber-950 dark:text-amber-100">Modification des modèles</h2><p className="mt-2 text-sm leading-6 text-amber-900 dark:text-amber-200">Un modèle peut être modifié directement, même après sa publication. Les nouvelles cartes utilisent sa dernière version tandis que les cartes déjà générées conservent leur apparence.</p></div></div></section>
     </div>;
 }

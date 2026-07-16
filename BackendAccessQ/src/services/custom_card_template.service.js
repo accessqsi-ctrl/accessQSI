@@ -212,11 +212,6 @@ exports.createForOrg = async (orgId, payload) => {
 exports.updateForOrg = async (orgId, id, payload) => {
     const existing = await exports.findByIdForOrg(orgId, id);
     if (!existing) return null;
-    if ((existing.status || "DRAFT") !== "DRAFT") {
-        const error = new Error("Un modèle publié ou archivé est immuable. Dupliquez-le pour créer une nouvelle variante.");
-        error.statusCode = 409;
-        throw error;
-    }
 
     const template = await prisma.cardTemplateCustom.update({
         where: { id: existing.id },
@@ -230,7 +225,11 @@ exports.setStatusForOrg = async (orgId, id, status) => {
     const existing = await exports.findByIdForOrg(orgId, id);
     if (!existing) return null;
     const current = existing.status || "DRAFT";
-    const transitionAllowed = (current === "DRAFT" && status === "PUBLISHED") || (current === "PUBLISHED" && status === "ARCHIVED");
+    const transitionAllowed = (
+        (current === "DRAFT" && status === "PUBLISHED")
+        || (current === "PUBLISHED" && status === "ARCHIVED")
+        || (current === "ARCHIVED" && status === "PUBLISHED")
+    );
     if (!transitionAllowed) return null;
     return toApiTemplate(await prisma.cardTemplateCustom.update({ where: { id: existing.id }, data: { status } }));
 };

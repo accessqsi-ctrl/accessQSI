@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { CalendarPlus, CheckCircle2, Copy, Download, Loader2, MapPinned, Palette, QrCode, TrendingUp, UserPlus, Users, X } from "lucide-react";
+import { CalendarPlus, CheckCircle2, Download, Loader2, MapPinned, Palette, Pencil, QrCode, TrendingUp, UserPlus, Users, X } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { apiFetch, refreshSession } from "../lib/api";
 import LoadingBar from "../components/LoadingBar";
@@ -232,15 +232,15 @@ export default function Dashboard() {
 
                     <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-5 dark:border-amber-900/60 dark:bg-amber-950/20">
                         <div className="flex items-start gap-3">
-                            <Copy className="mt-0.5 h-5 w-5 flex-none text-amber-700 dark:text-amber-300" />
+                            <Pencil className="mt-0.5 h-5 w-5 flex-none text-amber-700 dark:text-amber-300" />
                             <div>
-                                <h4 className="font-bold text-amber-950 dark:text-amber-100">Comment faire évoluer un modèle ?</h4>
+                                <h4 className="font-bold text-amber-950 dark:text-amber-100">Comment modifier un modèle ?</h4>
                                 <div className="mt-3 grid gap-3 text-sm text-amber-900 dark:text-amber-200 md:grid-cols-3">
-                                    <p><strong>1. Brouillon :</strong> créez et modifiez librement votre modèle tant qu’il n’est pas publié.</p>
-                                    <p><strong>2. Publication :</strong> le modèle devient disponible pour les QR et ne peut plus être modifié.</p>
-                                    <p><strong>3. Évolution :</strong> dupliquez le modèle publié, modifiez la copie puis publiez-la.</p>
+                                    <p><strong>1. Création :</strong> créez et personnalisez librement votre modèle.</p>
+                                    <p><strong>2. Publication :</strong> rendez-le disponible lors de la génération des QR.</p>
+                                    <p><strong>3. Évolution :</strong> ouvrez le modèle et modifiez-le directement, sans duplication obligatoire.</p>
                                 </div>
-                                <p className="mt-3 text-xs leading-5 text-amber-800 dark:text-amber-300">Cette règle protège les cartes déjà remises : leur apparence ne change jamais après leur génération.</p>
+                                <p className="mt-3 text-xs leading-5 text-amber-800 dark:text-amber-300">Les cartes déjà générées conservent leur apparence ; seuls les prochains supports utilisent les changements enregistrés.</p>
                             </div>
                         </div>
                     </div>
