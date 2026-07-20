@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Check, Copy, Loader2, Pencil, Plus, Save, Star, Trash2, X } from "lucide-react";
-import { apiFetch } from "../../lib/api";
+import { Check, Copy, ImagePlus, Loader2, Pencil, Plus, Save, Star, Trash2, X } from "lucide-react";
+import { apiFetch, apiUrl } from "../../lib/api";
 
 const BASE_TEMPLATES = [
     { id: "event-ticket", name: "Billet événement", format: "Horizontal", accent: "#2563eb", soft: "#dbeafe" },
@@ -14,6 +14,7 @@ const BASE_TEMPLATES = [
 const initialForm = {
     name: "", baseTemplateId: "event-ticket", title: "INVITATION",
     primaryColor: "#2563eb", secondaryColor: "#dbeafe", cardMessageDefault: "Présentez ce QR à l’entrée",
+    primaryFillMode: "color", backgroundImageUrl: "",
     qrPosition: "right", visibleFields: { holder: true, event: true, date: true, location: true, level: true, message: true, qr: true }
 };
 
@@ -28,6 +29,14 @@ async function jsonRequest(path, options) {
     const data = await response.json().catch(() => ({}));
     if (!response.ok || !data.success) throw new Error(data.message || "Une erreur est survenue.");
     return data;
+}
+
+function templatePayload(form) {
+    const { primaryFillMode, ...payload } = form;
+    if (form.baseTemplateId !== "wedding-invite") {
+        payload.backgroundImageUrl = primaryFillMode === "image" ? form.backgroundImageUrl : "";
+    }
+    return payload;
 }
 
 function TemplatePreview({ template }) {
@@ -69,6 +78,7 @@ export default function CardTemplatesPage() {
     const [notice, setNotice] = useState(null);
     const [showWorkflowGuide, setShowWorkflowGuide] = useState(false);
     const [templateToDelete, setTemplateToDelete] = useState(null);
+    const [uploadingPrimaryImage, setUploadingPrimaryImage] = useState(false);
 
     useEffect(() => {
         setShowWorkflowGuide(localStorage.getItem(MODEL_WORKFLOW_ONBOARDING_KEY) !== "true");
@@ -84,21 +94,58 @@ export default function CardTemplatesPage() {
     }, []);
 
     useEffect(() => { load(); }, [load]);
-    const preview = useMemo(() => ({ ...form }), [form]);
+    const preview = useMemo(() => templatePayload(form), [form]);
 
     const changeBase = (id) => {
         const base = BASE_TEMPLATES.find(item => item.id === id);
-        setForm(current => ({ ...current, baseTemplateId: id, primaryColor: base.accent, secondaryColor: base.soft }));
+        setForm(current => ({
+            ...current,
+            baseTemplateId: id,
+            primaryColor: base.accent,
+            secondaryColor: base.soft,
+            primaryFillMode: "color",
+            backgroundImageUrl: ""
+        }));
     };
     const openNew = () => { setEditingId(null); setForm(initialForm); setShowEditor(true); setNotice(null); };
-    const openEdit = (template) => { setEditingId(template.id); setForm({ ...initialForm, ...template }); setShowEditor(true); setNotice(null); };
+    const openEdit = (template) => {
+        setEditingId(template.id);
+        setForm({
+            ...initialForm,
+            ...template,
+            primaryFillMode: template.baseTemplateId !== "wedding-invite" && template.backgroundImageUrl ? "image" : "color"
+        });
+        setShowEditor(true);
+        setNotice(null);
+    };
     const closeEditor = () => { setShowEditor(false); setEditingId(null); };
+
+    const uploadPrimaryImage = async (event) => {
+        const file = event.target.files?.[0];
+        event.target.value = "";
+        if (!file) return;
+
+        setUploadingPrimaryImage(true);
+        setNotice(null);
+        try {
+            const body = new FormData();
+            body.append("background", file);
+            const response = await apiFetch("/card-templates/background", { method: "POST", body });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok || !data.success) throw new Error(data.message || "Import de l’image impossible.");
+            setForm(current => ({ ...current, primaryFillMode: "image", backgroundImageUrl: data.backgroundImageUrl }));
+        } catch (error) {
+            setNotice({ type: "error", text: error.message });
+        } finally {
+            setUploadingPrimaryImage(false);
+        }
+    };
 
     const save = async (event) => {
         event.preventDefault(); setBusy("save"); setNotice(null);
         try {
             await jsonRequest(editingId ? `/card-templates/custom/${editingId}` : "/card-templates/custom", {
-                method: editingId ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form)
+                method: editingId ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(templatePayload(form))
             });
             await load(); closeEditor(); setNotice({ type: "success", text: editingId ? "Modèle mis à jour." : "Modèle créé." });
         } catch (error) { setNotice({ type: "error", text: error.message }); }
@@ -173,7 +220,39 @@ export default function CardTemplatesPage() {
                     <label className="block text-sm font-bold text-slate-700 dark:text-slate-200">Nom du modèle<input required maxLength={80} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Ex. Pass VIP entreprise" className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-900" /></label>
                     <label className="block text-sm font-bold text-slate-700 dark:text-slate-200">Format de base<select value={form.baseTemplateId} onChange={e => changeBase(e.target.value)} className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-700 dark:bg-slate-900">{BASE_TEMPLATES.map(item => <option key={item.id} value={item.id}>{item.name} · {item.format}</option>)}</select></label>
                     <label className="block text-sm font-bold text-slate-700 dark:text-slate-200">Titre<input value={form.title} maxLength={80} onChange={e => setForm({ ...form, title: e.target.value })} className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-700 dark:bg-slate-900" /></label>
-                    <div className="grid grid-cols-2 gap-4">{[["primaryColor", "Couleur principale"], ["secondaryColor", "Couleur secondaire"]].map(([key, label]) => <label key={key} className="text-sm font-bold text-slate-700 dark:text-slate-200">{label}<span className="mt-2 flex rounded-xl border border-slate-200 bg-slate-50 p-2"><input type="color" value={form[key]} onChange={e => setForm({ ...form, [key]: e.target.value })} className="h-8 w-10 cursor-pointer border-0 bg-transparent" /><input value={form[key]} onChange={e => setForm({ ...form, [key]: e.target.value })} pattern="#[0-9a-fA-F]{6}" className="min-w-0 flex-1 bg-transparent px-2 font-mono text-xs outline-none" /></span></label>)}</div>
+                    {form.baseTemplateId === "wedding-invite" ? (
+                        <div className="grid grid-cols-2 gap-4">{[["primaryColor", "Couleur principale"], ["secondaryColor", "Couleur secondaire"]].map(([key, label]) => <label key={key} className="text-sm font-bold text-slate-700 dark:text-slate-200">{label}<span className="mt-2 flex rounded-xl border border-slate-200 bg-slate-50 p-2"><input type="color" value={form[key]} onChange={e => setForm({ ...form, [key]: e.target.value })} className="h-8 w-10 cursor-pointer border-0 bg-transparent" /><input value={form[key]} onChange={e => setForm({ ...form, [key]: e.target.value })} pattern="#[0-9a-fA-F]{6}" className="min-w-0 flex-1 bg-transparent px-2 font-mono text-xs outline-none" /></span></label>)}</div>
+                    ) : (
+                        <div className="space-y-4">
+                            <fieldset>
+                                <legend className="text-sm font-bold text-slate-700 dark:text-slate-200">Remplissage principal</legend>
+                                <div className="mt-2 grid grid-cols-2 gap-2">
+                                    <label className={`cursor-pointer rounded-xl border px-3 py-3 text-center text-sm font-bold ${form.primaryFillMode === "color" ? "border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-950/30" : "border-slate-200 text-slate-600 dark:border-slate-700 dark:text-slate-300"}`}>
+                                        <input type="radio" name="primaryFillMode" value="color" checked={form.primaryFillMode === "color"} onChange={() => setForm(current => ({ ...current, primaryFillMode: "color" }))} className="sr-only" />
+                                        Utiliser la couleur
+                                    </label>
+                                    <label className={`cursor-pointer rounded-xl border px-3 py-3 text-center text-sm font-bold ${form.primaryFillMode === "image" ? "border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-950/30" : "border-slate-200 text-slate-600 dark:border-slate-700 dark:text-slate-300"}`}>
+                                        <input type="radio" name="primaryFillMode" value="image" checked={form.primaryFillMode === "image"} onChange={() => setForm(current => ({ ...current, primaryFillMode: "image" }))} className="sr-only" />
+                                        Utiliser une image
+                                    </label>
+                                </div>
+                            </fieldset>
+                            {form.primaryFillMode === "color" ? (
+                                <label className="block text-sm font-bold text-slate-700 dark:text-slate-200">Couleur principale<span className="mt-2 flex rounded-xl border border-slate-200 bg-slate-50 p-2"><input type="color" value={form.primaryColor} onChange={e => setForm({ ...form, primaryColor: e.target.value })} className="h-8 w-10 cursor-pointer border-0 bg-transparent" /><input value={form.primaryColor} onChange={e => setForm({ ...form, primaryColor: e.target.value })} pattern="#[0-9a-fA-F]{6}" className="min-w-0 flex-1 bg-transparent px-2 font-mono text-xs outline-none" /></span></label>
+                            ) : (
+                                <div className="rounded-xl border border-dashed border-blue-200 bg-blue-50/60 p-4 dark:border-blue-900/60 dark:bg-blue-950/15">
+                                    <p className="text-xs leading-5 text-slate-500 dark:text-slate-400">L’image sera recadrée et centrée dans les zones de couleur principale, sans déformation.</p>
+                                    <label className="mt-3 flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-bold text-slate-700 shadow-sm ring-1 ring-slate-200 hover:bg-slate-50 dark:bg-slate-950 dark:text-slate-200 dark:ring-slate-700">
+                                        {uploadingPrimaryImage ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
+                                        {uploadingPrimaryImage ? "Import en cours..." : form.backgroundImageUrl ? "Changer l’image" : "Uploader une image"}
+                                        <input type="file" accept="image/png,image/jpeg,image/webp" disabled={uploadingPrimaryImage} onChange={uploadPrimaryImage} className="hidden" />
+                                    </label>
+                                    {form.backgroundImageUrl && <div className="mt-3 flex items-center gap-3"><img src={apiUrl(form.backgroundImageUrl)} alt="Remplissage principal" className="h-20 w-28 rounded-lg object-cover ring-1 ring-slate-200 dark:ring-slate-700" /><button type="button" onClick={() => setForm(current => ({ ...current, backgroundImageUrl: "" }))} className="inline-flex items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50"><Trash2 className="h-3.5 w-3.5" />Retirer</button></div>}
+                                </div>
+                            )}
+                            <label className="block text-sm font-bold text-slate-700 dark:text-slate-200">Couleur secondaire<span className="mt-2 flex rounded-xl border border-slate-200 bg-slate-50 p-2"><input type="color" value={form.secondaryColor} onChange={e => setForm({ ...form, secondaryColor: e.target.value })} className="h-8 w-10 cursor-pointer border-0 bg-transparent" /><input value={form.secondaryColor} onChange={e => setForm({ ...form, secondaryColor: e.target.value })} pattern="#[0-9a-fA-F]{6}" className="min-w-0 flex-1 bg-transparent px-2 font-mono text-xs outline-none" /></span></label>
+                        </div>
+                    )}
                     <label className="block text-sm font-bold text-slate-700 dark:text-slate-200">Position du QR<select value={form.qrPosition} onChange={e => setForm({ ...form, qrPosition: e.target.value })} className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-700 dark:bg-slate-900"><option value="right">À droite</option><option value="left">À gauche</option><option value="center">Au centre</option></select></label>
                     <label className="block text-sm font-bold text-slate-700 dark:text-slate-200">Message par défaut<textarea rows="2" maxLength={160} value={form.cardMessageDefault} onChange={e => setForm({ ...form, cardMessageDefault: e.target.value })} className="mt-2 w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-700 dark:bg-slate-900" /></label>
                     <fieldset><legend className="text-sm font-bold text-slate-700 dark:text-slate-200">Informations affichées</legend><div className="mt-2 grid grid-cols-2 gap-2">{fields.map(([key, label]) => <label key={key} className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold dark:border-slate-700"><input type="checkbox" checked={form.visibleFields[key]} onChange={e => setForm({ ...form, visibleFields: { ...form.visibleFields, [key]: e.target.checked } })} className="accent-blue-600" />{label}</label>)}</div></fieldset>

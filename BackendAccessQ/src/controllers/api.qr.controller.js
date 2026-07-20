@@ -1,5 +1,4 @@
 const QRCode = require("qrcode");
-const path = require("path");
 const fs = require("fs");
 const crypto = require("crypto");
 const csv = require("csv-parser");
@@ -7,23 +6,28 @@ const eventService = require('../services/event.service');
 const qrService = require('../services/qr.service');
 const cardTemplateService = require('../services/card_template.service');
 const customCardTemplateService = require('../services/custom_card_template.service');
+const storageService = require("../services/storage.service");
+const { validateQrPayload } = require("../services/qr_validation.service");
+const {
+    getEffectiveQrStatus,
+    usageLimitFromAccessType,
+    formatUsageLimit
+} = require("../services/qr_status.service");
 
 const buildQrPayload = (uniqueToken, eventId) => JSON.stringify({ t: uniqueToken, e: eventId });
 
 const qrUrlForToken = (token) => `/qrcodes/qr_${token}.png`;
 
-const qrPathForToken = (token) => path.join(__dirname, '../statics/qrcodes', `qr_${token}.png`);
+const qrPathForToken = (token) => storageService.storagePath("qrcodes", `qr_${token}.png`);
 
 const ensureQrImageForToken = async ({ uniqueToken, eventId }) => {
     const qrPath = qrPathForToken(uniqueToken);
-    const dir = path.dirname(qrPath);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-
-    await QRCode.toFile(qrPath, buildQrPayload(uniqueToken, eventId), {
+    const image = await QRCode.toBuffer(buildQrPayload(uniqueToken, eventId), {
         errorCorrectionLevel: 'H',
         margin: 2,
         width: 400
     });
+    await storageService.writeFileAtomically(qrPath, image);
 
     return qrUrlForToken(uniqueToken);
 };
@@ -83,8 +87,12 @@ const normalizeCardData = (value = {}) => {
     };
 };
 
+const importErrorMessage = (error) => String(error?.message || "Erreur inattendue").slice(0, 300);
+
 // Générer un QR Code
 exports.generateQrForEvent = async (req, res) => {
+    let qrRecord = null;
+    let uniqueToken = null;
     try {
         if (!req.user || !req.user.org_id) {
             return res.status(401).json({ success: false, message: "Non autorisé" });
@@ -92,14 +100,23 @@ exports.generateQrForEvent = async (req, res) => {
 
         const orgId = req.user.org_id;
         const eventId = Number(req.params.event_id);
-        const { fullName, email, phone, accessType, limit, validFrom, validUntil, level, cardMessage } = req.body;
-        const hasRequestedTemplate = Object.prototype.hasOwnProperty.call(req.body, "cardTemplateId");
-        const cardTemplateId = hasRequestedTemplate ? req.body.cardTemplateId : await customCardTemplateService.getDefaultForOrg(orgId);
-        const cardData = normalizeCardData(req.body.cardData);
-
-        if (!fullName || !accessType) {
-            return res.status(400).json({ success: false, message: "Nom complet et Type d'accès requis" });
+        const validation = validateQrPayload(req.body);
+        if (validation.errors.length > 0) {
+            return res.status(422).json({
+                success: false,
+                message: "Données QR invalides.",
+                errors: validation.errors
+            });
         }
+        const {
+            fullName, email, phone, accessType, limit,
+            validFrom, validUntil, level, cardMessage
+        } = validation.values;
+        const hasRequestedTemplate = Object.prototype.hasOwnProperty.call(req.body, "cardTemplateId");
+        const cardTemplateId = hasRequestedTemplate
+            ? validation.values.cardTemplateId
+            : await customCardTemplateService.getDefaultForOrg(orgId);
+        const cardData = normalizeCardData(req.body.cardData);
 
         const resolvedCardTemplate = cardTemplateId ? await resolveCardTemplate(orgId, cardTemplateId) : null;
         if (cardTemplateId && !resolvedCardTemplate) {
@@ -113,28 +130,23 @@ exports.generateQrForEvent = async (req, res) => {
         }
 
         // Générer un jeton sécurisé par cryptographie
-        const uniqueToken = crypto.randomUUID();
+        uniqueToken = crypto.randomUUID();
+        const usageLimit = usageLimitFromAccessType(accessType, limit);
 
-        // Définir les limites selon le type d'accès
-        let usageLimit = 1;
-        if (accessType === 'multi') usageLimit = Number(limit) || 2;
-        if (accessType === 'unlimited') usageLimit = 999999;
-
-        // Enregistrer la configuration du QR Code dans Prisma
-        const qrRecord = await qrService.createQr({
+        qrRecord = await qrService.createQr({
             unique_token: uniqueToken,
             status: "active",
             usage_limit: usageLimit,
-            valid_from: validFrom ? new Date(validFrom) : null,
-            valid_until: validUntil ? new Date(validUntil) : null,
-            level: level ? Number(level) : 1,
+            valid_from: validFrom,
+            valid_until: validUntil,
+            level,
             holder_name: fullName,
             holder_email: email || null,
             holder_phone: phone || null,
             card_data: cardTemplateId ? cardData : undefined,
             card_template_id: cardTemplateId || null,
             card_template_snapshot: createTemplateSnapshot(resolvedCardTemplate),
-            card_message: cardTemplateId ? String(cardMessage || "").trim().slice(0, 160) || null : null,
+            card_message: cardTemplateId ? cardMessage || null : null,
             card_generation_status: cardTemplateId ? "PENDING" : null,
             event_id: event.event_id
         });
@@ -158,10 +170,6 @@ exports.generateQrForEvent = async (req, res) => {
                     card_generated_at: new Date(), card_generation_status: "READY", card_generation_error: null
                 });
             } catch (generationError) {
-                await qrService.updateQr(qrRecord.qr_id, {
-                    card_generation_status: "FAILED",
-                    card_generation_error: String(generationError.message || "Échec de génération").slice(0, 500)
-                });
                 throw generationError;
             }
         }
@@ -178,6 +186,12 @@ exports.generateQrForEvent = async (req, res) => {
 
     } catch (error) {
         console.error('Erreur lors de la génération du QR:', error);
+        if (qrRecord) {
+            await Promise.allSettled([
+                qrService.deleteQrPermanently?.(qrRecord.qr_id),
+                storageService.removeQrAssets(uniqueToken)
+            ]);
+        }
         return res.status(500).json({ success: false, message: 'Erreur serveur interne' });
     }
 };
@@ -189,30 +203,35 @@ exports.getAllQrs = async (req, res) => {
             return res.status(401).json({ success: false, message: "Non autorisé" });
         }
 
-        const qrs = await qrService.getAllQrsForOrg(req.user.org_id);
+        const result = await qrService.getAllQrsForOrg(req.user.org_id, {
+            page: req.query.page,
+            pageSize: req.query.pageSize,
+            search: req.query.search,
+            status: req.query.status
+        });
+        const qrs = Array.isArray(result) ? result : result.items;
 
         // Formatage pour le frontend
         const formattedQrs = qrs.map(qr => {
-            const now = new Date();
-            let state = qr.status;
-            if (qr.valid_until && new Date(qr.valid_until) < now) state = 'expired';
-            if (qr.scans_count >= qr.usage_limit) state = 'exhausted';
-
             return {
                 id: qr.qr_id,
                 holder: qr.holder_name || "Inconnu",
                 email: qr.holder_email || "-",
                 event: qr.event?.title || "-",
-                status: state,
-                scans: `${qr.scans_count} / ${qr.usage_limit > 9999 ? '∞' : qr.usage_limit}`,
+                status: getEffectiveQrStatus(qr),
+                scans: `${qr.scans_count} / ${formatUsageLimit(qr.usage_limit)}`,
                 token: qr.unique_token,
                 cardUrl: cardTemplateService.cardExistsForToken(qr.unique_token) ? cardTemplateService.cardUrlForToken(qr.unique_token) : null,
                 cardPdfUrl: cardPdfExistsForToken(qr.unique_token) ? cardPdfUrlForToken(qr.unique_token) : null,
-                createdAt: new Date(qr.valid_from || new Date()).toLocaleDateString() // Using valid_from roughly as creation or start
+                createdAt: new Date(qr.created_at).toLocaleDateString()
             };
         });
 
-        return res.status(200).json({ success: true, qrs: formattedQrs });
+        return res.status(200).json({
+            success: true,
+            qrs: formattedQrs,
+            pagination: Array.isArray(result) ? null : result.pagination
+        });
     } catch (error) {
         console.error("Erreur lors de la récupération des QR :", error);
         return res.status(500).json({ success: false, message: "Erreur serveur" });
@@ -233,30 +252,36 @@ exports.getQrsByEvent = async (req, res) => {
             return res.status(404).json({ success: false, message: "Événement introuvable" });
         }
 
-        const qrs = await qrService.getQrsByEventId(orgId, eventId);
+        const result = await qrService.getQrsByEventId(orgId, eventId, {
+            page: req.query.page,
+            pageSize: req.query.pageSize,
+            search: req.query.search,
+            status: req.query.status
+        });
+        const qrs = Array.isArray(result) ? result : result.items;
 
         const formattedQrs = qrs.map(qr => {
-            const now = new Date();
-            let state = qr.status;
-            if (qr.valid_until && new Date(qr.valid_until) < now) state = 'expired';
-            if (qr.scans_count >= qr.usage_limit) state = 'exhausted';
             return {
                 id: qr.qr_id,
                 holder: qr.holder_name || "Inconnu",
                 email: qr.holder_email || "-",
                 phone: qr.holder_phone || "-",
-                status: state,
-                scans: `${qr.scans_count} / ${qr.usage_limit > 9999 ? '∞' : qr.usage_limit}`,
+                status: getEffectiveQrStatus(qr),
+                scans: `${qr.scans_count} / ${formatUsageLimit(qr.usage_limit)}`,
                 scans_count: qr.scans_count,
                 usage_limit: qr.usage_limit,
                 token: qr.unique_token,
                 cardUrl: cardTemplateService.cardExistsForToken(qr.unique_token) ? cardTemplateService.cardUrlForToken(qr.unique_token) : null,
                 cardPdfUrl: cardPdfExistsForToken(qr.unique_token) ? cardPdfUrlForToken(qr.unique_token) : null,
-                createdAt: new Date(qr.valid_from || new Date()).toLocaleDateString()
+                createdAt: new Date(qr.created_at).toLocaleDateString()
             };
         });
 
-        return res.status(200).json({ success: true, qrs: formattedQrs });
+        return res.status(200).json({
+            success: true,
+            qrs: formattedQrs,
+            pagination: Array.isArray(result) ? null : result.pagination
+        });
     } catch (error) {
         console.error("Erreur lors de la récupération des QR par événement :", error);
         return res.status(500).json({ success: false, message: "Erreur serveur" });
@@ -322,7 +347,7 @@ exports.restoreQr = async (req, res) => {
             return res.status(400).json({ success: false, message: "Impossible de restaurer un QR expiré." });
         }
 
-        if (qr.scans_count >= qr.usage_limit) {
+        if (qr.usage_limit > 0 && qr.scans_count >= qr.usage_limit) {
             return res.status(400).json({ success: false, message: "Impossible de restaurer un QR dont la limite de scans est atteinte." });
         }
 
@@ -373,6 +398,7 @@ exports.downloadQrImportTemplate = async (req, res) => {
 };
 
 exports.importQrsFromCSV = async (req, res) => {
+    const file = req.file;
     try {
         if (!req.user || !req.user.org_id) {
             return res.status(401).json({ success: false, message: "Non autorisé" });
@@ -380,7 +406,6 @@ exports.importQrsFromCSV = async (req, res) => {
 
         const orgId = req.user.org_id;
         const eventId = Number(req.params.event_id);
-        const file = req.file;
 
         if (!file) {
             return res.status(400).json({ success: false, message: "Fichier CSV requis" });
@@ -401,106 +426,166 @@ exports.importQrsFromCSV = async (req, res) => {
         });
 
         const rows = await processStream;
-        const createdQrs = [];
-        const validationErrors = [];
         const resolvedTemplates = new Map();
+        const resultsByLine = [];
+        const errors = [];
+        let createdCount = 0;
+        let completedCount = 0;
 
         for (const [index, row] of rows.entries()) {
             const line = index + 2;
-            const fullName = String(row.fullName || row.name || row.nom || "").trim();
-            const accessType = row.accessType || "single";
-            const cardTemplateId = row.cardTemplateId || row.card_template_id || row.templateId || "";
-            if (!fullName) validationErrors.push({ line, field: "fullName", message: "Nom complet requis." });
-            if (!["single", "multi", "unlimited"].includes(accessType)) validationErrors.push({ line, field: "accessType", message: "Type d’accès invalide." });
-            if (row.validFrom && Number.isNaN(new Date(row.validFrom).getTime())) validationErrors.push({ line, field: "validFrom", message: "Date de début invalide." });
-            if (row.validUntil && Number.isNaN(new Date(row.validUntil).getTime())) validationErrors.push({ line, field: "validUntil", message: "Date de fin invalide." });
-            if (cardTemplateId && !resolvedTemplates.has(cardTemplateId)) {
-                resolvedTemplates.set(cardTemplateId, await resolveCardTemplate(orgId, cardTemplateId));
-            }
-            if (cardTemplateId && !resolvedTemplates.get(cardTemplateId)) validationErrors.push({ line, field: "cardTemplateId", message: "Modèle introuvable ou non autorisé." });
-        }
+            const validation = validateQrPayload(row, { line });
+            const { values } = validation;
+            let resolvedCardTemplate = null;
 
-        if (validationErrors.length) {
-            if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
-            return res.status(422).json({
-                success: false,
-                message: "Import annulé : aucune ligne n’a été créée.",
-                totalRows: rows.length,
-                errors: validationErrors
-            });
-        }
-
-        for (const row of rows) {
-            const fullName = row.fullName || row.name || row.nom;
-            const email = row.email;
-            const phone = row.phone || row.telephone;
-            const accessType = row.accessType || 'single';
-            const limit = Number(row.limit) || 1;
-            const level = Number(row.level) || 1;
-            const validFrom = row.validFrom ? new Date(row.validFrom) : null;
-            const validUntil = row.validUntil ? new Date(row.validUntil) : null;
-            const cardTemplateId = row.cardTemplateId || row.card_template_id || row.templateId || "";
-            const cardMessage = row.cardMessage || row.card_message || "";
-
-            const resolvedCardTemplate = cardTemplateId ? resolvedTemplates.get(cardTemplateId) : null;
-
-            const uniqueToken = crypto.randomUUID();
-            let usageLimit = 1;
-            if (accessType === 'multi') usageLimit = limit;
-            if (accessType === 'unlimited') usageLimit = 999999;
-
-            const qrRecord = await qrService.createQr({
-                unique_token: uniqueToken,
-                status: "active",
-                usage_limit: usageLimit,
-                valid_from: validFrom,
-                valid_until: validUntil,
-                level: level,
-                holder_name: fullName,
-                holder_email: email || null,
-                holder_phone: phone || null,
-                card_template_id: cardTemplateId || null,
-                card_template_snapshot: createTemplateSnapshot(resolvedCardTemplate),
-                card_message: cardTemplateId ? String(cardMessage).trim().slice(0, 160) || null : null,
-                card_generation_status: cardTemplateId ? "PENDING" : null,
-                event_id: eventId
-            });
-
-            const qrUrl = await ensureQrImageForToken({ uniqueToken, eventId });
-
-            if (cardTemplateId) {
-                await cardTemplateService.generateCardForQr({
-                    templateId: resolvedCardTemplate.templateId,
-                    customization: resolvedCardTemplate.customization,
-                    event,
-                    qrRecord,
-                    qrUrl,
-                    cardMessage
-                });
-                await qrService.updateQr(qrRecord.qr_id, {
-                    card_generated_at: new Date(), card_generation_status: "READY", card_generation_error: null
-                });
+            if (values.cardTemplateId) {
+                try {
+                    if (!resolvedTemplates.has(values.cardTemplateId)) {
+                        resolvedTemplates.set(
+                            values.cardTemplateId,
+                            await resolveCardTemplate(orgId, values.cardTemplateId)
+                        );
+                    }
+                    resolvedCardTemplate = resolvedTemplates.get(values.cardTemplateId);
+                    if (!resolvedCardTemplate) {
+                        validation.errors.push({
+                            line,
+                            field: "cardTemplateId",
+                            message: "Modèle introuvable ou non autorisé."
+                        });
+                    }
+                } catch (error) {
+                    validation.errors.push({
+                        line,
+                        field: "cardTemplateId",
+                        message: importErrorMessage(error)
+                    });
+                }
             }
 
-            createdQrs.push(qrRecord);
+            if (validation.errors.length > 0) {
+                errors.push(...validation.errors.map(error => ({ ...error, stage: "validation" })));
+                resultsByLine.push({
+                    line,
+                    status: "failed",
+                    holder: values.fullName || null,
+                    errors: validation.errors
+                });
+                continue;
+            }
+
+            let qrRecord = null;
+            try {
+                const uniqueToken = crypto.randomUUID();
+                const usageLimit = usageLimitFromAccessType(values.accessType, values.limit);
+
+                qrRecord = await qrService.createQr({
+                    unique_token: uniqueToken,
+                    status: "active",
+                    usage_limit: usageLimit,
+                    valid_from: values.validFrom,
+                    valid_until: values.validUntil,
+                    level: values.level,
+                    holder_name: values.fullName,
+                    holder_email: values.email,
+                    holder_phone: values.phone,
+                    card_template_id: values.cardTemplateId || null,
+                    card_template_snapshot: createTemplateSnapshot(resolvedCardTemplate),
+                    card_message: values.cardTemplateId ? values.cardMessage || null : null,
+                    card_generation_status: values.cardTemplateId ? "PENDING" : null,
+                    event_id: eventId
+                });
+                const qrUrl = await ensureQrImageForToken({ uniqueToken, eventId });
+
+                if (values.cardTemplateId) {
+                    await cardTemplateService.generateCardForQr({
+                        templateId: resolvedCardTemplate.templateId,
+                        customization: resolvedCardTemplate.customization,
+                        event,
+                        qrRecord,
+                        qrUrl,
+                        cardMessage: values.cardMessage
+                    });
+                    await qrService.updateQr(qrRecord.qr_id, {
+                        card_generated_at: new Date(),
+                        card_generation_status: "READY",
+                        card_generation_error: null
+                    });
+                }
+
+                createdCount += 1;
+                completedCount += 1;
+                resultsByLine.push({
+                    line,
+                    status: "created",
+                    qrId: qrRecord.qr_id,
+                    holder: values.fullName
+                });
+            } catch (error) {
+                const detail = {
+                    line,
+                    stage: qrRecord ? "asset_generation" : "database",
+                    message: importErrorMessage(error),
+                    ...(qrRecord ? { qrId: qrRecord.qr_id } : {})
+                };
+                let rollbackFailed = false;
+                if (qrRecord) {
+                    const rollbackResults = await Promise.allSettled([
+                        qrService.deleteQrPermanently(qrRecord.qr_id),
+                        storageService.removeQrAssets(qrRecord.unique_token)
+                    ]);
+                    rollbackFailed = rollbackResults.some(result => result.status === "rejected");
+                    for (const result of rollbackResults) {
+                        if (result.status !== "rejected") continue;
+                        errors.push({
+                            line,
+                            stage: "rollback",
+                            qrId: qrRecord.qr_id,
+                            message: importErrorMessage(result.reason)
+                        });
+                    }
+                }
+                errors.push(detail);
+
+                resultsByLine.push({
+                    line,
+                    status: rollbackFailed ? "created_with_errors" : "failed",
+                    ...(rollbackFailed && qrRecord ? { qrId: qrRecord.qr_id } : {}),
+                    holder: values.fullName,
+                    errors: [detail]
+                });
+            }
         }
 
-        // Nettoyer le fichier téléchargé
-        if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+        const failedCount = resultsByLine.filter(result => result.status === "failed").length;
+        const warningCount = resultsByLine.filter(result => result.status === "created_with_errors").length;
+        const partial = errors.length > 0;
+        const success = createdCount > 0;
+        const statusCode = !success ? 422 : partial ? 207 : 201;
+        const message = !rows.length
+            ? "Le fichier CSV ne contient aucune ligne à importer."
+            : partial
+                ? `Import partiel : ${createdCount} QR créés, ${failedCount} lignes échouées et ${warningCount} créations avec avertissement.`
+                : `${createdCount} QR Codes importés avec succès.`;
 
-        return res.status(201).json({
-            success: true,
-            message: `${createdQrs.length} QR Codes importés avec succès`,
-            count: createdQrs.length,
+        return res.status(statusCode).json({
+            success,
+            partial,
+            message,
+            count: createdCount,
+            createdCount,
+            completedCount,
+            failedCount,
+            warningCount,
             totalRows: rows.length,
-            errors: []
+            results: resultsByLine,
+            errors
         });
-
-
     } catch (error) {
         console.error("Erreur lors de l'importation CSV :", error);
-        if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
         return res.status(500).json({ success: false, message: "Erreur lors de l'importation" });
+    } finally {
+        if (file?.path && fs.existsSync(file.path)) fs.unlinkSync(file.path);
     }
 };
 

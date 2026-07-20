@@ -3,19 +3,19 @@ const { createObjectCsvWriter } = require("csv-writer");
 const PDFDocument = require("pdfkit");
 const fs = require("fs");
 const path = require("path");
+const { formatUsageLimit } = require("../services/qr_status.service");
 
 const formatScanStatus = (status) => {
     const labels = {
         authorized: "AUTORISÉ",
         denied_expired: "REFUSÉ - EXPIRÉ",
         denied_revoked: "REFUSÉ - RÉVOQUÉ",
-        denied_limit_reached: "REFUSÉ - LIMITE ATTEINTE"
+        denied_limit_reached: "REFUSÉ - LIMITE ATTEINTE",
+        denied_event_inactive: "REFUSÉ - ÉVÉNEMENT INACTIF",
+        denied_area_not_allowed: "REFUSÉ - ZONE NON AUTORISÉE",
+        denied_insufficient_level: "REFUSÉ - NIVEAU INSUFFISANT"
     };
     return labels[status] || status || "-";
-};
-
-const formatUsageLimit = (limit) => {
-    return limit > 9999 ? "Illimité" : limit;
 };
 
 const formatLocationValue = (value) => {

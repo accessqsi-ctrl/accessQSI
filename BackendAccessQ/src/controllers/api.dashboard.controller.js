@@ -37,7 +37,11 @@ exports.getOverviewStats = async (req, res) => {
             where: {
                 event: { org_id: orgId },
                 status: "active",
-                deleted_at: null
+                deleted_at: null,
+                OR: [
+                    { valid_until: null },
+                    { valid_until: { gte: now } }
+                ]
             }
         });
 

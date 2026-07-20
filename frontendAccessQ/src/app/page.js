@@ -213,9 +213,11 @@ export default function Home() {
             </span>
           </h1>
 
-          <p className="max-w-2xl mx-auto text-lg md:text-xl text-slate-500 dark:text-slate-400 leading-relaxed">
-            Générez, gérez et vérifiez des QR codes sécurisés. Vos administrateurs et agents peuvent contrôler les accès physiques ou numériques avec une visibilité claire et fiable.
+          <p className="max-w-2xl mx-auto text-base md:text-lg font-medium text-slate-700 dark:text-slate-300 leading-relaxed">
+            AccesQSI est une solution simple et sécurisée qui permet de générer, gérer et vérifier des QR codes, de les attribuer aux personnes autorisées et de contrôler rapidement les accès physiques ou numériques. Grâce à une visibilité claire et fiable, les administrateurs et les agents assurent une gestion des accès efficace en toute simplicité.
           </p>
+
+        
 
           <div className="flex flex-col justify-center gap-3 sm:flex-row">
             <Link

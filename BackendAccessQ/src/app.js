@@ -19,9 +19,9 @@ if (trustProxyValue) {
 }
 
 
-const path = require("path");
 const fs = require("fs");
 const cookieParser = require("cookie-parser");
+const storageService = require("./services/storage.service");
 
 const { generalLimiter } = require('./middleware/limMiddleware');
 const requestLogger = require('./middleware/requestLogger');
@@ -112,15 +112,18 @@ app.get("/cards/:filename/download", (req, res) => {
         return res.status(400).json({ success: false, message: "Nom de fichier invalide" });
     }
 
-    const cardPath = path.join(__dirname, "statics/cards", filename);
-    if (!fs.existsSync(cardPath)) {
+    const cardPath = storageService.findPublicAsset("cards", filename);
+    if (!cardPath || !fs.existsSync(cardPath)) {
         return res.status(404).json({ success: false, message: "Carte introuvable" });
     }
 
     return res.download(cardPath, filename);
 });
 
-app.use(express.static(path.join(__dirname, "statics")));
+app.use(express.static(storageService.storageRoot));
+if (storageService.storageRoot !== storageService.bundledStaticsRoot) {
+    app.use(express.static(storageService.bundledStaticsRoot));
+}
 
 // Le limiteur concerne uniquement les API. Les images, QR, SVG et PDF statiques
 // ne doivent pas consommer le quota de navigation d'un utilisateur.

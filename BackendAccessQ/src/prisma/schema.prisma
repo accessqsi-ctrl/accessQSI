@@ -113,6 +113,8 @@ model QrCode {
   card_message           String?
   card_generation_status String?
   card_generation_error  String?
+  created_at             DateTime  @default(now())
+  updated_at             DateTime  @updatedAt
   event                  Event     @relation(fields: [event_id], references: [event_id])
   scan_logs              ScanLog[]
 
@@ -125,15 +127,18 @@ model ScanLog {
   id            Int        @id @default(autoincrement())
   qr_code_id    Int
   scanned_by_id Int
+  area_id       Int?
   scanned_at    DateTime   @default(now())
   location_lat  Decimal?
   location_long Decimal?
   status        ScanStatus
   qr_code       QrCode     @relation(fields: [qr_code_id], references: [qr_id])
   scanned_by    UserQ      @relation(fields: [scanned_by_id], references: [user_id])
+  area          Area?      @relation(fields: [area_id], references: [area_id])
 
   @@index([qr_code_id])
   @@index([scanned_by_id])
+  @@index([area_id])
   @@index([scanned_at])
   @@map("scan_logs")
 }
@@ -145,6 +150,7 @@ model Area {
   accreditation_level Int
   deleted_at          DateTime?
   EventSchedules      EventSchedule[]
+  scan_logs           ScanLog[]
   organization        Organization    @relation(fields: [org_id], references: [org_id])
 
   @@index([org_id, deleted_at])
@@ -194,4 +200,7 @@ enum ScanStatus {
   denied_expired
   denied_revoked
   denied_limit_reached
+  denied_event_inactive
+  denied_area_not_allowed
+  denied_insufficient_level
 }

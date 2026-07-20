@@ -1,51 +1,83 @@
 const prisma = require("../prisma/client");
+const { evaluateQrScan } = require("./qr_policy.service");
+
+const qrScanInclude = {
+    event: {
+        include: {
+            organization: true,
+            EventSchedules: {
+                include: { area: true }
+            }
+        }
+    }
+};
+
+const buildScanData = (qrId, scannerId, status, location = {}, areaId = null) => {
+    const scanData = {
+        qr_code_id: qrId,
+        scanned_by_id: scannerId,
+        status,
+        area_id: Number.isInteger(areaId) ? areaId : null
+    };
+
+    if (location.latitude !== undefined && location.longitude !== undefined) {
+        scanData.location_lat = location.latitude;
+        scanData.location_long = location.longitude;
+    }
+    return scanData;
+};
 
 exports.getQrByToken = async (token) => {
     return await prisma.qrCode.findUnique({
         where: { unique_token: token },
-        include: {
-            event: {
-                include: { organization: true }
-            }
-        }
+        include: qrScanInclude
     });
 };
 
-exports.recordScan = async (qrId, scannerId, status, location = {}) => {
-    return await prisma.$transaction(async (tx) => {
-        const scanData = {
-            qr_code_id: qrId,
-            scanned_by_id: scannerId,
-            status: status
-        };
+exports.verifyAndRecordScan = async ({
+    token,
+    scannerId,
+    scannerOrgId,
+    areaId,
+    location = {},
+    now = new Date()
+}) => {
+    return prisma.$transaction(async (tx) => {
+        // Le verrou garantit qu'un seul scanner peut consommer la dernière
+        // utilisation disponible d'un QR à la fois.
+        await tx.$queryRawUnsafe(
+            'SELECT "qr_id" FROM "qr_codes" WHERE "unique_token" = $1 FOR UPDATE',
+            token
+        );
 
-        if (location.latitude !== undefined && location.longitude !== undefined) {
-            scanData.location_lat = location.latitude;
-            scanData.location_long = location.longitude;
-        }
+        const qr = await tx.qrCode.findUnique({
+            where: { unique_token: token },
+            include: qrScanInclude
+        });
+        const decision = evaluateQrScan(qr, scannerOrgId, now, areaId);
 
-        // 1. Créer le journal de scan
+        if (!decision.shouldRecord) return { qr, decision, scan: null };
+
         const scan = await tx.scanLog.create({
-            data: scanData
+            data: buildScanData(qr.qr_id, scannerId, decision.scanStatus, location, decision.areaId)
         });
 
-        // 2. Si autorisé, incrémenter le compteur de scans
-        if (status === "authorized") {
+        if (decision.success) {
+            const scansCount = qr.scans_count + 1;
+            const nextStatus = qr.usage_limit > 0 && scansCount >= qr.usage_limit
+                ? "used_up"
+                : qr.status;
             await tx.qrCode.update({
-                where: { qr_id: qrId },
+                where: { qr_id: qr.qr_id },
                 data: {
-                    scans_count: { increment: 1 }
+                    scans_count: scansCount,
+                    status: nextStatus
                 }
             });
+            qr.scans_count = scansCount;
+            qr.status = nextStatus;
         }
-        return scan;
-    });
-};
 
-
-exports.updateQrStatus = async (qrId, newStatus) => {
-    return await prisma.qrCode.update({
-        where: { qr_id: qrId },
-        data: { status: newStatus }
+        return { qr, decision, scan };
     });
 };

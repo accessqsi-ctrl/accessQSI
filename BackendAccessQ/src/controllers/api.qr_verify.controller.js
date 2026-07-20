@@ -1,10 +1,9 @@
 const qrVerifyService = require("../services/qr_verify.service");
-const { evaluateQrScan } = require("../services/qr_policy.service");
 const logger = require("../utils/logger");
 
 exports.verifyScan = async (req, res) => {
     try {
-        const { token, location } = req.body;
+        const { token, location, areaId } = req.body;
         const scannerId = req.user.user_id;
         const scannerOrgId = req.user.org_id;
 
@@ -12,9 +11,25 @@ exports.verifyScan = async (req, res) => {
             return res.status(400).json({ success: false, message: "Token manquant." });
         }
 
-        const qr = await qrVerifyService.getQrByToken(token);
+        const scanLocation = {};
+        const latitude = Number(location?.latitude);
+        const longitude = Number(location?.longitude);
+        if (
+            Number.isFinite(latitude) && Number.isFinite(longitude)
+            && latitude >= -90 && latitude <= 90
+            && longitude >= -180 && longitude <= 180
+        ) {
+            scanLocation.latitude = latitude;
+            scanLocation.longitude = longitude;
+        }
 
-        const decision = evaluateQrScan(qr, scannerOrgId);
+        const { qr, decision } = await qrVerifyService.verifyAndRecordScan({
+            token,
+            scannerId,
+            scannerOrgId,
+            areaId,
+            location: scanLocation
+        });
 
         if (!decision.shouldRecord) {
             logger.warn("qr.scan_rejected", {
@@ -30,22 +45,7 @@ exports.verifyScan = async (req, res) => {
             });
         }
 
-        const scanLocation = {};
-        if (location && Number.isFinite(Number(location.latitude)) && Number.isFinite(Number(location.longitude))) {
-            scanLocation.latitude = Number(location.latitude);
-            scanLocation.longitude = Number(location.longitude);
-        }
-
-        // 3. Enregistrer le scan
-        await qrVerifyService.recordScan(qr.qr_id, scannerId, decision.scanStatus, scanLocation);
-
-        // 4. Répondre
         if (decision.success) {
-            // Vérifier si la limite est atteinte maintenant pour mettre à jour le statut (optionnel mais propre)
-            if (decision.shouldMarkUsedUp) {
-                await qrVerifyService.updateQrStatus(qr.qr_id, "used_up");
-            }
-
             logger.info("qr.scan_authorized", {
                 request_id: req.requestId,
                 scanner_id: scannerId,

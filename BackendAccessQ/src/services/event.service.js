@@ -184,6 +184,10 @@ exports.updateEvent = async (eventId, data, orgId) => {
 exports.deleteEvent = async (eventId) => {
   return prisma.$transaction(async (tx) => {
     const deletedAt = new Date();
+    const qrCodes = await tx.qrCode.findMany({
+      where: { event_id: eventId, deleted_at: null },
+      select: { unique_token: true }
+    });
     const event = await tx.event.update({
       where: { event_id: eventId },
       data: { deleted_at: deletedAt }
@@ -194,6 +198,9 @@ exports.deleteEvent = async (eventId) => {
       data: { status: "revoked", deleted_at: deletedAt }
     });
 
-    return event;
+    return {
+      ...event,
+      qr_tokens: qrCodes.map(qr => qr.unique_token)
+    };
   });
 };

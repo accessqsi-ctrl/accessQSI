@@ -7,6 +7,7 @@ const {
     mountRouter,
     request
 } = require("./helpers/http");
+const { evaluateQrScan } = require("../src/services/qr_policy.service");
 
 const noopQrController = {
     getAllQrs: (req, res) => res.json({ success: true, qrs: [] }),
@@ -23,7 +24,23 @@ const loadQrApp = ({ user, qrVerifyService }) => {
     clearSrcModules();
     mockModule("src/middleware/authMiddleware", authAs(user));
     mockModule("src/controllers/api.qr.controller", noopQrController);
-    mockModule("src/services/qr_verify.service", qrVerifyService);
+    const adaptedService = { ...qrVerifyService };
+    if (!adaptedService.verifyAndRecordScan) {
+        adaptedService.verifyAndRecordScan = async ({
+            token, scannerId, scannerOrgId, areaId, location
+        }) => {
+            const qr = await adaptedService.getQrByToken(token);
+            const decision = evaluateQrScan(qr, scannerOrgId, new Date(), areaId);
+            if (decision.shouldRecord) {
+                await adaptedService.recordScan(qr.qr_id, scannerId, decision.scanStatus, location, decision.areaId);
+            }
+            if (decision.success && decision.shouldMarkUsedUp) {
+                await adaptedService.updateQrStatus(qr.qr_id, "used_up");
+            }
+            return { qr, decision };
+        };
+    }
+    mockModule("src/services/qr_verify.service", adaptedService);
 
     const router = require("../src/routes/qr.routes");
     return mountRouter("/qr", router);
@@ -137,4 +154,41 @@ test("POST /qr/verify rejects QR from a deleted event without recording", async 
     assert.equal(res.status, 410);
     assert.equal(res.body.success, false);
     assert.equal(recordCalled, false);
+});
+
+test("POST /qr/verify records the selected checkpoint area", async () => {
+    let recordArgs = null;
+    const now = Date.now();
+    const app = loadQrApp({
+        user: { user_id: 7, role: "ORG_AGENT", org_id: 42 },
+        qrVerifyService: {
+            getQrByToken: async () => validQr({
+                level: 2,
+                event: {
+                    org_id: 42,
+                    deleted_at: null,
+                    organization: { deleted_at: null, is_active: true },
+                    EventSchedules: [{
+                        id_area: 4,
+                        start_date: new Date(now - 60_000),
+                        end_date: new Date(now + 60_000),
+                        area: { accreditation_level: 2 }
+                    }]
+                }
+            }),
+            recordScan: async (...args) => {
+                recordArgs = args;
+            },
+            updateQrStatus: async () => {}
+        }
+    });
+
+    const res = await request(app, "POST", "/qr/verify", {
+        token: "token-1",
+        areaId: 4
+    });
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body.success, true);
+    assert.equal(recordArgs[4], 4);
 });

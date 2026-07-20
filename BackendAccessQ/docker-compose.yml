@@ -7,8 +7,15 @@ services:
     image: accessqsi/back-accessq
     env_file:
       .env
+    environment:
+      FILE_STORAGE_ROOT: /usr/src/app/storage
+    volumes:
+      - qr_assets:/usr/src/app/storage
     container_name: backend-accessq
     ports:
       # Expose le port 5000 du conteneur vers le port 5000 de votre machine
       - "5000:5000"
     restart: unless-stopped
+
+volumes:
+  qr_assets:

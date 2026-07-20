@@ -147,6 +147,10 @@ test("event service soft-deletes an event and revokes its QR codes together", as
                 }
             },
             qrCode: {
+                findMany: async (args) => {
+                    calls.push(["qrCode.findMany", args]);
+                    return [{ unique_token: "token-1" }];
+                },
                 updateMany: async (args) => {
                     calls.push(["qrCode.updateMany", args]);
                 }
@@ -157,8 +161,102 @@ test("event service soft-deletes an event and revokes its QR codes together", as
     const deleted = await eventService.deleteEvent(5);
 
     assert.equal(deleted.event_id, 5);
-    assert.deepEqual(calls.map(([name]) => name), ["event.update", "qrCode.updateMany"]);
-    assert.deepEqual(calls[1][1].where, { event_id: 5, deleted_at: null });
-    assert.equal(calls[1][1].data.status, "revoked");
-    assert.ok(calls[1][1].data.deleted_at instanceof Date);
+    assert.deepEqual(calls.map(([name]) => name), ["qrCode.findMany", "event.update", "qrCode.updateMany"]);
+    assert.deepEqual(calls[2][1].where, { event_id: 5, deleted_at: null });
+    assert.equal(calls[2][1].data.status, "revoked");
+    assert.ok(calls[2][1].data.deleted_at instanceof Date);
+    assert.deepEqual(deleted.qr_tokens, ["token-1"]);
+});
+
+test("QR verification locks, evaluates, logs and consumes a scan in one transaction", async () => {
+    const calls = [];
+    const qr = {
+        qr_id: 8,
+        event_id: 5,
+        unique_token: "token-8",
+        status: "active",
+        usage_limit: 1,
+        scans_count: 0,
+        valid_from: null,
+        valid_until: null,
+        deleted_at: null,
+        level: 1,
+        event: {
+            org_id: 42,
+            deleted_at: null,
+            organization: { deleted_at: null, is_active: true },
+            EventSchedules: [{
+                id_area: 4,
+                start_date: new Date("2026-01-01T10:00:00Z"),
+                end_date: new Date("2026-01-01T18:00:00Z"),
+                area: { accreditation_level: 1 }
+            }]
+        }
+    };
+    const qrVerifyService = loadService("../src/services/qr_verify.service", {
+        $transaction: async (callback) => callback({
+            $queryRawUnsafe: async (...args) => {
+                calls.push(["lock", ...args]);
+                return [{ qr_id: 8 }];
+            },
+            qrCode: {
+                findUnique: async () => {
+                    calls.push(["find"]);
+                    return qr;
+                },
+                update: async ({ data }) => {
+                    calls.push(["update", data]);
+                    return {};
+                }
+            },
+            scanLog: {
+                create: async ({ data }) => {
+                    calls.push(["scan", data]);
+                    return { id: 1, ...data };
+                }
+            }
+        })
+    });
+
+    const result = await qrVerifyService.verifyAndRecordScan({
+        token: "token-8",
+        scannerId: 12,
+        scannerOrgId: 42,
+        areaId: 4,
+        location: { latitude: -11.66, longitude: 27.47 },
+        now: new Date("2026-01-01T12:00:00Z")
+    });
+
+    assert.equal(result.decision.success, true);
+    assert.deepEqual(calls.map(([name]) => name), ["lock", "find", "scan", "update"]);
+    assert.equal(calls[2][1].area_id, 4);
+    assert.equal(calls[2][1].location_lat, -11.66);
+    assert.deepEqual(calls[3][1], { scans_count: 1, status: "used_up" });
+});
+
+test("QR service paginates organization results and applies server-side filters", async () => {
+    let findArgs = null;
+    const qrService = loadService("../src/services/qr.service", {
+        qrCode: {
+            findMany: async (args) => {
+                findArgs = args;
+                return [{ qr_id: 1 }];
+            },
+            count: async () => 51
+        },
+        $transaction: async (operations) => Promise.all(operations)
+    });
+
+    const result = await qrService.getAllQrsForOrg(42, {
+        page: 2,
+        pageSize: 25,
+        search: "Jane",
+        status: "active"
+    });
+
+    assert.equal(findArgs.skip, 25);
+    assert.equal(findArgs.take, 25);
+    assert.equal(findArgs.where.event.org_id, 42);
+    assert.equal(result.pagination.total, 51);
+    assert.equal(result.pagination.totalPages, 3);
 });

@@ -41,5 +41,14 @@ Pour une utilisation en production et pour permettre le scan via mobile :
 - **Frontend** : Next.js, TailwindCSS, Lucide-React, Recharts.
 - **QR Engine** : node-qrcode.
 
+### Stockage persistant des QR et cartes
+
+Définissez `FILE_STORAGE_ROOT` vers un répertoire partagé et persistant lorsque
+plusieurs instances du backend sont utilisées. Les URLs publiques restent
+`/qrcodes/...`, `/cards/...` et `/card-backgrounds/...`.
+
+Le fichier `docker-compose.yml` monte automatiquement le volume `qr_assets`
+dans `/usr/src/app/storage`.
+
 ## Auteur
 Lionel TSHITENGE KALEU

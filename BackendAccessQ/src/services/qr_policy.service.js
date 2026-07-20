@@ -1,4 +1,16 @@
-exports.evaluateQrScan = (qr, scannerOrgId, now = new Date()) => {
+const { getEffectiveQrStatus, QR_STATUS } = require("./qr_status.service");
+
+const deniedDecision = (scanStatus, reason, areaId = null) => ({
+    httpStatus: 200,
+    success: false,
+    message: "Accès Refusé",
+    reason,
+    scanStatus,
+    shouldRecord: true,
+    areaId
+});
+
+exports.evaluateQrScan = (qr, scannerOrgId, now = new Date(), requestedAreaId = null) => {
     if (!qr) {
         return {
             httpStatus: 404,
@@ -26,33 +38,63 @@ exports.evaluateQrScan = (qr, scannerOrgId, now = new Date()) => {
         };
     }
 
-    let scanStatus = "authorized";
-    let denialReason = "";
+    const effectiveStatus = getEffectiveQrStatus(qr, now);
 
-    if (qr.status === "revoked") {
-        scanStatus = "denied_revoked";
-        denialReason = "Ce QR Code a été révoqué par un administrateur.";
-    } else if (qr.usage_limit > 0 && qr.scans_count >= qr.usage_limit) {
-        scanStatus = "denied_limit_reached";
-        denialReason = "Limite d'utilisation atteinte.";
-    } else if (qr.valid_from && now < new Date(qr.valid_from)) {
-        scanStatus = "denied_expired";
-        denialReason = `Valide à partir de : ${new Date(qr.valid_from).toLocaleString()}`;
-    } else if (qr.valid_until && now > new Date(qr.valid_until)) {
-        scanStatus = "denied_expired";
-        denialReason = "Ce QR Code est expiré.";
+    if (effectiveStatus === QR_STATUS.REVOKED) {
+        return deniedDecision("denied_revoked", "Ce QR Code a été révoqué par un administrateur.");
     }
 
-    const isAuthorized = scanStatus === "authorized";
+    if (effectiveStatus === QR_STATUS.USED_UP) {
+        return deniedDecision("denied_limit_reached", "Limite d'utilisation atteinte.");
+    }
+
+    if (effectiveStatus === QR_STATUS.EXPIRED) {
+        return deniedDecision("denied_expired", "Ce QR Code est expiré.");
+    }
+
+    if (qr.valid_from && now < new Date(qr.valid_from)) {
+        return deniedDecision("denied_expired", `Valide à partir de : ${new Date(qr.valid_from).toLocaleString()}`);
+    }
+
+    const schedules = Array.isArray(qr.event?.EventSchedules) ? qr.event.EventSchedules : [];
+    let areaId = null;
+
+    if (schedules.length > 0) {
+        const normalizedAreaId = Number(requestedAreaId);
+        if (!Number.isInteger(normalizedAreaId)) {
+            return deniedDecision("denied_area_not_allowed", "Sélectionnez la zone de contrôle avant de scanner.");
+        }
+
+        const schedule = schedules.find(item => item.id_area === normalizedAreaId);
+        if (!schedule) {
+            return deniedDecision("denied_area_not_allowed", "Cette zone n'est pas autorisée pour cet événement.");
+        }
+
+        areaId = normalizedAreaId;
+        if (now < new Date(schedule.start_date) || now > new Date(schedule.end_date)) {
+            return deniedDecision("denied_event_inactive", "L'accès à cette zone est fermé pour le moment.", areaId);
+        }
+
+        const requiredLevel = Number(schedule.area?.accreditation_level || 0);
+        const qrLevel = Number(qr.level || 0);
+        if (qrLevel < requiredLevel) {
+            return deniedDecision(
+                "denied_insufficient_level",
+                `Niveau d'accréditation insuffisant : niveau ${requiredLevel} requis.`,
+                areaId
+            );
+        }
+    }
 
     return {
         httpStatus: 200,
-        success: isAuthorized,
-        message: isAuthorized ? "Accès Autorisé" : "Accès Refusé",
-        reason: denialReason,
-        scanStatus,
+        success: true,
+        message: "Accès Autorisé",
+        reason: "",
+        scanStatus: "authorized",
         shouldRecord: true,
-        shouldMarkUsedUp: isAuthorized && qr.usage_limit > 0 && (qr.scans_count + 1) >= qr.usage_limit,
-        remaining: qr.usage_limit > 0 ? (qr.usage_limit - (qr.scans_count + 1)) : "Illimité"
+        shouldMarkUsedUp: qr.usage_limit > 0 && (qr.scans_count + 1) >= qr.usage_limit,
+        remaining: qr.usage_limit > 0 ? Math.max(0, qr.usage_limit - (qr.scans_count + 1)) : "Illimité",
+        areaId
     };
 };

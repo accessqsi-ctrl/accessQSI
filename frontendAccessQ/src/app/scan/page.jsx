@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Loader2, Camera, ShieldCheck, ShieldAlert, ArrowLeft, History } from "lucide-react";
+import { Loader2, Camera, ShieldCheck, ShieldAlert, ArrowLeft, History, MapPin } from "lucide-react";
 import Link from "next/link";
 import { apiFetch } from "../lib/api";
 
@@ -12,8 +12,37 @@ export default function ScanPage() {
     const [flash, setFlash] = useState(null); // 'success' | 'error'
     const [lastScans, setLastScans] = useState([]);
     const [cameraError, setCameraError] = useState(null);
+    const [areas, setAreas] = useState([]);
+    const [selectedAreaId, setSelectedAreaId] = useState("");
+    const [areasError, setAreasError] = useState("");
     
     const scannerRef = useRef(null);
+
+    useEffect(() => {
+        let active = true;
+        const loadAreas = async () => {
+            try {
+                const response = await apiFetch("/areas");
+                const data = await response.json();
+                if (!active) return;
+                if (!response.ok || !data.success) {
+                    setAreasError(data.message || "Impossible de charger les zones.");
+                    return;
+                }
+                const availableAreas = data.areas || [];
+                setAreas(availableAreas);
+                if (availableAreas.length === 1) {
+                    setSelectedAreaId(String(availableAreas[0].area_id));
+                }
+            } catch {
+                if (active) setAreasError("Impossible de charger les zones.");
+            }
+        };
+        loadAreas();
+        return () => {
+            active = false;
+        };
+    }, []);
 
     // Load html5-qrcode from CDN
     useEffect(() => {
@@ -41,6 +70,10 @@ export default function ScanPage() {
 
     const startScanner = () => {
         if (!window.Html5Qrcode) return;
+        if (!selectedAreaId) {
+            setCameraError("Sélectionnez d'abord la zone de contrôle.");
+            return;
+        }
         
         setIsScanning(true);
         setCameraError(null);
@@ -105,7 +138,11 @@ export default function ScanPage() {
             }
 
             const location = await getScanLocation();
-            const payload = location ? { token: qrToken, location } : { token: qrToken };
+            const payload = {
+                token: qrToken,
+                areaId: Number(selectedAreaId),
+                ...(location ? { location } : {})
+            };
 
             const res = await apiFetch("/qr/verify", {
                 method: "POST",
@@ -210,8 +247,31 @@ export default function ScanPage() {
                                 Positionnez le code QR dans le cadre pour la vérification instantanée.
                             </p>
                         </div>
+                        <div className="w-full max-w-xs text-left">
+                            <label className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400">
+                                <MapPin className="h-4 w-4" />
+                                Zone de contrôle
+                            </label>
+                            <select
+                                value={selectedAreaId}
+                                onChange={(event) => {
+                                    setSelectedAreaId(event.target.value);
+                                    setCameraError(null);
+                                }}
+                                className="w-full rounded-2xl border border-slate-700 bg-slate-800 px-4 py-3 text-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                            >
+                                <option value="">Sélectionner une zone</option>
+                                {areas.map(area => (
+                                    <option key={area.area_id} value={area.area_id}>
+                                        {area.area_name} — niveau {area.accreditation_level}
+                                    </option>
+                                ))}
+                            </select>
+                            {areasError && <p className="mt-2 text-sm text-red-400">{areasError}</p>}
+                        </div>
                         <button
                             onClick={startScanner}
+                            disabled={!selectedAreaId || areas.length === 0}
                             className="w-full max-w-xs py-4 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-2xl shadow-lg shadow-blue-500/25 active:scale-95 transition-all text-lg"
                         >
                             Démarrer la Caméra

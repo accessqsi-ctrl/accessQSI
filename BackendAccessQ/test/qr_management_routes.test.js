@@ -1,5 +1,8 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const fs = require("fs");
+const os = require("os");
+const path = require("path");
 const {
     authAs,
     clearSrcModules,
@@ -9,7 +12,15 @@ const {
     request
 } = require("./helpers/http");
 
-const loadQrManagementApp = ({ user, eventService, qrService, qrcode = {}, cardTemplateService = {}, customCardTemplateService = {} }) => {
+const loadQrManagementApp = ({
+    user,
+    eventService,
+    qrService,
+    qrcode = {},
+    cardTemplateService = {},
+    customCardTemplateService = {},
+    storageService = {}
+}) => {
     clearSrcModules();
     mockModule("src/middleware/authMiddleware", authAs(user));
     mockModule("src/services/event.service", eventService);
@@ -29,11 +40,17 @@ const loadQrManagementApp = ({ user, eventService, qrService, qrcode = {}, cardT
         getDefaultForOrg: async () => "",
         ...customCardTemplateService
     });
+    mockModule("src/services/storage.service", {
+        storagePath: (...segments) => path.join(os.tmpdir(), ...segments),
+        writeFileAtomically: async () => {},
+        removeQrAssets: async () => {},
+        ...storageService
+    });
     mockModule("src/controllers/api.qr_verify.controller", {
         verifyScan: (req, res) => res.json({ success: true })
     });
     mockPackage("qrcode", {
-        toFile: async () => {},
+        toBuffer: async () => Buffer.from("png"),
         ...qrcode
     });
 
@@ -59,9 +76,25 @@ test("POST /qr/generate/:event_id validates required holder fields", async () =>
         accessType: "single"
     });
 
-    assert.equal(res.status, 400);
+    assert.equal(res.status, 422);
     assert.equal(res.body.success, false);
     assert.equal(createCalled, false);
+});
+
+test("QR management routes reject non-admin users", async () => {
+    const app = loadQrManagementApp({
+        user: { user_id: 7, role: "ORG_AGENT", org_id: 42 },
+        eventService: {},
+        qrService: {}
+    });
+
+    const res = await request(app, "POST", "/qr/generate/5", {
+        fullName: "Jane",
+        accessType: "single"
+    });
+
+    assert.equal(res.status, 403);
+    assert.equal(res.body.success, false);
 });
 
 test("POST /qr/generate/:event_id creates QR data for an event in the user's organization", async () => {
@@ -83,8 +116,9 @@ test("POST /qr/generate/:event_id creates QR data for an event in the user's org
             }
         },
         qrcode: {
-            toFile: async (...args) => {
+            toBuffer: async (...args) => {
                 qrFileArgs = args;
+                return Buffer.from("png");
             }
         }
     });
@@ -106,8 +140,88 @@ test("POST /qr/generate/:event_id creates QR data for an event in the user's org
     assert.equal(createdData.level, 2);
     assert.equal(createdData.event_id, 5);
     assert.match(res.body.qrUrl, /^\/qrcodes\/qr_.+\.png$/);
-    assert.match(qrFileArgs[0], /qr_.+\.png$/);
-    assert.equal(JSON.parse(qrFileArgs[1]).e, 5);
+    assert.equal(JSON.parse(qrFileArgs[0]).e, 5);
+});
+
+test("POST /qr/generate/:event_id stores unlimited access with usage_limit zero", async () => {
+    let createdData = null;
+    const app = loadQrManagementApp({
+        user: { user_id: 7, role: "ORG_ADMIN", org_id: 42 },
+        eventService: {
+            findById: async () => ({ event_id: 5, title: "Concert" })
+        },
+        qrService: {
+            createQr: async (data) => {
+                createdData = data;
+                return { qr_id: 9, ...data };
+            }
+        }
+    });
+
+    const res = await request(app, "POST", "/qr/generate/5", {
+        fullName: "Jane Holder",
+        accessType: "unlimited"
+    });
+
+    assert.equal(res.status, 201);
+    assert.equal(createdData.usage_limit, 0);
+});
+
+test("POST /qr/generate/:event_id compensates the database and assets when generation fails", async () => {
+    const calls = [];
+    const app = loadQrManagementApp({
+        user: { user_id: 7, role: "ORG_ADMIN", org_id: 42 },
+        eventService: {
+            findById: async () => ({ event_id: 5, title: "Concert" })
+        },
+        qrService: {
+            createQr: async (data) => ({ qr_id: 9, ...data }),
+            deleteQrPermanently: async (id) => calls.push(["delete", id])
+        },
+        qrcode: {
+            toBuffer: async () => {
+                throw new Error("PNG indisponible");
+            }
+        },
+        storageService: {
+            removeQrAssets: async (token) => calls.push(["cleanup", token])
+        }
+    });
+
+    const res = await request(app, "POST", "/qr/generate/5", {
+        fullName: "Jane Holder",
+        accessType: "single"
+    });
+
+    assert.equal(res.status, 500);
+    assert.deepEqual(calls.map(([name]) => name).sort(), ["cleanup", "delete"]);
+});
+
+test("POST /qr/generate/:event_id uses centralized validation for limits and dates", async () => {
+    let createCalled = false;
+    const app = loadQrManagementApp({
+        user: { user_id: 7, role: "ORG_ADMIN", org_id: 42 },
+        eventService: {
+            findById: async () => ({ event_id: 5, title: "Concert" })
+        },
+        qrService: {
+            createQr: async () => {
+                createCalled = true;
+            }
+        }
+    });
+
+    const res = await request(app, "POST", "/qr/generate/5", {
+        fullName: "Jane Holder",
+        accessType: "multi",
+        limit: 0,
+        validFrom: "2026-08-02T10:00:00Z",
+        validUntil: "2026-08-01T10:00:00Z"
+    });
+
+    assert.equal(res.status, 422);
+    assert.equal(createCalled, false);
+    assert.deepEqual(res.body.errors.map(error => error.field), ["limit", "validUntil"]);
 });
 
 test("POST /qr/generate/:event_id rejects unknown card templates", async () => {
@@ -482,4 +596,83 @@ test("GET /qr/template/:event_id downloads a CSV import template for an event in
     assert.match(res.headers["content-type"], /text\/csv/);
     assert.equal(res.headers["content-disposition"], 'attachment; filename="modele_import_qr_evenement_5.csv"');
     assert.equal(res.body, "fullName,email,phone,accessType,limit,validFrom,validUntil,level,cardTemplateId,cardMessage\n");
+});
+
+test("CSV import returns an explicit report when some lines fail after others were created", async () => {
+    clearSrcModules();
+    let createCount = 0;
+    let imageCount = 0;
+    mockModule("src/services/event.service", {
+        findById: async () => ({ event_id: 5, title: "Concert" })
+    });
+    mockModule("src/services/qr.service", {
+        createQr: async (data) => ({ qr_id: ++createCount, ...data }),
+        updateQr: async () => ({}),
+        deleteQrPermanently: async () => ({})
+    });
+    mockModule("src/services/card_template.service", {
+        isTemplateAvailable: () => false,
+        generateCardForQr: async () => null
+    });
+    mockModule("src/services/custom_card_template.service", {
+        resolveCustomForRender: async () => null,
+        getDefaultForOrg: async () => ""
+    });
+    mockModule("src/services/storage.service", {
+        storagePath: (...segments) => path.join(os.tmpdir(), ...segments),
+        writeFileAtomically: async () => {},
+        removeQrAssets: async () => {}
+    });
+    mockPackage("qrcode", {
+        toBuffer: async () => {
+            imageCount += 1;
+            if (imageCount === 2) throw new Error("PNG indisponible");
+            return Buffer.from("png");
+        }
+    });
+
+    const controller = require("../src/controllers/api.qr.controller");
+    const csvPath = path.join(os.tmpdir(), `qr-import-${Date.now()}.csv`);
+    fs.writeFileSync(
+        csvPath,
+        [
+            "fullName,accessType,limit,level",
+            "Alice,single,,1",
+            "Bob,multi,0,1",
+            "Cara,single,,1"
+        ].join("\n")
+    );
+
+    const req = {
+        user: { user_id: 7, role: "ORG_ADMIN", org_id: 42 },
+        params: { event_id: "5" },
+        file: { path: csvPath }
+    };
+    const response = {
+        statusCode: 200,
+        body: null,
+        status(code) {
+            this.statusCode = code;
+            return this;
+        },
+        json(payload) {
+            this.body = payload;
+            return this;
+        }
+    };
+
+    await controller.importQrsFromCSV(req, response);
+
+    assert.equal(response.statusCode, 207);
+    assert.equal(response.body.success, true);
+    assert.equal(response.body.partial, true);
+    assert.equal(response.body.createdCount, 1);
+    assert.equal(response.body.completedCount, 1);
+    assert.equal(response.body.failedCount, 2);
+    assert.equal(response.body.warningCount, 0);
+    assert.deepEqual(
+        response.body.results.map(result => result.status),
+        ["created", "failed", "failed"]
+    );
+    assert.equal(fs.existsSync(csvPath), false);
 });

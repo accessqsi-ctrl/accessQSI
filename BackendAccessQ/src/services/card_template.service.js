@@ -2,6 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const PDFDocument = require("pdfkit");
 const SVGtoPDF = require("svg-to-pdfkit");
+const storageService = require("./storage.service");
 
 const templates = {
     "event-ticket": {
@@ -113,6 +114,38 @@ const escapeXml = (value) => String(value || "")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&apos;");
 
+const imageHrefForSvg = (href) => {
+    const cleanHref = String(href || "").split("?")[0].trim();
+    if (!cleanHref || cleanHref.startsWith("data:") || /^https?:\/\//i.test(cleanHref)) {
+        return cleanHref;
+    }
+
+    const normalizedHref = cleanHref.startsWith("/") ? cleanHref.slice(1) : cleanHref;
+    const candidate = storageService.findPublicAsset(...normalizedHref.split("/"));
+    if (!candidate || !fs.statSync(candidate).isFile()) {
+        return cleanHref;
+    }
+
+    const mimeTypes = {
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".png": "image/png",
+        ".webp": "image/webp"
+    };
+    const mimeType = mimeTypes[path.extname(candidate).toLowerCase()];
+    if (!mimeType) return cleanHref;
+    return `data:${mimeType};base64,${fs.readFileSync(candidate).toString("base64")}`;
+};
+
+const renderPrimaryImage = ({ template, clipId, clipContent, x, y, width, height }) => {
+    if (template.id === "wedding-invite") return "";
+    const href = imageHrefForSvg(template.backgroundImageUrl);
+    if (!href) return "";
+
+    return `<defs><clipPath id="${clipId}">${clipContent}</clipPath></defs>
+<image href="${escapeXml(href)}" x="${x}" y="${y}" width="${width}" height="${height}" preserveAspectRatio="xMidYMid slice" clip-path="url(#${clipId})"/>`;
+};
+
 const formatDate = (value) => {
     if (!value) return "Date a definir";
     const date = new Date(value);
@@ -159,9 +192,9 @@ const cardFilenameForToken = (token) => `card_${token}.svg`;
 
 const cardPdfFilenameForToken = (token) => `card_${token}.pdf`;
 
-const cardPathForToken = (token) => path.join(__dirname, "../statics/cards", cardFilenameForToken(token));
+const cardPathForToken = (token) => storageService.storagePath("cards", cardFilenameForToken(token));
 
-const cardPdfPathForToken = (token) => path.join(__dirname, "../statics/cards", cardPdfFilenameForToken(token));
+const cardPdfPathForToken = (token) => storageService.storagePath("cards", cardPdfFilenameForToken(token));
 
 const cardUrlForToken = (token) => `/cards/${cardFilenameForToken(token)}`;
 
@@ -187,6 +220,7 @@ const buildTemplate = (templateId, customization = null) => {
 
     return {
         ...template,
+        baseAccent: template.accent,
         accent: customization.primaryColor || template.accent,
         soft: customization.secondaryColor || template.soft,
         label: customization.title || template.label,
@@ -280,8 +314,8 @@ const renderCanvasScene = ({ template, qrUrl, event, qrRecord, cardMessage }) =>
             const common = `opacity="${opacity}"${transform}`;
 
             if (object.type === "background") {
-                const src = object.src || template.backgroundImageUrl;
-                if (src) return `<image href="${escapeXml(src)}" x="${object.x}" y="${object.y}" width="${object.width}" height="${object.height}" preserveAspectRatio="xMidYMid slice" ${common}/>`;
+                const src = object.src || (template.id === "wedding-invite" ? "" : template.backgroundImageUrl);
+                if (src) return `<image href="${escapeXml(imageHrefForSvg(src))}" x="${object.x}" y="${object.y}" width="${object.width}" height="${object.height}" preserveAspectRatio="xMidYMid slice" ${common}/>`;
                 return `<rect x="${object.x}" y="${object.y}" width="${object.width}" height="${object.height}" fill="${escapeXml(object.fill || backgroundColor)}" ${common}/>`;
             }
 
@@ -297,6 +331,24 @@ const renderCanvasScene = ({ template, qrUrl, event, qrRecord, cardMessage }) =>
             }
 
             if (object.type === "rect") {
+                const objectFill = String(object.fill || "").toLowerCase();
+                const usesPrimaryColor = objectFill === String(template.accent || "").toLowerCase()
+                    || objectFill === String(template.baseAccent || "").toLowerCase()
+                    || String(object.id || "").toLowerCase().includes("accent");
+                const clipId = `primary-object-${String(object.id || object.zIndex || "rect").replace(/[^a-zA-Z0-9_-]/g, "")}`;
+                const primaryImage = usesPrimaryColor ? renderPrimaryImage({
+                    template,
+                    clipId,
+                    clipContent: `<rect x="${object.x}" y="${object.y}" width="${object.width}" height="${object.height}" rx="${object.cornerRadius || 0}"${transform}/>`,
+                    x: object.x,
+                    y: object.y,
+                    width: object.width,
+                    height: object.height
+                }) : "";
+                if (primaryImage) {
+                    return `${primaryImage}
+<rect x="${object.x}" y="${object.y}" width="${object.width}" height="${object.height}" rx="${object.cornerRadius || 0}" fill="none" stroke="${escapeXml(object.stroke || "none")}" stroke-width="${object.strokeWidth || 0}" ${common}/>`;
+                }
                 return `<rect x="${object.x}" y="${object.y}" width="${object.width}" height="${object.height}" rx="${object.cornerRadius || 0}" fill="${escapeXml(object.fill || "#ffffff")}" stroke="${escapeXml(object.stroke || "none")}" stroke-width="${object.strokeWidth || 0}" ${common}/>`;
             }
 
@@ -320,12 +372,28 @@ ${renderedObjects}
 
 const renderLayoutCard = ({ template, qrUrl, event, qrRecord, cardMessage }) => {
     const elements = Array.isArray(template.layoutConfig?.elements) ? template.layoutConfig.elements : [];
-    const backgroundOpacity = template.layoutConfig?.backgroundOpacity ?? 0.72;
-    const background = template.backgroundImageUrl
-        ? `<image href="${escapeXml(template.backgroundImageUrl)}" x="0" y="0" width="${template.width}" height="${template.height}" preserveAspectRatio="xMidYMid slice" opacity="${backgroundOpacity}"/>
-<rect width="${template.width}" height="${template.height}" rx="34" fill="#ffffff" opacity="${Math.max(0, 1 - backgroundOpacity) * 0.7}"/>`
-        : `<rect width="${template.width}" height="${template.height}" rx="34" fill="${template.surface}"/>
+    const background = `<rect width="${template.width}" height="${template.height}" rx="34" fill="${template.surface}"/>
 <rect x="40" y="40" width="${template.width - 80}" height="${template.height - 80}" rx="28" fill="#ffffff" stroke="${template.soft}" stroke-width="4"/>`;
+    const primaryZones = {
+        "event-ticket": {
+            clipId: "layout-event-primary-zone",
+            clipContent: `<rect x="40" y="40" width="420" height="${template.height - 80}" rx="28"/>`,
+            x: 40, y: 40, width: 420, height: template.height - 80
+        },
+        "staff-card": {
+            clipId: "layout-staff-primary-zone",
+            clipContent: `<rect x="54" y="54" width="${template.width - 108}" height="396" rx="52"/>`,
+            x: 54, y: 54, width: template.width - 108, height: 396
+        },
+        "compact-ticket": {
+            clipId: "layout-compact-primary-zone",
+            clipContent: `<rect x="36" y="36" width="280" height="${template.height - 72}" rx="26"/>`,
+            x: 36, y: 36, width: 280, height: template.height - 72
+        }
+    };
+    const primaryZone = primaryZones[template.id]
+        ? renderPrimaryImage({ template, ...primaryZones[template.id] })
+        : "";
 
     const renderedElements = elements
         .filter(element => element.visible !== false)
@@ -348,6 +416,7 @@ const renderLayoutCard = ({ template, qrUrl, event, qrRecord, cardMessage }) => 
 
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${template.width}" height="${template.height}" viewBox="0 0 ${template.width} ${template.height}">
 ${background}
+${primaryZone}
 ${renderedElements}
 </svg>`;
 };
@@ -362,12 +431,22 @@ const renderHorizontalTicket = ({ template, qrUrl, event, qrRecord, cardMessage 
     const qrOnLeft = template.qrPosition === "left";
     const contentX = qrOnLeft ? 820 : 540;
     const qrX = qrOnLeft ? 540 : template.width - 330;
+    const primaryPanel = renderPrimaryImage({
+        template,
+        clipId: "horizontal-primary-zone",
+        clipContent: `<rect x="40" y="40" width="420" height="${template.height - 80}" rx="28"/>
+<path d="M432 40 h28 v${template.height - 80} h-28 a28 28 0 0 0 28 -28 v-${template.height - 136} a28 28 0 0 0 -28 -28z"/>`,
+        x: 40,
+        y: 40,
+        width: 420,
+        height: template.height - 80
+    }) || `<rect x="40" y="40" width="420" height="${template.height - 80}" rx="28" fill="${template.accent}"/>
+<path d="M432 40 h28 v${template.height - 80} h-28 a28 28 0 0 0 28 -28 v-${template.height - 136} a28 28 0 0 0 -28 -28z" fill="${template.accent}"/>`;
 
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${template.width}" height="${template.height}" viewBox="0 0 ${template.width} ${template.height}">
 <rect width="${template.width}" height="${template.height}" rx="34" fill="${template.surface}"/>
 <rect x="40" y="40" width="${template.width - 80}" height="${template.height - 80}" rx="28" fill="#ffffff" stroke="#dbe3ea" stroke-width="3"/>
-<rect x="40" y="40" width="420" height="${template.height - 80}" rx="28" fill="${template.accent}"/>
-<path d="M432 40 h28 v${template.height - 80} h-28 a28 28 0 0 0 28 -28 v-${template.height - 136} a28 28 0 0 0 -28 -28z" fill="${template.accent}"/>
+${primaryPanel}
 <circle cx="134" cy="134" r="72" fill="#ffffff" opacity="0.14"/>
 <circle cx="400" cy="${template.height - 118}" r="118" fill="#ffffff" opacity="0.10"/>
 <text x="92" y="182" font-family="Arial, sans-serif" font-size="25" font-weight="700" fill="#ffffff" opacity="0.82">QR Access</text>
@@ -395,12 +474,22 @@ const renderVerticalCard = ({ template, qrUrl, event, qrRecord, cardMessage }) =
     const location = escapeXml(getEventLocation(event));
     const level = escapeXml(qrRecord.level || 1);
     const message = getCardMessage(cardMessage, template.cardMessageDefault || "Badge à présenter au contrôle");
+    const primaryPanel = renderPrimaryImage({
+        template,
+        clipId: "vertical-primary-zone",
+        clipContent: `<rect x="54" y="54" width="${template.width - 108}" height="360" rx="52"/>
+<rect x="54" y="330" width="${template.width - 108}" height="120"/>`,
+        x: 54,
+        y: 54,
+        width: template.width - 108,
+        height: 396
+    }) || `<rect x="54" y="54" width="${template.width - 108}" height="360" rx="52" fill="${template.accent}"/>
+<rect x="54" y="330" width="${template.width - 108}" height="120" fill="${template.accent}"/>`;
 
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${template.width}" height="${template.height}" viewBox="0 0 ${template.width} ${template.height}">
 <rect width="${template.width}" height="${template.height}" rx="64" fill="${template.surface}"/>
 <rect x="54" y="54" width="${template.width - 108}" height="${template.height - 108}" rx="52" fill="#ffffff" stroke="#dbe3ea" stroke-width="4"/>
-<rect x="54" y="54" width="${template.width - 108}" height="360" rx="52" fill="${template.accent}"/>
-<rect x="54" y="330" width="${template.width - 108}" height="120" fill="${template.accent}"/>
+${primaryPanel}
 <text x="450" y="154" text-anchor="middle" font-family="Arial, sans-serif" font-size="32" font-weight="800" fill="#ffffff">QR Access</text>
 ${renderLogo(template, 78, 78, 70)}
 <text x="450" y="218" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" fill="#ffffff" opacity="0.84">${template.label}</text>
@@ -488,11 +577,20 @@ const renderCompactTicket = ({ template, qrUrl, event, qrRecord, cardMessage }) 
     const holder = escapeXml(qrRecord.holder_name);
     const date = escapeXml(getEventDate(event));
     const message = getCardMessage(cardMessage, template.cardMessageDefault || "Ticket compact à présenter");
+    const primaryPanel = renderPrimaryImage({
+        template,
+        clipId: "compact-primary-zone",
+        clipContent: `<rect x="36" y="36" width="280" height="${template.height - 72}" rx="26"/>`,
+        x: 36,
+        y: 36,
+        width: 280,
+        height: template.height - 72
+    }) || `<rect x="36" y="36" width="280" height="${template.height - 72}" rx="26" fill="${template.accent}"/>`;
 
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${template.width}" height="${template.height}" viewBox="0 0 ${template.width} ${template.height}">
 <rect width="${template.width}" height="${template.height}" rx="30" fill="${template.surface}"/>
 <rect x="36" y="36" width="${template.width - 72}" height="${template.height - 72}" rx="26" fill="#ffffff" stroke="#dbe3ea" stroke-width="3"/>
-<rect x="36" y="36" width="280" height="${template.height - 72}" rx="26" fill="${template.accent}"/>
+${primaryPanel}
 <text x="82" y="152" font-family="Arial, sans-serif" font-size="34" font-weight="900" fill="#ffffff">${template.label}</text>
 <text x="82" y="202" font-family="Arial, sans-serif" font-size="19" fill="#ffffff" opacity="0.82">QR Access</text>
 ${renderLogo(template, 82, 250, 58)}
@@ -524,14 +622,7 @@ const localImagePathForHref = (href) => {
     }
 
     const normalizedHref = cleanHref.startsWith("/") ? cleanHref.slice(1) : cleanHref;
-    const candidate = path.resolve(__dirname, "../statics", normalizedHref);
-    const staticsRoot = path.resolve(__dirname, "../statics");
-
-    if (!candidate.startsWith(staticsRoot) || !fs.existsSync(candidate)) {
-        return cleanHref;
-    }
-
-    return candidate;
+    return storageService.findPublicAsset(...normalizedHref.split("/")) || cleanHref;
 };
 
 const writeSvgPdf = async ({ svg, pdfPath, width, height }) => {
@@ -598,13 +689,26 @@ exports.generateCardForQr = async ({ templateId, event, qrRecord, qrUrl, cardMes
     const cardPath = cardPathForToken(qrRecord.unique_token);
     const pdfPath = cardPdfPathForToken(qrRecord.unique_token);
     const dir = path.dirname(cardPath);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    await storageService.ensureDirectory(dir);
 
     const template = buildTemplate(baseTemplateId, renderCustomization);
     const width = Number(template.canvasScene?.canvas?.width || template.width);
     const height = Number(template.canvasScene?.canvas?.height || template.height);
     const svg = renderCard(baseTemplateId, { event, qrRecord, qrUrl, cardMessage, cardData, customization: renderCustomization });
-    await fs.promises.writeFile(cardPath, svg, "utf8");
-    await writeSvgPdf({ svg, pdfPath, width, height });
+    const suffix = `${process.pid}.${Date.now()}.tmp`;
+    const temporaryCardPath = `${cardPath}.${suffix}`;
+    const temporaryPdfPath = `${pdfPath}.${suffix}`;
+    try {
+        await fs.promises.writeFile(temporaryCardPath, svg, "utf8");
+        await writeSvgPdf({ svg, pdfPath: temporaryPdfPath, width, height });
+        await fs.promises.rename(temporaryCardPath, cardPath);
+        await fs.promises.rename(temporaryPdfPath, pdfPath);
+    } catch (error) {
+        await Promise.allSettled([
+            storageService.removeFile(temporaryCardPath),
+            storageService.removeFile(temporaryPdfPath)
+        ]);
+        throw error;
+    }
     return cardUrlForToken(qrRecord.unique_token);
 };

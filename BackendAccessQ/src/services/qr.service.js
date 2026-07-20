@@ -1,38 +1,111 @@
 const prisma = require("../prisma/client");
 
+const normalizePagination = ({ page = 1, pageSize = 25 } = {}) => {
+    const safePage = Math.max(1, Number.parseInt(page, 10) || 1);
+    const safePageSize = Math.min(100, Math.max(1, Number.parseInt(pageSize, 10) || 25));
+    return { page: safePage, pageSize: safePageSize };
+};
+
+const statusFilter = (status, now = new Date()) => {
+    if (status === "revoked") return { status: "revoked" };
+    if (status === "used_up") return { status: "used_up" };
+    if (status === "expired") {
+        return {
+            OR: [
+                { status: "expired" },
+                { status: "active", valid_until: { lt: now } }
+            ]
+        };
+    }
+    if (status === "active") {
+        return {
+            status: "active",
+            OR: [
+                { valid_until: null },
+                { valid_until: { gte: now } }
+            ]
+        };
+    }
+    return {};
+};
+
+const searchFilter = (search) => {
+    const term = String(search || "").trim();
+    if (!term) return {};
+    const id = Number(term);
+    return {
+        OR: [
+            ...(Number.isInteger(id) ? [{ qr_id: id }] : []),
+            { holder_name: { contains: term, mode: "insensitive" } },
+            { holder_email: { contains: term, mode: "insensitive" } },
+            { unique_token: { contains: term, mode: "insensitive" } }
+        ]
+    };
+};
+
 // Récupérer tous les QR Codes pour un événement spécifique (filtré par organisation)
-exports.getQrsByEventId = async (orgId, eventId) => {
-    return await prisma.qrCode.findMany({
-        where: {
-            event_id: eventId,
-            event: { org_id: orgId },
-            deleted_at: null
-        },
-        include: {
-            event: { select: { title: true } }
-        },
-        orderBy: { qr_id: 'desc' }
-    });
+exports.getQrsByEventId = async (orgId, eventId, options = {}) => {
+    const { page, pageSize } = normalizePagination(options);
+    const where = {
+        event_id: eventId,
+        event: { org_id: orgId },
+        deleted_at: null,
+        AND: [
+            statusFilter(options.status),
+            searchFilter(options.search)
+        ]
+    };
+    const [items, total] = await prisma.$transaction([
+        prisma.qrCode.findMany({
+            where,
+            include: { event: { select: { title: true } } },
+            orderBy: { qr_id: "desc" },
+            skip: (page - 1) * pageSize,
+            take: pageSize
+        }),
+        prisma.qrCode.count({ where })
+    ]);
+    return {
+        items,
+        pagination: {
+            page,
+            pageSize,
+            total,
+            totalPages: Math.max(1, Math.ceil(total / pageSize))
+        }
+    };
 };
 
 // Récupérer tous les QR Codes des événements de l'organisation
-exports.getAllQrsForOrg = async (orgId) => {
-    return await prisma.qrCode.findMany({
-        where: {
-            event: {
-                org_id: orgId
-            },
-            deleted_at: null
-        },
-        include: {
-            event: {
-                select: { title: true }
-            }
-        },
-        orderBy: {
-            qr_id: 'desc'
+exports.getAllQrsForOrg = async (orgId, options = {}) => {
+    const { page, pageSize } = normalizePagination(options);
+    const where = {
+        event: { org_id: orgId },
+        deleted_at: null,
+        AND: [
+            statusFilter(options.status),
+            searchFilter(options.search)
+        ]
+    };
+    const [items, total] = await prisma.$transaction([
+        prisma.qrCode.findMany({
+            where,
+            include: { event: { select: { title: true } } },
+            orderBy: { qr_id: "desc" },
+            skip: (page - 1) * pageSize,
+            take: pageSize
+        }),
+        prisma.qrCode.count({ where })
+    ]);
+    return {
+        items,
+        pagination: {
+            page,
+            pageSize,
+            total,
+            totalPages: Math.max(1, Math.ceil(total / pageSize))
         }
-    });
+    };
 };
 
 // Rechercher un QR Code spécifique
@@ -62,5 +135,11 @@ exports.deleteQr = async (id) => {
     return await prisma.qrCode.update({
         where: { qr_id: id },
         data: { deleted_at: new Date() }
+    });
+};
+
+exports.deleteQrPermanently = async (id) => {
+    return prisma.qrCode.delete({
+        where: { qr_id: id }
     });
 };

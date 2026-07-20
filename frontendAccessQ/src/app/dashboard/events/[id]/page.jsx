@@ -136,6 +136,7 @@ export default function EventDetailPage() {
     const [importing, setImporting] = useState(false);
     const [importError, setImportError] = useState("");
     const [importSuccess, setImportSuccess] = useState("");
+    const [importReport, setImportReport] = useState(null);
     const [areas, setAreas] = useState([]);
     const [loadingAreas, setLoadingAreas] = useState(true);
     const [toast, setToast] = useState({ show: false, message: "" });
@@ -169,6 +170,8 @@ export default function EventDetailPage() {
     // Filters and Actions State
     const [searchQuery, setSearchQuery] = useState("");
     const [statusFilter, setStatusFilter] = useState("Tous les statuts");
+    const [qrPage, setQrPage] = useState(1);
+    const [qrPagination, setQrPagination] = useState({ page: 1, pageSize: 25, total: 0, totalPages: 1 });
     const [selectedQr, setSelectedQr] = useState(null);
     const [qrToRevoke, setQrToRevoke] = useState(null);
     const [revokingId, setRevokingId] = useState(null);
@@ -205,9 +208,15 @@ export default function EventDetailPage() {
         setLoading(true);
         setError("");
         try {
+            const params = new URLSearchParams({
+                page: String(qrPage),
+                pageSize: "25"
+            });
+            if (searchQuery.trim()) params.set("search", searchQuery.trim());
+            if (statusFilter !== "Tous les statuts") params.set("status", statusFilter);
             const [eventRes, qrRes] = await Promise.all([
                 apiFetch(`/events/${eventId}`),
-                apiFetch(`/qr/event/${eventId}`)
+                apiFetch(`/qr/event/${eventId}?${params.toString()}`)
             ]);
             const eventData = await eventRes.json();
             const qrData = await qrRes.json();
@@ -227,20 +236,27 @@ export default function EventDetailPage() {
             } else {
                 setError("Événement introuvable.");
             }
-            if (qrData.success) setQrCodes(qrData.qrs || []);
+            if (qrData.success) {
+                setQrCodes(qrData.qrs || []);
+                if (qrData.pagination) setQrPagination(qrData.pagination);
+            }
         } catch (err) {
             setError("Erreur de connexion au serveur.");
         } finally {
             setLoading(false);
         }
-    }, [eventId]);
+    }, [eventId, qrPage, searchQuery, statusFilter]);
 
     useEffect(() => {
         if (eventId) {
-            fetchAll();
-            fetchAreas();
+            const timer = setTimeout(fetchAll, 250);
+            return () => clearTimeout(timer);
         }
-    }, [eventId, fetchAll, fetchAreas]);
+    }, [eventId, fetchAll]);
+
+    useEffect(() => {
+        if (eventId) fetchAreas();
+    }, [eventId, fetchAreas]);
 
     useEffect(() => {
         const fetchCreationTemplates = async () => {
@@ -383,10 +399,8 @@ export default function EventDetailPage() {
                 setQrContactTouched({ email: false, phone: false });
                 setQrSubmitAttempted(false);
                 showToast(selectedCardTemplateId ? "QR Code et carte générés avec succès." : "QR Code généré avec succès.");
-                // Refresh QR list
-                const qrRes = await apiFetch(`/qr/event/${eventId}`);
-                const qrData = await qrRes.json();
-                if (qrData.success) setQrCodes(qrData.qrs || []);
+                setQrPage(1);
+                await fetchAll();
             } else {
                 setQrError(data.message || "Erreur lors de la génération.");
             }
@@ -449,7 +463,7 @@ export default function EventDetailPage() {
                 return;
             }
         }
-        if (format === "csv" && qrCodes.length === 0) {
+        if (format === "csv" && qrPagination.total === 0) {
             showToast("Aucune donnée de scan n'est disponible pour cet événement.");
             return;
         }
@@ -486,6 +500,7 @@ export default function EventDetailPage() {
         setImporting(true);
         setImportError("");
         setImportSuccess("");
+        setImportReport(null);
 
         const formData = new FormData();
         formData.append("file", importFile);
@@ -498,18 +513,21 @@ export default function EventDetailPage() {
             const data = await res.json();
             if (data.success) {
                 setImportSuccess(data.message);
+                setImportReport(data);
                 setImportFile(null);
-                // Refresh list
-                const qrRes = await apiFetch(`/qr/event/${eventId}`);
-                const qrData = await qrRes.json();
-                if (qrData.success) setQrCodes(qrData.qrs || []);
+                setQrPage(1);
+                await fetchAll();
                 
-                setTimeout(() => {
-                    setShowImportModal(false);
-                    setImportSuccess("");
-                }, 2000);
+                if (!data.partial) {
+                    setTimeout(() => {
+                        setShowImportModal(false);
+                        setImportSuccess("");
+                        setImportReport(null);
+                    }, 2000);
+                }
             } else {
                 setImportError(data.message || "Erreur lors de l'importation.");
+                setImportReport(data);
             }
         } catch (err) {
             setImportError("Erreur de connexion au serveur.");
@@ -520,20 +538,11 @@ export default function EventDetailPage() {
 
 
 
-    const filteredQrs = qrCodes.filter(qr => {
-        const matchesSearch = !searchQuery ||
-            qr.holder?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            String(qr.id).includes(searchQuery);
-
-        const matchesStatus = statusFilter === "Tous les statuts" ||
-            qr.status.toLowerCase() === statusFilter.toLowerCase();
-
-        return matchesSearch && matchesStatus;
-    });
+    const filteredQrs = qrCodes;
 
     const getStatusStyle = (status) => {
         if (status === 'active') return 'bg-emerald-100 text-emerald-700';
-        if (status === 'exhausted') return 'bg-amber-100 text-amber-700';
+        if (status === 'used_up') return 'bg-amber-100 text-amber-700';
         if (status === 'expired') return 'bg-orange-100 text-orange-700';
         if (status === 'revoked') return 'bg-red-100 text-red-700';
         return 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300';
@@ -637,7 +646,7 @@ export default function EventDetailPage() {
                             </div>
                             <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
                                 <QrCode className="w-4 h-4 text-blue-500 flex-shrink-0" />
-                                <span className="text-sm font-medium">{qrCodes.length} QR code{qrCodes.length !== 1 ? 's' : ''}</span>
+                                <span className="text-sm font-medium">{qrPagination.total} QR code{qrPagination.total !== 1 ? 's' : ''}</span>
                             </div>
                         </div>
                     </div>
@@ -671,6 +680,7 @@ export default function EventDetailPage() {
                                 setShowImportModal(true);
                                 setImportError("");
                                 setImportSuccess("");
+                                setImportReport(null);
                             }}
                             className="inline-flex items-center justify-center p-2.5 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-200 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-95 transition-all shadow-sm"
                             title="Importer CSV"
@@ -699,7 +709,7 @@ export default function EventDetailPage() {
             <div className="bg-white dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
                 <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                     <h2 className="text-lg font-bold text-slate-900 dark:text-white">Codes QR de cet événement</h2>
-                    <span className="text-sm text-slate-500 dark:text-slate-400">{qrCodes.length} total</span>
+                    <span className="text-sm text-slate-500 dark:text-slate-400">{qrPagination.total} total</span>
                 </div>
 
                 {/* Filters and Search */}
@@ -713,17 +723,23 @@ export default function EventDetailPage() {
                         <input
                             type="text"
                             value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
+                            onChange={(e) => {
+                                setSearchQuery(e.target.value);
+                                setQrPage(1);
+                            }}
                             placeholder="Rechercher par ID, Nom..."
                             className="block w-full pl-10 pr-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl leading-5 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 sm:text-sm transition-colors shadow-sm"
                         />
                     </div>
 
                     <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
-                        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-950 text-sm text-slate-700 dark:text-slate-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
+                        <select value={statusFilter} onChange={(e) => {
+                            setStatusFilter(e.target.value);
+                            setQrPage(1);
+                        }} className="px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-950 text-sm text-slate-700 dark:text-slate-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
                             <option value="Tous les statuts">Tous les statuts</option>
                             <option value="active">Actif</option>
-                            <option value="exhausted">Épuisé</option>
+                            <option value="used_up">Épuisé</option>
                             <option value="expired">Expiré</option>
                             <option value="revoked">Révoqué</option>
                         </select>
@@ -751,7 +767,7 @@ export default function EventDetailPage() {
                                             <QrCode className="w-7 h-7" />
                                         </div>
                                         <h3 className="text-base font-semibold text-slate-900 dark:text-white">Aucun QR code</h3>
-                                        <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">{qrCodes.length === 0 ? "Générez votre premier code QR pour cet événement." : "Aucun QR Code trouvé pour ces critères."}</p>
+                                        <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">{qrPagination.total === 0 && !searchQuery && statusFilter === "Tous les statuts" ? "Générez votre premier code QR pour cet événement." : "Aucun QR Code trouvé pour ces critères."}</p>
                                         <button
                                             onClick={openQrGenerationModal}
                                             className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors"
@@ -778,7 +794,7 @@ export default function EventDetailPage() {
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${getStatusStyle(qr.status)}`}>
-                                                {qr.status.charAt(0).toUpperCase() + qr.status.slice(1)}
+                                                {qr.status === "used_up" ? "Épuisé" : qr.status.charAt(0).toUpperCase() + qr.status.slice(1)}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-slate-500 dark:text-slate-400">{qr.createdAt}</td>
@@ -833,6 +849,31 @@ export default function EventDetailPage() {
                         </tbody>
                     </table>
                 </div>
+                {qrPagination.totalPages > 1 && (
+                    <div className="flex items-center justify-between border-t border-slate-100 px-6 py-4 dark:border-slate-800">
+                        <span className="text-sm text-slate-500">
+                            Page {qrPagination.page} sur {qrPagination.totalPages}
+                        </span>
+                        <div className="flex gap-2">
+                            <button
+                                type="button"
+                                disabled={qrPagination.page <= 1}
+                                onClick={() => setQrPage(page => Math.max(1, page - 1))}
+                                className="rounded-lg border px-3 py-2 text-sm disabled:opacity-40"
+                            >
+                                Précédent
+                            </button>
+                            <button
+                                type="button"
+                                disabled={qrPagination.page >= qrPagination.totalPages}
+                                onClick={() => setQrPage(page => Math.min(qrPagination.totalPages, page + 1))}
+                                className="rounded-lg border px-3 py-2 text-sm disabled:opacity-40"
+                            >
+                                Suivant
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* ── MODAL: Generate QR ── */}
@@ -1013,7 +1054,7 @@ export default function EventDetailPage() {
                                             <button
                                                 key={value}
                                                 type="button"
-                                                onClick={() => setQrForm({ ...qrForm, accessType: value, limit: value === 'single' ? "1" : value === 'unlimited' ? "999999" : (qrForm.limit == "1" ? "2" : qrForm.limit) })}
+                                                onClick={() => setQrForm({ ...qrForm, accessType: value, limit: value === 'single' ? "1" : value === 'unlimited' ? "0" : (qrForm.limit == "1" ? "2" : qrForm.limit) })}
                                                             className={`px-3 py-3 rounded-xl border text-left transition-all ${qrForm.accessType === value ? 'bg-blue-50 border-blue-200 text-blue-700 shadow-sm dark:bg-blue-950/35 dark:border-blue-800 dark:text-blue-200' : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 hover:border-[#7A90A4] dark:hover:border-[#7A90A4]'}`}
                                             >
                                                 <div className="text-sm font-bold">{label}</div>
@@ -1375,6 +1416,20 @@ export default function EventDetailPage() {
                             {importSuccess && (
                                 <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl text-sm border border-emerald-100 flex items-center gap-2">
                                     <CheckCircle2 className="w-4 h-4" /> {importSuccess}
+                                </div>
+                            )}
+                            {importReport?.errors?.length > 0 && (
+                                <div className="max-h-44 overflow-y-auto rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                                    <p className="mb-2 font-bold">
+                                        Détail des lignes non terminées ({importReport.errors.length})
+                                    </p>
+                                    <ul className="space-y-1">
+                                        {importReport.errors.map((error, index) => (
+                                            <li key={`${error.line}-${error.stage}-${index}`}>
+                                                Ligne {error.line} · {error.field || error.stage} : {error.message}
+                                            </li>
+                                        ))}
+                                    </ul>
                                 </div>
                             )}
 
