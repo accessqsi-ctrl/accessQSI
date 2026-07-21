@@ -349,7 +349,7 @@ export default function Home() {
 
       <footer className="w-full border-t border-slate-200 dark:border-slate-700 py-8 bg-slate-50 dark:bg-slate-800 z-20">
         <div className="container mx-auto flex flex-col items-center justify-center gap-2 px-6 text-center text-sm text-slate-500 dark:text-slate-400 sm:flex-row sm:gap-4">
-          <p>&copy; 2026 QR Access. Tous droits réservés.</p>
+          <p>&copy; 2026 Tinkli Software. Tous droits réservés.</p>
           <a
             href="mailto:access.qsi@gmail.com"
             className="font-semibold text-blue-700 transition-colors hover:text-blue-600 hover:underline dark:text-blue-300 dark:hover:text-blue-200"
