@@ -67,7 +67,9 @@ export default function EventsPage() {
 
     return (
         <div className="max-w-7xl mx-auto space-y-6">
-            {/* Page Header */}
+            {/* **************************************** */}
+            {/* En-tête et action de création */}
+            {/* **************************************** */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Événements et zones d'accès</h1>
@@ -84,7 +86,9 @@ export default function EventsPage() {
                 )}
             </div>
 
-            {/* Filters and Search */}
+            {/* **************************************** */}
+            {/* Recherche et filtre par statut */}
+            {/* **************************************** */}
             <div className="bg-white dark:bg-slate-900/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
                 <div className="relative w-full md:w-96">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -111,7 +115,9 @@ export default function EventsPage() {
                 </div>
             </div>
 
-            {/* Data Table */}
+            {/* **************************************** */}
+            {/* Tableau des événements */}
+            {/* **************************************** */}
             <div className="bg-white dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse min-w-[800px]">

@@ -95,6 +95,9 @@ export default function AreasPage() {
 
     return (
         <div className="max-w-7xl mx-auto space-y-6">
+            {/* **************************************** */}
+            {/* En-tête et action d'ajout */}
+            {/* **************************************** */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Zones d'accès</h1>
@@ -109,6 +112,9 @@ export default function AreasPage() {
                 </button>
             </div>
 
+            {/* **************************************** */}
+            {/* Tableau des zones d'accès */}
+            {/* **************************************** */}
             <div className="bg-white dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
@@ -165,6 +171,9 @@ export default function AreasPage() {
                 </div>
             </div>
 
+            {/* **************************************** */}
+            {/* Formulaire de création ou de modification d'une zone */}
+            {/* **************************************** */}
             {isModalOpen && (
                 <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                     <div className="bg-white dark:bg-slate-950 rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200 text-slate-900 dark:text-slate-100">
@@ -222,6 +231,9 @@ export default function AreasPage() {
                 </div>
             )}
 
+            {/* **************************************** */}
+            {/* Confirmation de suppression */}
+            {/* **************************************** */}
             {areaToDelete && (
                 <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                     <div className="bg-white dark:bg-slate-950 rounded-2xl shadow-xl w-full max-w-md p-6 animate-in fade-in zoom-in duration-200 text-slate-900 dark:text-slate-100">

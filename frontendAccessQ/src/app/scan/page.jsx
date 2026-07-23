@@ -183,7 +183,7 @@ export default function ScanPage() {
 
     return (
         <div className={`min-h-screen flex flex-col font-sans transition-colors duration-300 ${
-            flash === 'success' ? 'bg-emerald-600' : flash === 'error' ? 'bg-red-600' : 'bg-slate-900 dark:bg-slate-100'
+            flash === 'success' ? 'bg-emerald-600' : flash === 'error' ? 'bg-red-600' : 'bg-slate-900 dark:bg-[#BED3C3]'
         }`}>
             {/* Header */}
             <div className="p-4 flex items-center justify-between text-white border-b border-white/10 bg-black/20 backdrop-blur-md">

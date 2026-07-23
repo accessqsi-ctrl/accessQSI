@@ -150,6 +150,9 @@ export default function Dashboard() {
 
     return (
         <div className="max-w-7xl mx-auto space-y-8">
+            {/* **************************************** */}
+            {/* En-tête du tableau de bord et actions d'export */}
+            {/* **************************************** */}
             <div className="relative overflow-hidden bg-white dark:bg-slate-950 rounded-2xl p-8 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-black/20">
                 <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div>
@@ -180,6 +183,9 @@ export default function Dashboard() {
                 )}
             </div>
 
+            {/* **************************************** */}
+            {/* Progression de la configuration initiale */}
+            {/* **************************************** */}
             {stats.onboarding && !stats.onboarding.complete && (
                 <section className="flex flex-col gap-4 rounded-2xl border border-blue-200 bg-blue-50 p-5 dark:border-blue-900/50 dark:bg-blue-950/20 sm:flex-row sm:items-center">
                     <div className="min-w-0 flex-1"><p className="text-sm font-black text-blue-950 dark:text-blue-100">Configuration de votre organisation · {stats.onboarding.percentage}%</p><div className="mt-2 h-2 overflow-hidden rounded-full bg-blue-100 dark:bg-blue-950"><div className="h-full rounded-full bg-blue-600" style={{ width: `${stats.onboarding.percentage}%` }} /></div><p className="mt-2 text-xs text-blue-700 dark:text-blue-300">{stats.onboarding.completed} étape{stats.onboarding.completed > 1 ? "s" : ""} sur {stats.onboarding.total} terminée{stats.onboarding.completed > 1 ? "s" : ""}.</p></div>
@@ -247,9 +253,13 @@ export default function Dashboard() {
                 </section>
             )}
 
-            {/* Quick Stats */}
+            {/* **************************************** */}
+            {/* Indicateurs clés */}
+            {/* **************************************** */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-                {/* Stat 1 */}
+                {/* **************************************** */}
+                {/* Indicateur des QR actifs */}
+                {/* **************************************** */}
                 <div className="bg-white dark:bg-slate-950 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-black/20 hover:shadow-md transition-shadow">
                     <div className="flex items-center gap-4 mb-4">
                         <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
@@ -263,7 +273,9 @@ export default function Dashboard() {
                     <p className="text-sm text-slate-500 dark:text-slate-400">Disponibles pour le contrôle d'accès.</p>
                 </div>
 
-                {/* Stat 2 */}
+                {/* **************************************** */}
+                {/* Indicateur des scans enregistrés */}
+                {/* **************************************** */}
                 <div className="bg-white dark:bg-slate-950 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-black/20 hover:shadow-md transition-shadow">
                     <div className="flex items-center gap-4 mb-4">
                         <div className="w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600">
@@ -277,7 +289,9 @@ export default function Dashboard() {
                     <p className="text-sm text-slate-500 dark:text-slate-400">Total des contrôles effectués.</p>
                 </div>
 
-                {/* Stat 3 */}
+                {/* **************************************** */}
+                {/* Indicateur des événements à venir */}
+                {/* **************************************** */}
                 <div className="bg-white dark:bg-slate-950 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-black/20 hover:shadow-md transition-shadow">
                     <div className="flex items-center gap-4 mb-4">
                         <div className="w-12 h-12 rounded-xl bg-orange-50 flex items-center justify-center text-orange-600">
@@ -293,7 +307,9 @@ export default function Dashboard() {
                     </div>
                 </div>
 
-                {/* Stat 4 */}
+                {/* **************************************** */}
+                {/* Indicateur des agents actifs */}
+                {/* **************************************** */}
                 <div className="bg-white dark:bg-slate-950 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-black/20 hover:shadow-md transition-shadow">
                     <div className="flex items-center gap-4 mb-4">
                         <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
@@ -310,9 +326,13 @@ export default function Dashboard() {
                 </div>
             </div>
 
-            {/* Charts & Top Performance Section */}
+            {/* **************************************** */}
+            {/* Graphique d'activité et classement des agents */}
+            {/* **************************************** */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Line Chart */}
+                {/* **************************************** */}
+                {/* Courbe d'activité des scans */}
+                {/* **************************************** */}
                 <div className="lg:col-span-2 bg-white dark:bg-slate-950 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-black/20">
                     <div className="flex items-center justify-between mb-8">
                         <div>
@@ -355,7 +375,9 @@ export default function Dashboard() {
                     </div>
                 </div>
 
-                {/* Top Agents Panel */}
+                {/* **************************************** */}
+                {/* Classement des agents */}
+                {/* **************************************** */}
                 <div className="bg-white dark:bg-slate-950 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-black/20">
                     <div className="flex items-center justify-between mb-8">
                         <div>
@@ -396,7 +418,9 @@ export default function Dashboard() {
                 </div>
             </div>
 
-            {/* Recent Activity Table */}
+            {/* **************************************** */}
+            {/* Tableau des derniers scans */}
+            {/* **************************************** */}
             <div className="bg-white dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-black/20 overflow-hidden">
                 <div className="px-8 py-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                     <h3 className="text-lg font-bold text-slate-900 dark:text-white">Derniers scans</h3>
@@ -444,10 +468,12 @@ export default function Dashboard() {
                 </div>
             </div>
 
-            {/* ── CUSTOM TOAST ── */}
+            {/* **************************************** */}
+            {/* Notification des actions utilisateur */}
+            {/* **************************************** */}
             {toast.show && (
                 <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-bottom-5 fade-in duration-300">
-                    <div className="bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 border border-slate-700/50 dark:border-slate-300 backdrop-blur-md">
+                    <div className="bg-slate-900 dark:bg-[#BED3C3] text-white dark:text-slate-900 px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 border border-slate-700/50 dark:border-slate-300 backdrop-blur-md">
                         <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
                             <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                         </div>

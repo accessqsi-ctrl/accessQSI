@@ -1,1 +1,1 @@
-fullName,email,phone,accessType,limit,validFrom,validUntil,level
+fullName,email,phone,accessType,limit,validFrom,validUntil,level,cardTemplateId,cardMessage

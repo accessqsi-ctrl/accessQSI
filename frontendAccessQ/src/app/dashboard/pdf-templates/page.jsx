@@ -176,6 +176,9 @@ export default function PdfTemplatesPage() {
 
     return (
         <div className="mx-auto max-w-7xl space-y-6">
+            {/* **************************************** */}
+            {/* En-tête et réinitialisation du formulaire */}
+            {/* **************************************** */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                     <h1 className="text-2xl font-black text-slate-950 dark:text-white">Modèles PDF</h1>
@@ -203,6 +206,9 @@ export default function PdfTemplatesPage() {
                 </div>
             )}
 
+            {/* **************************************** */}
+            {/* Saisie des informations et aperçu du document */}
+            {/* **************************************** */}
             <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
                 <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950">
                     <div className="mb-5 flex items-center gap-3">
@@ -215,6 +221,9 @@ export default function PdfTemplatesPage() {
                         </div>
                     </div>
 
+                    {/* **************************************** */}
+                    {/* Formulaire de génération du PDF */}
+                    {/* **************************************** */}
                     <form onSubmit={handleGenerate} className="space-y-5">
                         <div>
                             <label className="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-200">Modèle</label>

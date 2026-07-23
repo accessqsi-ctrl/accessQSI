@@ -196,7 +196,7 @@ export default function Home() {
             </Link>
             <Link
               href="/register"
-              className="text-sm font-semibold text-white dark:text-slate-900 bg-slate-900 dark:bg-slate-100 hover:bg-slate-800 dark:hover:bg-white px-5 py-2.5 rounded-full transition-all shadow-md hover:shadow-lg active:scale-95"
+              className="text-sm font-semibold text-white dark:text-slate-900 bg-slate-900 dark:bg-[#BED3C3] hover:bg-slate-800 dark:hover:bg-[#AEC5B3] px-5 py-2.5 rounded-full transition-all shadow-md hover:shadow-lg active:scale-95"
             >
               Créer un compte
             </Link>
@@ -222,7 +222,7 @@ export default function Home() {
           <div className="flex flex-col justify-center gap-3 sm:flex-row">
             <Link
               href="/register"
-              className="inline-flex items-center justify-center rounded-full bg-slate-900 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-slate-900/15 transition-all hover:bg-slate-800 active:scale-95 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100"
+              className="inline-flex items-center justify-center rounded-full bg-slate-900 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-slate-900/15 transition-all hover:bg-slate-800 active:scale-95 dark:bg-[#BED3C3] dark:text-slate-950 dark:hover:bg-[#AEC5B3]"
             >
               Essayer QR Access
             </Link>

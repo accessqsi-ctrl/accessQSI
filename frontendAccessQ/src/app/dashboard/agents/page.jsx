@@ -192,6 +192,9 @@ export default function AgentsPage() {
 
     return (
         <div className="max-w-7xl mx-auto space-y-6">
+            {/* **************************************** */}
+            {/* En-tête et action d'ajout */}
+            {/* **************************************** */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Agents et équipe</h1>
@@ -206,6 +209,9 @@ export default function AgentsPage() {
                 </button>
             </div>
 
+            {/* **************************************** */}
+            {/* Résumé des comptes actifs et inactifs */}
+            {/* **************************************** */}
             <div className="bg-white dark:bg-slate-950 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-black/20 flex flex-col md:flex-row items-center gap-8">
                 <div className="flex-1 flex items-center gap-4 w-full">
                     <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
@@ -231,6 +237,9 @@ export default function AgentsPage() {
             {error && <div className="p-4 bg-red-50 text-red-600 rounded-xl">{error}</div>}
             {actionMessage && <div className="p-4 bg-red-50 text-red-600 rounded-xl">{actionMessage}</div>}
 
+            {/* **************************************** */}
+            {/* Recherche et filtres */}
+            {/* **************************************** */}
             <div className="bg-white dark:bg-slate-950 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
                 <div className="relative w-full md:w-96">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -262,6 +271,9 @@ export default function AgentsPage() {
                 </div>
             </div>
 
+            {/* **************************************** */}
+            {/* Tableau des agents */}
+            {/* **************************************** */}
             <div className="bg-white dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse min-w-[800px]">
@@ -353,6 +365,9 @@ export default function AgentsPage() {
                 </div>
             </div>
 
+            {/* **************************************** */}
+            {/* Formulaire de création d'un agent */}
+            {/* **************************************** */}
             {isAddModalOpen && (
                 <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                     <div className="bg-white dark:bg-slate-950 rounded-3xl w-full max-w-md p-6 sm:p-8 shadow-2xl relative animate-in fade-in zoom-in-95 duration-200 text-slate-900 dark:text-slate-100">
@@ -475,6 +490,9 @@ export default function AgentsPage() {
                 </div>
             )}
 
+            {/* **************************************** */}
+            {/* Confirmation d'activation, de désactivation ou de suppression */}
+            {/* **************************************** */}
             {confirmAction && confirmAgent && (
                 <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                     <div className="bg-white dark:bg-slate-950 rounded-2xl w-full max-w-md p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200 text-slate-900 dark:text-slate-100">

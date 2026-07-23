@@ -66,9 +66,13 @@ export default function DashboardLayout({ children }) {
 
     return (
         <div className="flex h-screen bg-slate-50 dark:bg-slate-950 font-sans text-slate-900 dark:text-white overflow-hidden">
-            {/* Sidebar Desktop */}
+            {/* **************************************** */}
+            {/* Navigation latérale sur ordinateur */}
+            {/* **************************************** */}
             <aside className="hidden lg:flex flex-col w-64 bg-white dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800 shadow-sm z-20">
-                {/* Logo Area */}
+                {/* **************************************** */}
+                {/* Logo de l'application */}
+                {/* **************************************** */}
                 <div className="h-20 flex items-center px-6 border-b border-slate-100 dark:border-slate-800">
                     <Link href="/dashboard" className="flex items-center gap-3">
                         <img
@@ -82,7 +86,9 @@ export default function DashboardLayout({ children }) {
                     </Link>
                 </div>
 
-                {/* Navigation Links */}
+                {/* **************************************** */}
+                {/* Liens de navigation */}
+                {/* **************************************** */}
                 <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-1.5">
                     {navigation.map((item) => {
                         const isActive = pathname === item.href || (pathname.startsWith(item.href) && item.href !== '/dashboard');
@@ -109,7 +115,9 @@ export default function DashboardLayout({ children }) {
                     })}
                 </nav>
 
-                {/* User / Profile Area bottom */}
+                {/* **************************************** */}
+                {/* Profil utilisateur et déconnexion */}
+                {/* **************************************** */}
                 <div className="p-4 border-t border-slate-100 dark:border-slate-800">
                     <div className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer border border-transparent hover:border-slate-100">
                         <div className="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-sm shadow-sm uppercase">
@@ -130,9 +138,13 @@ export default function DashboardLayout({ children }) {
                 </div>
             </aside>
 
-            {/* Main Content Area */}
+            {/* **************************************** */}
+            {/* Zone principale */}
+            {/* **************************************** */}
             <div className="flex-1 flex flex-col h-screen overflow-hidden">
-                {/* Mobile Header */}
+                {/* **************************************** */}
+                {/* En-tête de navigation sur mobile */}
+                {/* **************************************** */}
                 <header className="lg:hidden h-16 bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-4 z-20 shadow-sm">
                     <Link href="/dashboard" className="flex items-center gap-2">
                         <img
@@ -155,7 +167,9 @@ export default function DashboardLayout({ children }) {
                     </button>
                 </header>
 
-                {/* Header Top Nav (Desktop) */}
+                {/* **************************************** */}
+                {/* Barre supérieure sur ordinateur */}
+                {/* **************************************** */}
                 <header className="hidden lg:flex h-20 bg-white/50 dark:bg-slate-950/50 backdrop-blur-md border-b border-slate-200/60 dark:border-slate-800/60 items-center justify-between px-8 z-10 sticky top-0">
                     <div className="flex items-center">
                         <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">
@@ -170,13 +184,17 @@ export default function DashboardLayout({ children }) {
                     </div>
                 </header>
 
-                {/* Scrollable Page Content */}
+                {/* **************************************** */}
+                {/* Contenu de la page active */}
+                {/* **************************************** */}
                 <main className="flex-1 overflow-y-auto bg-slate-50/50 dark:bg-slate-950 p-4 sm:p-6 lg:p-8">
                     {children}
                 </main>
             </div>
 
-            {/* Mobile Navigation Drawer */}
+            {/* **************************************** */}
+            {/* Menu latéral mobile */}
+            {/* **************************************** */}
             {isMobileNavOpen && (
                 <div className="fixed inset-0 z-40 lg:hidden">
                     <button
@@ -255,7 +273,9 @@ export default function DashboardLayout({ children }) {
                 </div>
             )}
 
-            {/* Logout Confirmation Modal */}
+            {/* **************************************** */}
+            {/* Confirmation de déconnexion */}
+            {/* **************************************** */}
             {showLogoutModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
                     <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 w-full max-w-sm mx-4 shadow-xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200 text-slate-900 dark:text-slate-100">

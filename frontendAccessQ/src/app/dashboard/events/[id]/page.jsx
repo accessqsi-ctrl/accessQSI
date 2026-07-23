@@ -578,7 +578,7 @@ export default function EventDetailPage() {
                     <X className="w-8 h-8" />
                 </div>
                 <h1 className="text-xl font-bold text-slate-900 dark:text-white mb-2">{error || "Événement introuvable"}</h1>
-                <Link href="/dashboard/events" className="mt-6 inline-flex items-center gap-2 px-5 py-2.5 bg-slate-900 dark:bg-slate-100 text-white rounded-xl font-medium text-sm hover:bg-slate-800 dark:hover:bg-slate-200 transition-colors">
+                <Link href="/dashboard/events" className="mt-6 inline-flex items-center gap-2 px-5 py-2.5 bg-slate-900 dark:bg-[#BED3C3] text-white rounded-xl font-medium text-sm hover:bg-slate-800 dark:hover:bg-[#AEC5B3] transition-colors">
                     <ArrowLeft className="w-4 h-4" /> Retour aux événements
                 </Link>
             </div>
@@ -591,7 +591,7 @@ export default function EventDetailPage() {
 
     return (
         <div className="max-w-7xl mx-auto space-y-6">
-            {/* Breadcrumb & Actions */}
+            {/* Retour à la liste et actions sur l'événement */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <Link href="/dashboard/events" className="inline-flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors text-sm font-medium">
                     <ArrowLeft className="w-4 h-4" /> Retour aux événements
@@ -615,7 +615,7 @@ export default function EventDetailPage() {
                 </div>
             </div>
 
-            {/* Event Header */}
+            {/* Résumé de l'événement et actions d'export */}
             <div className="bg-white dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-6 sm:p-8">
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                     <div className="space-y-3 flex-1">
@@ -667,14 +667,7 @@ export default function EventDetailPage() {
                         >
                             {downloadingTemplate ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileSpreadsheet className="w-5 h-5" />}
                         </button>
-                        <button
-                            onClick={() => handleExport('pdf')}
-                            disabled={exportingFormat === "pdf"}
-                            className="inline-flex items-center justify-center p-2.5 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-200 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-95 transition-all shadow-sm"
-                            title="Exporter en PDF"
-                        >
-                            {exportingFormat === "pdf" ? <Loader2 className="w-5 h-5 animate-spin" /> : <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>}
-                        </button>
+                       
                         <button
                             onClick={() => {
                                 setShowImportModal(true);
@@ -705,14 +698,15 @@ export default function EventDetailPage() {
                 )}
             </div>
 
-            {/* QR Codes Section */}
+            {/* Gestion des codes QR de l'événement */}
+            
             <div className="bg-white dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
                 <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                     <h2 className="text-lg font-bold text-slate-900 dark:text-white">Codes QR de cet événement</h2>
                     <span className="text-sm text-slate-500 dark:text-slate-400">{qrPagination.total} total</span>
                 </div>
 
-                {/* Filters and Search */}
+                {/* Recherche et filtres des codes QR */}
                 <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/60 flex flex-col md:flex-row gap-4 items-center justify-between">
                     <div className="relative w-full md:w-96">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -876,7 +870,7 @@ export default function EventDetailPage() {
                 )}
             </div>
 
-            {/* ── MODAL: Generate QR ── */}
+            {/* Formulaire de génération d'un code QR */}
             {showQrModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm overflow-y-auto">
                     <div className="bg-white dark:bg-slate-950 w-full max-w-3xl rounded-3xl shadow-2xl relative my-8 overflow-hidden text-slate-900 dark:text-slate-100">
@@ -952,11 +946,12 @@ export default function EventDetailPage() {
                                 )}
 
                                 <div className="space-y-5">
+                                    {/* Identité et coordonnées du détenteur */}
                                     <section className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
                                         <div className="mb-4 flex items-center justify-between gap-4">
                                             <div>
                                                 <h3 className="text-sm font-bold text-slate-900 dark:text-white">Titulaire</h3>
-                                                <p className="text-xs text-slate-600 dark:text-slate-300">Identité et contact de la personne qui utilisera ce QR.</p>
+                                                <p className="text-xs text-slate-600 dark:text-slate-300">Identité et contact du détenteur </p>
                                             </div>
                                         </div>
 
@@ -994,7 +989,7 @@ export default function EventDetailPage() {
                                                 />
                                             </div>
                                                     <p className={`text-xs leading-relaxed ${showEmailError ? "text-red-600 dark:text-red-300" : "text-slate-600 dark:text-slate-300"}`}>
-                                                {showEmailError ? qrContactErrors.email : "Optionnel. Exemple : nom@entreprise.com"}
+                                                {showEmailError ? qrContactErrors.email : "Optionnel."}
                                             </p>
                                                 </div>
 
@@ -1018,13 +1013,14 @@ export default function EventDetailPage() {
                                                 />
                                             </div>
                                                     <p className={`text-xs leading-relaxed ${showPhoneError ? "text-red-600 dark:text-red-300" : "text-slate-600 dark:text-slate-300"}`}>
-                                                {showPhoneError ? qrContactErrors.phone : "Optionnel. Commencez par + et l'indicatif pays."}
+                                                {showPhoneError ? qrContactErrors.phone : "Optionnel."}
                                             </p>
                                                 </div>
                                             </div>
                                         </div>
                                     </section>
 
+                                    {/* Choix et personnalisation du modèle de carte */}
                                     <section className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
                                         <div className="mb-4">
                                             <h3 className="text-sm font-bold text-slate-900 dark:text-white">Accès</h3>
@@ -1102,38 +1098,19 @@ export default function EventDetailPage() {
 
                                         </div>
 
-                                        <div className="mt-5 flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between">
-                                            <div className="flex min-w-0 items-center gap-3">
-                                                <div className="flex h-10 w-10 flex-none items-center justify-center rounded-xl bg-white text-[#7A90A4] shadow-sm dark:bg-slate-950">
-                                                    <FileSpreadsheet className="h-5 w-5" />
-                                                </div>
-                                                <div className="min-w-0">
-                                                    <p className="text-sm font-bold text-slate-900 dark:text-white">
-                                                        {selectedCardTemplate ? selectedCardTemplate.name : "QR seul"}
-                                                    </p>
-                                                    <p className="text-xs text-slate-600 dark:text-slate-300">
-                                                        {selectedCardTemplate ? "QR + carte personnalisée" : "Aucun support supplémentaire ne sera généré"}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <Link
-                                                href="/dashboard/card-templates"
-                                                className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-800"
-                                            >
-                                                Gérer les modèles
-                                            </Link>
-                                        </div>
+                                    
 
                                         <div className="mt-4 flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs leading-relaxed text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
                                             <FileSpreadsheet className="mt-0.5 h-4 w-4 flex-none text-[#7A90A4]" />
-                                            <p>Choisissez un modèle de carte créé par votre organisation. Le modèle défini par défaut est présélectionné automatiquement.</p>
+                                            <p>Choisissez un modèle de carte. Le modèle défini par défaut est présélectionné automatiquement.</p>
                                         </div>
                                     </section>
 
+                                    {/* Limites d'utilisation et niveau d'accréditation */}
                                     <section className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
                                         <div className="mb-4">
                                             <h3 className="text-sm font-bold text-slate-900 dark:text-white">Validité</h3>
-                                            <p className="text-xs text-slate-600 dark:text-slate-300">Les dates sont préremplies depuis l'événement lorsque c'est possible.</p>
+                                            <p className="text-xs text-slate-600 dark:text-slate-300">Les dates sont préremplies depuis l'événement</p>
                                         </div>
                                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                             <div className="space-y-2">
@@ -1174,7 +1151,7 @@ export default function EventDetailPage() {
                 </div>
             )}
 
-            {/* ── MODAL: View Ticket ── */}
+            {/* Aperçu et téléchargement du support généré */}
             {selectedQr && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
                     <div className="bg-white dark:bg-slate-950 w-full max-w-sm rounded-3xl shadow-2xl p-6 relative overflow-hidden text-center animate-in zoom-in duration-300">
@@ -1213,7 +1190,7 @@ export default function EventDetailPage() {
                 </div>
             )}
 
-            {/* ── MODAL: Revoke QR ── */}
+            {/* Confirmation de révocation d'un code QR */}
             {qrToRevoke && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
                     <div className="bg-white dark:bg-slate-950 w-full max-w-md rounded-2xl shadow-2xl p-6 animate-in zoom-in duration-300">
@@ -1254,7 +1231,7 @@ export default function EventDetailPage() {
                 </div>
             )}
 
-            {/* ── MODAL: Edit Event ── */}
+            {/* Formulaire de modification de l'événement */}
             {showEditModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
                     <div className="bg-white dark:bg-slate-950 w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden">
@@ -1335,7 +1312,7 @@ export default function EventDetailPage() {
                             <button
                                 type="submit"
                                 disabled={updatingEvent}
-                                className="w-full py-3 bg-slate-900 text-white hover:bg-black dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white font-semibold rounded-xl shadow-sm active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-60"
+                                className="w-full py-3 bg-slate-900 text-white hover:bg-black dark:bg-[#BED3C3] dark:text-slate-900 dark:hover:bg-[#AEC5B3] font-semibold rounded-xl shadow-sm active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-60"
                             >
                                 {updatingEvent ? <Loader2 className="w-5 h-5 animate-spin" /> : <Edit2 className="w-5 h-5" />}
                                 {updatingEvent ? "Mise à jour..." : "Enregistrer les modifications"}
@@ -1345,7 +1322,7 @@ export default function EventDetailPage() {
                 </div>
             )}
 
-            {/* ── MODAL: Delete Confirm ── */}
+            {/* Confirmation de suppression de l'événement */}
             {showDeleteConfirm && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
                     <div className="bg-white dark:bg-slate-950 w-full max-w-sm rounded-2xl shadow-2xl p-6 text-center">
@@ -1396,7 +1373,7 @@ export default function EventDetailPage() {
                     </div>
                 </div>
             )}
-            {/* ── MODAL: Import CSV ── */}
+            {/* Formulaire d'import des codes QR par CSV */}
             {showImportModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
                     <div className="bg-white dark:bg-slate-950 w-full max-w-md rounded-2xl shadow-2xl p-6 relative">
@@ -1477,10 +1454,10 @@ export default function EventDetailPage() {
                     </div>
                 </div>
             )}
-            {/* ── CUSTOM TOAST ── */}
+            {/* Notification des actions utilisateur */}
             {toast.show && (
                 <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-bottom-5 fade-in duration-300">
-                    <div className="bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 border border-slate-700/50 dark:border-slate-200 backdrop-blur-md">
+                    <div className="bg-slate-900 text-white dark:bg-[#BED3C3] dark:text-slate-900 px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 border border-slate-700/50 dark:border-slate-200 backdrop-blur-md">
                         <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
                             <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                         </div>

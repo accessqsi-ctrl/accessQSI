@@ -163,11 +163,17 @@ export default function CardTemplatesPage() {
 
     return (
         <div className="mx-auto max-w-7xl space-y-6">
+            {/* **************************************** */}
+            {/* En-tête et action de création */}
+            {/* **************************************** */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                 <div><h1 className="text-2xl font-black text-slate-950 dark:text-white">Modèles de cartes</h1><p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Créez une identité visuelle cohérente pour vos billets, badges et invitations.</p></div>
                 <button onClick={openNew} className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-black text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700"><Plus className="h-4 w-4" /> Nouveau modèle</button>
             </div>
 
+            {/* **************************************** */}
+            {/* Guide du cycle de vie d'un modèle */}
+            {/* **************************************** */}
             {showWorkflowGuide && (
                 <section className="relative rounded-2xl border border-blue-200 bg-blue-50 p-5 dark:border-blue-900/60 dark:bg-blue-950/20">
                     <button type="button" aria-label="Fermer le guide" onClick={() => { localStorage.setItem(MODEL_WORKFLOW_ONBOARDING_KEY, "true"); setShowWorkflowGuide(false); }} className="absolute right-3 top-3 rounded-lg p-2 text-blue-500 hover:bg-blue-100 dark:hover:bg-blue-950"><X className="h-4 w-4" /></button>
@@ -182,6 +188,9 @@ export default function CardTemplatesPage() {
 
             {notice && <div role="status" className={`rounded-xl border px-4 py-3 text-sm font-semibold ${notice.type === "error" ? "border-red-200 bg-red-50 text-red-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"}`}>{notice.text}</div>}
 
+            {/* **************************************** */}
+            {/* Grille des modèles enregistrés */}
+            {/* **************************************** */}
             {templates.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center dark:border-slate-700 dark:bg-slate-950"><div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600"><Plus /></div><h2 className="font-black text-slate-900 dark:text-white">Aucun modèle personnalisé</h2><p className="mt-2 text-sm text-slate-500">Créez votre premier modèle à partir de l’un des 4 formats disponibles.</p><button onClick={openNew} className="mt-5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white">Créer un modèle</button></div>
             ) : (
@@ -201,6 +210,9 @@ export default function CardTemplatesPage() {
                 ))}</div>
             )}
 
+            {/* **************************************** */}
+            {/* Confirmation de suppression d'un modèle */}
+            {/* **************************************** */}
             {templateToDelete && (
                 <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm">
                     <div role="dialog" aria-modal="true" aria-labelledby="delete-template-title" className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-950">
@@ -215,6 +227,9 @@ export default function CardTemplatesPage() {
                 </div>
             )}
 
+            {/* **************************************** */}
+            {/* Formulaire de création ou de modification avec aperçu */}
+            {/* **************************************** */}
             {showEditor && <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/55 p-0 backdrop-blur-sm sm:items-center sm:p-5"><div role="dialog" aria-modal="true" className="max-h-[95vh] w-full max-w-5xl overflow-y-auto rounded-t-3xl bg-white shadow-2xl dark:bg-slate-950 sm:rounded-3xl"><div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white/95 px-6 py-4 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95"><div><h2 className="text-lg font-black dark:text-white">{editingId ? "Modifier le modèle" : "Nouveau modèle"}</h2><p className="text-xs text-slate-500">Les modifications apparaissent immédiatement dans l’aperçu.</p></div><button onClick={closeEditor} aria-label="Fermer" className="rounded-xl p-2 text-slate-500 hover:bg-slate-100"><X /></button></div>
                 <form onSubmit={save} className="grid gap-8 p-6 lg:grid-cols-[1fr_1.1fr]"><div className="space-y-5">
                     <label className="block text-sm font-bold text-slate-700 dark:text-slate-200">Nom du modèle<input required maxLength={80} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Ex. Pass VIP entreprise" className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-900" /></label>

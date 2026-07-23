@@ -190,13 +190,18 @@ export default function SettingsPage() {
 
     return (
         <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500 pb-12">
+            {/* **************************************** */}
+            {/* En-tête des paramètres */}
+            {/* **************************************** */}
             <div>
                 <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Paramètres</h1>
                 <p className="text-slate-500 dark:text-slate-400 mt-1">Gérez vos informations personnelles et celles de votre organisation.</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                {/* Sidebar Navigation */}
+                {/* **************************************** */}
+                {/* Navigation entre les catégories */}
+                {/* **************************************** */}
                 <div className="space-y-1">
                     <button
                         type="button"
@@ -224,10 +229,14 @@ export default function SettingsPage() {
                     )}
                 </div>
 
-                {/* Main Settings Area */}
+                {/* **************************************** */}
+                {/* Formulaires de paramètres */}
+                {/* **************************************** */}
                 <div className="md:col-span-2 space-y-8">
                     
-                    {/* Mon Profil Section */}
+                    {/* **************************************** */}
+                    {/* Formulaire du profil utilisateur */}
+                    {/* **************************************** */}
                     <section ref={profileSectionRef} className="scroll-mt-24 bg-white dark:bg-slate-950 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
                         <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center gap-4">
                             <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
@@ -281,7 +290,9 @@ export default function SettingsPage() {
                         </div>
                     </section>
 
-                    {/* Sécurité / Mot de passe */}
+                    {/* **************************************** */}
+                    {/* Formulaire de modification du mot de passe */}
+                    {/* **************************************** */}
                     <section className="bg-white dark:bg-slate-950 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
                         <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center gap-4">
                             <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 flex items-center justify-center">
@@ -335,7 +346,7 @@ export default function SettingsPage() {
                                 <button
                                     type="submit"
                                     disabled={pwdLoading}
-                                    className="inline-flex items-center gap-2 px-6 py-2.5 bg-slate-900 text-white hover:bg-black dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white font-medium rounded-xl shadow-sm transition-all active:scale-95 disabled:opacity-50 text-sm"
+                                    className="inline-flex items-center gap-2 px-6 py-2.5 bg-slate-900 text-white hover:bg-black dark:bg-[#BED3C3] dark:text-slate-900 dark:hover:bg-[#AEC5B3] font-medium rounded-xl shadow-sm transition-all active:scale-95 disabled:opacity-50 text-sm"
                                 >
                                     {pwdLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
                                     Changer le mot de passe
@@ -344,7 +355,9 @@ export default function SettingsPage() {
                         </div>
                     </section>
 
-                    {/* Organisation Section */}
+                    {/* **************************************** */}
+                    {/* Formulaire des informations de l'organisation */}
+                    {/* **************************************** */}
                     {isAdmin && (
                         <section ref={orgSectionRef} className="scroll-mt-24 bg-white dark:bg-slate-950 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden border-l-4 border-l-blue-500">
                             <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center gap-4">
@@ -389,7 +402,9 @@ export default function SettingsPage() {
                         </section>
                     )}
 
-                    {/* Danger Zone */}
+                    {/* **************************************** */}
+                    {/* Zone sensible : suppression de l'organisation */}
+                    {/* **************************************** */}
                     {isAdmin && (
                         <section className="bg-red-50 rounded-3xl border border-red-200 shadow-sm overflow-hidden">
                             <div className="p-6 border-b border-red-200 flex items-center gap-4">
@@ -419,7 +434,9 @@ export default function SettingsPage() {
                 </div>
             </div>
 
-            {/* Delete Confirmation Modal */}
+            {/* **************************************** */}
+            {/* Confirmation de suppression de l'organisation */}
+            {/* **************************************** */}
             {showDeleteModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
                     <div className="bg-white dark:bg-slate-950 rounded-2xl max-w-md w-full shadow-2xl overflow-hidden animate-in zoom-in-95 text-slate-900 dark:text-slate-100">

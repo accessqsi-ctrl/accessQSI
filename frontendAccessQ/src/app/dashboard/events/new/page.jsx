@@ -101,7 +101,9 @@ export default function NewEventPage() {
 
     return (
         <div className="max-w-4xl mx-auto space-y-6">
-            {/* Header */}
+            {/* **************************************** */}
+            {/* Retour et en-tête de la page */}
+            {/* **************************************** */}
             <div className="flex items-center gap-4 mb-8">
                 <Link href="/dashboard/events" className="p-2 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
@@ -118,13 +120,17 @@ export default function NewEventPage() {
                 </div>
             )}
 
-            {/* Form */}
+            {/* **************************************** */}
+            {/* Formulaire de création de l'événement */}
+            {/* **************************************** */}
             <form onSubmit={handleSubmit} className="bg-white dark:bg-slate-950 p-6 sm:p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-8">
                 {loading && (
                     <LoadingBar label="Création de l'événement" />
                 )}
 
-                {/* General Info */}
+                {/* **************************************** */}
+                {/* Informations générales */}
+                {/* **************************************** */}
                 <div className="space-y-6">
                     <h2 className="text-lg font-semibold text-slate-900 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-3">Informations</h2>
 
@@ -154,7 +160,9 @@ export default function NewEventPage() {
                     </div>
                 </div>
 
+                {/* **************************************** */}
                 {/* Période et zones */}
+                {/* **************************************** */}
                 <div className="space-y-6">
                     <h2 className="text-lg font-semibold text-slate-900 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-3">Période et zones</h2>
 
@@ -211,7 +219,9 @@ export default function NewEventPage() {
                 </div>
 
 
-                {/* Submit Actions */}
+                {/* **************************************** */}
+                {/* Actions du formulaire */}
+                {/* **************************************** */}
                 <div className="pt-4 flex items-center justify-end gap-4 border-t border-slate-100 dark:border-slate-800">
                     <Link href="/dashboard/events" className="px-6 py-3 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-medium rounded-xl shadow-sm transition-all text-sm">
                         Annuler

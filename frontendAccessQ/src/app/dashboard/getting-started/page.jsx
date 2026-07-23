@@ -27,7 +27,13 @@ export default function GettingStartedPage() {
     if (error) return <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">{error}</div>;
 
     return <div className="mx-auto max-w-5xl space-y-7">
+        {/* **************************************** */}
+        {/* En-tête du parcours de démarrage */}
+        {/* **************************************** */}
         <header><p className="text-sm font-bold text-blue-600">Configuration de l’organisation</p><h1 className="mt-1 text-3xl font-black text-slate-950 dark:text-white">Premiers pas</h1><p className="mt-2 text-sm text-slate-600 dark:text-slate-300">Suivez ces étapes pour préparer votre premier contrôle d’accès.</p></header>
+        {/* **************************************** */}
+        {/* Liste des étapes de configuration */}
+        {/* **************************************** */}
         <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
             <div className="flex items-center justify-between"><strong className="text-slate-900 dark:text-white">{progress.completed} étape{progress.completed > 1 ? "s" : ""} sur {progress.total}</strong><span className="text-sm font-black text-blue-600">{progress.percentage}%</span></div>
             <div className="mt-3 h-3 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"><div className="h-full rounded-full bg-gradient-to-r from-blue-600 to-emerald-500 transition-all" style={{ width: `${progress.percentage}%` }} /></div>
@@ -37,6 +43,5 @@ export default function GettingStartedPage() {
             <div className="min-w-0 flex-1"><p className="text-xs font-black uppercase tracking-wider text-slate-400">Étape {index + 1}</p><h2 className="font-black text-slate-900 dark:text-white">{step.title}</h2><p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{done ? "Étape terminée." : step.description}</p></div>
             <Link href={step.href} className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">{done ? "Consulter" : step.action}<ArrowRight className="h-4 w-4" /></Link>
         </article>; })}</div>
-        <section className="rounded-2xl border border-amber-200 bg-amber-50 p-6 dark:border-amber-900/50 dark:bg-amber-950/15"><div className="flex gap-3"><Pencil className="h-5 w-5 flex-none text-amber-700" /><div><h2 className="font-black text-amber-950 dark:text-amber-100">Modification des modèles</h2><p className="mt-2 text-sm leading-6 text-amber-900 dark:text-amber-200">Un modèle peut être modifié directement, même après sa publication. Les nouvelles cartes utilisent sa dernière version tandis que les cartes déjà générées conservent leur apparence.</p></div></div></section>
-    </div>;
+       </div>;
 }
