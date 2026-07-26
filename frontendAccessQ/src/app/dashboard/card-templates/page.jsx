@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Check, Copy, ImagePlus, Loader2, Pencil, Plus, Save, Star, Trash2, X } from "lucide-react";
 import { apiFetch, apiUrl } from "../../lib/api";
+import { useUserPlan } from "../../lib/useUserPlan";
 
 const BASE_TEMPLATES = [
     { id: "event-ticket", name: "Billet événement", format: "Horizontal", accent: "#2563eb", soft: "#dbeafe" },
@@ -79,19 +80,27 @@ export default function CardTemplatesPage() {
     const [showWorkflowGuide, setShowWorkflowGuide] = useState(false);
     const [templateToDelete, setTemplateToDelete] = useState(null);
     const [uploadingPrimaryImage, setUploadingPrimaryImage] = useState(false);
+    const { isFreePlan, planName, profileLoading } = useUserPlan();
 
     useEffect(() => {
         setShowWorkflowGuide(localStorage.getItem(MODEL_WORKFLOW_ONBOARDING_KEY) !== "true");
     }, []);
 
     const load = useCallback(async () => {
+        if (profileLoading) return;
+        if (isFreePlan) {
+            setTemplates([]);
+            setDefaultId("");
+            setLoading(false);
+            return;
+        }
         try {
             const data = await jsonRequest("/card-templates/custom");
             setTemplates(data.templates || []);
             setDefaultId(data.defaultTemplateId || "");
         } catch (error) { setNotice({ type: "error", text: error.message }); }
         finally { setLoading(false); }
-    }, []);
+    }, [isFreePlan, profileLoading]);
 
     useEffect(() => { load(); }, [load]);
     const preview = useMemo(() => templatePayload(form), [form]);
@@ -107,7 +116,16 @@ export default function CardTemplatesPage() {
             backgroundImageUrl: ""
         }));
     };
-    const openNew = () => { setEditingId(null); setForm(initialForm); setShowEditor(true); setNotice(null); };
+    const openNew = () => {
+        if (isFreePlan) {
+            setNotice({ type: "error", text: "La création de modèles personnalisés nécessite le plan Pro." });
+            return;
+        }
+        setEditingId(null);
+        setForm(initialForm);
+        setShowEditor(true);
+        setNotice(null);
+    };
     const openEdit = (template) => {
         setEditingId(template.id);
         setForm({
@@ -168,7 +186,7 @@ export default function CardTemplatesPage() {
             {/* **************************************** */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                 <div><h1 className="text-2xl font-black text-slate-950 dark:text-white">Modèles de cartes</h1><p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Créez une identité visuelle cohérente pour vos billets, badges et invitations.</p></div>
-                <button onClick={openNew} className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-black text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700"><Plus className="h-4 w-4" /> Nouveau modèle</button>
+                <button onClick={openNew} disabled={isFreePlan} className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-black text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"><Plus className="h-4 w-4" /> Nouveau modèle</button>
             </div>
 
             {/* **************************************** */}
@@ -186,24 +204,30 @@ export default function CardTemplatesPage() {
                 </section>
             )}
 
+            {isFreePlan && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-200">
+                    <span className="font-semibold">Plan {planName || "Free"}</span> · Passez au plan Pro pour profiter des modèles personnalisés et des actions de publication.
+                </div>
+            )}
+
             {notice && <div role="status" className={`rounded-xl border px-4 py-3 text-sm font-semibold ${notice.type === "error" ? "border-red-200 bg-red-50 text-red-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"}`}>{notice.text}</div>}
 
             {/* **************************************** */}
             {/* Grille des modèles enregistrés */}
             {/* **************************************** */}
             {templates.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center dark:border-slate-700 dark:bg-slate-950"><div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600"><Plus /></div><h2 className="font-black text-slate-900 dark:text-white">Aucun modèle personnalisé</h2><p className="mt-2 text-sm text-slate-500">Créez votre premier modèle à partir de l’un des 4 formats disponibles.</p><button onClick={openNew} className="mt-5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white">Créer un modèle</button></div>
+                <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center dark:border-slate-700 dark:bg-slate-950"><div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600"><Plus /></div><h2 className="font-black text-slate-900 dark:text-white">Aucun modèle personnalisé</h2><p className="mt-2 text-sm text-slate-500">Créez votre premier modèle à partir de l’un des 4 formats disponibles.</p><button onClick={openNew} disabled={isFreePlan} title={isFreePlan ? "Disponible avec le plan Pro" : "Créer un modèle"} className="mt-5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50">Créer un modèle</button></div>
             ) : (
                 <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">{templates.map(template => (
                     <article key={template.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
                         <div className="bg-slate-100 p-5 dark:bg-slate-900"><TemplatePreview template={template} /></div>
                         <div className="p-5"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><h2 className="truncate font-black text-slate-900 dark:text-white">{template.name}</h2><p className="mt-1 text-xs text-slate-500">{BASE_TEMPLATES.find(item => item.id === template.baseTemplateId)?.name} · {template.status === "DRAFT" ? "Brouillon" : template.status === "ARCHIVED" ? "Archivé" : "Publié"}</p></div>{defaultId === template.templateId && <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-1 text-[10px] font-black text-amber-700"><Star className="h-3 w-3 fill-current" /> PAR DÉFAUT</span>}</div>
                             <div className="mt-5 grid grid-cols-5 gap-2">
-                                <button title="Modifier" disabled={!!busy} onClick={() => openEdit(template)} className="rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-35"><Pencil className="mx-auto h-4 w-4" /></button>
-                                <button title="Dupliquer" disabled={!!busy} onClick={() => action(`copy-${template.id}`, `/card-templates/custom/${template.id}/duplicate`, "POST", "Modèle dupliqué.")} className="rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-50"><Copy className="mx-auto h-4 w-4" /></button>
-                                <button title={template.status === "PUBLISHED" ? "Archiver" : template.status === "ARCHIVED" ? "Republier" : "Publier"} disabled={!!busy} onClick={() => action(`status-${template.id}`, `/card-templates/custom/${template.id}/status`, "PUT", template.status === "PUBLISHED" ? "Modèle archivé." : "Modèle publié.", { status: template.status === "PUBLISHED" ? "ARCHIVED" : "PUBLISHED" })} className="rounded-lg border border-slate-200 p-2 text-emerald-600 hover:bg-emerald-50 disabled:opacity-35">{template.status === "PUBLISHED" ? <X className="mx-auto h-4 w-4" /> : <Check className="mx-auto h-4 w-4" />}</button>
-                                <button title="Définir par défaut" disabled={!!busy || defaultId === template.templateId || template.status !== "PUBLISHED"} onClick={() => action(`default-${template.id}`, `/card-templates/custom/${template.id}/default`, "PUT", "Modèle défini par défaut.")} className="rounded-lg border border-slate-200 p-2 text-amber-600 hover:bg-amber-50 disabled:opacity-40"><Star className="mx-auto h-4 w-4" /></button>
-                                <button title="Supprimer" disabled={!!busy} onClick={() => setTemplateToDelete(template)} className="rounded-lg border border-red-100 p-2 text-red-600 hover:bg-red-50"><Trash2 className="mx-auto h-4 w-4" /></button>
+                                <button title="Modifier" disabled={!!busy || isFreePlan} onClick={() => openEdit(template)} className="rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-35"><Pencil className="mx-auto h-4 w-4" /></button>
+                                <button title="Dupliquer" disabled={!!busy || isFreePlan} onClick={() => action(`copy-${template.id}`, `/card-templates/custom/${template.id}/duplicate`, "POST", "Modèle dupliqué.")} className="rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-35"><Copy className="mx-auto h-4 w-4" /></button>
+                                <button title={template.status === "PUBLISHED" ? "Archiver" : template.status === "ARCHIVED" ? "Republier" : "Publier"} disabled={!!busy || isFreePlan} onClick={() => action(`status-${template.id}`, `/card-templates/custom/${template.id}/status`, "PUT", template.status === "PUBLISHED" ? "Modèle archivé." : "Modèle publié.", { status: template.status === "PUBLISHED" ? "ARCHIVED" : "PUBLISHED" })} className="rounded-lg border border-slate-200 p-2 text-emerald-600 hover:bg-emerald-50 disabled:opacity-35">{template.status === "PUBLISHED" ? <X className="mx-auto h-4 w-4" /> : <Check className="mx-auto h-4 w-4" />}</button>
+                                <button title="Définir par défaut" disabled={!!busy || defaultId === template.templateId || template.status !== "PUBLISHED" || isFreePlan} onClick={() => action(`default-${template.id}`, `/card-templates/custom/${template.id}/default`, "PUT", "Modèle défini par défaut.")} className="rounded-lg border border-slate-200 p-2 text-amber-600 hover:bg-amber-50 disabled:opacity-40"><Star className="mx-auto h-4 w-4" /></button>
+                                <button title="Supprimer" disabled={!!busy || isFreePlan} onClick={() => setTemplateToDelete(template)} className="rounded-lg border border-red-100 p-2 text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-35"><Trash2 className="mx-auto h-4 w-4" /></button>
                             </div>
                         </div>
                     </article>

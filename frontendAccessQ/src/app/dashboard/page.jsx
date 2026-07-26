@@ -6,6 +6,7 @@ import { CalendarPlus, CheckCircle2, Download, Loader2, MapPinned, Palette, Penc
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { apiFetch, refreshSession } from "../lib/api";
 import LoadingBar from "../components/LoadingBar";
+import { useUserPlan } from "../lib/useUserPlan";
 
 const ONBOARDING_STORAGE_KEY = "qrAccessDashboardOnboardingV2Dismissed";
 
@@ -56,7 +57,8 @@ export default function Dashboard() {
         activeAgents: 0,
         scansByDay: [],
         topAgents: [],
-        recentScans: []
+        recentScans: [],
+        capabilities: { advancedAnalytics: false }
     });
     const [userName, setUserName] = useState("");
     const [loading, setLoading] = useState(true);
@@ -64,6 +66,7 @@ export default function Dashboard() {
     const [toast, setToast] = useState({ show: false, message: "" });
     const [showOnboarding, setShowOnboarding] = useState(false);
     const [exportingFormat, setExportingFormat] = useState("");
+    const { isFreePlan, planName } = useUserPlan();
 
 
     const handleExport = async (format) => {
@@ -162,22 +165,29 @@ export default function Dashboard() {
                     <div className="flex gap-3">
                         <button 
                             onClick={() => handleExport('csv')}
-                            disabled={exportingFormat === "csv"}
+                            disabled={exportingFormat === "csv" || isFreePlan}
                             className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold rounded-xl transition-colors border border-slate-200 dark:border-slate-800 disabled:opacity-60"
+                            title={isFreePlan ? "Disponible avec le plan Pro" : "Exporter en CSV"}
                         >
                             {exportingFormat === "csv" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                             CSV
                         </button>
                         <button 
                             onClick={() => handleExport('pdf')}
-                            disabled={exportingFormat === "pdf"}
+                            disabled={exportingFormat === "pdf" || isFreePlan}
                             className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-900 dark:text-white font-semibold rounded-xl shadow-sm transition-colors border border-slate-200 dark:border-slate-800 disabled:opacity-60"
+                            title={isFreePlan ? "Disponible avec le plan Pro" : "Exporter en PDF"}
                         >
                             {exportingFormat === "pdf" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                             PDF
                         </button>
                     </div>
                 </div>
+                {isFreePlan && (
+                    <div className="relative z-10 mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-200">
+                        <span className="font-semibold">Plan {planName || "Free"}</span> · Passez au plan Pro pour profiter des exports CSV et PDF avancés.
+                    </div>
+                )}
                 {exportingFormat && (
                     <LoadingBar label={`Préparation export ${exportingFormat.toUpperCase()}`} className="relative z-10 mt-6" />
                 )}
@@ -209,7 +219,7 @@ export default function Dashboard() {
                             <CheckCircle2 className="h-5 w-5" />
                             Guide de démarrage
                         </div>
-                        <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Bienvenue sur QR Access</h3>
+                        <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Bienvenue sur AccessQ</h3>
                         <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
                             Voici les premières actions utiles pour configurer votre organisation et commencer les contrôles.
                         </p>
@@ -329,6 +339,7 @@ export default function Dashboard() {
             {/* **************************************** */}
             {/* Graphique d'activité et classement des agents */}
             {/* **************************************** */}
+            {stats.capabilities?.advancedAnalytics ? (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* **************************************** */}
                 {/* Courbe d'activité des scans */}
@@ -417,6 +428,19 @@ export default function Dashboard() {
                     </div>
                 </div>
             </div>
+            ) : (
+                <div className="flex flex-col gap-4 rounded-lg border border-amber-200 bg-amber-50 p-5 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100 sm:flex-row sm:items-center">
+                    <div className="min-w-0 flex-1">
+                        <h3 className="font-bold">Statistiques avancées</h3>
+                        <p className="mt-1 text-sm text-amber-800 dark:text-amber-200">
+                            L’activité sur 7 jours et le classement des agents sont disponibles avec le plan Pro.
+                        </p>
+                    </div>
+                    <Link href="/dashboard/upgrade" className="inline-flex items-center justify-center rounded-lg bg-amber-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-amber-700">
+                        Découvrir Pro
+                    </Link>
+                </div>
+            )}
 
             {/* **************************************** */}
             {/* Tableau des derniers scans */}

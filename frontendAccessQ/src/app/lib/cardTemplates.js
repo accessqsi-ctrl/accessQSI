@@ -119,7 +119,7 @@ export const createDefaultCanvasScene = (baseTemplateId = "event-ticket") => {
             objects: [
                 createCanvasObject({ id: "panel-accent", type: "rect", label: "Bande couleur", x: 40, y: 40, width: 420, height: height - 80, fill: accent, cornerRadius: 28, zIndex: 1 }),
                 createCanvasObject({ id: "panel-main", type: "rect", label: "Fond contenu", x: 460, y: 40, width: width - 500, height: height - 80, fill: "#ffffff", stroke: soft, strokeWidth: 4, cornerRadius: 28, zIndex: 2 }),
-                createCanvasObject({ id: "brand", type: "text", label: "Marque", text: "QR Access", x: 92, y: 118, width: 280, height: 34, fontSize: 25, fill: "#ffffff", opacity: 0.82, zIndex: 3 }),
+                createCanvasObject({ id: "brand", type: "text", label: "Marque", text: "AccessQ", x: 92, y: 118, width: 280, height: 34, fontSize: 25, fill: "#ffffff", opacity: 0.82, zIndex: 3 }),
                 createCanvasObject({ id: "title", type: "text", label: "Titre", field: "title", text: "{{title}}", x: 92, y: 220, width: 310, height: 70, fontSize: 50, fontWeight: "900", fill: "#ffffff", zIndex: 4 }),
                 createCanvasObject({ id: "event", type: "text", label: "Événement", field: "event", text: "{{event}}", x: 540, y: 130, width: 610, height: 70, fontSize: 54, fontWeight: "900", fill: "#0f172a", zIndex: 5 }),
                 createCanvasObject({ id: "holder", type: "text", label: "Titulaire", field: "holder", text: "{{holder}}", x: 540, y: 242, width: 520, height: 48, fontSize: 34, fill: "#334155", zIndex: 6 }),

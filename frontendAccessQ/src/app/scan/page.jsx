@@ -1,11 +1,14 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Loader2, Camera, ShieldCheck, ShieldAlert, ArrowLeft, History, MapPin } from "lucide-react";
+import { Loader2, Camera, ShieldCheck, ShieldAlert, ArrowLeft, History, MapPin, Settings } from "lucide-react";
 import Link from "next/link";
 import { apiFetch } from "../lib/api";
+import { useUserPlan } from "../lib/useUserPlan";
 
 export default function ScanPage() {
+    const { userProfile } = useUserPlan();
+    const isOperator = userProfile?.role === "OPERATOR";
     const [scanResult, setScanResult] = useState(null); // { success, message, holder, reason }
     const [isScanning, setIsScanning] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -187,10 +190,15 @@ export default function ScanPage() {
         }`}>
             {/* Header */}
             <div className="p-4 flex items-center justify-between text-white border-b border-white/10 bg-black/20 backdrop-blur-md">
-                <Link href="/dashboard" className="p-2 hover:bg-white/10 rounded-full transition-colors">
-                    <ArrowLeft className="w-6 h-6" />
+                <Link
+                    href={isOperator ? "/dashboard/settings" : "/dashboard"}
+                    aria-label={isOperator ? "Ouvrir les paramètres" : "Retour au tableau de bord"}
+                    title={isOperator ? "Paramètres" : "Tableau de bord"}
+                    className="p-2 hover:bg-white/10 rounded-full transition-colors"
+                >
+                    {isOperator ? <Settings className="w-6 h-6" /> : <ArrowLeft className="w-6 h-6" />}
                 </Link>
-                <h1 className="text-lg font-bold tracking-tight">Scanner QR Access</h1>
+                <h1 className="text-lg font-bold tracking-tight">Scanner AccessQ</h1>
                 <div className="w-10"></div> {/* Spacer */}
             </div>
 

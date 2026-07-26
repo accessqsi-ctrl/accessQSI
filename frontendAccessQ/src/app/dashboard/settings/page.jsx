@@ -47,10 +47,7 @@ export default function SettingsPage() {
 
     const fetchData = async () => {
         try {
-            const [userRes, orgRes] = await Promise.all([
-                apiFetch("/user/profile"),
-                apiFetch("/user/org")
-            ]);
+            const userRes = await apiFetch("/user/profile");
 
             if (userRes.ok) {
                 const userData = await userRes.json();
@@ -58,15 +55,18 @@ export default function SettingsPage() {
                     const u = userData.user;
                     setUser(u);
                     setProfileForm({ fullName: u.full_name || "", email: u.email || "" });
-                }
-            }
 
-            if (orgRes.ok) {
-                const orgData = await orgRes.json();
-                if (orgData.success && orgData.organization) {
-                    const o = orgData.organization;
-                    setOrganization(o);
-                    setOrgForm({ name: o.name || "" });
+                    if (u.role === "ORG_ADMIN" || u.role === "SUPER_ADMIN") {
+                        const orgRes = await apiFetch("/user/org");
+                        if (orgRes.ok) {
+                            const orgData = await orgRes.json();
+                            if (orgData.success && orgData.organization) {
+                                const o = orgData.organization;
+                                setOrganization(o);
+                                setOrgForm({ name: o.name || "" });
+                            }
+                        }
+                    }
                 }
             }
         } catch (err) {
@@ -187,6 +187,7 @@ export default function SettingsPage() {
     }
 
     const isAdmin = user?.role === 'ORG_ADMIN' || user?.role === 'SUPER_ADMIN';
+    const isOperator = user?.role === 'OPERATOR';
 
     return (
         <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500 pb-12">
@@ -195,10 +196,12 @@ export default function SettingsPage() {
             {/* **************************************** */}
             <div>
                 <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Paramètres</h1>
-                <p className="text-slate-500 dark:text-slate-400 mt-1">Gérez vos informations personnelles et celles de votre organisation.</p>
+                <p className="text-slate-500 dark:text-slate-400 mt-1">
+                    {isOperator ? "Modifiez le mot de passe de votre compte." : "Gérez vos informations personnelles et celles de votre organisation."}
+                </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className={`grid grid-cols-1 gap-8 ${isOperator ? "max-w-2xl mx-auto" : "md:grid-cols-3"}`}>
                 {/* **************************************** */}
                 {/* Navigation entre les catégories */}
                 {/* **************************************** */}
@@ -212,7 +215,8 @@ export default function SettingsPage() {
                                 : "text-slate-600 dark:text-slate-300 border-transparent hover:bg-slate-50 dark:hover:bg-slate-800"
                         }`}
                     >
-                        <User className="w-4 h-4" /> Profil & Sécurité
+                        {isOperator ? <Lock className="w-4 h-4" /> : <User className="w-4 h-4" />}
+                        {isOperator ? "Sécurité" : "Profil & Sécurité"}
                     </button>
                     {isAdmin && (
                         <button
@@ -232,12 +236,12 @@ export default function SettingsPage() {
                 {/* **************************************** */}
                 {/* Formulaires de paramètres */}
                 {/* **************************************** */}
-                <div className="md:col-span-2 space-y-8">
+                <div className={`${isOperator ? "" : "md:col-span-2"} space-y-8`}>
                     
                     {/* **************************************** */}
                     {/* Formulaire du profil utilisateur */}
                     {/* **************************************** */}
-                    <section ref={profileSectionRef} className="scroll-mt-24 bg-white dark:bg-slate-950 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+                    {!isOperator && <section ref={profileSectionRef} className="scroll-mt-24 bg-white dark:bg-slate-950 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
                         <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center gap-4">
                             <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
                                 <User className="w-5 h-5" />
@@ -288,12 +292,12 @@ export default function SettingsPage() {
                                 </button>
                             </form>
                         </div>
-                    </section>
+                    </section>}
 
                     {/* **************************************** */}
                     {/* Formulaire de modification du mot de passe */}
                     {/* **************************************** */}
-                    <section className="bg-white dark:bg-slate-950 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+                    <section ref={isOperator ? profileSectionRef : null} className="scroll-mt-24 bg-white dark:bg-slate-950 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
                         <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center gap-4">
                             <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 flex items-center justify-center">
                                 <Lock className="w-5 h-5" />
@@ -323,7 +327,7 @@ export default function SettingsPage() {
                                         className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all sm:text-sm"
                                     />
                                 </div>
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Nouveau mot de passe</label>
                                         <input
@@ -411,7 +415,7 @@ export default function SettingsPage() {
                                 <div className="w-10 h-10 rounded-xl bg-red-100 text-red-600 flex items-center justify-center">
                                     <AlertCircle className="w-5 h-5" />
                                 </div>
-                                <h2 className="font-bold text-red-900">Zone de Danger</h2>
+                                <h2 className="font-bold text-red-900">Suppression de l'organisation</h2>
                             </div>
                             <div className="p-6 space-y-4">
                                 <p className="text-sm text-red-800">

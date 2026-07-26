@@ -6,6 +6,8 @@ import Link from "next/link";
 import { Loader2 } from "lucide-react";
 import { apiFetch } from "../../../lib/api";
 import LoadingBar from "../../../components/LoadingBar";
+import PlanQuotaStatus from "../../../components/PlanQuotaStatus";
+import { useUserPlan } from "../../../lib/useUserPlan";
 
 export default function NewEventPage() {
     const router = useRouter();
@@ -20,6 +22,9 @@ export default function NewEventPage() {
     const [loadingAreas, setLoadingAreas] = useState(true);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
+    const { planUsage, profileLoading } = useUserPlan();
+    const eventQuota = planUsage.events;
+    const eventQuotaReached = Boolean(eventQuota?.reached);
 
     useEffect(() => {
         const fetchAreas = async () => {
@@ -59,6 +64,11 @@ export default function NewEventPage() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError("");
+
+        if (eventQuotaReached) {
+            setError("Votre quota d'événements est atteint. Passez au plan Pro pour continuer.");
+            return;
+        }
 
         if (!formData.title || !formData.startDate || !formData.endDate) {
             setError("Titre, Date de début et Date de fin sont obligatoires.");
@@ -120,10 +130,13 @@ export default function NewEventPage() {
                 </div>
             )}
 
+            <PlanQuotaStatus label="Événements du plan Free" quota={eventQuota} />
+
             {/* **************************************** */}
             {/* Formulaire de création de l'événement */}
             {/* **************************************** */}
             <form onSubmit={handleSubmit} className="bg-white dark:bg-slate-950 p-6 sm:p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-8">
+                <fieldset disabled={profileLoading || eventQuotaReached} className="contents">
                 {loading && (
                     <LoadingBar label="Création de l'événement" />
                 )}
@@ -228,7 +241,7 @@ export default function NewEventPage() {
                     </Link>
                     <button
                         type="submit"
-                        disabled={loading}
+                        disabled={loading || profileLoading || eventQuotaReached}
                         className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl shadow-lg shadow-blue-500/20 active:scale-95 transition-all text-sm flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
                     >
                         {loading ? (
@@ -239,6 +252,7 @@ export default function NewEventPage() {
                         {loading ? "Enregistrement..." : "Enregistrer"}
                     </button>
                 </div>
+                </fieldset>
             </form>
         </div>
     );

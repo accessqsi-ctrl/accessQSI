@@ -18,7 +18,7 @@ function AccueilDeuxPanel() {
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-200/60 dark:border-slate-700 dark:bg-slate-900 dark:shadow-slate-950/20">
         <div className="flex flex-col gap-4 border-b border-slate-200 bg-slate-50 px-5 py-4 dark:border-slate-700 dark:bg-slate-800 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-sm font-semibold text-slate-900 dark:text-white">Centre de contrôle QR Access</p>
+            <p className="text-sm font-semibold text-slate-900 dark:text-white">Centre de contrôle AccessQ</p>
             <p className="text-xs text-slate-500 dark:text-slate-400">Vue instantanée des accès et validations</p>
           </div>
           <div className="flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 dark:border-emerald-700/70 dark:bg-emerald-900/40 dark:text-emerald-200">
@@ -173,11 +173,11 @@ export default function Home() {
           <Link href="/" className="flex items-center gap-3 group">
             <img
               src="/logo/access_logo.png"
-              alt="QR Access"
+              alt="AccessQ"
               className="w-12 h-auto drop-shadow-md group-hover:scale-105 transition-transform duration-300"
             />
             <span className="font-bold text-xl tracking-tight bg-gradient-to-r from-blue-700 to-emerald-600 bg-clip-text text-transparent">
-              QR Access
+              AccessQ
             </span>
           </Link>
 
@@ -214,7 +214,7 @@ export default function Home() {
           </h1>
 
           <p className="max-w-2xl mx-auto text-base md:text-lg font-medium text-slate-700 dark:text-slate-300 leading-relaxed">
-            AccesQSI est une solution simple et sécurisée qui permet de générer, gérer et vérifier des QR codes, de les attribuer aux personnes autorisées et de contrôler rapidement les accès physiques ou numériques. Grâce à une visibilité claire et fiable, les administrateurs et les agents assurent une gestion des accès efficace en toute simplicité.
+            AccessQ est une solution simple et sécurisée qui permet de générer, gérer et vérifier des QR codes, de les attribuer aux personnes autorisées et de contrôler rapidement les accès physiques ou numériques. Grâce à une visibilité claire et fiable, les administrateurs et les agents assurent une gestion des accès efficace en toute simplicité.
           </p>
 
         
@@ -224,7 +224,7 @@ export default function Home() {
               href="/register"
               className="inline-flex items-center justify-center rounded-full bg-slate-900 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-slate-900/15 transition-all hover:bg-slate-800 active:scale-95 dark:bg-[#BED3C3] dark:text-slate-950 dark:hover:bg-[#AEC5B3]"
             >
-              Essayer QR Access
+              Essayer AccessQ
             </Link>
             <a
               href="#use-cases"
@@ -250,7 +250,7 @@ export default function Home() {
                 Un même outil pour tous les accès qui doivent rester sous contrôle
               </h2>
               <p className="mt-5 text-lg leading-8 text-slate-600 dark:text-slate-300">
-                QR Access remplace les listes papier, les invitations faciles à copier et les contrôles improvisés par un système clair : un QR, une règle, une décision immédiate.
+                AccessQ remplace les listes papier, les invitations faciles à copier et les contrôles improvisés par un système clair : un QR, une règle, une décision immédiate.
               </p>
             </div>
 
@@ -295,7 +295,7 @@ export default function Home() {
               Contrôlez vos accès avec <span className="text-blue-900 dark:text-blue-400">fluidité</span>
             </h2>
             <p className="text-lg text-slate-600 dark:text-slate-300 max-w-3xl mx-auto leading-relaxed">
-              QR Access s'appuie sur des QR codes sécurisés pour offrir une solution moderne, fiable et accessible. Les organisations, entreprises et équipes événementielles peuvent gérer leurs accès plus efficacement, tout en réduisant les risques de fraude et d'intrusion.
+              AccessQ s'appuie sur des QR codes sécurisés pour offrir une solution moderne, fiable et accessible. Les organisations, entreprises et équipes événementielles peuvent gérer leurs accès plus efficacement, tout en réduisant les risques de fraude et d'intrusion.
             </p>
           </div>
 

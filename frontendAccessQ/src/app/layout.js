@@ -17,13 +17,13 @@ export const viewport = {
 };
 
 export const metadata = {
-  title: "accessQSI",
+  title: "AccessQ",
   description: "Système de Gestion d'Accès par Code QR",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "QR Access",
+    title: "AccessQ",
   },
   formatDetection: {
     telephone: false,

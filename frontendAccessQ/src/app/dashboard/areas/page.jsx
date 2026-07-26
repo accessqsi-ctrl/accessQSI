@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { Loader2, Plus, Trash2, Edit2, MapPin } from "lucide-react";
 import { apiFetch } from "../../lib/api";
 import LoadingBar from "../../components/LoadingBar";
+import PlanQuotaStatus from "../../components/PlanQuotaStatus";
+import { useUserPlan } from "../../lib/useUserPlan";
 
 export default function AreasPage() {
     const [areas, setAreas] = useState([]);
@@ -15,6 +17,9 @@ export default function AreasPage() {
     const [deletingAreaId, setDeletingAreaId] = useState(null);
     const [savingArea, setSavingArea] = useState(false);
     const [formData, setFormData] = useState({ area_name: "", accreditation_level: 1 });
+    const { planUsage, refreshPlan } = useUserPlan();
+    const areaQuota = planUsage.areas;
+    const areaQuotaReached = Boolean(areaQuota?.reached);
 
     const fetchAreas = async () => {
         try {
@@ -43,6 +48,7 @@ export default function AreasPage() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setError("");
         const url = editingArea
             ? `/areas/${editingArea.area_id}`
             : "/areas";
@@ -60,10 +66,13 @@ export default function AreasPage() {
                 setIsModalOpen(false);
                 setEditingArea(null);
                 setFormData({ area_name: "", accreditation_level: 1 });
-                fetchAreas();
+                await Promise.all([fetchAreas(), refreshPlan()]);
+            } else {
+                setError(data.message || "Impossible d'enregistrer la zone.");
             }
         } catch (err) {
             console.error("Error saving area:", err);
+            setError("Erreur de connexion au serveur.");
         } finally {
             setSavingArea(false);
         }
@@ -78,7 +87,7 @@ export default function AreasPage() {
             const data = await res.json();
             if (data.success) {
                 setAreaToDelete(null);
-                fetchAreas();
+                await Promise.all([fetchAreas(), refreshPlan()]);
             }
         } catch (err) {
             console.error("Error deleting area:", err);
@@ -105,12 +114,22 @@ export default function AreasPage() {
                 </div>
                 <button
                     onClick={() => { setEditingArea(null); setFormData({ area_name: "", accreditation_level: 1 }); setIsModalOpen(true); }}
-                    className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl shadow-sm transition-all text-sm"
+                    disabled={areaQuotaReached}
+                    title={areaQuotaReached ? "Quota de zones atteint" : "Ajouter une zone"}
+                    className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl shadow-sm transition-all text-sm disabled:cursor-not-allowed disabled:opacity-50"
                 >
                     <Plus className="w-5 h-5" />
                     Ajouter une zone
                 </button>
             </div>
+
+            <PlanQuotaStatus label="Zones du plan Free" quota={areaQuota} />
+
+            {error && (
+                <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300">
+                    {error}
+                </div>
+            )}
 
             {/* **************************************** */}
             {/* Tableau des zones d'accès */}

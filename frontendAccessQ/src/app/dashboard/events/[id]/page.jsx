@@ -6,6 +6,8 @@ import Link from "next/link";
 import { Loader2, Calendar, MapPin, QrCode, Edit2, Trash2, ArrowLeft, Plus, Download, X, CheckCircle2, FileSpreadsheet, FileText, Mail, Phone, IdCard, Ticket } from "lucide-react";
 import { apiFetch, refreshSession } from "../../../lib/api";
 import LoadingBar from "../../../components/LoadingBar";
+import { useUserPlan } from "../../../lib/useUserPlan";
+import PlanQuotaStatus from "../../../components/PlanQuotaStatus";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -181,6 +183,9 @@ export default function EventDetailPage() {
     const [downloadingTemplate, setDownloadingTemplate] = useState(false);
     const [cardTemplates, setCardTemplates] = useState([]);
     const [selectedCardTemplateId, setSelectedCardTemplateId] = useState("");
+    const { isFreePlan, planName, planUsage, refreshPlan } = useUserPlan();
+    const qrQuota = planUsage.qrCodes;
+    const qrQuotaReached = Boolean(qrQuota?.reached);
 
     const selectedCardTemplate = useMemo(
         () => cardTemplates.find(template => template.templateId === selectedCardTemplateId) || null,
@@ -282,6 +287,10 @@ export default function EventDetailPage() {
     }, []);
 
     const openQrGenerationModal = () => {
+        if (qrQuotaReached) {
+            showToast("Votre quota de QR est atteint. Passez au plan Pro pour continuer.");
+            return;
+        }
         setShowQrModal(true);
         setQrError("");
         setGeneratedAsset(null);
@@ -367,6 +376,10 @@ export default function EventDetailPage() {
         e.preventDefault();
         setQrError("");
         setQrSubmitAttempted(true);
+        if (qrQuotaReached) {
+            setQrError("Votre quota de QR est atteint. Passez au plan Pro pour continuer.");
+            return;
+        }
         const contactErrors = validateQrContact(qrForm);
         if (Object.keys(contactErrors).length > 0) {
             setQrError("Veuillez corriger les informations de contact avant de générer le QR Code.");
@@ -400,7 +413,7 @@ export default function EventDetailPage() {
                 setQrSubmitAttempted(false);
                 showToast(selectedCardTemplateId ? "QR Code et carte générés avec succès." : "QR Code généré avec succès.");
                 setQrPage(1);
-                await fetchAll();
+                await Promise.all([fetchAll(), refreshPlan()]);
             } else {
                 setQrError(data.message || "Erreur lors de la génération.");
             }
@@ -653,17 +666,17 @@ export default function EventDetailPage() {
                     <div className="flex gap-2 flex-shrink-0">
                         <button
                             onClick={() => handleExport('csv')}
-                            disabled={exportingFormat === "csv"}
+                            disabled={exportingFormat === "csv" || isFreePlan}
                             className="inline-flex items-center justify-center p-2.5 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-200 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-95 transition-all shadow-sm"
-                            title="Exporter en CSV"
+                            title={isFreePlan ? "Disponible avec le plan Pro" : "Exporter en CSV"}
                         >
                             {exportingFormat === "csv" ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
                         </button>
                         <button
                             onClick={handleDownloadTemplate}
-                            disabled={downloadingTemplate}
+                            disabled={downloadingTemplate || isFreePlan}
                             className="inline-flex items-center justify-center p-2.5 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-200 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-95 transition-all shadow-sm"
-                            title="Télécharger le modèle d'import CSV"
+                            title={isFreePlan ? "Disponible avec le plan Pro" : "Télécharger le modèle d'import CSV"}
                         >
                             {downloadingTemplate ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileSpreadsheet className="w-5 h-5" />}
                         </button>
@@ -675,14 +688,17 @@ export default function EventDetailPage() {
                                 setImportSuccess("");
                                 setImportReport(null);
                             }}
-                            className="inline-flex items-center justify-center p-2.5 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-200 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-95 transition-all shadow-sm"
-                            title="Importer CSV"
+                            disabled={isFreePlan}
+                            className="inline-flex items-center justify-center p-2.5 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-200 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-95 transition-all shadow-sm disabled:opacity-60"
+                            title={isFreePlan ? "Disponible avec le plan Pro" : "Importer CSV"}
                         >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
                         </button>
                         <button
                             onClick={openQrGenerationModal}
-                            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl shadow-sm hover:shadow active:scale-95 transition-all text-sm"
+                            disabled={qrQuotaReached}
+                            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl shadow-sm hover:shadow active:scale-95 transition-all text-sm disabled:cursor-not-allowed disabled:opacity-50"
+                            title={qrQuotaReached ? "Quota de QR atteint" : "Générer un QR"}
                         >
                             <Plus className="w-5 h-5" /> Générer un QR
                         </button>
@@ -690,6 +706,12 @@ export default function EventDetailPage() {
                     </div>
 
                 </div>
+                <PlanQuotaStatus label="QR de l'organisation sur le plan Free" quota={qrQuota} className="mt-6" />
+                {isFreePlan && (
+                    <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-200">
+                        <span className="font-semibold">Plan {planName || "Free"}</span> · Passez au plan Pro pour profiter des imports CSV, des exports et des générations de QR en masse.
+                    </div>
+                )}
                 {(exportingFormat || downloadingTemplate) && (
                     <LoadingBar
                         label={downloadingTemplate ? "Préparation du modèle CSV" : `Préparation export ${exportingFormat.toUpperCase()}`}
@@ -764,7 +786,9 @@ export default function EventDetailPage() {
                                         <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">{qrPagination.total === 0 && !searchQuery && statusFilter === "Tous les statuts" ? "Générez votre premier code QR pour cet événement." : "Aucun QR Code trouvé pour ces critères."}</p>
                                         <button
                                             onClick={openQrGenerationModal}
-                                            className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors"
+                                            disabled={qrQuotaReached}
+                                            title={qrQuotaReached ? "Quota de QR atteint" : "Générer un QR"}
+                                            className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                                         >
                                             <Plus className="w-4 h-4" /> Générer un QR
                                         </button>
@@ -1139,7 +1163,7 @@ export default function EventDetailPage() {
                             <div className="border-t border-slate-100 bg-slate-50 px-6 py-4 dark:border-slate-800 dark:bg-slate-900/60 sm:px-8">
                                 <button
                                     type="submit"
-                                    disabled={generatingQr}
+                                    disabled={generatingQr || qrQuotaReached}
                                     className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl shadow-lg shadow-blue-600/20 active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-60"
                                 >
                                     {generatingQr ? <Loader2 className="w-5 h-5 animate-spin" /> : <QrCode className="w-5 h-5" />}

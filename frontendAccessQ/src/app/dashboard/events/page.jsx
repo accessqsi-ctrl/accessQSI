@@ -4,12 +4,17 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { apiFetch } from "../../lib/api";
+import { useUserPlan } from "../../lib/useUserPlan";
+import PlanQuotaStatus from "../../components/PlanQuotaStatus";
 
 export default function EventsPage() {
     const [events, setEvents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
-    const [userRole, setUserRole] = useState(null);
+    const { userProfile, planUsage, profileLoading } = useUserPlan();
+    const eventQuota = planUsage.events;
+    const eventQuotaReached = Boolean(eventQuota?.reached);
+    const userRole = userProfile?.role;
 
     // Filters state
     const [searchQuery, setSearchQuery] = useState("");
@@ -21,16 +26,7 @@ export default function EventsPage() {
     };
 
     useEffect(() => {
-        const fetchProfileAndEvents = async () => {
-            try {
-                const profileRes = await apiFetch("/user/profile");
-                const profileData = await profileRes.json();
-                if (profileData.success) {
-                    setUserRole(profileData.user.role);
-                }
-            } catch (err) {
-                console.error("Error fetching profile:", err);
-            }
+        const fetchEvents = async () => {
             try {
                 const res = await apiFetch("/events", {
                     method: "GET",
@@ -51,7 +47,7 @@ export default function EventsPage() {
             }
         };
 
-        fetchProfileAndEvents();
+        fetchEvents();
     }, []);
 
     const filteredEvents = events.filter(event => {
@@ -76,15 +72,30 @@ export default function EventsPage() {
                     <p className="text-slate-500 dark:text-slate-400 mt-1">Définissez les périodes et lieux où les QR peuvent être validés.</p>
                 </div>
                 {(userRole === "SUPER_ADMIN" || userRole === "ORG_ADMIN") && (
-                    <Link
-                        href="/dashboard/events/new"
-                        className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl shadow-sm hover:shadow active:scale-95 transition-all text-sm"
+                    eventQuotaReached ? (
+                    <button
+                        type="button"
+                        disabled
+                        title="Quota d'événements atteint"
+                        className="inline-flex cursor-not-allowed items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-medium text-white opacity-50"
                     >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path></svg>
                         Créer un événement
-                    </Link>
+                    </button>
+                    ) : (
+                        <Link
+                            href="/dashboard/events/new"
+                            aria-disabled={profileLoading}
+                            className={`inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-all hover:bg-blue-700 ${profileLoading ? "pointer-events-none opacity-50" : ""}`}
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path></svg>
+                            Créer un événement
+                        </Link>
+                    )
                 )}
             </div>
+
+            <PlanQuotaStatus label="Événements du plan Free" quota={eventQuota} />
 
             {/* **************************************** */}
             {/* Recherche et filtre par statut */}
@@ -128,7 +139,6 @@ export default function EventsPage() {
                                 <th className="px-6 py-4 font-semibold uppercase tracking-wider">Zone</th>
                                 <th className="px-6 py-4 font-semibold uppercase tracking-wider">QR actifs</th>
                                 <th className="px-6 py-4 font-semibold uppercase tracking-wider">Statut</th>
-                                <th className="px-6 py-4 font-semibold uppercase tracking-wider text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-200 text-sm">
@@ -177,23 +187,7 @@ export default function EventsPage() {
                                                 {statusLabel[event.status] || event.status}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 text-right">
-                                            <div className="flex items-center justify-end gap-2">
-                                                <Link href={`/dashboard/events/${event.id}`} className="p-1.5 table-action-neutral border rounded-lg transition-colors" title="Gérer les QRs">
-                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
-                                                </Link>
-                                                {(userRole === "SUPER_ADMIN" || userRole === "ORG_ADMIN") && (
-                                                    <>
-                                                        <Link href={`/dashboard/events/${event.id}`} className="p-1.5 text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 table-action-soft-hover rounded-lg transition-colors" title="Modifier">
-                                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
-                                                        </Link>
-                                                        <Link href={`/dashboard/events/${event.id}`} className="p-1.5 text-red-600 dark:text-red-300 bg-white dark:bg-slate-900 border border-red-100 dark:border-red-900/50 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors" title="Supprimer">
-                                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                                                        </Link>
-                                                    </>
-                                                )}
-                                            </div>
-                                        </td>
+
                                     </tr>
                                 ))
                             )}

@@ -2,35 +2,31 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Menu, X } from "lucide-react";
+import { Crown, Menu, X } from "lucide-react";
 
 import { useState, useEffect, useMemo } from "react";
 import { apiFetch } from "../lib/api";
+import { useUserPlan } from "../lib/useUserPlan";
 
 export default function DashboardLayout({ children }) {
     const pathname = usePathname();
     const router = useRouter();
-    const [userProfile, setUserProfile] = useState(null);
     const [showLogoutModal, setShowLogoutModal] = useState(false);
     const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
-
-    useEffect(() => {
-        const fetchProfile = async () => {
-            try {
-                const res = await apiFetch("/user/profile");
-                const data = await res.json();
-                if (data.success) setUserProfile(data.user);
-            } catch (err) {
-                console.error("Error fetching layout profile:", err);
-            }
-        };
-        fetchProfile();
-    }, []);
+    const { userProfile, profileLoading, isFreePlan, planName } = useUserPlan();
+    const isOperator = userProfile?.role === "OPERATOR";
+    const operatorAllowedPath = pathname === "/dashboard/settings";
 
     useEffect(() => {
         const timer = window.setTimeout(() => setIsMobileNavOpen(false), 0);
         return () => window.clearTimeout(timer);
     }, [pathname]);
+
+    useEffect(() => {
+        if (!profileLoading && isOperator && !operatorAllowedPath) {
+            router.replace("/scan");
+        }
+    }, [isOperator, operatorAllowedPath, profileLoading, router]);
 
     const handleLogout = async () => {
         try {
@@ -52,8 +48,12 @@ export default function DashboardLayout({ children }) {
             { name: "Agents", href: "/dashboard/agents", icon: "M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" },
             { name: "Zones", href: "/dashboard/areas", icon: "M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z M15 11a3 3 0 11-6 0 3 3 0 016 0z" },
             { name: "Scanner", href: "/scan", icon: "M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z M15 13a3 3 0 11-6 0 3 3 0 016 0z", special: true },
+            { name: "AccessQ Pro", href: "/dashboard/upgrade", iconComponent: Crown },
             { name: "Paramètres", href: "/dashboard/settings", icon: "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z" },
         ];
+        if (userProfile?.role === "OPERATOR") {
+            return items.filter(item => item.href === "/scan" || item.href === "/dashboard/settings");
+        }
         if (userProfile && userProfile.role !== "SUPER_ADMIN" && userProfile.role !== "ORG_ADMIN") {
             return items.filter(n => n.name !== "Agents");
         }
@@ -63,6 +63,18 @@ export default function DashboardLayout({ children }) {
     const pageTitle = useMemo(() => {
         return navigation.find(n => pathname === n.href || (pathname.startsWith(n.href) && n.href !== '/dashboard'))?.name || "Dashboard";
     }, [navigation, pathname]);
+
+    const planLabel = planName || userProfile?.subscription?.planName || userProfile?.planName || "Free";
+    const isProPlan = !isFreePlan;
+    const homeHref = isOperator ? "/scan" : "/dashboard";
+
+    if (profileLoading || (isOperator && !operatorAllowedPath)) {
+        return (
+            <div className="flex h-screen items-center justify-center bg-slate-50 dark:bg-slate-950">
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" aria-label="Chargement" />
+            </div>
+        );
+    }
 
     return (
         <div className="flex h-screen bg-slate-50 dark:bg-slate-950 font-sans text-slate-900 dark:text-white overflow-hidden">
@@ -74,14 +86,14 @@ export default function DashboardLayout({ children }) {
                 {/* Logo de l'application */}
                 {/* **************************************** */}
                 <div className="h-20 flex items-center px-6 border-b border-slate-100 dark:border-slate-800">
-                    <Link href="/dashboard" className="flex items-center gap-3">
+                    <Link href={homeHref} className="flex items-center gap-3">
                         <img
                             src="/logo/access_logo.png"
-                            alt="QR Access Logo"
+                            alt="Logo AccessQ"
                             className="w-8 h-8 drop-shadow-sm"
                         />
                         <span className="font-bold tracking-tight text-lg bg-gradient-to-r from-blue-700 to-emerald-600 bg-clip-text text-transparent">
-                            QR Access
+                            AccessQ
                         </span>
                     </Link>
                 </div>
@@ -92,6 +104,7 @@ export default function DashboardLayout({ children }) {
                 <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-1.5">
                     {navigation.map((item) => {
                         const isActive = pathname === item.href || (pathname.startsWith(item.href) && item.href !== '/dashboard');
+                        const ItemIcon = item.iconComponent;
                         return (
                             <Link
                                 key={item.name}
@@ -103,9 +116,13 @@ export default function DashboardLayout({ children }) {
                                         : "text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
                                     }`}
                             >
-                                <svg className={`w-5 h-5 ${isActive ? 'text-blue-600' : (item.special ? 'text-white' : 'text-slate-400 dark:text-slate-500')}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={item.icon} />
-                                </svg>
+                                {ItemIcon ? (
+                                    <ItemIcon className={`h-5 w-5 ${isActive ? 'text-blue-600' : 'text-slate-400 dark:text-slate-500'}`} strokeWidth={2} />
+                                ) : (
+                                    <svg className={`w-5 h-5 ${isActive ? 'text-blue-600' : (item.special ? 'text-white' : 'text-slate-400 dark:text-slate-500')}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={item.icon} />
+                                    </svg>
+                                )}
                                 <span>{item.name}</span>
                                 {item.special && !isActive && (
                                     <span className="ml-auto flex h-2 w-2 rounded-full bg-white dark:bg-slate-950 animate-pulse"></span>
@@ -126,6 +143,16 @@ export default function DashboardLayout({ children }) {
                         <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{userProfile ? (userProfile.name || userProfile.full_name) : "Chargement..."}</p>
                             <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{userProfile ? (userProfile.role === 'ORG_ADMIN' ? 'Admin' : (userProfile.role === 'OPERATOR' ? 'Opérateur' : 'Agent')) : "..."}</p>
+                            {!isOperator && <div className="mt-1 flex items-center gap-2">
+                                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${isProPlan ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>
+                                    {planLabel}
+                                </span>
+                                {!isProPlan && (
+                                    <Link href="/dashboard/upgrade" className="text-[10px] font-semibold text-amber-600 hover:text-amber-700">
+                                        Upgrade
+                                    </Link>
+                                )}
+                            </div>}
                         </div>
                         <button 
                             onClick={() => setShowLogoutModal(true)}
@@ -146,14 +173,14 @@ export default function DashboardLayout({ children }) {
                 {/* En-tête de navigation sur mobile */}
                 {/* **************************************** */}
                 <header className="lg:hidden h-16 bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-4 z-20 shadow-sm">
-                    <Link href="/dashboard" className="flex items-center gap-2">
+                    <Link href={homeHref} className="flex items-center gap-2">
                         <img
                             src="/logo/access_logo.png"
-                            alt="QR Access Logo"
+                            alt="Logo AccessQ"
                             className="w-6 h-6"
                         />
                         <span className="font-bold tracking-tight bg-gradient-to-r from-blue-700 to-emerald-600 bg-clip-text text-transparent">
-                            QR Access
+                            AccessQ
                         </span>
                     </Link>
                     <button
@@ -176,12 +203,7 @@ export default function DashboardLayout({ children }) {
                             {pageTitle}
                         </h1>
                     </div>
-                    <div className="flex items-center gap-4">
-                        <button className="relative w-10 h-10 rounded-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-200 hover:bg-blue-50 flex items-center justify-center transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20">
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
-                            <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
-                        </button>
-                    </div>
+
                 </header>
 
                 {/* **************************************** */}
@@ -205,14 +227,14 @@ export default function DashboardLayout({ children }) {
                     />
                     <aside className="relative flex h-full w-[min(19rem,86vw)] flex-col bg-white shadow-2xl dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800">
                         <div className="h-16 flex items-center justify-between px-4 border-b border-slate-100 dark:border-slate-800">
-                            <Link href="/dashboard" className="flex items-center gap-2">
+                            <Link href={homeHref} className="flex items-center gap-2">
                                 <img
                                     src="/logo/access_logo.png"
-                                    alt="QR Access Logo"
+                                    alt="Logo AccessQ"
                                     className="w-7 h-7"
                                 />
                                 <span className="font-bold tracking-tight bg-gradient-to-r from-blue-700 to-emerald-600 bg-clip-text text-transparent">
-                                    QR Access
+                                    AccessQ
                                 </span>
                             </Link>
                             <button
@@ -228,6 +250,7 @@ export default function DashboardLayout({ children }) {
                         <nav className="flex-1 overflow-y-auto py-5 px-4 space-y-1.5">
                             {navigation.map((item) => {
                                 const isActive = pathname === item.href || (pathname.startsWith(item.href) && item.href !== '/dashboard');
+                                const ItemIcon = item.iconComponent;
                                 return (
                                     <Link
                                         key={item.name}
@@ -239,9 +262,13 @@ export default function DashboardLayout({ children }) {
                                                 : "text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
                                             }`}
                                     >
-                                        <svg className={`w-5 h-5 ${isActive ? 'text-blue-600' : (item.special ? 'text-white' : 'text-slate-400 dark:text-slate-500')}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={item.icon} />
-                                        </svg>
+                                        {ItemIcon ? (
+                                            <ItemIcon className={`h-5 w-5 ${isActive ? 'text-blue-600' : 'text-slate-400 dark:text-slate-500'}`} strokeWidth={2} />
+                                        ) : (
+                                            <svg className={`w-5 h-5 ${isActive ? 'text-blue-600' : (item.special ? 'text-white' : 'text-slate-400 dark:text-slate-500')}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={item.icon} />
+                                            </svg>
+                                        )}
                                         <span>{item.name}</span>
                                     </Link>
                                 );
@@ -284,7 +311,7 @@ export default function DashboardLayout({ children }) {
                                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
                             </div>
                             <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Se déconnecter ?</h3>
-                            <p className="text-sm text-slate-600 dark:text-slate-300 mb-6">Êtes-vous sûr de vouloir vous déconnecter de votre compte QR Access ?</p>
+                            <p className="text-sm text-slate-600 dark:text-slate-300 mb-6">Êtes-vous sûr de vouloir vous déconnecter de votre compte AccessQ ?</p>
                             
                             <div className="flex gap-3 w-full">
                                 <button 

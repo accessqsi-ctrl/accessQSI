@@ -109,11 +109,11 @@ export default function Register() {
                 <div className="relative z-10 flex flex-col items-center">
                     <img
                         src="/logo/access_logo.png"
-                        alt="QR Access Logo"
+                        alt="Logo AccessQ"
                         className="w-64 h-auto drop-shadow-xl mb-8 transform transition-transform hover:scale-105 duration-500"
                     />
                     <h2 className="text-3xl font-semibold bg-gradient-to-r from-blue-700 to-emerald-600 bg-clip-text text-transparent">
-                        QR Access
+                        AccessQ
                     </h2>
                     <p className="mt-4 text-slate-500 dark:text-slate-400 max-w-md text-center">
                         Configurez votre organisation et invitez ensuite vos agents.

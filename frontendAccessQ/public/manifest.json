@@ -1,6 +1,6 @@
 {
-  "name": "accessQSI",
-  "short_name": "QR Access",
+  "name": "AccessQ",
+  "short_name": "AccessQ",
   "icons": [
     {
       "src": "/icon.png",

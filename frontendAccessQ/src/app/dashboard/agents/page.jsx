@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { apiFetch } from "../../lib/api";
 import LoadingBar from "../../components/LoadingBar";
+import PlanQuotaStatus from "../../components/PlanQuotaStatus";
+import { useUserPlan } from "../../lib/useUserPlan";
 
 export default function AgentsPage() {
     const [agents, setAgents] = useState([]);
@@ -27,6 +29,9 @@ export default function AgentsPage() {
 
     const [togglingId, setTogglingId] = useState(null);
     const [confirmAction, setConfirmAction] = useState(null);
+    const { planUsage, refreshPlan } = useUserPlan();
+    const agentQuota = planUsage.agents;
+    const agentQuotaReached = Boolean(agentQuota?.reached);
 
     const showActionMessage = (message) => {
         setActionMessage(message);
@@ -84,7 +89,7 @@ export default function AgentsPage() {
                 setAddForm({ fullName: "", email: "", password: "", confirmPassword: "", role: "ORG_AGENT" });
                 setShowPassword(false);
                 setShowConfirmPassword(false);
-                fetchAgents();
+                await Promise.all([fetchAgents(), refreshPlan()]);
                 setTimeout(() => {
                     setIsAddModalOpen(false);
                     setAddSuccess("");
@@ -101,6 +106,10 @@ export default function AgentsPage() {
 
     const openAgentConfirm = (type, agent) => {
         setActionMessage("");
+        if (type !== "delete" && agent.status !== "Actif" && agentQuotaReached) {
+            showActionMessage("Votre quota d'agents est atteint. Désactivez un agent ou passez au plan Pro.");
+            return;
+        }
         setConfirmAction({ type, agent });
     };
 
@@ -120,6 +129,7 @@ export default function AgentsPage() {
             if (data.success) {
                 setAgents(agents.map(a => a.id === agentId ? { ...a, status: data.newStatus } : a));
                 setConfirmAction(null);
+                await refreshPlan();
             } else {
                 showActionMessage(data.message || "Erreur avec cet agent.");
             }
@@ -141,6 +151,7 @@ export default function AgentsPage() {
             if (data.success) {
                 setAgents(agents.filter(a => a.id !== agentId));
                 setConfirmAction(null);
+                await refreshPlan();
             } else {
                 showActionMessage(data.message || "Erreur lors de la suppression.");
             }
@@ -162,8 +173,9 @@ export default function AgentsPage() {
         return matchesSearch && matchesRole && matchesStatus;
     });
 
-    const activeAgentsCount = agents.filter(a => a.status === 'Actif').length;
-    const inactiveAgentsCount = agents.length - activeAgentsCount;
+    const managedAgents = agents.filter(agent => agent.role !== "Admin");
+    const activeAgentsCount = agentQuota?.used ?? managedAgents.filter(agent => agent.status === "Actif").length;
+    const inactiveAgentsCount = managedAgents.filter(agent => agent.status !== "Actif").length;
     const confirmAgent = confirmAction?.agent;
     const confirmAgentIsActive = confirmAgent?.status === "Actif";
     const confirmAgentTitle = confirmAction?.type === "delete"
@@ -202,12 +214,16 @@ export default function AgentsPage() {
                 </div>
                 <button
                     onClick={() => setIsAddModalOpen(true)}
-                    className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl shadow-sm hover:shadow active:scale-95 transition-all text-sm"
+                    disabled={agentQuotaReached}
+                    title={agentQuotaReached ? "Quota d'agents atteint" : "Ajouter un agent"}
+                    className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl shadow-sm hover:shadow active:scale-95 transition-all text-sm disabled:cursor-not-allowed disabled:opacity-50"
                 >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>
                     Ajouter un agent
                 </button>
             </div>
+
+            <PlanQuotaStatus label="Agents actifs du plan Free" quota={agentQuota} />
 
             {/* **************************************** */}
             {/* Résumé des comptes actifs et inactifs */}
