@@ -13,6 +13,12 @@ const {
     usageLimitFromAccessType,
     formatUsageLimit
 } = require("../services/qr_status.service");
+const { getPlanContextForUser } = require("../utils/planAccess");
+const {
+    PLAN_CAPABILITIES,
+    hasPlanCapability
+} = require("../config/subscription");
+const { withOrganizationQuota } = require("../services/organization_quota.service");
 
 const buildQrPayload = (uniqueToken, eventId) => JSON.stringify({ t: uniqueToken, e: eventId });
 
@@ -44,12 +50,31 @@ const cardPdfExistsForToken = (token) => (
         : false
 );
 
-const resolveCardTemplate = async (orgId, cardTemplateId) => {
+const isCustomTemplateId = (cardTemplateId) => {
+    return Boolean(cardTemplateService.extractCustomTemplateId?.(cardTemplateId))
+        || String(cardTemplateId || "").startsWith("custom:");
+};
+
+const assertCustomTemplateAccess = (planContext, cardTemplateId) => {
+    if (
+        isCustomTemplateId(cardTemplateId)
+        && !hasPlanCapability(planContext, PLAN_CAPABILITIES.CUSTOM_CARD_TEMPLATES)
+    ) {
+        const error = new Error("Les modèles personnalisés nécessitent un abonnement Pro.");
+        error.code = "PLAN_CAPABILITY_REQUIRED";
+        error.plan = planContext.plan;
+        error.planName = planContext.planName;
+        throw error;
+    }
+};
+
+const resolveCardTemplate = async (orgId, cardTemplateId, planContext) => {
     if (!cardTemplateId) return null;
     if (cardTemplateService.isTemplateAvailable?.(cardTemplateId) || (!cardTemplateService.isTemplateAvailable && cardTemplateService.hasTemplate(cardTemplateId))) {
         return { sourceTemplateId: cardTemplateId, templateId: cardTemplateId };
     }
 
+    assertCustomTemplateAccess(planContext, cardTemplateId);
     const customTemplate = await customCardTemplateService.resolveCustomForRender(orgId, cardTemplateId);
     if (!customTemplate) return null;
 
@@ -100,6 +125,7 @@ exports.generateQrForEvent = async (req, res) => {
 
         const orgId = req.user.org_id;
         const eventId = Number(req.params.event_id);
+        const planContext = req.planContext || await getPlanContextForUser(req);
         const validation = validateQrPayload(req.body);
         if (validation.errors.length > 0) {
             return res.status(422).json({
@@ -112,13 +138,23 @@ exports.generateQrForEvent = async (req, res) => {
             fullName, email, phone, accessType, limit,
             validFrom, validUntil, level, cardMessage
         } = validation.values;
+
         const hasRequestedTemplate = Object.prototype.hasOwnProperty.call(req.body, "cardTemplateId");
-        const cardTemplateId = hasRequestedTemplate
+        let cardTemplateId = hasRequestedTemplate
             ? validation.values.cardTemplateId
             : await customCardTemplateService.getDefaultForOrg(orgId);
+        if (!hasRequestedTemplate && isCustomTemplateId(cardTemplateId)) {
+            const canUseCustomTemplates = hasPlanCapability(
+                planContext,
+                PLAN_CAPABILITIES.CUSTOM_CARD_TEMPLATES
+            );
+            if (!canUseCustomTemplates) cardTemplateId = "";
+        }
         const cardData = normalizeCardData(req.body.cardData);
 
-        const resolvedCardTemplate = cardTemplateId ? await resolveCardTemplate(orgId, cardTemplateId) : null;
+        const resolvedCardTemplate = cardTemplateId
+            ? await resolveCardTemplate(orgId, cardTemplateId, planContext)
+            : null;
         if (cardTemplateId && !resolvedCardTemplate) {
             return res.status(400).json({ success: false, message: "Modèle de carte invalide." });
         }
@@ -133,7 +169,7 @@ exports.generateQrForEvent = async (req, res) => {
         uniqueToken = crypto.randomUUID();
         const usageLimit = usageLimitFromAccessType(accessType, limit);
 
-        qrRecord = await qrService.createQr({
+        const qrData = {
             unique_token: uniqueToken,
             status: "active",
             usage_limit: usageLimit,
@@ -149,6 +185,18 @@ exports.generateQrForEvent = async (req, res) => {
             card_message: cardTemplateId ? cardMessage || null : null,
             card_generation_status: cardTemplateId ? "PENDING" : null,
             event_id: event.event_id
+        };
+        qrRecord = await withOrganizationQuota({
+            organizationId: orgId,
+            limitKey: "maxQrCodes",
+            resourceName: "de QR",
+            count: (tx) => tx.qrCode.count({
+                where: {
+                    event: { org_id: orgId },
+                    deleted_at: null
+                }
+            }),
+            create: (tx) => qrService.createQr(qrData, tx)
         });
 
         const qrUrl = await ensureQrImageForToken({
@@ -185,6 +233,24 @@ exports.generateQrForEvent = async (req, res) => {
         });
 
     } catch (error) {
+        if (error.code === "PLAN_QUOTA_EXCEEDED") {
+            return res.status(403).json({
+                success: false,
+                message: `Votre quota de QR est atteint (${error.currentCount}/${error.limit}). Passez en Pro pour générer davantage de QR.`,
+                plan: error.plan,
+                planName: error.planName,
+                upgradeRequired: true
+            });
+        }
+        if (error.code === "PLAN_CAPABILITY_REQUIRED") {
+            return res.status(403).json({
+                success: false,
+                message: error.message,
+                plan: error.plan,
+                planName: error.planName,
+                upgradeRequired: true
+            });
+        }
         console.error('Erreur lors de la génération du QR:', error);
         if (qrRecord) {
             await Promise.allSettled([
@@ -406,6 +472,7 @@ exports.importQrsFromCSV = async (req, res) => {
 
         const orgId = req.user.org_id;
         const eventId = Number(req.params.event_id);
+        const planContext = req.planContext || await getPlanContextForUser(req);
 
         if (!file) {
             return res.status(400).json({ success: false, message: "Fichier CSV requis" });
@@ -443,7 +510,7 @@ exports.importQrsFromCSV = async (req, res) => {
                     if (!resolvedTemplates.has(values.cardTemplateId)) {
                         resolvedTemplates.set(
                             values.cardTemplateId,
-                            await resolveCardTemplate(orgId, values.cardTemplateId)
+                            await resolveCardTemplate(orgId, values.cardTemplateId, planContext)
                         );
                     }
                     resolvedCardTemplate = resolvedTemplates.get(values.cardTemplateId);
@@ -597,11 +664,12 @@ exports.generateCardForExistingQr = async (req, res) => {
 
         const orgId = req.user.org_id;
         const qrId = Number(req.params.id);
+        const planContext = await getPlanContextForUser(req);
         const requestedCardMessage = req.body.cardMessage;
         const requestedCardData = req.body.cardData;
         const requestedTemplateId = String(req.body.cardTemplateId || "").trim();
         const requestedTemplate = requestedTemplateId
-            ? await resolveCardTemplate(orgId, requestedTemplateId)
+            ? await resolveCardTemplate(orgId, requestedTemplateId, planContext)
             : null;
         if (requestedTemplateId && !requestedTemplate) {
             return res.status(400).json({ success: false, message: "Modèle de carte invalide." });
@@ -620,9 +688,16 @@ exports.generateCardForExistingQr = async (req, res) => {
         }
 
         const fallbackTemplateId = requestedTemplateId || qrRecord.card_template_id || await customCardTemplateService.getDefaultForOrg(orgId);
-        const resolvedCardTemplate = !requestedTemplateId
-            ? resolveTemplateSnapshot(qrRecord.card_template_snapshot) || await resolveCardTemplate(orgId, fallbackTemplateId)
-            : requestedTemplate;
+        let resolvedCardTemplate = requestedTemplate;
+        if (!requestedTemplateId) {
+            const snapshotTemplate = resolveTemplateSnapshot(qrRecord.card_template_snapshot);
+            if (snapshotTemplate) {
+                assertCustomTemplateAccess(planContext, snapshotTemplate.sourceTemplateId);
+                resolvedCardTemplate = snapshotTemplate;
+            } else {
+                resolvedCardTemplate = await resolveCardTemplate(orgId, fallbackTemplateId, planContext);
+            }
+        }
         if (!fallbackTemplateId || !resolvedCardTemplate) {
             return res.status(400).json({ success: false, message: "Modèle de carte invalide." });
         }
@@ -658,6 +733,15 @@ exports.generateCardForExistingQr = async (req, res) => {
             cardPdfUrl: cardPdfUrlForToken(qrRecord.unique_token)
         });
     } catch (error) {
+        if (error.code === "PLAN_CAPABILITY_REQUIRED") {
+            return res.status(403).json({
+                success: false,
+                message: error.message,
+                plan: error.plan,
+                planName: error.planName,
+                upgradeRequired: true
+            });
+        }
         console.error("Erreur lors de la génération de la carte :", error);
         return res.status(500).json({ success: false, message: "Erreur lors de la génération de la carte" });
     }

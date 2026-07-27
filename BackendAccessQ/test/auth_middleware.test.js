@@ -72,3 +72,55 @@ test("authMiddleware rejects missing tokens", () => {
     assert.equal(res.statusCode, 401);
     assert.equal(res.body.message, "Accès refusé. Token manquant.");
 });
+
+test("authMiddleware allows operators to use scanner and password routes", () => {
+    const authMiddleware = loadAuthMiddleware((token, publicKey, options, callback) => {
+        callback(null, { user_id: 9, role: "OPERATOR", org_id: 42, token_type: "access" });
+    });
+
+    for (const [method, originalUrl] of [
+        ["GET", "/user/profile"],
+        ["PUT", "/user/password"],
+        ["GET", "/user/logout"],
+        ["GET", "/areas?active=true"],
+        ["POST", "/qr/verify"]
+    ]) {
+        const req = {
+            method,
+            originalUrl,
+            headers: { authorization: "Bearer access-token" },
+            cookies: {}
+        };
+        const res = makeResponse();
+        let nextCalled = false;
+
+        authMiddleware(req, res, () => {
+            nextCalled = true;
+        });
+
+        assert.equal(nextCalled, true, `${method} ${originalUrl} should be allowed`);
+        assert.equal(res.statusCode, null);
+    }
+});
+
+test("authMiddleware blocks operators from management routes", () => {
+    const authMiddleware = loadAuthMiddleware((token, publicKey, options, callback) => {
+        callback(null, { user_id: 9, role: "OPERATOR", org_id: 42, token_type: "access" });
+    });
+    const req = {
+        method: "GET",
+        originalUrl: "/events",
+        headers: { authorization: "Bearer access-token" },
+        cookies: {}
+    };
+    const res = makeResponse();
+    let nextCalled = false;
+
+    authMiddleware(req, res, () => {
+        nextCalled = true;
+    });
+
+    assert.equal(nextCalled, false);
+    assert.equal(res.statusCode, 403);
+    assert.match(res.body.message, /uniquement scanner/);
+});

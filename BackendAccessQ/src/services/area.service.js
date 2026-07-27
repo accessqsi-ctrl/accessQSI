@@ -13,8 +13,14 @@ exports.findById = async (orgId, areaId) => {
     });
 };
 
-exports.createArea = async (data) => {
-    return await prisma.area.create({ data });
+exports.createArea = async (data, dbClient = prisma) => {
+    return await dbClient.area.create({ data });
+};
+
+exports.countActiveForOrg = async (orgId) => {
+    return await prisma.area.count({
+        where: { org_id: orgId, deleted_at: null }
+    });
 };
 
 exports.updateArea = async (areaId, data) => {

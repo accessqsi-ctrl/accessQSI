@@ -8,7 +8,15 @@ exports.getAllAgentsForOrg = async (orgId) => {
         },
         include: {
             _count: {
-                select: { scan_logs: true }
+                select: {
+                    scan_logs: {
+                        where: {
+                            qr_code: {
+                                event: { org_id: orgId }
+                            }
+                        }
+                    }
+                }
             }
         },
         orderBy: {
@@ -17,8 +25,8 @@ exports.getAllAgentsForOrg = async (orgId) => {
     });
 };
 
-exports.createAgent = async (orgId, fullName, email, hashedPassword, role = "ORG_AGENT") => {
-    return await prisma.userQ.create({
+exports.createAgent = async (orgId, fullName, email, hashedPassword, role = "ORG_AGENT", dbClient = prisma) => {
+    return await dbClient.userQ.create({
         data: {
             org_id: orgId,
             full_name: fullName,
@@ -27,6 +35,17 @@ exports.createAgent = async (orgId, fullName, email, hashedPassword, role = "ORG
             role: role,
             is_verified: true, // Vérifié automatiquement car c'est une invitation interne
             clef: require("crypto").randomUUID()
+        }
+    });
+};
+
+exports.countActiveAgentsForOrg = async (orgId) => {
+    return await prisma.userQ.count({
+        where: {
+            org_id: orgId,
+            role: { in: ["ORG_AGENT", "OPERATOR"] },
+            deleted_at: null,
+            is_active: true
         }
     });
 };
@@ -40,8 +59,8 @@ exports.getAgentByIdAndOrg = async (userId, orgId) => {
     });
 };
 
-exports.updateAgentStatus = async (userId, isDeleted) => {
-    return await prisma.userQ.update({
+exports.updateAgentStatus = async (userId, isDeleted, dbClient = prisma) => {
+    return await dbClient.userQ.update({
         where: { user_id: userId },
         data: {
             deleted_at: isDeleted ? new Date() : null

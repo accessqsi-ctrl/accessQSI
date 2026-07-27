@@ -66,7 +66,8 @@ export default function Dashboard() {
     const [toast, setToast] = useState({ show: false, message: "" });
     const [showOnboarding, setShowOnboarding] = useState(false);
     const [exportingFormat, setExportingFormat] = useState("");
-    const { isFreePlan, planName } = useUserPlan();
+    const { userProfile, isFreePlan, planName } = useUserPlan();
+    const isAgent = userProfile?.role === "ORG_AGENT";
 
 
     const handleExport = async (format) => {
@@ -436,9 +437,11 @@ export default function Dashboard() {
                             L’activité sur 7 jours et le classement des agents sont disponibles avec le plan Pro.
                         </p>
                     </div>
-                    <Link href="/dashboard/upgrade" className="inline-flex items-center justify-center rounded-lg bg-amber-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-amber-700">
-                        Découvrir Pro
-                    </Link>
+                    {!isAgent && (
+                        <Link href="/dashboard/upgrade" className="inline-flex items-center justify-center rounded-lg bg-amber-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-amber-700">
+                            Découvrir Pro
+                        </Link>
+                    )}
                 </div>
             )}
 

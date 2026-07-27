@@ -54,6 +54,45 @@ test("agent service soft-deletes agents to preserve scan logs", async () => {
     assert.equal(deleted.user_id, 12);
 });
 
+test("agent service only counts scans belonging to the displayed organization", async () => {
+    let findArgs = null;
+    const agentService = loadService("../src/services/agent.service", {
+        userQ: {
+            findMany: async (args) => {
+                findArgs = args;
+                return [];
+            }
+        }
+    });
+
+    await agentService.getAllAgentsForOrg(42);
+
+    assert.equal(findArgs.where.org_id, 42);
+    assert.equal(
+        findArgs.include._count.select.scan_logs.where.qr_code.event.org_id,
+        42
+    );
+});
+
+test("event service only includes active areas from the displayed organization", async () => {
+    let findArgs = null;
+    const eventService = loadService("../src/services/event.service", {
+        event: {
+            findMany: async (args) => {
+                findArgs = args;
+                return [];
+            }
+        }
+    });
+
+    await eventService.findAll(42);
+
+    assert.equal(findArgs.where.org_id, 42);
+    assert.deepEqual(findArgs.include.EventSchedules.where, {
+        area: { org_id: 42, deleted_at: null }
+    });
+});
+
 test("event service rejects schedules that reference areas outside the organization", async () => {
     const eventService = loadService("../src/services/event.service", {
         $transaction: async (callback) => callback({

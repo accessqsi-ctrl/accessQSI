@@ -1,6 +1,7 @@
 const eventService = require('../services/event.service');
 const logger = require('../utils/logger');
 const storageService = require("../services/storage.service");
+const { withOrganizationQuota } = require("../services/organization_quota.service");
 
 // Récupérer tous les événements de l'organisation courante
 exports.getEvents = async (req, res) => {
@@ -92,14 +93,23 @@ exports.createEvent = async (req, res) => {
 
         const orgId = req.user.org_id;
 
-        const newEvent = await eventService.createEvent({
-            title: title,
-            description: description,
-            id_area: id_area,
-            areaIds: areaIds,
+        const eventData = {
+            title,
+            description,
+            id_area,
+            areaIds,
             start_date: new Date(startDate),
             end_date: new Date(endDate),
             org_id: orgId
+        };
+        const newEvent = await withOrganizationQuota({
+            organizationId: orgId,
+            limitKey: "maxEvents",
+            resourceName: "d'événements",
+            count: (tx) => tx.event.count({
+                where: { org_id: orgId, deleted_at: null }
+            }),
+            create: (tx) => eventService.createEvent(eventData, tx)
         });
 
         logger.info("event.created", {
@@ -111,6 +121,15 @@ exports.createEvent = async (req, res) => {
 
         res.status(201).json({ success: true, message: 'Événement créé avec succès', event: newEvent });
     } catch (error) {
+        if (error.code === "PLAN_QUOTA_EXCEEDED") {
+            return res.status(403).json({
+                success: false,
+                message: `Votre quota d'événements est atteint (${error.currentCount}/${error.limit}). Passez en Pro pour créer davantage d'événements.`,
+                plan: error.plan,
+                planName: error.planName,
+                upgradeRequired: true
+            });
+        }
         if (error.code === "INVALID_EVENT_AREAS") {
             logger.warn("event.invalid_areas", {
                 request_id: req.requestId,

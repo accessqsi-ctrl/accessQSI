@@ -34,6 +34,9 @@ export default function SettingsPage() {
     const [deleteLoading, setDeleteLoading] = useState(false);
     const [deleteStatus, setDeleteStatus] = useState("");
     const requiredDeleteText = "oui, je comprend les consequences de mon action et je valide la suppression";
+    const isAdmin = user?.role === "ORG_ADMIN" || user?.role === "SUPER_ADMIN";
+    const isAgent = user?.role === "ORG_AGENT";
+    const isOperator = user?.role === "OPERATOR";
 
     const scrollToSection = (section) => {
         setActiveSection(section);
@@ -85,7 +88,10 @@ export default function SettingsPage() {
             const res = await apiFetch("/user/profile", {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(profileForm)
+                body: JSON.stringify({
+                    fullName: profileForm.fullName,
+                    ...(!isAgent ? { email: profileForm.email } : {})
+                })
             });
             const data = await res.json();
             if (data.success) {
@@ -186,9 +192,6 @@ export default function SettingsPage() {
         );
     }
 
-    const isAdmin = user?.role === 'ORG_ADMIN' || user?.role === 'SUPER_ADMIN';
-    const isOperator = user?.role === 'OPERATOR';
-
     return (
         <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500 pb-12">
             {/* **************************************** */}
@@ -278,8 +281,16 @@ export default function SettingsPage() {
                                             type="email"
                                             value={profileForm.email}
                                             onChange={(e) => setProfileForm({...profileForm, email: e.target.value})}
-                                            className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all sm:text-sm"
+                                            readOnly={isAgent}
+                                            aria-readonly={isAgent}
+                                            title={isAgent ? "L’adresse e-mail d’un agent est gérée par un administrateur." : undefined}
+                                            className={`w-full px-4 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl transition-all sm:text-sm ${
+                                                isAgent
+                                                    ? "cursor-not-allowed bg-slate-100 text-slate-500 dark:bg-slate-900 dark:text-slate-400"
+                                                    : "bg-slate-50 dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                                            }`}
                                         />
+                                        {isAgent && <p className="text-xs text-slate-500 dark:text-slate-400">Cette adresse est gérée par un administrateur.</p>}
                                     </div>
                                 </div>
                                 <button

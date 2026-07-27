@@ -1,4 +1,5 @@
 const prisma = require("../prisma/client");
+const { assignOrganizationPlan, ensureDefaultPlans, PLAN_KEYS } = require("../config/subscription");
 
 exports.findByEmail = (email) => {
   return prisma.userQ.findFirst({
@@ -7,11 +8,14 @@ exports.findByEmail = (email) => {
 };
 
 exports.createOrgAndAdminUser = async (orgData, userData) => {
-  // Utiliser une transaction car on crée à la fois une organisation et son utilisateur admin
   return await prisma.$transaction(async (tx) => {
+    await ensureDefaultPlans(tx);
+
     const org = await tx.organization.create({
       data: orgData
     });
+
+    await assignOrganizationPlan(tx, org.org_id, PLAN_KEYS.FREE);
 
     const user = await tx.userQ.create({
       data: {

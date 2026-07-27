@@ -8,10 +8,13 @@ const {
     request
 } = require("./helpers/http");
 
-const loadCardTemplateApp = ({ user, service }) => {
+const loadCardTemplateApp = ({ user, service, planContext = { isPro: true, plan: "PRO", planName: "Pro", limits: {}, features: [] } }) => {
     clearSrcModules();
     mockModule("src/middleware/authMiddleware", authAs(user));
     mockModule("src/services/custom_card_template.service", service);
+    mockModule("src/utils/planAccess", {
+        getPlanContextForUser: async () => planContext
+    });
 
     const router = require("../src/routes/card_template.routes");
     return mountRouter("/card-templates", router);
@@ -41,10 +44,36 @@ test("GET /card-templates/custom lists custom templates for the organization", a
     assert.equal(res.body.templates[0].templateId, "custom:5");
 });
 
-test("POST /card-templates/custom creates a custom template for admins", async () => {
-    let payload = null;
+test("GET /card-templates/custom rejects Free organizations", async () => {
+    let listCalled = false;
     const app = loadCardTemplateApp({
         user: { user_id: 1, role: "ORG_ADMIN", org_id: 42 },
+        planContext: {
+            isPro: false,
+            plan: "FREE",
+            planName: "Free",
+            limits: {},
+            capabilities: []
+        },
+        service: {
+            listForOrg: async () => {
+                listCalled = true;
+                return { defaultTemplateId: "", templates: [] };
+            }
+        }
+    });
+
+    const res = await request(app, "GET", "/card-templates/custom");
+
+    assert.equal(res.status, 403);
+    assert.equal(res.body.upgradeRequired, true);
+    assert.equal(listCalled, false);
+});
+
+test("POST /card-templates/custom lets a Pro organization agent create a custom template", async () => {
+    let payload = null;
+    const app = loadCardTemplateApp({
+        user: { user_id: 1, role: "ORG_AGENT", org_id: 42 },
         service: {
             createForOrg: async (orgId, body) => {
                 payload = { orgId, body };
@@ -89,10 +118,10 @@ test("POST /card-templates/custom creates a custom template for admins", async (
     assert.equal(res.body.template.templateId, "custom:6");
 });
 
-test("POST /card-templates/custom rejects non-admin users", async () => {
+test("POST /card-templates/custom rejects operators", async () => {
     let created = false;
     const app = loadCardTemplateApp({
-        user: { user_id: 1, role: "ORG_AGENT", org_id: 42 },
+        user: { user_id: 1, role: "OPERATOR", org_id: 42 },
         service: {
             createForOrg: async () => {
                 created = true;
@@ -103,6 +132,31 @@ test("POST /card-templates/custom rejects non-admin users", async () => {
     const res = await request(app, "POST", "/card-templates/custom", { name: "Nope" });
 
     assert.equal(res.status, 403);
+    assert.equal(created, false);
+});
+
+test("POST /card-templates/custom rejects a Free organization agent", async () => {
+    let created = false;
+    const app = loadCardTemplateApp({
+        user: { user_id: 1, role: "ORG_AGENT", org_id: 42 },
+        planContext: {
+            isPro: false,
+            plan: "FREE",
+            planName: "Free",
+            limits: {},
+            capabilities: []
+        },
+        service: {
+            createForOrg: async () => {
+                created = true;
+            }
+        }
+    });
+
+    const res = await request(app, "POST", "/card-templates/custom", { name: "Modèle Free" });
+
+    assert.equal(res.status, 403);
+    assert.equal(res.body.upgradeRequired, true);
     assert.equal(created, false);
 });
 
@@ -144,6 +198,33 @@ test("PUT /card-templates/default can set a standard template as default", async
     assert.equal(res.status, 200);
     assert.deepEqual(args, { orgId: 42, templateId: "event-ticket" });
     assert.equal(res.body.defaultTemplateId, "event-ticket");
+});
+
+test("PUT /card-templates/default rejects a custom template on the Free plan", async () => {
+    let setDefaultCalled = false;
+    const app = loadCardTemplateApp({
+        user: { user_id: 1, role: "ORG_ADMIN", org_id: 42 },
+        planContext: {
+            isPro: false,
+            plan: "FREE",
+            planName: "Free",
+            limits: {},
+            capabilities: []
+        },
+        service: {
+            setDefaultForOrg: async () => {
+                setDefaultCalled = true;
+            }
+        }
+    });
+
+    const res = await request(app, "PUT", "/card-templates/default", {
+        templateId: "custom:9"
+    });
+
+    assert.equal(res.status, 403);
+    assert.equal(res.body.upgradeRequired, true);
+    assert.equal(setDefaultCalled, false);
 });
 
 test("POST /card-templates/custom/:id/duplicate duplicates a custom template", async () => {

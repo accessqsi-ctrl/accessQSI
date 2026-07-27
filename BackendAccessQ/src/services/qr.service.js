@@ -116,8 +116,8 @@ exports.getQrById = async (id) => {
 };
 
 // Créer un nouveau QR Code
-exports.createQr = async (data) => {
-    return await prisma.qrCode.create({
+exports.createQr = async (data, dbClient = prisma) => {
+    return await dbClient.qrCode.create({
         data,
     });
 };

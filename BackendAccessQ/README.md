@@ -1,6 +1,6 @@
-# accessQSI - Système de Gestion d'Accès par Code QR
+# AccessQ - Système de Gestion d'Accès par Code QR
 
-accessQSI est une plateforme moderne et sécurisée pour la gestion d'événements et le contrôle d'accès via des codes QR uniques.
+AccessQ est une plateforme moderne et sécurisée pour la gestion d'événements et le contrôle d'accès via des codes QR uniques.
 
 ## Fonctionnalités Clés
 

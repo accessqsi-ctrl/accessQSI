@@ -185,7 +185,7 @@ export default function CardTemplatesPage() {
             {/* En-tête et action de création */}
             {/* **************************************** */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-                <div><h1 className="text-2xl font-black text-slate-950 dark:text-white">Modèles de cartes</h1><p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Créez une identité visuelle cohérente pour vos billets, badges et invitations.</p></div>
+                <div><h1 className="text-2xl font-black text-slate-950 dark:text-white">Modèles de cartes</h1><p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Créez une identité visuelle pour vos billets, badges et invitations.</p></div>
                 <button onClick={openNew} disabled={isFreePlan} className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-black text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"><Plus className="h-4 w-4" /> Nouveau modèle</button>
             </div>
 
@@ -199,7 +199,7 @@ export default function CardTemplatesPage() {
                     <div className="mt-4 grid gap-3 text-sm text-blue-900 dark:text-blue-200 md:grid-cols-3">
                         <div className="rounded-xl bg-white/70 p-4 dark:bg-slate-950/40"><strong>1. Créez un modèle</strong><p className="mt-1 text-xs leading-5 opacity-80">Personnalisez-le et contrôlez son apparence dans l’aperçu.</p></div>
                         <div className="rounded-xl bg-white/70 p-4 dark:bg-slate-950/40"><strong>2. Publiez-le</strong><p className="mt-1 text-xs leading-5 opacity-80">Il devient disponible lors de la génération de nouveaux QR.</p></div>
-                        <div className="rounded-xl bg-white/70 p-4 dark:bg-slate-950/40"><strong>3. Modifiez-le directement</strong><p className="mt-1 text-xs leading-5 opacity-80">Vous pouvez enregistrer vos changements sans créer de copie.</p></div>
+                        <div className="rounded-xl bg-white/70 p-4 dark:bg-slate-950/40"><strong>3. Modifiez-le </strong><p className="mt-1 text-xs leading-5 opacity-80">Vous pouvez enregistrer vos changements.</p></div>
                     </div>
                 </section>
             )}

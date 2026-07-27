@@ -15,7 +15,9 @@ export default function DashboardLayout({ children }) {
     const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
     const { userProfile, profileLoading, isFreePlan, planName } = useUserPlan();
     const isOperator = userProfile?.role === "OPERATOR";
+    const isAgent = userProfile?.role === "ORG_AGENT";
     const operatorAllowedPath = pathname === "/dashboard/settings";
+    const agentRestrictedPath = pathname === "/dashboard/upgrade" || pathname.startsWith("/dashboard/upgrade/");
 
     useEffect(() => {
         const timer = window.setTimeout(() => setIsMobileNavOpen(false), 0);
@@ -27,6 +29,12 @@ export default function DashboardLayout({ children }) {
             router.replace("/scan");
         }
     }, [isOperator, operatorAllowedPath, profileLoading, router]);
+
+    useEffect(() => {
+        if (!profileLoading && isAgent && agentRestrictedPath) {
+            router.replace("/dashboard");
+        }
+    }, [agentRestrictedPath, isAgent, profileLoading, router]);
 
     const handleLogout = async () => {
         try {
@@ -54,8 +62,8 @@ export default function DashboardLayout({ children }) {
         if (userProfile?.role === "OPERATOR") {
             return items.filter(item => item.href === "/scan" || item.href === "/dashboard/settings");
         }
-        if (userProfile && userProfile.role !== "SUPER_ADMIN" && userProfile.role !== "ORG_ADMIN") {
-            return items.filter(n => n.name !== "Agents");
+        if (userProfile?.role === "ORG_AGENT") {
+            return items.filter(item => item.name !== "Agents" && item.href !== "/dashboard/upgrade");
         }
         return items;
     }, [userProfile]);
@@ -68,7 +76,7 @@ export default function DashboardLayout({ children }) {
     const isProPlan = !isFreePlan;
     const homeHref = isOperator ? "/scan" : "/dashboard";
 
-    if (profileLoading || (isOperator && !operatorAllowedPath)) {
+    if (profileLoading || (isOperator && !operatorAllowedPath) || (isAgent && agentRestrictedPath)) {
         return (
             <div className="flex h-screen items-center justify-center bg-slate-50 dark:bg-slate-950">
                 <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" aria-label="Chargement" />
@@ -147,7 +155,7 @@ export default function DashboardLayout({ children }) {
                                 <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${isProPlan ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>
                                     {planLabel}
                                 </span>
-                                {!isProPlan && (
+                                {!isProPlan && !isAgent && (
                                     <Link href="/dashboard/upgrade" className="text-[10px] font-semibold text-amber-600 hover:text-amber-700">
                                         Upgrade
                                     </Link>

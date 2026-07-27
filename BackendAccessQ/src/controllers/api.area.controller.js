@@ -1,5 +1,6 @@
 const areaService = require('../services/area.service');
 const logger = require('../utils/logger');
+const { withOrganizationQuota } = require("../services/organization_quota.service");
 
 exports.getAreas = async (req, res) => {
     try {
@@ -39,10 +40,21 @@ exports.createArea = async (req, res) => {
         if (!area_name || accreditation_level === undefined) {
             return res.status(400).json({ success: false, message: "Nom et niveau d'accréditation requis" });
         }
-        const newArea = await areaService.createArea({
+
+        const orgId = req.user.org_id;
+        const areaData = {
             area_name,
             accreditation_level: Number(accreditation_level),
-            org_id: req.user.org_id
+            org_id: orgId
+        };
+        const newArea = await withOrganizationQuota({
+            organizationId: orgId,
+            limitKey: "maxAreas",
+            resourceName: "de zones",
+            count: (tx) => tx.area.count({
+                where: { org_id: orgId, deleted_at: null }
+            }),
+            create: (tx) => areaService.createArea(areaData, tx)
         });
         logger.info("area.created", {
             request_id: req.requestId,
@@ -52,6 +64,15 @@ exports.createArea = async (req, res) => {
         });
         res.status(201).json({ success: true, area: newArea });
     } catch (error) {
+        if (error.code === "PLAN_QUOTA_EXCEEDED") {
+            return res.status(403).json({
+                success: false,
+                message: `Votre quota de zones est atteint (${error.currentCount}/${error.limit}). Passez en Pro pour créer davantage de zones.`,
+                plan: error.plan,
+                planName: error.planName,
+                upgradeRequired: true
+            });
+        }
         console.error("Erreur lors de la création de la zone :", error);
         res.status(500).json({ success: false, message: "Erreur serveur" });
     }

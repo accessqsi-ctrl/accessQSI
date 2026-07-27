@@ -124,6 +124,7 @@ export default function EventDetailPage() {
 
     const [event, setEvent] = useState(null);
     const [qrCodes, setQrCodes] = useState([]);
+    const [qrListError, setQrListError] = useState("");
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
 
@@ -183,7 +184,9 @@ export default function EventDetailPage() {
     const [downloadingTemplate, setDownloadingTemplate] = useState(false);
     const [cardTemplates, setCardTemplates] = useState([]);
     const [selectedCardTemplateId, setSelectedCardTemplateId] = useState("");
-    const { isFreePlan, planName, planUsage, refreshPlan } = useUserPlan();
+    const { userProfile, isFreePlan, planName, planUsage, refreshPlan } = useUserPlan();
+    const canManageEvent = userProfile?.role === "ORG_ADMIN" || userProfile?.role === "SUPER_ADMIN";
+    const canCreateQr = canManageEvent || userProfile?.role === "ORG_AGENT";
     const qrQuota = planUsage.qrCodes;
     const qrQuotaReached = Boolean(qrQuota?.reached);
 
@@ -212,6 +215,7 @@ export default function EventDetailPage() {
     const fetchAll = useCallback(async () => {
         setLoading(true);
         setError("");
+        setQrListError("");
         try {
             const params = new URLSearchParams({
                 page: String(qrPage),
@@ -244,6 +248,10 @@ export default function EventDetailPage() {
             if (qrData.success) {
                 setQrCodes(qrData.qrs || []);
                 if (qrData.pagination) setQrPagination(qrData.pagination);
+            } else {
+                setQrCodes([]);
+                setQrPagination({ page: 1, pageSize: 25, total: 0, totalPages: 1 });
+                setQrListError(qrData.message || "Impossible de charger les QR de cet événement.");
             }
         } catch (err) {
             setError("Erreur de connexion au serveur.");
@@ -609,7 +617,7 @@ export default function EventDetailPage() {
                 <Link href="/dashboard/events" className="inline-flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors text-sm font-medium">
                     <ArrowLeft className="w-4 h-4" /> Retour aux événements
                 </Link>
-                <div className="flex items-center gap-3">
+                {canManageEvent && <div className="flex items-center gap-3">
                     <button
                         onClick={() => { setShowEditModal(true); setEditError(""); }}
                         className="inline-flex items-center gap-2 px-4 py-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-200 rounded-xl text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-95 transition-all shadow-sm"
@@ -625,7 +633,7 @@ export default function EventDetailPage() {
                     >
                         <Trash2 className="w-4 h-4" /> Supprimer
                     </button>
-                </div>
+                </div>}
             </div>
 
             {/* Résumé de l'événement et actions d'export */}
@@ -672,36 +680,37 @@ export default function EventDetailPage() {
                         >
                             {exportingFormat === "csv" ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
                         </button>
-                        <button
-                            onClick={handleDownloadTemplate}
-                            disabled={downloadingTemplate || isFreePlan}
-                            className="inline-flex items-center justify-center p-2.5 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-200 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-95 transition-all shadow-sm"
-                            title={isFreePlan ? "Disponible avec le plan Pro" : "Télécharger le modèle d'import CSV"}
-                        >
-                            {downloadingTemplate ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileSpreadsheet className="w-5 h-5" />}
-                        </button>
-                       
-                        <button
-                            onClick={() => {
-                                setShowImportModal(true);
-                                setImportError("");
-                                setImportSuccess("");
-                                setImportReport(null);
-                            }}
-                            disabled={isFreePlan}
-                            className="inline-flex items-center justify-center p-2.5 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-200 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-95 transition-all shadow-sm disabled:opacity-60"
-                            title={isFreePlan ? "Disponible avec le plan Pro" : "Importer CSV"}
-                        >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
-                        </button>
-                        <button
+                        {canManageEvent && <>
+                            <button
+                                onClick={handleDownloadTemplate}
+                                disabled={downloadingTemplate || isFreePlan}
+                                className="inline-flex items-center justify-center p-2.5 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-200 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-95 transition-all shadow-sm"
+                                title={isFreePlan ? "Disponible avec le plan Pro" : "Télécharger le modèle d'import CSV"}
+                            >
+                                {downloadingTemplate ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileSpreadsheet className="w-5 h-5" />}
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setShowImportModal(true);
+                                    setImportError("");
+                                    setImportSuccess("");
+                                    setImportReport(null);
+                                }}
+                                disabled={isFreePlan}
+                                className="inline-flex items-center justify-center p-2.5 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-200 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-95 transition-all shadow-sm disabled:opacity-60"
+                                title={isFreePlan ? "Disponible avec le plan Pro" : "Importer CSV"}
+                            >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                            </button>
+                        </>}
+                        {canCreateQr && <button
                             onClick={openQrGenerationModal}
                             disabled={qrQuotaReached}
                             className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl shadow-sm hover:shadow active:scale-95 transition-all text-sm disabled:cursor-not-allowed disabled:opacity-50"
                             title={qrQuotaReached ? "Quota de QR atteint" : "Générer un QR"}
                         >
                             <Plus className="w-5 h-5" /> Générer un QR
-                        </button>
+                        </button>}
 
                     </div>
 
@@ -762,6 +771,12 @@ export default function EventDetailPage() {
                     </div>
                 </div>
 
+                {qrListError && (
+                    <div className="border-b border-red-200 bg-red-50 px-6 py-3 text-sm font-medium text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300">
+                        {qrListError}
+                    </div>
+                )}
+
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse min-w-[700px]">
                         <thead>
@@ -776,7 +791,7 @@ export default function EventDetailPage() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-200 text-sm">
-                            {filteredQrs.length === 0 ? (
+                            {filteredQrs.length === 0 && !qrListError ? (
                                 <tr>
                                     <td colSpan="7" className="px-6 py-14 text-center">
                                         <div className="w-14 h-14 bg-slate-100 dark:bg-slate-800 text-slate-300 rounded-2xl flex items-center justify-center mx-auto mb-3">
@@ -784,14 +799,20 @@ export default function EventDetailPage() {
                                         </div>
                                         <h3 className="text-base font-semibold text-slate-900 dark:text-white">Aucun QR code</h3>
                                         <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">{qrPagination.total === 0 && !searchQuery && statusFilter === "Tous les statuts" ? "Générez votre premier code QR pour cet événement." : "Aucun QR Code trouvé pour ces critères."}</p>
-                                        <button
+                                        {canCreateQr && <button
                                             onClick={openQrGenerationModal}
                                             disabled={qrQuotaReached}
                                             title={qrQuotaReached ? "Quota de QR atteint" : "Générer un QR"}
                                             className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                                         >
                                             <Plus className="w-4 h-4" /> Générer un QR
-                                        </button>
+                                        </button>}
+                                    </td>
+                                </tr>
+                            ) : qrListError ? (
+                                <tr>
+                                    <td colSpan="7" className="px-6 py-10 text-center text-sm text-red-600 dark:text-red-300">
+                                        La liste des QR n’a pas pu être chargée.
                                     </td>
                                 </tr>
                             ) : (
@@ -839,7 +860,7 @@ export default function EventDetailPage() {
                                                     >
                                                         {qr.cardPdfUrl ? <FileText className="w-5 h-5" /> : <FileSpreadsheet className="w-5 h-5" />}
                                                     </a>
-                                                ) : (
+                                                ) : canManageEvent ? (
                                                     <button
                                                         onClick={() => handleGenerateCardForQr(qr)}
                                                         disabled={cardGeneratingId === qr.id}
@@ -848,13 +869,13 @@ export default function EventDetailPage() {
                                                     >
                                                         {cardGeneratingId === qr.id ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileSpreadsheet className="w-5 h-5" />}
                                                     </button>
-                                                )}
-                                                {qr.status === 'active' ? (
+                                                ) : null}
+                                                {canManageEvent && qr.status === 'active' ? (
                                                     <button onClick={() => setQrToRevoke(qr)} disabled={revokingId === qr.id} className="p-1.5 text-red-600 dark:text-red-300 bg-white dark:bg-slate-900 border border-red-100 dark:border-red-900/50 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors disabled:opacity-50" title="Révoquer Accès">
                                                         {revokingId === qr.id ? <Loader2 className="w-5 h-5 animate-spin" /> : <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>}
                                                     </button>
                                                 ) : null}
-                                                {qr.status === 'revoked' ? (
+                                                {canManageEvent && qr.status === 'revoked' ? (
                                                     <button onClick={() => handleRestore(qr.id)} disabled={revokingId === qr.id} className="p-1.5 text-emerald-600 dark:text-emerald-300 bg-white dark:bg-slate-900 border border-emerald-100 dark:border-emerald-900/50 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded-lg transition-colors disabled:opacity-50" title="Restaurer Accès">
                                                         {revokingId === qr.id ? <Loader2 className="w-5 h-5 animate-spin" /> : <CheckCircle2 className="w-5 h-5" />}
                                                     </button>

@@ -5,7 +5,7 @@ const escapeHtml = (value) => String(value || "").replace(/[&<>"']/g, character 
 
 // Expéditeur par défaut chargé depuis les variables d'environnement
 const defaultSender = {
-    name: process.env.BREVO_SENDER_NAME || "QR Access",
+    name: process.env.BREVO_SENDER_NAME || "AccessQ",
     email: process.env.BREVO_SENDER_EMAIL || "access.qsi@gmail.com",
 };
 
@@ -41,11 +41,11 @@ exports.sendVerificationEmail = async (toEmail, fullName, token) => {
 
         const data = await sendEmail({
             to: [{ email: toEmail, name: fullName }],
-            subject: "Vérifiez votre adresse e-mail - QR Access",
+            subject: "Vérifiez votre adresse e-mail - AccessQ",
             textContent: `Bonjour ${fullName},\n\nVeuillez vérifier votre e-mail en cliquant sur le lien suivant :\n${verifyUrl}\n\nSi vous n'êtes pas à l'origine de cette demande, veuillez ignorer cet e-mail.`,
             htmlContent: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                    <h2 style="color: #2563eb;">Bienvenue sur QR Access !</h2>
+                    <h2 style="color: #2563eb;">Bienvenue sur AccessQ !</h2>
                     <p>Bonjour <strong>${safeName}</strong>,</p>
                     <p>Merci de vous être inscrit(e). Pour activer votre compte et accéder à votre tableau de bord, veuillez cliquer sur le bouton ci-dessous :</p>
                     <a href="${verifyUrl}" style="display: inline-block; padding: 10px 20px; margin-top: 15px; color: white; background-color: #2563eb; text-decoration: none; border-radius: 5px;">Vérifier mon e-mail</a>
@@ -76,11 +76,11 @@ exports.sendAgentInvitation = async (toEmail, fullName, rawPassword) => {
 
         const data = await sendEmail({
             to: [{ email: toEmail, name: fullName }],
-            subject: "Vous avez été invité(e) en tant qu'Agent - QR Access",
+            subject: "Vous avez été invité(e) en tant qu'Agent - AccessQ",
             textContent: `Bonjour ${fullName},\n\nVous avez été ajouté(e) en tant qu'Agent pour votre organisation.\nVotre e-mail : ${toEmail}\nVotre mot de passe : ${rawPassword}\n\nVeuillez vous connecter sur : ${loginUrl}`,
             htmlContent: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px;">
-                    <h2 style="color: #2563eb;">Bienvenue sur QR Access !</h2>
+                    <h2 style="color: #2563eb;">Bienvenue sur AccessQ !</h2>
                     <p>Bonjour <strong>${fullName}</strong>,</p>
                     <p>Un administrateur vous a invité(e) à gérer le scan et la billetterie pour les événements de votre organisation.</p>
                     <div style="background-color: #f3f4f6; padding: 15px; border-radius: 6px; margin: 20px 0;">

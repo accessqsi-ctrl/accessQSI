@@ -4,6 +4,7 @@ const agentService = require("../services/agent.service");
 const emailService = require("../services/email.service");
 const userService = require("../services/user.service");
 const logger = require("../utils/logger");
+const { withOrganizationQuota } = require("../services/organization_quota.service");
 
 const canManageAgents = (user) => {
     return user && user.org_id && ["ORG_ADMIN", "SUPER_ADMIN"].includes(user.role);
@@ -59,17 +60,40 @@ exports.addAgent = async (req, res) => {
             return res.status(400).json({ success: false, message: "Un utilisateur avec cet email existe déjà." });
         }
 
-        // Utiliser le mot de passe fourni ou en générer un aléatoire sécurisé
-        const rawPassword = password || (crypto.randomBytes(8).toString('hex') + "!Aa1");
-        const hashedPassword = await bcrypt.hash(rawPassword, 10);
-
         // Déterminer le rôle à attribuer
         let assignedRole = "ORG_AGENT";
         if (role === "ORG_ADMIN") assignedRole = "ORG_ADMIN";
         else if (role === "OPERATOR") assignedRole = "OPERATOR";
 
+        // Utiliser le mot de passe fourni ou en générer un aléatoire sécurisé
+        const rawPassword = password || (crypto.randomBytes(8).toString('hex') + "!Aa1");
+        const hashedPassword = await bcrypt.hash(rawPassword, 10);
+
         // Enregistrer l'agent
-        const newAgent = await agentService.createAgent(orgId, fullName, email, hashedPassword, assignedRole);
+        const createAgent = (dbClient) => agentService.createAgent(
+            orgId,
+            fullName,
+            email,
+            hashedPassword,
+            assignedRole,
+            dbClient
+        );
+        const newAgent = assignedRole === "ORG_ADMIN"
+            ? await createAgent()
+            : await withOrganizationQuota({
+                organizationId: orgId,
+                limitKey: "maxAgents",
+                resourceName: "d'agents",
+                count: (tx) => tx.userQ.count({
+                    where: {
+                        org_id: orgId,
+                        role: { in: ["ORG_AGENT", "OPERATOR"] },
+                        deleted_at: null,
+                        is_active: true
+                    }
+                }),
+                create: createAgent
+            });
 
         // Envoyer l'email avec les identifiants
         await emailService.sendAgentInvitation(email, fullName, rawPassword);
@@ -84,6 +108,15 @@ exports.addAgent = async (req, res) => {
 
         return res.status(201).json({ success: true, message: "Agent ajouté et invitation envoyée avec succès." });
     } catch (error) {
+        if (error.code === "PLAN_QUOTA_EXCEEDED") {
+            return res.status(403).json({
+                success: false,
+                message: `Votre quota d'agents est atteint (${error.currentCount}/${error.limit}). Passez en Pro pour ajouter davantage d'agents.`,
+                plan: error.plan,
+                planName: error.planName,
+                upgradeRequired: true
+            });
+        }
         console.error("Erreur addAgent:", error);
         return res.status(500).json({ success: false, message: "Erreur lors de l'ajout de l'agent." });
     }
@@ -112,7 +145,25 @@ exports.toggleAgentStatus = async (req, res) => {
         }
 
         const isCurrentlyDeleted = agent.deleted_at !== null;
-        await agentService.updateAgentStatus(agentId, !isCurrentlyDeleted);
+
+        if (isCurrentlyDeleted) {
+            await withOrganizationQuota({
+                organizationId: orgId,
+                limitKey: "maxAgents",
+                resourceName: "d'agents",
+                count: (tx) => tx.userQ.count({
+                    where: {
+                        org_id: orgId,
+                        role: { in: ["ORG_AGENT", "OPERATOR"] },
+                        deleted_at: null,
+                        is_active: true
+                    }
+                }),
+                create: (tx) => agentService.updateAgentStatus(agentId, false, tx)
+            });
+        } else {
+            await agentService.updateAgentStatus(agentId, true);
+        }
         logger.info("agent.status_changed", {
             request_id: req.requestId,
             admin_id: req.user.user_id,
@@ -127,6 +178,15 @@ exports.toggleAgentStatus = async (req, res) => {
             newStatus: isCurrentlyDeleted ? "Actif" : "Inactif"
         });
     } catch (error) {
+        if (error.code === "PLAN_QUOTA_EXCEEDED") {
+            return res.status(403).json({
+                success: false,
+                message: `Votre quota d'agents est atteint (${error.currentCount}/${error.limit}). Passez en Pro pour restaurer cet agent.`,
+                plan: error.plan,
+                planName: error.planName,
+                upgradeRequired: true
+            });
+        }
         console.error("Erreur toggleAgentStatus:", error);
         return res.status(500).json({ success: false, message: "Erreur serveur." });
     }

@@ -159,7 +159,7 @@ model Area {
 
 model Plan {
   plan_id       Int            @id @default(autoincrement())
-  title         String
+  title         String         @unique
   cost          Int
   features      Json
   organizations Organization[]

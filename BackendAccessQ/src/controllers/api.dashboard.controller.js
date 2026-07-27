@@ -1,4 +1,6 @@
 const prisma = require("../prisma/client");
+const { getPlanContextForUser } = require("../utils/planAccess");
+const { PLAN_CAPABILITIES, hasPlanCapability } = require("../config/subscription");
 
 const getOnboardingProgress = async (orgId) => {
     const [areas, models, events, qrs, agents] = await Promise.all([
@@ -31,6 +33,11 @@ exports.getOverviewStats = async (req, res) => {
 
         const orgId = req.user.org_id;
         const now = new Date();
+        const planContext = await getPlanContextForUser(req);
+        const hasAdvancedAnalytics = hasPlanCapability(
+            planContext,
+            PLAN_CAPABILITIES.ADVANCED_ANALYTICS
+        );
 
         // 1. Total de QR Codes actifs pour l'organisation
         const activeQrCount = await prisma.qrCode.count({
@@ -94,49 +101,61 @@ exports.getOverviewStats = async (req, res) => {
             where: {
                 org_id: orgId,
                 role: { in: ['ORG_AGENT', 'OPERATOR'] },
-                deleted_at: null
+                deleted_at: null,
+                is_active: true
             }
         });
 
         // 6. Scans par jour (7 derniers jours)
         const scansByDay = [];
-        for (let i = 6; i >= 0; i--) {
-            const date = new Date();
-            date.setDate(date.getDate() - i);
-            date.setHours(0, 0, 0, 0);
+        if (hasAdvancedAnalytics) {
+            for (let i = 6; i >= 0; i--) {
+                const date = new Date();
+                date.setDate(date.getDate() - i);
+                date.setHours(0, 0, 0, 0);
 
-            const nextDay = new Date(date);
-            nextDay.setDate(nextDay.getDate() + 1);
+                const nextDay = new Date(date);
+                nextDay.setDate(nextDay.getDate() + 1);
 
-            const count = await prisma.scanLog.count({
-                where: {
-                    qr_code: { event: { org_id: orgId } },
-                    scanned_at: {
-                        gte: date,
-                        lt: nextDay
+                const count = await prisma.scanLog.count({
+                    where: {
+                        qr_code: { event: { org_id: orgId } },
+                        scanned_by: { org_id: orgId },
+                        scanned_at: {
+                            gte: date,
+                            lt: nextDay
+                        }
                     }
-                }
-            });
+                });
 
-            scansByDay.push({
-                name: date.toLocaleDateString('fr-FR', { weekday: 'short' }),
-                fullDate: date.toLocaleDateString('fr-FR'),
-                scans: count
-            });
+                scansByDay.push({
+                    name: date.toLocaleDateString('fr-FR', { weekday: 'short' }),
+                    fullDate: date.toLocaleDateString('fr-FR'),
+                    scans: count
+                });
+            }
         }
 
         // 7. Meilleurs agents par nombre de scans
-        const topAgentsRaw = await prisma.scanLog.groupBy({
-            by: ['scanned_by_id'],
-            where: { qr_code: { event: { org_id: orgId } } },
-            _count: { id: true },
-            orderBy: { _count: { id: 'desc' } },
-            take: 3
-        });
+        const topAgentsRaw = hasAdvancedAnalytics
+            ? await prisma.scanLog.groupBy({
+                by: ['scanned_by_id'],
+                where: {
+                    qr_code: { event: { org_id: orgId } },
+                    scanned_by: { org_id: orgId }
+                },
+                _count: { id: true },
+                orderBy: { _count: { id: 'desc' } },
+                take: 3
+            })
+            : [];
 
         const topAgents = await Promise.all(topAgentsRaw.map(async (item) => {
-            const agent = await prisma.userQ.findUnique({
-                where: { user_id: item.scanned_by_id },
+            const agent = await prisma.userQ.findFirst({
+                where: {
+                    user_id: item.scanned_by_id,
+                    org_id: orgId
+                },
                 select: { full_name: true }
             });
             return {
@@ -147,7 +166,10 @@ exports.getOverviewStats = async (req, res) => {
 
         // 5. Scans récents (5 derniers) - on les récupère à nouveau car le bloc précédent l'a remplacé
         const recentScans = await prisma.scanLog.findMany({
-            where: { qr_code: { event: { org_id: orgId } } },
+            where: {
+                qr_code: { event: { org_id: orgId } },
+                scanned_by: { org_id: orgId }
+            },
             take: 5,
             orderBy: { scanned_at: 'desc' },
             include: {
@@ -177,6 +199,9 @@ exports.getOverviewStats = async (req, res) => {
                 recentScans: formattedScans,
                 scansByDay: scansByDay,
                 topAgents: topAgents,
+                capabilities: {
+                    advancedAnalytics: hasAdvancedAnalytics
+                },
                 onboarding
             }
         });

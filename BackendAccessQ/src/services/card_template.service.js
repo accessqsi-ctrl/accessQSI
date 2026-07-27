@@ -449,7 +449,7 @@ const renderHorizontalTicket = ({ template, qrUrl, event, qrRecord, cardMessage 
 ${primaryPanel}
 <circle cx="134" cy="134" r="72" fill="#ffffff" opacity="0.14"/>
 <circle cx="400" cy="${template.height - 118}" r="118" fill="#ffffff" opacity="0.10"/>
-<text x="92" y="182" font-family="Arial, sans-serif" font-size="25" font-weight="700" fill="#ffffff" opacity="0.82">QR Access</text>
+<text x="92" y="182" font-family="Arial, sans-serif" font-size="25" font-weight="700" fill="#ffffff" opacity="0.82">AccessQ</text>
 ${renderLogo(template, 92, 74, 64)}
 <text x="92" y="276" font-family="Arial, sans-serif" font-size="50" font-weight="800" fill="#ffffff">${template.label}</text>
 <text x="92" y="326" font-family="Arial, sans-serif" font-size="22" fill="#ffffff" opacity="0.82">Support numérique sécurisé</text>
@@ -490,7 +490,7 @@ const renderVerticalCard = ({ template, qrUrl, event, qrRecord, cardMessage }) =
 <rect width="${template.width}" height="${template.height}" rx="64" fill="${template.surface}"/>
 <rect x="54" y="54" width="${template.width - 108}" height="${template.height - 108}" rx="52" fill="#ffffff" stroke="#dbe3ea" stroke-width="4"/>
 ${primaryPanel}
-<text x="450" y="154" text-anchor="middle" font-family="Arial, sans-serif" font-size="32" font-weight="800" fill="#ffffff">QR Access</text>
+<text x="450" y="154" text-anchor="middle" font-family="Arial, sans-serif" font-size="32" font-weight="800" fill="#ffffff">AccessQ</text>
 ${renderLogo(template, 78, 78, 70)}
 <text x="450" y="218" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" fill="#ffffff" opacity="0.84">${template.label}</text>
 <circle cx="450" cy="390" r="144" fill="#ffffff"/>
@@ -592,7 +592,7 @@ const renderCompactTicket = ({ template, qrUrl, event, qrRecord, cardMessage }) 
 <rect x="36" y="36" width="${template.width - 72}" height="${template.height - 72}" rx="26" fill="#ffffff" stroke="#dbe3ea" stroke-width="3"/>
 ${primaryPanel}
 <text x="82" y="152" font-family="Arial, sans-serif" font-size="34" font-weight="900" fill="#ffffff">${template.label}</text>
-<text x="82" y="202" font-family="Arial, sans-serif" font-size="19" fill="#ffffff" opacity="0.82">QR Access</text>
+<text x="82" y="202" font-family="Arial, sans-serif" font-size="19" fill="#ffffff" opacity="0.82">AccessQ</text>
 ${renderLogo(template, 82, 250, 58)}
 <text x="370" y="132" font-family="Arial, sans-serif" font-size="40" font-weight="900" fill="${template.ink}">${fieldText(template, "event", title)}</text>
 <text x="370" y="198" font-family="Arial, sans-serif" font-size="28" font-weight="700" fill="#334155">${fieldText(template, "holder", holder)}</text>

@@ -19,7 +19,8 @@ const loadQrManagementApp = ({
     qrcode = {},
     cardTemplateService = {},
     customCardTemplateService = {},
-    storageService = {}
+    storageService = {},
+    planContext = { isPro: true, plan: "PRO", planName: "Pro", limits: {}, features: [] }
 }) => {
     clearSrcModules();
     mockModule("src/middleware/authMiddleware", authAs(user));
@@ -48,6 +49,12 @@ const loadQrManagementApp = ({
     });
     mockModule("src/controllers/api.qr_verify.controller", {
         verifyScan: (req, res) => res.json({ success: true })
+    });
+    mockModule("src/utils/planAccess", {
+        getPlanContextForUser: async () => planContext
+    });
+    mockModule("src/services/organization_quota.service", {
+        withOrganizationQuota: async ({ create }) => create({})
     });
     mockPackage("qrcode", {
         toBuffer: async () => Buffer.from("png"),
@@ -81,9 +88,9 @@ test("POST /qr/generate/:event_id validates required holder fields", async () =>
     assert.equal(createCalled, false);
 });
 
-test("QR management routes reject non-admin users", async () => {
+test("QR management routes reject operators", async () => {
     const app = loadQrManagementApp({
-        user: { user_id: 7, role: "ORG_AGENT", org_id: 42 },
+        user: { user_id: 7, role: "OPERATOR", org_id: 42 },
         eventService: {},
         qrService: {}
     });
@@ -97,12 +104,54 @@ test("QR management routes reject non-admin users", async () => {
     assert.equal(res.body.success, false);
 });
 
-test("POST /qr/generate/:event_id creates QR data for an event in the user's organization", async () => {
+test("GET /qr/event/:event_id lets an organization agent read existing QR codes", async () => {
+    let eventLookup = null;
+    let qrLookup = null;
+    const app = loadQrManagementApp({
+        user: { user_id: 7, role: "ORG_AGENT", org_id: 42 },
+        eventService: {
+            findById: async (orgId, eventId) => {
+                eventLookup = { orgId, eventId };
+                return { event_id: eventId, title: "Concert" };
+            }
+        },
+        qrService: {
+            getQrsByEventId: async (orgId, eventId) => {
+                qrLookup = { orgId, eventId };
+                return {
+                    items: [{
+                        qr_id: 9,
+                        holder_name: "Jane Holder",
+                        holder_email: "jane@example.com",
+                        holder_phone: null,
+                        status: "active",
+                        scans_count: 0,
+                        usage_limit: 1,
+                        unique_token: "token-9",
+                        created_at: new Date("2026-01-01T10:00:00Z")
+                    }],
+                    pagination: { page: 1, pageSize: 25, total: 1, totalPages: 1 }
+                };
+            }
+        }
+    });
+
+    const res = await request(app, "GET", "/qr/event/5?page=1&pageSize=25");
+
+    assert.equal(res.status, 200);
+    assert.deepEqual(eventLookup, { orgId: 42, eventId: 5 });
+    assert.deepEqual(qrLookup, { orgId: 42, eventId: 5 });
+    assert.equal(res.body.qrs.length, 1);
+    assert.equal(res.body.qrs[0].holder, "Jane Holder");
+    assert.equal(res.body.pagination.total, 1);
+});
+
+test("POST /qr/generate/:event_id lets an organization agent create QR data", async () => {
     let eventLookup = null;
     let createdData = null;
     let qrFileArgs = null;
     const app = loadQrManagementApp({
-        user: { user_id: 7, role: "ORG_ADMIN", org_id: 42 },
+        user: { user_id: 7, role: "ORG_AGENT", org_id: 42 },
         eventService: {
             findById: async (orgId, eventId) => {
                 eventLookup = { orgId, eventId };
@@ -360,6 +409,130 @@ test("POST /qr/generate/:event_id can generate a card from a custom template", a
         zone: "Salle",
         address: "Adresse"
     });
+});
+
+test("POST /qr/generate/:event_id allows standard templates on the Free plan", async () => {
+    let createCalled = false;
+    const app = loadQrManagementApp({
+        user: { user_id: 7, role: "ORG_ADMIN", org_id: 42 },
+        planContext: {
+            isPro: false,
+            plan: "FREE",
+            planName: "Free",
+            limits: { maxQrCodes: 100 },
+            capabilities: []
+        },
+        eventService: {
+            findById: async () => ({ event_id: 5, title: "Concert" })
+        },
+        qrService: {
+            createQr: async (data) => {
+                createCalled = true;
+                return { qr_id: 9, ...data };
+            }
+        },
+        cardTemplateService: {
+            isTemplateAvailable: (id) => id === "event-ticket",
+            generateCardForQr: async () => "/cards/standard.svg"
+        }
+    });
+
+    const res = await request(app, "POST", "/qr/generate/5", {
+        fullName: "Free Holder",
+        accessType: "single",
+        cardTemplateId: "event-ticket"
+    });
+
+    assert.equal(res.status, 201);
+    assert.equal(createCalled, true);
+});
+
+test("POST /qr/generate/:event_id rejects custom templates on the Free plan", async () => {
+    let createCalled = false;
+    let customLookupCalled = false;
+    const app = loadQrManagementApp({
+        user: { user_id: 7, role: "ORG_ADMIN", org_id: 42 },
+        planContext: {
+            isPro: false,
+            plan: "FREE",
+            planName: "Free",
+            limits: { maxQrCodes: 100 },
+            capabilities: []
+        },
+        eventService: {
+            findById: async () => ({ event_id: 5, title: "Concert" })
+        },
+        qrService: {
+            createQr: async () => {
+                createCalled = true;
+            }
+        },
+        customCardTemplateService: {
+            resolveCustomForRender: async () => {
+                customLookupCalled = true;
+                return null;
+            }
+        }
+    });
+
+    const res = await request(app, "POST", "/qr/generate/5", {
+        fullName: "Free Holder",
+        accessType: "single",
+        cardTemplateId: "custom:8"
+    });
+
+    assert.equal(res.status, 403);
+    assert.equal(res.body.upgradeRequired, true);
+    assert.equal(customLookupCalled, false);
+    assert.equal(createCalled, false);
+});
+
+test("POST /qr/card/:id rejects a saved custom snapshot after downgrade to Free", async () => {
+    let generateCalled = false;
+    let updateCalled = false;
+    const app = loadQrManagementApp({
+        user: { user_id: 7, role: "ORG_ADMIN", org_id: 42 },
+        planContext: {
+            isPro: false,
+            plan: "FREE",
+            planName: "Free",
+            limits: { maxQrCodes: 100 },
+            capabilities: []
+        },
+        eventService: {
+            findById: async () => ({ event_id: 5, title: "Concert" })
+        },
+        qrService: {
+            getQrById: async () => ({
+                qr_id: 10,
+                event_id: 5,
+                unique_token: "token-10",
+                deleted_at: null,
+                card_template_id: "custom:12",
+                card_template_snapshot: {
+                    schemaVersion: 1,
+                    sourceTemplateId: "custom:12",
+                    baseTemplateId: "event-ticket",
+                    customization: { title: "ANCIEN MODÈLE PRO" }
+                }
+            }),
+            updateQr: async () => {
+                updateCalled = true;
+            }
+        },
+        cardTemplateService: {
+            generateCardForQr: async () => {
+                generateCalled = true;
+            }
+        }
+    });
+
+    const res = await request(app, "POST", "/qr/card/10", {});
+
+    assert.equal(res.status, 403);
+    assert.equal(res.body.upgradeRequired, true);
+    assert.equal(generateCalled, false);
+    assert.equal(updateCalled, false);
 });
 
 test("POST /qr/card/:id generates a card for an existing QR in the user's organization", async () => {

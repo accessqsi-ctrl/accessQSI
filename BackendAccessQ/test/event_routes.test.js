@@ -12,6 +12,9 @@ const loadEventApp = ({ user, eventService }) => {
     clearSrcModules();
     mockModule("src/middleware/authMiddleware", authAs(user));
     mockModule("src/services/event.service", eventService);
+    mockModule("src/services/organization_quota.service", {
+        withOrganizationQuota: async ({ create }) => create({})
+    });
 
     const router = require("../src/routes/event.routes");
     return mountRouter("/events", router);

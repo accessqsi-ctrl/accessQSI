@@ -9,10 +9,18 @@ const {
     request
 } = require("./helpers/http");
 
+const withDefaultPlan = (prisma = {}) => ({
+    ...prisma,
+    organization: {
+        findUnique: async () => ({ plan: { title: "PRO" } }),
+        ...(prisma.organization || {})
+    }
+});
+
 const loadDashboardApp = ({ user, prisma }) => {
     clearSrcModules();
     mockModule("src/middleware/authMiddleware", authAs(user));
-    mockModule("src/prisma/client", prisma);
+    mockModule("src/prisma/client", withDefaultPlan(prisma));
 
     const router = require("../src/routes/dashboard.routes");
     return mountRouter("/dashboard", router);
@@ -21,7 +29,7 @@ const loadDashboardApp = ({ user, prisma }) => {
 const loadExportApp = ({ user, prisma, csvWriter, PDFDocument }) => {
     clearSrcModules();
     mockModule("src/middleware/authMiddleware", authAs(user));
-    mockModule("src/prisma/client", prisma);
+    mockModule("src/prisma/client", withDefaultPlan(prisma));
     mockPackage("csv-writer", {
         createObjectCsvWriter: () => csvWriter
     });
@@ -63,19 +71,25 @@ test("GET /dashboard/stats returns overview stats scoped to the authenticated or
                 calls.push(["userQ.count", where.org_id]);
                 return 3;
             },
-            findUnique: async ({ where }) => ({ full_name: `Agent ${where.user_id}` })
+            findFirst: async ({ where }) => {
+                calls.push(["userQ.findFirst", where.org_id]);
+                return { full_name: `Agent ${where.user_id}` };
+            }
         },
         scanLog: {
             count: async ({ where }) => {
                 calls.push(["scanLog.count", where.qr_code.event.org_id]);
+                calls.push(["scanLog.count.agent", where.scanned_by.org_id]);
                 return 1;
             },
             groupBy: async ({ where }) => {
                 calls.push(["scanLog.groupBy", where.qr_code.event.org_id]);
+                calls.push(["scanLog.groupBy.agent", where.scanned_by.org_id]);
                 return [{ scanned_by_id: 7, _count: { id: 5 } }];
             },
             findMany: async ({ where }) => {
                 calls.push(["scanLog.findMany", where.qr_code.event.org_id]);
+                calls.push(["scanLog.findMany.agent", where.scanned_by.org_id]);
                 return [{
                     id: 1,
                     scanned_at: new Date("2026-01-01T10:00:00Z"),
@@ -119,7 +133,7 @@ test("GET /dashboard/stats tolerates missing dashboard relations", async () => {
         },
         userQ: {
             count: async () => 0,
-            findUnique: async () => null
+            findFirst: async () => null
         },
         scanLog: {
             count: async () => 0,
@@ -148,16 +162,49 @@ test("GET /dashboard/stats tolerates missing dashboard relations", async () => {
     assert.equal(res.body.data.recentScans[0].agent, "Agent inconnu");
 });
 
-test("GET /dashboard/stats rejects users without an organization", async () => {
+test("GET /dashboard/stats remains available to authenticated users even on the free plan", async () => {
+    let advancedQueryCalled = false;
     const app = loadDashboardApp({
-        user: { user_id: 7, role: "SUPER_ADMIN", org_id: null },
-        prisma: {}
+        user: { user_id: 7, role: "ORG_ADMIN", org_id: 42 },
+        prisma: {
+            organization: {
+                findUnique: async () => ({ plan: { title: "FREE" } })
+            },
+            area: { count: async () => 0 },
+            cardTemplateCustom: { count: async () => 0 },
+            qrCode: {
+                count: async () => 1,
+                aggregate: async () => ({ _sum: { scans_count: 0 } })
+            },
+            event: { count: async () => 0 },
+            eventSchedule: { findFirst: async () => null },
+            userQ: {
+                count: async () => 0,
+                findFirst: async () => null
+            },
+            scanLog: {
+                count: async () => {
+                    advancedQueryCalled = true;
+                    return 0;
+                },
+                groupBy: async () => {
+                    advancedQueryCalled = true;
+                    return [];
+                },
+                findMany: async () => []
+            }
+        }
     });
 
     const res = await request(app, "GET", "/dashboard/stats");
 
-    assert.equal(res.status, 401);
-    assert.equal(res.body.success, false);
+    assert.equal(res.status, 200);
+    assert.equal(res.body.success, true);
+    assert.equal(res.body.data.activeQrs, 1);
+    assert.equal(res.body.data.capabilities.advancedAnalytics, false);
+    assert.deepEqual(res.body.data.scansByDay, []);
+    assert.deepEqual(res.body.data.topAgents, []);
+    assert.equal(advancedQueryCalled, false);
 });
 
 test("GET /export/csv exports scans scoped by organization and optional event", async () => {
@@ -224,6 +271,27 @@ test("GET /export/csv exports scans scoped by organization and optional event", 
     assert.equal(recordsWritten[1].result, "AUCUN SCAN");
     assert.equal(res.body.downloaded, true);
     assert.equal(res.body.filename, "scans_history.csv");
+});
+
+test("GET /export/csv rejects free organizations with a clear upgrade message", async () => {
+    const app = loadExportApp({
+        user: { user_id: 7, role: "ORG_ADMIN", org_id: 42 },
+        prisma: {
+            organization: {
+                findUnique: async () => ({ plan: { title: "FREE" } })
+            }
+        },
+        csvWriter: { writeRecords: async () => {} },
+        PDFDocument: function PDFDocument() {}
+    });
+
+    const res = await request(app, "GET", "/export/csv");
+
+    assert.equal(res.status, 403);
+    assert.equal(res.body.success, false);
+    assert.match(res.body.message, /abonnement Pro/i);
+    assert.equal(res.body.upgradeRequired, true);
+    assert.equal(res.body.plan, "FREE");
 });
 
 test("GET /export/pdf streams a PDF response for authenticated users", async () => {

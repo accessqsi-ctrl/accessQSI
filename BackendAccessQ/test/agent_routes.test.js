@@ -8,14 +8,50 @@ const {
     request
 } = require("./helpers/http");
 
-const loadAgentApp = ({ user, agentService, userService = {}, emailService = {} }) => {
+const FREE_PLAN_CONTEXT = {
+    plan: "FREE",
+    planName: "Free",
+    isPro: false,
+    limits: { maxEvents: 3, maxQrCodes: 100, maxAgents: 4, maxAreas: 4 }
+};
+
+const loadAgentApp = ({
+    user,
+    agentService,
+    userService = {},
+    emailService = {},
+    planContext = FREE_PLAN_CONTEXT
+}) => {
     clearSrcModules();
+    const serviceWithDefaults = {
+        countActiveAgentsForOrg: async () => 0,
+        ...agentService
+    };
     mockModule("src/middleware/authMiddleware", authAs(user));
-    mockModule("src/services/agent.service", agentService);
+    mockModule("src/services/agent.service", serviceWithDefaults);
     mockModule("src/services/user.service", userService);
     mockModule("src/services/email.service", {
         sendAgentInvitation: async () => {},
         ...emailService
+    });
+    mockModule("src/utils/planAccess", {
+        getPlanContextForUser: async () => planContext
+    });
+    mockModule("src/services/organization_quota.service", {
+        withOrganizationQuota: async ({ limitKey, create }) => {
+            const currentCount = await serviceWithDefaults.countActiveAgentsForOrg(user.org_id);
+            const limit = planContext.limits[limitKey];
+            if (limit !== null && limit !== undefined && currentCount >= limit) {
+                throw {
+                    code: "PLAN_QUOTA_EXCEEDED",
+                    currentCount,
+                    limit,
+                    plan: planContext.plan,
+                    planName: planContext.planName
+                };
+            }
+            return create({});
+        }
     });
 
     const router = require("../src/routes/agent.routes");
@@ -114,6 +150,65 @@ test("POST /agents/add-agent creates an operator in the authenticated organizati
     assert.deepEqual(invitation, ["olivia@example.com", "Olivia Operator", "Strong!123"]);
 });
 
+test("POST /agents/add-agent refuses a fifth active agent on the Free plan", async () => {
+    let createCalled = false;
+    const app = loadAgentApp({
+        user: { user_id: 7, role: "ORG_ADMIN", org_id: 42 },
+        agentService: {
+            countActiveAgentsForOrg: async () => 4,
+            createAgent: async () => {
+                createCalled = true;
+            }
+        },
+        userService: {
+            findByEmail: async () => null
+        }
+    });
+
+    const res = await request(app, "POST", "/agents/add-agent", {
+        fullName: "Fifth Agent",
+        email: "fifth@example.com",
+        password: "Strong!123"
+    });
+
+    assert.equal(res.status, 403);
+    assert.equal(res.body.upgradeRequired, true);
+    assert.match(res.body.message, /4\/4/);
+    assert.equal(createCalled, false);
+});
+
+test("POST /agents/add-agent keeps agents unlimited on the Pro plan", async () => {
+    let createCalled = false;
+    const app = loadAgentApp({
+        user: { user_id: 7, role: "ORG_ADMIN", org_id: 42 },
+        planContext: {
+            plan: "PRO",
+            planName: "Pro",
+            isPro: true,
+            limits: { maxEvents: null, maxQrCodes: null, maxAgents: null, maxAreas: null }
+        },
+        agentService: {
+            countActiveAgentsForOrg: async () => 25,
+            createAgent: async () => {
+                createCalled = true;
+                return { user_id: 30 };
+            }
+        },
+        userService: {
+            findByEmail: async () => null
+        }
+    });
+
+    const res = await request(app, "POST", "/agents/add-agent", {
+        fullName: "Pro Agent",
+        email: "pro-agent@example.com",
+        password: "Strong!123"
+    });
+
+    assert.equal(res.status, 201);
+    assert.equal(createCalled, true);
+});
+
 test("PUT /agents/:id/toggle refuses to revoke organization admins", async () => {
     let updateCalled = false;
     const app = loadAgentApp({
@@ -153,6 +248,31 @@ test("PUT /agents/:id/toggle refuses to change the current user's own access", a
     assert.equal(res.status, 403);
     assert.equal(res.body.success, false);
     assert.equal(lookupCalled, false);
+    assert.equal(updateCalled, false);
+});
+
+test("PUT /agents/:id/toggle refuses to restore a fifth Free agent", async () => {
+    let updateCalled = false;
+    const app = loadAgentApp({
+        user: { user_id: 7, role: "ORG_ADMIN", org_id: 42 },
+        agentService: {
+            getAgentByIdAndOrg: async () => ({
+                user_id: 2,
+                org_id: 42,
+                role: "ORG_AGENT",
+                deleted_at: new Date()
+            }),
+            countActiveAgentsForOrg: async () => 4,
+            updateAgentStatus: async () => {
+                updateCalled = true;
+            }
+        }
+    });
+
+    const res = await request(app, "PUT", "/agents/2/toggle");
+
+    assert.equal(res.status, 403);
+    assert.equal(res.body.upgradeRequired, true);
     assert.equal(updateCalled, false);
 });
 

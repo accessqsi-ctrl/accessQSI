@@ -57,6 +57,9 @@ exports.findByTitle = async (orgId, titleSearch) => {
     },
     include: {
       EventSchedules: {
+        where: {
+          area: { org_id: orgId, deleted_at: null }
+        },
         include: { area: true },
         orderBy: { start_date: 'asc' }
       },
@@ -74,6 +77,9 @@ exports.findById = async (orgId, eventId) => {
     where: { event_id: eventId, org_id: orgId, deleted_at: null },
     include: {
       EventSchedules: {
+        where: {
+          area: { org_id: orgId, deleted_at: null }
+        },
         include: { area: true },
         orderBy: { start_date: 'asc' }
       },
@@ -93,6 +99,9 @@ exports.findAll = async (orgId) => {
     },
     include: {
       EventSchedules: {
+        where: {
+          area: { org_id: orgId, deleted_at: null }
+        },
         include: { area: true },
         orderBy: { start_date: 'asc' }
       },
@@ -105,11 +114,11 @@ exports.findAll = async (orgId) => {
 };
 
 // Créer un événement (lié à l'organisation)
-exports.createEvent = async (data) => {
+exports.createEvent = async (data, dbClient = prisma) => {
   const { start_date, end_date, id_area, areaIds, ...eventData } = data;
   const idsToCreate = getScheduleAreaIds({ id_area, areaIds });
 
-  return await prisma.$transaction(async (tx) => {
+  const createWithClient = async (tx) => {
     await assertAreasBelongToOrg(tx, eventData.org_id, idsToCreate);
 
     return tx.event.create({
@@ -125,7 +134,13 @@ exports.createEvent = async (data) => {
       },
       include: { EventSchedules: true }
     });
-  });
+  };
+
+  if (dbClient !== prisma) {
+    return createWithClient(dbClient);
+  }
+
+  return prisma.$transaction(createWithClient);
 };
 
 // Modifier un événement (propriété vérifiée par le contrôleur)

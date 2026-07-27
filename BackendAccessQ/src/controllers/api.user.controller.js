@@ -8,6 +8,7 @@ const { getSessionCookieOptions } = require("../config/security");
 const { getPrivateKey, getPublicKey } = require("../config/jwtKeys");
 const logger = require("../utils/logger");
 const PasswordValidator = require('password-validator');
+const { getPlanSummary, getPlanUsage } = require("../config/subscription");
 const pm = new PasswordValidator();
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -347,9 +348,58 @@ exports.viewprofile = async (req, res) => {
             return res.status(404).json({ success: false, message: "Utilisateur non trouvé" });
         }
 
+        const [organization, usageCounts] = fullUser.org_id
+            ? await Promise.all([
+                prisma.organization.findUnique({
+                    where: { org_id: fullUser.org_id },
+                    include: { plan: true }
+                }),
+                Promise.all([
+                    prisma.event.count({
+                        where: { org_id: fullUser.org_id, deleted_at: null }
+                    }),
+                    prisma.qrCode.count({
+                        where: { event: { org_id: fullUser.org_id }, deleted_at: null }
+                    }),
+                    prisma.userQ.count({
+                        where: {
+                            org_id: fullUser.org_id,
+                            role: { in: ["ORG_AGENT", "OPERATOR"] },
+                            deleted_at: null,
+                            is_active: true
+                        }
+                    }),
+                    prisma.area.count({
+                        where: { org_id: fullUser.org_id, deleted_at: null }
+                    })
+                ]).then(([events, qrCodes, agents, areas]) => ({
+                    events,
+                    qrCodes,
+                    agents,
+                    areas
+                }))
+            ])
+            : [null, { events: 0, qrCodes: 0, agents: 0, areas: 0 }];
+
+        const planSummary = getPlanSummary(organization);
+        const planUsage = getPlanUsage(planSummary, usageCounts);
+        const subscription = {
+            plan: planSummary.plan,
+            planName: planSummary.planName,
+            isPro: planSummary.isPro,
+            planLimits: planSummary.limits,
+            planUsage,
+            planCapabilities: planSummary.capabilities,
+            planFeatures: planSummary.features
+        };
+
         return res.status(200).json({
             success: true,
-            user: fullUser
+            user: {
+                ...fullUser,
+                ...subscription,
+                subscription
+            }
         });
     } catch (err) {
         console.error(err);
@@ -379,20 +429,38 @@ exports.updateProfile = async (req, res) => {
     try {
         const userId = req.user.user_id;
         const { fullName, email } = req.body;
+        const isAgent = req.user.role === "ORG_AGENT";
 
-        if (!fullName || !email) {
-            return res.status(400).json({ success: false, message: "Nom et email requis." });
+        if (!fullName || (!isAgent && !email)) {
+            return res.status(400).json({ success: false, message: isAgent ? "Nom requis." : "Nom et email requis." });
         }
 
-        // Vérifier si l'email est déjà utilisé par un autre utilisateur
-        const existing = await userService.findByEmail(email);
-        if (existing && existing.user_id !== userId) {
-            return res.status(400).json({ success: false, message: "Cet email est déjà utilisé." });
+        let emailToSave = email;
+        if (isAgent) {
+            const currentUser = await prisma.userQ.findUnique({
+                where: { user_id: userId },
+                select: { email: true }
+            });
+            if (!currentUser) {
+                return res.status(404).json({ success: false, message: "Utilisateur introuvable." });
+            }
+            if (email && email.trim().toLowerCase() !== currentUser.email.toLowerCase()) {
+                return res.status(403).json({
+                    success: false,
+                    message: "Un agent ne peut pas modifier son adresse e-mail."
+                });
+            }
+            emailToSave = currentUser.email;
+        } else {
+            const existing = await userService.findByEmail(email);
+            if (existing && existing.user_id !== userId) {
+                return res.status(400).json({ success: false, message: "Cet email est déjà utilisé." });
+            }
         }
 
         const updated = await userService.updateUser(userId, {
             full_name: fullName,
-            email: email
+            ...(isAgent ? {} : { email: emailToSave })
         });
 
         return res.status(200).json({
@@ -401,7 +469,7 @@ exports.updateProfile = async (req, res) => {
             user: {
                 user_id: updated.user_id,
                 name: updated.full_name,
-                email: updated.email
+                email: updated.email || emailToSave
             }
         });
     } catch (error) {

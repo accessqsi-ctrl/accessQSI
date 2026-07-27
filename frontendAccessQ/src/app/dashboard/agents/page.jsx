@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2, X } from "lucide-react";
 import { apiFetch } from "../../lib/api";
 import LoadingBar from "../../components/LoadingBar";
 import PlanQuotaStatus from "../../components/PlanQuotaStatus";
 import { useUserPlan } from "../../lib/useUserPlan";
+
+const AGENT_ROLES_GUIDE_KEY = "accessQAgentRolesGuideV1Dismissed";
 
 export default function AgentsPage() {
     const [agents, setAgents] = useState([]);
@@ -19,13 +21,14 @@ export default function AgentsPage() {
 
     // Modal state for adding a new agent
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-    const [addForm, setAddForm] = useState({ fullName: "", email: "", password: "", confirmPassword: "", role: "ORG_AGENT" });
+    const [addForm, setAddForm] = useState({ fullName: "", email: "", password: "", confirmPassword: "", role: "" });
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [adding, setAdding] = useState(false);
     const [addError, setAddError] = useState("");
     const [addSuccess, setAddSuccess] = useState("");
     const [actionMessage, setActionMessage] = useState("");
+    const [showRolesGuide, setShowRolesGuide] = useState(false);
 
     const [togglingId, setTogglingId] = useState(null);
     const [confirmAction, setConfirmAction] = useState(null);
@@ -38,8 +41,20 @@ export default function AgentsPage() {
         setTimeout(() => setActionMessage(""), 4000);
     };
 
+    const resetAddForm = () => {
+        setAddForm({ fullName: "", email: "", password: "", confirmPassword: "", role: "" });
+        setShowPassword(false);
+        setShowConfirmPassword(false);
+        setAddError("");
+        setAddSuccess("");
+    };
+
     useEffect(() => {
         fetchAgents();
+    }, []);
+
+    useEffect(() => {
+        setShowRolesGuide(localStorage.getItem(AGENT_ROLES_GUIDE_KEY) !== "true");
     }, []);
 
     const fetchAgents = async () => {
@@ -86,7 +101,7 @@ export default function AgentsPage() {
 
             if (data.success) {
                 setAddSuccess(data.message);
-                setAddForm({ fullName: "", email: "", password: "", confirmPassword: "", role: "ORG_AGENT" });
+                setAddForm({ fullName: "", email: "", password: "", confirmPassword: "", role: "" });
                 setShowPassword(false);
                 setShowConfirmPassword(false);
                 await Promise.all([fetchAgents(), refreshPlan()]);
@@ -213,7 +228,10 @@ export default function AgentsPage() {
                     <p className="text-slate-500 dark:text-slate-400 mt-1">Gérez les membres autorisés à scanner les codes QR.</p>
                 </div>
                 <button
-                    onClick={() => setIsAddModalOpen(true)}
+                    onClick={() => {
+                        resetAddForm();
+                        setIsAddModalOpen(true);
+                    }}
                     disabled={agentQuotaReached}
                     title={agentQuotaReached ? "Quota d'agents atteint" : "Ajouter un agent"}
                     className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl shadow-sm hover:shadow active:scale-95 transition-all text-sm disabled:cursor-not-allowed disabled:opacity-50"
@@ -224,6 +242,43 @@ export default function AgentsPage() {
             </div>
 
             <PlanQuotaStatus label="Agents actifs du plan Free" quota={agentQuota} />
+
+            {showRolesGuide && (
+                <section className="relative rounded-2xl border border-blue-200 bg-blue-50 p-5 dark:border-blue-900/60 dark:bg-blue-950/20">
+                    <button
+                        type="button"
+                        aria-label="Masquer le guide des rôles"
+                        onClick={() => {
+                            localStorage.setItem(AGENT_ROLES_GUIDE_KEY, "true");
+                            setShowRolesGuide(false);
+                        }}
+                        className="absolute right-3 top-3 rounded-lg p-2 text-blue-500 hover:bg-blue-100 dark:hover:bg-blue-950"
+                    >
+                        <X className="h-4 w-4" />
+                    </button>
+                    <h2 className="pr-10 font-black text-blue-950 dark:text-blue-100">Rôles et autorisations</h2>
+                    <div className="mt-4 grid gap-3 text-sm text-blue-900 dark:text-blue-200 md:grid-cols-3">
+                        <div className="rounded-xl bg-white/70 p-4 dark:bg-slate-950/40">
+                            <strong>1. Administrateur</strong>
+                            <p className="mt-1 text-xs leading-5 opacity-80">
+                                Gère les événements, zones, QR, modèles et membres de l’organisation. Il peut aussi scanner les accès.
+                            </p>
+                        </div>
+                        <div className="rounded-xl bg-white/70 p-4 dark:bg-slate-950/40">
+                            <strong>2. Agent</strong>
+                            <p className="mt-1 text-xs leading-5 opacity-80">
+                                Consulte les opérations, scanne et crée des QR. Avec Pro, il gère aussi les modèles, mais ne peut pas modifier son adresse e-mail.
+                            </p>
+                        </div>
+                        <div className="rounded-xl bg-white/70 p-4 dark:bg-slate-950/40">
+                            <strong>3. Opérateur</strong>
+                            <p className="mt-1 text-xs leading-5 opacity-80">
+                                Contrôle uniquement l’entrée d’une zone : il sélectionne sa zone, scanne les QR et peut modifier son mot de passe.
+                            </p>
+                        </div>
+                    </div>
+                </section>
+            )}
 
             {/* **************************************** */}
             {/* Résumé des comptes actifs et inactifs */}
@@ -389,10 +444,8 @@ export default function AgentsPage() {
                     <div className="bg-white dark:bg-slate-950 rounded-3xl w-full max-w-md p-6 sm:p-8 shadow-2xl relative animate-in fade-in zoom-in-95 duration-200 text-slate-900 dark:text-slate-100">
                         <button
                             onClick={() => {
+                                resetAddForm();
                                 setIsAddModalOpen(false);
-                                setAddError("");
-                                setShowPassword(false);
-                                setShowConfirmPassword(false);
                             }}
                             className="absolute top-6 right-6 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors"
                         >
@@ -406,7 +459,7 @@ export default function AgentsPage() {
                         <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Inviter un agent</h3>
                         <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">Créez un compte rattaché à votre organisation.</p>
 
-                        <form onSubmit={handleAddAgent} className="space-y-4">
+                        <form onSubmit={handleAddAgent} autoComplete="off" className="space-y-4">
                             {adding && (
                                 <LoadingBar label="Création du compte agent" />
                             )}
@@ -420,7 +473,7 @@ export default function AgentsPage() {
                                     required
                                     value={addForm.fullName}
                                     onChange={(e) => setAddForm({ ...addForm, fullName: e.target.value })}
-                                    placeholder="Ex. Jane Smith"
+                                    autoComplete="off"
                                     className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:bg-white dark:focus:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
                                 />
                             </div>
@@ -431,7 +484,7 @@ export default function AgentsPage() {
                                     required
                                     value={addForm.email}
                                     onChange={(e) => setAddForm({ ...addForm, email: e.target.value })}
-                                    placeholder="e.g. jane@example.com"
+                                    autoComplete="off"
                                     className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:bg-white dark:focus:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
                                 />
                             </div>
@@ -444,7 +497,7 @@ export default function AgentsPage() {
                                         minLength={8}
                                         value={addForm.password}
                                         onChange={(e) => setAddForm({ ...addForm, password: e.target.value })}
-                                        placeholder="••••••••"
+                                        autoComplete="new-password"
                                         className="w-full px-4 py-3 pr-12 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:bg-white dark:focus:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
                                     />
                                     <button
@@ -467,7 +520,7 @@ export default function AgentsPage() {
                                         minLength={8}
                                         value={addForm.confirmPassword}
                                         onChange={(e) => setAddForm({ ...addForm, confirmPassword: e.target.value })}
-                                        placeholder="••••••••"
+                                        autoComplete="new-password"
                                         className="w-full px-4 py-3 pr-12 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:bg-white dark:focus:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
                                     />
                                     <button
@@ -486,8 +539,10 @@ export default function AgentsPage() {
                                 <select
                                     value={addForm.role}
                                     onChange={(e) => setAddForm({ ...addForm, role: e.target.value })}
+                                    required
                                     className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors text-sm font-medium"
                                 >
+                                    <option value="" disabled>Sélectionnez un rôle</option>
                                     <option value="ORG_AGENT">Agent (Scan standard)</option>
                                     <option value="OPERATOR">Opérateur (Responsable de zone)</option>
                                     <option value="ORG_ADMIN">Administrateur (Gestion complète)</option>

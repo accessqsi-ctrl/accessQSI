@@ -35,13 +35,26 @@ const loadUserApp = ({
         ...emailService
     });
     mockModule("src/prisma/client", {
+        ...prisma,
         userQ: {
             findFirst: async () => null,
             findUnique: async () => null,
+            count: async () => 0,
             update: async () => ({}),
             ...(prisma.userQ || {})
         },
-        ...prisma
+        event: {
+            count: async () => 0,
+            ...(prisma.event || {})
+        },
+        qrCode: {
+            count: async () => 0,
+            ...(prisma.qrCode || {})
+        },
+        area: {
+            count: async () => 0,
+            ...(prisma.area || {})
+        }
     });
     mockPackage("bcrypt", {
         compare: async () => true,
@@ -316,7 +329,17 @@ test("GET /user/profile returns the authenticated user profile", async () => {
                         org_id: 42
                     };
                 }
-            }
+            },
+            organization: {
+                findUnique: async () => ({
+                    org_id: 42,
+                    name: "Example Org",
+                    plan: { title: "PRO" }
+                })
+            },
+            event: { count: async () => 2 },
+            qrCode: { count: async () => 15 },
+            area: { count: async () => 3 }
         }
     });
 
@@ -326,12 +349,53 @@ test("GET /user/profile returns the authenticated user profile", async () => {
     assert.equal(res.body.success, true);
     assert.deepEqual(receivedWhere, { user_id: 12 });
     assert.equal(res.body.user.email, "agent@example.com");
+    assert.equal(res.body.user.plan, "PRO");
+    assert.equal(res.body.user.planName, "Pro");
+    assert.equal(res.body.user.isPro, true);
+    assert.deepEqual(res.body.user.planLimits, {
+        maxEvents: null,
+        maxQrCodes: null,
+        maxAgents: null,
+        maxAreas: null
+    });
+    assert.deepEqual(res.body.user.subscription, {
+        plan: "PRO",
+        planName: "Pro",
+        isPro: true,
+        planLimits: {
+            maxEvents: null,
+            maxQrCodes: null,
+            maxAgents: null,
+            maxAreas: null
+        },
+        planUsage: {
+            events: { used: 2, limit: null, remaining: null, reached: false },
+            qrCodes: { used: 15, limit: null, remaining: null, reached: false },
+            agents: { used: 0, limit: null, remaining: null, reached: false },
+            areas: { used: 3, limit: null, remaining: null, reached: false }
+        },
+        planCapabilities: [
+            "bulk_qr_import",
+            "custom_card_templates",
+            "scan_exports",
+            "advanced_analytics"
+        ],
+        planFeatures: [
+            "Événements illimités",
+            "QR illimités",
+            "Agents illimités",
+            "Zones illimitées",
+            "Imports CSV",
+            "Templates personnalisés",
+            "Exports avancés"
+        ]
+    });
 });
 
 test("PUT /user/profile rejects an email already used by another user", async () => {
     let updateCalled = false;
     const app = loadUserApp({
-        user: { user_id: 12, role: "ORG_AGENT", org_id: 42 },
+        user: { user_id: 12, role: "ORG_ADMIN", org_id: 42 },
         userService: {
             findByEmail: async () => ({ user_id: 99 }),
             updateUser: async () => {
@@ -348,6 +412,65 @@ test("PUT /user/profile rejects an email already used by another user", async ()
     assert.equal(res.status, 400);
     assert.equal(res.body.success, false);
     assert.equal(updateCalled, false);
+});
+
+test("PUT /user/profile prevents an organization agent from changing email", async () => {
+    let updateCalled = false;
+    const app = loadUserApp({
+        user: { user_id: 12, role: "ORG_AGENT", org_id: 42 },
+        prisma: {
+            userQ: {
+                findUnique: async () => ({ email: "agent@example.com" })
+            }
+        },
+        userService: {
+            updateUser: async () => {
+                updateCalled = true;
+            }
+        }
+    });
+
+    const res = await request(app, "PUT", "/user/profile", {
+        fullName: "Agent User",
+        email: "new-agent@example.com"
+    });
+
+    assert.equal(res.status, 403);
+    assert.match(res.body.message, /ne peut pas modifier son adresse e-mail/i);
+    assert.equal(updateCalled, false);
+});
+
+test("PUT /user/profile lets an organization agent update only their name", async () => {
+    let updateArgs = null;
+    const app = loadUserApp({
+        user: { user_id: 12, role: "ORG_AGENT", org_id: 42 },
+        prisma: {
+            userQ: {
+                findUnique: async () => ({ email: "agent@example.com" })
+            }
+        },
+        userService: {
+            updateUser: async (userId, data) => {
+                updateArgs = { userId, data };
+                return {
+                    user_id: userId,
+                    full_name: data.full_name,
+                    email: "agent@example.com"
+                };
+            }
+        }
+    });
+
+    const res = await request(app, "PUT", "/user/profile", {
+        fullName: "Agent Renommé"
+    });
+
+    assert.equal(res.status, 200);
+    assert.deepEqual(updateArgs, {
+        userId: 12,
+        data: { full_name: "Agent Renommé" }
+    });
+    assert.equal(res.body.user.email, "agent@example.com");
 });
 
 test("PUT /user/password validates current password and saves a new hash", async () => {
