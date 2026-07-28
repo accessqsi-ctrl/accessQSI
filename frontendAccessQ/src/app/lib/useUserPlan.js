@@ -43,7 +43,7 @@ export function useUserPlan() {
             subscriptionType: rawSubscription.subscriptionType || userProfile?.subscriptionType || "FREE",
             isTrial: Boolean(rawSubscription.isTrial ?? userProfile?.isTrial ?? false),
             trialAvailable: Boolean(rawSubscription.trialAvailable ?? userProfile?.trialAvailable ?? false),
-            trialDurationDays: rawSubscription.trialDurationDays || userProfile?.trialDurationDays || 14,
+            trialDurationDays: rawSubscription.trialDurationDays || userProfile?.trialDurationDays || 30,
             trialStartedAt: rawSubscription.trialStartedAt || userProfile?.trialStartedAt || null,
             trialExpiresAt: rawSubscription.trialExpiresAt || userProfile?.trialExpiresAt || null
         };

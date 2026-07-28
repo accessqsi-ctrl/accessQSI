@@ -92,8 +92,12 @@ const serializePayment = (payment) => ({
     completedAt: payment.completed_at
 });
 
+const arePaymentsEnabled = () => getPaymentConfig().enabled;
+
 const getProviders = async () => {
     const paymentConfig = getPaymentConfig();
+    if (!paymentConfig.enabled) return [];
+
     const supportedCurrencies = Object.keys(PLAN_DETAILS.PRO.fixedPrices);
     if (paymentConfig.providerAllowlist.length > 0 && !process.env.PAWAPAY_API_TOKEN) {
         return paymentConfig.providerAllowlist.map((provider) => ({
@@ -257,6 +261,13 @@ const findProvider = async (providerCode, countryCode) => {
 
 const initiatePayment = async ({ orgId, userId, planKey, providerCode, countryCode, phoneNumber }) => {
     const paymentConfig = getPaymentConfig();
+    if (!paymentConfig.enabled) {
+        throw new PaymentValidationError(
+            "Les paiements sont temporairement indisponibles.",
+            "PAYMENTS_DISABLED"
+        );
+    }
+
     const normalizedPlan = String(planKey || "").trim().toUpperCase();
     if (normalizedPlan !== PLAN_KEYS.PRO) {
         throw new PaymentValidationError("Seul le plan Pro peut être acheté.", "PLAN_NOT_PURCHASABLE");
@@ -369,6 +380,13 @@ const amountsMatch = (expected, received) => {
 };
 
 const reconcilePayment = async (depositId) => {
+    if (!arePaymentsEnabled()) {
+        throw new PaymentValidationError(
+            "Les paiements sont temporairement indisponibles.",
+            "PAYMENTS_DISABLED"
+        );
+    }
+
     const existing = await prisma.payment.findUnique({
         where: { deposit_id: depositId },
         include: { plan: true }
@@ -474,6 +492,7 @@ const reconcilePayment = async (depositId) => {
 
 module.exports = {
     PaymentValidationError,
+    arePaymentsEnabled,
     normalizePhoneNumber,
     serializePayment,
     getProviders,

@@ -395,7 +395,7 @@ test("GET /user/profile returns the authenticated user profile", async () => {
         subscriptionType: "PAID",
         isTrial: false,
         trialAvailable: false,
-        trialDurationDays: 14,
+        trialDurationDays: 30,
         trialStartedAt: null,
         trialExpiresAt: null
     });

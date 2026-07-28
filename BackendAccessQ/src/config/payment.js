@@ -15,7 +15,10 @@ const customerMessage = (value) => {
     return normalized.length >= 4 ? normalized : "ACCESSQ PRO";
 };
 
+const enabled = (value) => String(value || "false").trim().toLowerCase() === "true";
+
 const getPaymentConfig = (env = process.env) => ({
+    enabled: enabled(env.PRO_PAYMENTS_ENABLED),
     currency: String(env.PAWAPAY_CURRENCY || DEFAULT_PAYMENT_CURRENCY).trim().toUpperCase(),
     country: String(env.PAWAPAY_COUNTRY || "").trim().toUpperCase() || null,
     subscriptionDays: positiveInteger(env.PRO_SUBSCRIPTION_DAYS, DEFAULT_SUBSCRIPTION_DAYS),

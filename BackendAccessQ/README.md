@@ -20,6 +20,9 @@ AccessQ est une plateforme moderne et sécurisée pour la gestion d'événements
 Le module utilise l'API Merchant v2 de pawaPay. Copiez les variables
 `PAWAPAY_*` de `.env.example` dans votre environnement, puis renseignez au
 minimum `PAWAPAY_API_TOKEN`. Le sandbox est utilisé par défaut.
+Les appels pawaPay restent entièrement gelés tant que
+`PRO_PAYMENTS_ENABLED` n'est pas défini à `true`. Le frontend masque également
+le formulaire avec `NEXT_PUBLIC_PRO_PAYMENTS_ENABLED=false`.
 Le catalogue Pro est exprimé en USD et les pays/opérateurs proposés sont
 chargés dynamiquement depuis la configuration active du compte pawaPay.
 Le prix de référence est de 10 USD. Pour les autres devises, le backend utilise
@@ -39,7 +42,7 @@ le plan Pro. Un callback reçu ne peut donc pas activer seul un abonnement.
 
 Un administrateur d'organisation peut activer une seule fois un essai Pro depuis
 la page d'abonnement. Sa durée est configurée avec
-`PRO_TRIAL_DURATION_DAYS` (14 jours par défaut, entre 1 et 90 jours). À
+`PRO_TRIAL_DURATION_DAYS` (30 jours par défaut, entre 1 et 90 jours). À
 l'expiration, les contrôles d'accès considèrent automatiquement l'organisation
 comme Free, sans supprimer ses données.
 

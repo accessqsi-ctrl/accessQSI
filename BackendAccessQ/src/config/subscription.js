@@ -3,7 +3,7 @@ const PLAN_KEYS = Object.freeze({
     PRO: "PRO"
 });
 
-const DEFAULT_TRIAL_DURATION_DAYS = 14;
+const DEFAULT_TRIAL_DURATION_DAYS = 30;
 
 const getTrialDurationDays = () => {
     const configured = Number.parseInt(process.env.PRO_TRIAL_DURATION_DAYS || "", 10);

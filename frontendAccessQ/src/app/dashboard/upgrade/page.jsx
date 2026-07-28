@@ -17,6 +17,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiFetch } from "../../lib/api";
 import { useUserPlan } from "../../lib/useUserPlan";
 
+const PAYMENTS_ENABLED = process.env.NEXT_PUBLIC_PRO_PAYMENTS_ENABLED === "true";
+
 const statusPresentation = {
     PENDING: { label: "En attente", className: "bg-amber-50 text-amber-700", icon: Clock3 },
     PROCESSING: { label: "En traitement", className: "bg-blue-50 text-blue-700", icon: LoaderCircle },
@@ -84,14 +86,12 @@ export default function UpgradePage() {
     const loadBilling = useCallback(async ({ silent = false } = {}) => {
         if (!silent) setLoading(true);
         try {
-            const [plansResponse, providersResponse, billingResponse] = await Promise.all([
+            const [plansResponse, billingResponse] = await Promise.all([
                 apiFetch("/billing/plans"),
-                apiFetch("/billing/providers"),
                 apiFetch("/billing")
             ]);
-            const [plansData, providersData, billingData] = await Promise.all([
+            const [plansData, billingData] = await Promise.all([
                 plansResponse.json(),
-                providersResponse.json(),
                 billingResponse.json()
             ]);
 
@@ -104,20 +104,26 @@ export default function UpgradePage() {
                 payments: billingData.payments || []
             });
 
-            if (providersResponse.ok) {
-                const availableProviders = providersData.providers || [];
-                setProviders(availableProviders);
-                setForm((current) => ({
-                    ...current,
-                    country: current.country || availableProviders[0]?.country || "",
-                    provider: current.provider || availableProviders[0]?.provider || ""
-                }));
+            if (PAYMENTS_ENABLED) {
+                const providersResponse = await apiFetch("/billing/providers");
+                const providersData = await providersResponse.json();
+                if (providersResponse.ok) {
+                    const availableProviders = providersData.providers || [];
+                    setProviders(availableProviders);
+                    setForm((current) => ({
+                        ...current,
+                        country: current.country || availableProviders[0]?.country || "",
+                        provider: current.provider || availableProviders[0]?.provider || ""
+                    }));
+                } else {
+                    setProviders([]);
+                    setNotice({
+                        type: "error",
+                        text: providersData.message || "Les opérateurs Mobile Money ne sont pas encore configurés."
+                    });
+                }
             } else {
                 setProviders([]);
-                setNotice({
-                    type: "error",
-                    text: providersData.message || "Les opérateurs Mobile Money ne sont pas encore configurés."
-                });
             }
         } catch (error) {
             setNotice({ type: "error", text: error.message });
@@ -256,7 +262,7 @@ export default function UpgradePage() {
     const trialAvailable = Boolean(billing.subscription?.trialAvailable);
     const isTrial = Boolean(billing.subscription?.isTrial);
     const trialWasUsed = Boolean(billing.subscription?.trialStartedAt);
-    const trialDurationDays = billing.subscription?.trialDurationDays || 14;
+    const trialDurationDays = billing.subscription?.trialDurationDays || 30;
     const canPay = Boolean(
         proPlan && providers.length > 0 && form.country && form.provider && form.phoneNumber
     );
@@ -274,7 +280,9 @@ export default function UpgradePage() {
                             Gérez vos accès sans limites
                         </h1>
                         <p className="mt-3 max-w-2xl text-blue-100">
-                            Activez Pro par Mobile Money. Votre abonnement est appliqué automatiquement dès la confirmation du paiement.
+                            {PAYMENTS_ENABLED
+                                ? "Activez Pro par Mobile Money. Votre abonnement est appliqué automatiquement dès la confirmation du paiement."
+                                : `Testez gratuitement toutes les fonctionnalités AccessQ Pro pendant ${trialDurationDays} jours.`}
                         </p>
                         <div className="mt-6 grid gap-3 sm:grid-cols-3">
                             {[
@@ -300,12 +308,17 @@ export default function UpgradePage() {
                                     ? `Valide jusqu'au ${formatDate(expiresAt)}`
                                     : "Votre organisation bénéficie de Pro."}
                         </p>
-                        {proPlan && (
+                        {PAYMENTS_ENABLED && proPlan ? (
                             <div className="mt-5 border-t border-white/20 pt-5">
                                 <span className="text-3xl font-black">
                                     {formatMoney(proPlan.price, proPlan.currency || "USD")}
                                 </span>
                                 <span className="ml-2 text-blue-200">/ {proPlan.durationDays} jours</span>
+                            </div>
+                        ) : (
+                            <div className="mt-5 border-t border-white/20 pt-5">
+                                <span className="text-2xl font-black">Essai gratuit</span>
+                                <span className="ml-2 text-blue-200">pendant {trialDurationDays} jours</span>
                             </div>
                         )}
                     </div>
@@ -355,7 +368,9 @@ export default function UpgradePage() {
                                         ? `Toutes les fonctionnalités Pro sont disponibles jusqu’au ${formatDate(billing.subscription?.trialExpiresAt)}.`
                                         : trialAvailable
                                             ? "Aucune carte bancaire n’est nécessaire. À la fin de l’essai, votre organisation repassera automatiquement au plan Free."
-                                            : "Cette organisation a déjà bénéficié de son essai gratuit. Vous pouvez activer Pro par Mobile Money."}
+                                            : PAYMENTS_ENABLED
+                                                ? "Cette organisation a déjà bénéficié de son essai gratuit. Vous pouvez activer Pro par Mobile Money."
+                                                : "Cette organisation a déjà bénéficié de son essai gratuit. Les abonnements payants seront bientôt disponibles."}
                                 </p>
                             </div>
                         </div>
@@ -378,6 +393,7 @@ export default function UpgradePage() {
                 </section>
             )}
 
+            {PAYMENTS_ENABLED && (
             <section className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
                 <form
                     onSubmit={submitPayment}
@@ -553,6 +569,7 @@ export default function UpgradePage() {
                     </div>
                 </div>
             </section>
+            )}
         </div>
     );
 }

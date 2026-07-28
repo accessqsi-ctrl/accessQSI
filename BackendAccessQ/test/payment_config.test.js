@@ -14,6 +14,7 @@ test("payment config defaults to USD without restricting the country", () => {
     assert.equal(config.country, null);
     assert.equal(config.currency, "USD");
     assert.equal(config.subscriptionDays, 30);
+    assert.equal(config.enabled, false);
 });
 
 test("active pawaPay configuration is reduced to public provider fields", () => {

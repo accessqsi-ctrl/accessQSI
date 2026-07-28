@@ -96,6 +96,10 @@ exports.refreshStatus = async (req, res) => {
 };
 
 exports.callback = async (req, res) => {
+    if (!paymentService.arePaymentsEnabled()) {
+        return res.status(202).json({ success: true, ignored: true });
+    }
+
     const depositId = req.body?.depositId;
     if (!depositId) {
         return res.status(400).json({ success: false, message: "depositId manquant." });

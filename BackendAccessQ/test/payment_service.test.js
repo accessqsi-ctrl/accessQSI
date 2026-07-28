@@ -3,6 +3,8 @@ const assert = require("node:assert/strict");
 const { Prisma } = require("@prisma/client");
 const { clearSrcModules, mockModule } = require("./helpers/http");
 
+process.env.PRO_PAYMENTS_ENABLED = "true";
+
 test("payment service normalizes national numbers with each country prefix", () => {
     clearSrcModules();
     mockModule("src/prisma/client.js", {});
@@ -77,7 +79,7 @@ test("a Free organization can activate its Pro trial only once", async () => {
             (organization.trial_expires_at - organization.trial_started_at)
             / (24 * 60 * 60 * 1000)
         ),
-        14
+        30
     );
     await assert.rejects(
         paymentService.startProTrial(organization.org_id),
