@@ -3,6 +3,15 @@ const PLAN_KEYS = Object.freeze({
     PRO: "PRO"
 });
 
+const DEFAULT_TRIAL_DURATION_DAYS = 14;
+
+const getTrialDurationDays = () => {
+    const configured = Number.parseInt(process.env.PRO_TRIAL_DURATION_DAYS || "", 10);
+    return Number.isInteger(configured) && configured >= 1 && configured <= 90
+        ? configured
+        : DEFAULT_TRIAL_DURATION_DAYS;
+};
+
 const PLAN_CAPABILITIES = Object.freeze({
     BULK_QR_IMPORT: "bulk_qr_import",
     CUSTOM_CARD_TEMPLATES: "custom_card_templates",
@@ -10,11 +19,26 @@ const PLAN_CAPABILITIES = Object.freeze({
     ADVANCED_ANALYTICS: "advanced_analytics"
 });
 
+const PRO_FIXED_PRICES = Object.freeze({
+    USD: 10,
+    CDF: 23000,
+    XOF: 5800,
+    XAF: 5800,
+    RWF: 14700,
+    ZMW: 185,
+    KES: 1300,
+    UGX: 37000,
+    TZS: 26300,
+    NGN: 13700,
+    GHS: 117
+});
+
 const PLAN_DETAILS = Object.freeze({
     FREE: Object.freeze({
         key: PLAN_KEYS.FREE,
         name: "Free",
         price: 0,
+        currency: "USD",
         maxEvents: 3,
         maxQrCodes: 100,
         maxAgents: 4,
@@ -31,7 +55,9 @@ const PLAN_DETAILS = Object.freeze({
     PRO: Object.freeze({
         key: PLAN_KEYS.PRO,
         name: "Pro",
-        price: 4900,
+        price: PRO_FIXED_PRICES.USD,
+        currency: "USD",
+        fixedPrices: PRO_FIXED_PRICES,
         maxEvents: null,
         maxQrCodes: null,
         maxAgents: null,
@@ -74,6 +100,10 @@ const normalizePlanKey = (value) => {
 };
 
 const getPlanDetails = (organization) => {
+    const subscriptionExpired = organization?.subscription_expires_at
+        && new Date(organization.subscription_expires_at).getTime() <= Date.now();
+    if (subscriptionExpired) return PLAN_DETAILS.FREE;
+
     const planKey = normalizePlanKey(
         organization?.plan?.title
             || organization?.plan?.key
@@ -88,11 +118,37 @@ const getPlanDetails = (organization) => {
 
 const getPlanSummary = (organization) => {
     const details = getPlanDetails(organization);
+    const now = Date.now();
+    const trialStartedAt = organization?.trial_started_at || null;
+    const trialExpiresAt = organization?.trial_expires_at || null;
+    const subscriptionExpiresAt = organization?.subscription_expires_at || null;
+    const trialExpiryTime = trialExpiresAt ? new Date(trialExpiresAt).getTime() : null;
+    const subscriptionExpiryTime = subscriptionExpiresAt
+        ? new Date(subscriptionExpiresAt).getTime()
+        : null;
+    const isPro = details.key === PLAN_KEYS.PRO;
+    const isTrial = Boolean(
+        isPro
+        && trialStartedAt
+        && trialExpiryTime
+        && trialExpiryTime > now
+        && (!subscriptionExpiryTime || subscriptionExpiryTime <= trialExpiryTime)
+    );
+
     return {
         plan: details.key,
         planName: details.name,
-        isPro: details.key === PLAN_KEYS.PRO,
+        isPro,
+        isTrial,
+        subscriptionType: isTrial ? "TRIAL" : isPro ? "PAID" : "FREE",
+        trialAvailable: !trialStartedAt && !isPro,
+        trialDurationDays: getTrialDurationDays(),
+        trialStartedAt,
+        trialExpiresAt,
         price: details.price,
+        currency: details.currency,
+        startedAt: organization?.subscription_started_at || null,
+        expiresAt: subscriptionExpiresAt,
         limits: {
             maxEvents: details.maxEvents,
             maxQrCodes: details.maxQrCodes,
@@ -102,6 +158,15 @@ const getPlanSummary = (organization) => {
         capabilities: [...details.capabilities],
         features: details.features
     };
+};
+
+const getFixedPlanPrice = (planKey, currency) => {
+    const normalizedPlan = normalizePlanKey(planKey);
+    const normalizedCurrency = String(currency || "").trim().toUpperCase();
+    if (normalizedPlan === PLAN_KEYS.FREE) {
+        return normalizedCurrency === "USD" ? 0 : null;
+    }
+    return PLAN_DETAILS[normalizedPlan]?.fixedPrices?.[normalizedCurrency] ?? null;
 };
 
 const hasPlanCapability = (planOrOrganization, capability) => {
@@ -179,19 +244,20 @@ const ensureDefaultPlans = async (prismaClient) => {
     const defaults = Object.values(PLAN_DETAILS).map((details) => ({
         title: details.key,
         cost: details.price,
+        currency: details.currency,
         features: [...details.capabilities]
     }));
 
     for (const plan of defaults) {
         await prismaClient.plan.upsert({
             where: { title: plan.title },
-            update: { cost: plan.cost, features: plan.features },
+            update: { cost: plan.cost, currency: plan.currency, features: plan.features },
             create: plan
         });
     }
 
     return prismaClient.plan.findMany({
-        select: { plan_id: true, title: true, cost: true, features: true }
+        select: { plan_id: true, title: true, cost: true, currency: true, features: true }
     });
 };
 
@@ -201,7 +267,7 @@ const getPlanByKey = async (prismaClient, planKey) => {
 
     return prismaClient.plan.findUnique({
         where: { title: normalizedKey },
-        select: { plan_id: true, title: true, cost: true, features: true }
+        select: { plan_id: true, title: true, cost: true, currency: true, features: true }
     });
 };
 
@@ -219,11 +285,15 @@ const assignOrganizationPlan = async (prismaClient, orgId, planKey = PLAN_KEYS.F
 
 module.exports = {
     PLAN_KEYS,
+    DEFAULT_TRIAL_DURATION_DAYS,
     PLAN_CAPABILITIES,
+    PRO_FIXED_PRICES,
     PLAN_DETAILS,
     normalizePlanKey,
+    getTrialDurationDays,
     getPlanDetails,
     getPlanSummary,
+    getFixedPlanPrice,
     hasPlanCapability,
     getQuotaStatus,
     getQrQuotaStatus,

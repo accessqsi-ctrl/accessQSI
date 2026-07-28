@@ -139,6 +139,7 @@ const agentRoutes = require("./routes/agent.routes");
 const exportRoutes = require("./routes/export.routes");
 const cardTemplateRoutes = require("./routes/card_template.routes");
 const pdfTemplateRoutes = require("./routes/pdf_template.routes");
+const paymentRoutes = require("./routes/payment.routes");
 
 // ===== Utilisation des routes =====
 // On préfixe toutes les routes utilisateurs par /user (/user/login, /user/signup, etc.)
@@ -153,6 +154,7 @@ app.use("/agents", agentRoutes);
 app.use("/export", exportRoutes);
 app.use("/card-templates", cardTemplateRoutes);
 app.use("/pdf-templates", pdfTemplateRoutes);
+app.use("/billing", paymentRoutes);
 
 app.use((err, req, res, next) => {
     logger.error("request.unhandled_error", {

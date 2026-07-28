@@ -387,10 +387,19 @@ exports.viewprofile = async (req, res) => {
             plan: planSummary.plan,
             planName: planSummary.planName,
             isPro: planSummary.isPro,
+            planCurrency: planSummary.currency,
             planLimits: planSummary.limits,
             planUsage,
             planCapabilities: planSummary.capabilities,
-            planFeatures: planSummary.features
+            planFeatures: planSummary.features,
+            subscriptionStartedAt: planSummary.startedAt,
+            subscriptionExpiresAt: planSummary.expiresAt,
+            subscriptionType: planSummary.subscriptionType,
+            isTrial: planSummary.isTrial,
+            trialAvailable: planSummary.trialAvailable,
+            trialDurationDays: planSummary.trialDurationDays,
+            trialStartedAt: planSummary.trialStartedAt,
+            trialExpiresAt: planSummary.trialExpiresAt
         };
 
         return res.status(200).json({

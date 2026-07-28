@@ -362,6 +362,7 @@ test("GET /user/profile returns the authenticated user profile", async () => {
         plan: "PRO",
         planName: "Pro",
         isPro: true,
+        planCurrency: "USD",
         planLimits: {
             maxEvents: null,
             maxQrCodes: null,
@@ -388,7 +389,15 @@ test("GET /user/profile returns the authenticated user profile", async () => {
             "Imports CSV",
             "Templates personnalisés",
             "Exports avancés"
-        ]
+        ],
+        subscriptionStartedAt: null,
+        subscriptionExpiresAt: null,
+        subscriptionType: "PAID",
+        isTrial: false,
+        trialAvailable: false,
+        trialDurationDays: 14,
+        trialStartedAt: null,
+        trialExpiresAt: null
     });
 });
 

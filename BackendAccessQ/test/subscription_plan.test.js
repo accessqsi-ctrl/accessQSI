@@ -95,6 +95,43 @@ test('un plan Pro garde les agents et les zones illimités', () => {
   assert.equal(getAreaQuotaStatus(summary, 50).limit, null);
 });
 
+test('un essai Pro actif expose tous les droits Pro et sa date de fin', () => {
+  const trialStartedAt = new Date(Date.now() - 60_000);
+  const trialExpiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+  const summary = getPlanSummary({
+    plan: { title: 'PRO' },
+    subscription_started_at: trialStartedAt,
+    subscription_expires_at: trialExpiresAt,
+    trial_started_at: trialStartedAt,
+    trial_expires_at: trialExpiresAt
+  });
+
+  assert.equal(summary.plan, 'PRO');
+  assert.equal(summary.isPro, true);
+  assert.equal(summary.isTrial, true);
+  assert.equal(summary.subscriptionType, 'TRIAL');
+  assert.equal(summary.trialAvailable, false);
+  assert.equal(summary.trialExpiresAt, trialExpiresAt);
+});
+
+test('un essai Pro expiré revient à Free et ne peut pas être réutilisé', () => {
+  const trialStartedAt = new Date(Date.now() - 15 * 24 * 60 * 60 * 1000);
+  const trialExpiresAt = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const summary = getPlanSummary({
+    plan: { title: 'PRO' },
+    subscription_started_at: trialStartedAt,
+    subscription_expires_at: trialExpiresAt,
+    trial_started_at: trialStartedAt,
+    trial_expires_at: trialExpiresAt
+  });
+
+  assert.equal(summary.plan, 'FREE');
+  assert.equal(summary.isPro, false);
+  assert.equal(summary.isTrial, false);
+  assert.equal(summary.subscriptionType, 'FREE');
+  assert.equal(summary.trialAvailable, false);
+});
+
 test('les capacités commerciales sont dérivées de la matrice centrale du plan', () => {
   const free = getPlanSummary({ plan: { title: 'FREE' } });
   const pro = getPlanSummary({ plan: { title: 'PRO' } });
@@ -125,7 +162,8 @@ test('une organisation passe de Free à Pro puis revient à Free sans conserver 
     ['PRO', {
       plan_id: 2,
       title: 'PRO',
-      cost: 4900,
+      cost: 5,
+      currency: 'USD',
       features: Object.values(PLAN_CAPABILITIES)
     }]
   ]);

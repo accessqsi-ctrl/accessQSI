@@ -13,6 +13,35 @@ AccessQ est une plateforme moderne et sécurisée pour la gestion d'événements
     - Révocation en temps réel.
     - Exportation des historiques de scan en **CSV** et **PDF**.
 - **Interface Scanner Dédiée** : Une interface fluide pour les agents de terrain.
+- **Paiements Mobile Money** : Activation du plan Pro avec pawaPay et historique des dépôts.
+
+## Paiements pawaPay
+
+Le module utilise l'API Merchant v2 de pawaPay. Copiez les variables
+`PAWAPAY_*` de `.env.example` dans votre environnement, puis renseignez au
+minimum `PAWAPAY_API_TOKEN`. Le sandbox est utilisé par défaut.
+Le catalogue Pro est exprimé en USD et les pays/opérateurs proposés sont
+chargés dynamiquement depuis la configuration active du compte pawaPay.
+Le prix de référence est de 10 USD. Pour les autres devises, le backend utilise
+la grille fixe définie dans `src/config/subscription.js`; une devise sans tarif
+configuré n'est jamais proposée au client.
+
+Dans le tableau de bord pawaPay, configurez cette URL de callback publique :
+
+```text
+https://votre-api.example.com/billing/callbacks/pawapay
+```
+
+Le backend vérifie chaque dépôt directement auprès de pawaPay avant d'activer
+le plan Pro. Un callback reçu ne peut donc pas activer seul un abonnement.
+
+## Essai Pro
+
+Un administrateur d'organisation peut activer une seule fois un essai Pro depuis
+la page d'abonnement. Sa durée est configurée avec
+`PRO_TRIAL_DURATION_DAYS` (14 jours par défaut, entre 1 et 90 jours). À
+l'expiration, les contrôles d'accès considèrent automatiquement l'organisation
+comme Free, sans supprimer ses données.
 
 ## Installation & Sécurité Prod
 

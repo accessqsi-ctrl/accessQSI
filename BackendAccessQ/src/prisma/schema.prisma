@@ -25,6 +25,7 @@ model UserQ {
   org_id                        Int?
   scan_logs                     ScanLog[]
   organization                  Organization? @relation(fields: [org_id], references: [org_id])
+  payments                      Payment[]
 
   @@index([org_id, deleted_at])
   @@index([role])
@@ -38,11 +39,16 @@ model Organization {
   deleted_at               DateTime?
   is_active                Boolean              @default(true)
   subscription_plan        Int?
+  subscription_started_at  DateTime?
+  subscription_expires_at  DateTime?
+  trial_started_at         DateTime?
+  trial_expires_at         DateTime?
   default_card_template_id String?
   areas                    Area[]
   card_templates           CardTemplateCustom[]
   events                   Event[]
   plan                     Plan?                @relation(fields: [subscription_plan], references: [plan_id])
+  payments                 Payment[]
   usersQ                   UserQ[]
 
   @@index([deleted_at])
@@ -161,10 +167,45 @@ model Plan {
   plan_id       Int            @id @default(autoincrement())
   title         String         @unique
   cost          Int
+  currency      String         @default("USD") @db.VarChar(3)
   features      Json
   organizations Organization[]
+  payments      Payment[]
 
   @@map("plan")
+}
+
+model Payment {
+  payment_id              Int           @id @default(autoincrement())
+  deposit_id              String        @unique @db.Uuid
+  org_id                  Int
+  plan_id                 Int
+  initiated_by_id         Int
+  amount                  Decimal       @db.Decimal(18, 2)
+  currency                String        @db.VarChar(3)
+  reference_amount        Decimal       @db.Decimal(18, 2)
+  reference_currency      String        @default("USD") @db.VarChar(3)
+  country                 String        @db.VarChar(3)
+  provider                String
+  phone_number            String
+  status                  PaymentStatus @default(PENDING)
+  provider_transaction_id String?
+  failure_code            String?
+  failure_message         String?
+  access_starts_at        DateTime?
+  access_expires_at       DateTime?
+  provider_payload        Json?
+  created_at              DateTime      @default(now())
+  updated_at              DateTime      @updatedAt
+  completed_at            DateTime?
+  organization            Organization  @relation(fields: [org_id], references: [org_id])
+  plan                    Plan          @relation(fields: [plan_id], references: [plan_id])
+  initiated_by            UserQ         @relation(fields: [initiated_by_id], references: [user_id])
+
+  @@index([org_id, created_at])
+  @@index([org_id, status])
+  @@index([initiated_by_id])
+  @@map("payments")
 }
 
 model EventSchedule {
@@ -203,4 +244,11 @@ enum ScanStatus {
   denied_event_inactive
   denied_area_not_allowed
   denied_insufficient_level
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
 }

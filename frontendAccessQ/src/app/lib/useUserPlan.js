@@ -33,10 +33,19 @@ export function useUserPlan() {
             plan: rawSubscription.plan || userProfile?.plan || (isPro ? "PRO" : "FREE"),
             planName: rawSubscription.planName || userProfile?.planName || (isPro ? "Pro" : "Free"),
             isPro,
+            planCurrency: rawSubscription.planCurrency || userProfile?.planCurrency || "USD",
             planLimits: rawSubscription.planLimits || userProfile?.planLimits || {},
             planUsage: rawSubscription.planUsage || userProfile?.planUsage || {},
             planCapabilities: rawSubscription.planCapabilities || userProfile?.planCapabilities || [],
-            planFeatures: rawSubscription.planFeatures || userProfile?.planFeatures || []
+            planFeatures: rawSubscription.planFeatures || userProfile?.planFeatures || [],
+            startedAt: rawSubscription.subscriptionStartedAt || userProfile?.subscriptionStartedAt || null,
+            expiresAt: rawSubscription.subscriptionExpiresAt || userProfile?.subscriptionExpiresAt || null,
+            subscriptionType: rawSubscription.subscriptionType || userProfile?.subscriptionType || "FREE",
+            isTrial: Boolean(rawSubscription.isTrial ?? userProfile?.isTrial ?? false),
+            trialAvailable: Boolean(rawSubscription.trialAvailable ?? userProfile?.trialAvailable ?? false),
+            trialDurationDays: rawSubscription.trialDurationDays || userProfile?.trialDurationDays || 14,
+            trialStartedAt: rawSubscription.trialStartedAt || userProfile?.trialStartedAt || null,
+            trialExpiresAt: rawSubscription.trialExpiresAt || userProfile?.trialExpiresAt || null
         };
     }, [userProfile]);
 
