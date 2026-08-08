@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Loader2, Calendar, MapPin, QrCode, Edit2, Trash2, ArrowLeft, Plus, Download, X, CheckCircle2, FileSpreadsheet, FileText, Mail, Phone, IdCard, Ticket } from "lucide-react";
-import { apiFetch, refreshSession } from "../../../lib/api";
+import { apiFetch, apiUrl, refreshSession } from "../../../lib/api";
 import LoadingBar from "../../../components/LoadingBar";
 import { useUserPlan } from "../../../lib/useUserPlan";
 import PlanQuotaStatus from "../../../components/PlanQuotaStatus";
@@ -52,8 +52,7 @@ const validateQrContact = ({ email, phone }) => {
 
 const getCardDownloadUrl = (cardUrl) => {
     if (!cardUrl) return "";
-    const filename = cardUrl.split("/").pop();
-    return `${process.env.NEXT_PUBLIC_API_URL}/cards/${filename}/download`;
+    return apiUrl(cardUrl);
 };
 
 const templateIconMap = {
@@ -181,14 +180,26 @@ export default function EventDetailPage() {
     const [generatedAsset, setGeneratedAsset] = useState(null);
     const [cardGeneratingId, setCardGeneratingId] = useState(null);
     const [exportingFormat, setExportingFormat] = useState("");
+    const [downloadingCards, setDownloadingCards] = useState(false);
     const [downloadingTemplate, setDownloadingTemplate] = useState(false);
     const [cardTemplates, setCardTemplates] = useState([]);
     const [selectedCardTemplateId, setSelectedCardTemplateId] = useState("");
-    const { userProfile, isFreePlan, planName, planUsage, refreshPlan } = useUserPlan();
+    const { userProfile, isFreePlan, planName, planLimits, hasCapability, refreshPlan } = useUserPlan();
     const canManageEvent = userProfile?.role === "ORG_ADMIN" || userProfile?.role === "SUPER_ADMIN";
     const canCreateQr = canManageEvent || userProfile?.role === "ORG_AGENT";
-    const qrQuota = planUsage.qrCodes;
+    const eventQrLimit = event?.entitlement_type === "EVENT_PASS" || planLimits?.maxQrCodesPerEvent == null
+        ? event?.qr_limit ?? Number.MAX_SAFE_INTEGER
+        : planLimits?.maxQrCodesPerEvent || planLimits?.maxQrCodes || 50;
+    const issuedQrCount = event?._count?.qr_codes || 0;
+    const qrQuota = {
+        used: issuedQrCount,
+        limit: eventQrLimit,
+        remaining: Math.max(0, eventQrLimit - issuedQrCount),
+        reached: issuedQrCount >= eventQrLimit
+    };
     const qrQuotaReached = Boolean(qrQuota?.reached);
+    const canImportQr = hasCapability("bulk_qr_import");
+    const canExportScans = hasCapability("scan_exports");
 
     const selectedCardTemplate = useMemo(
         () => cardTemplates.find(template => template.templateId === selectedCardTemplateId) || null,
@@ -296,7 +307,7 @@ export default function EventDetailPage() {
 
     const openQrGenerationModal = () => {
         if (qrQuotaReached) {
-            showToast("Votre quota de QR est atteint. Passez au plan Pro pour continuer.");
+            showToast(`Le quota de cet événement est atteint (${qrQuota.used}/${qrQuota.limit}).`);
             return;
         }
         setShowQrModal(true);
@@ -385,7 +396,7 @@ export default function EventDetailPage() {
         setQrError("");
         setQrSubmitAttempted(true);
         if (qrQuotaReached) {
-            setQrError("Votre quota de QR est atteint. Passez au plan Pro pour continuer.");
+            setQrError(`Le quota de cet événement est atteint (${qrQuota.used}/${qrQuota.limit}).`);
             return;
         }
         const contactErrors = validateQrContact(qrForm);
@@ -506,6 +517,41 @@ export default function EventDetailPage() {
             window.open(`${process.env.NEXT_PUBLIC_API_URL}/qr/template/${eventId}`, '_blank');
         } finally {
             setDownloadingTemplate(false);
+        }
+    };
+
+    const handleDownloadAllCards = async () => {
+        if (qrPagination.total === 0) {
+            showToast("Aucun QR n'est disponible pour cet événement.");
+            return;
+        }
+        setDownloadingCards(true);
+        try {
+            const totalFiles = Math.ceil(qrPagination.total / 200);
+            for (let file = 1; file <= totalFiles; file += 1) {
+                const response = await apiFetch(`/qr/event/${eventId}/cards.pdf?file=${file}`);
+                if (!response.ok) {
+                    const data = await response.json().catch(() => ({}));
+                    throw new Error(data.message || `Impossible de préparer la partie ${file}.`);
+                }
+                const blob = await response.blob();
+                const disposition = response.headers.get("content-disposition") || "";
+                const filename = disposition.match(/filename="([^"]+)"/)?.[1]
+                    || `badges-evenement-${eventId}-partie-${file}.pdf`;
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.href = url;
+                link.download = filename;
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                URL.revokeObjectURL(url);
+            }
+            if (totalFiles > 1) showToast(`${totalFiles} PDF de 200 pages maximum ont été préparés.`);
+        } catch (error) {
+            showToast(error.message || "Impossible de télécharger les badges.");
+        } finally {
+            setDownloadingCards(false);
         }
     };
 
@@ -674,18 +720,26 @@ export default function EventDetailPage() {
                     <div className="flex gap-2 flex-shrink-0">
                         <button
                             onClick={() => handleExport('csv')}
-                            disabled={exportingFormat === "csv" || isFreePlan}
+                            disabled={exportingFormat === "csv" || !canExportScans}
                             className="inline-flex items-center justify-center p-2.5 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-200 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-95 transition-all shadow-sm"
-                            title={isFreePlan ? "Disponible avec le plan Pro" : "Exporter en CSV"}
+                            title={!canExportScans ? "Disponible à partir du plan Essential" : "Exporter en CSV"}
                         >
                             {exportingFormat === "csv" ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
                         </button>
                         {canManageEvent && <>
                             <button
+                                onClick={handleDownloadAllCards}
+                                disabled={downloadingCards || qrPagination.total === 0}
+                                className="inline-flex items-center justify-center p-2.5 border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-200 rounded-xl hover:bg-emerald-100 dark:hover:bg-emerald-950/50 active:scale-95 transition-all shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
+                                title={qrPagination.total > 200 ? "Télécharger en plusieurs PDF de 200 pages" : "Télécharger tous les badges dans un PDF"}
+                            >
+                                {downloadingCards ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileText className="w-5 h-5" />}
+                            </button>
+                            <button
                                 onClick={handleDownloadTemplate}
-                                disabled={downloadingTemplate || isFreePlan}
+                                disabled={downloadingTemplate || !canImportQr}
                                 className="inline-flex items-center justify-center p-2.5 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-200 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-95 transition-all shadow-sm"
-                                title={isFreePlan ? "Disponible avec le plan Pro" : "Télécharger le modèle d'import CSV"}
+                                title={!canImportQr ? "Disponible à partir du plan Essential" : "Télécharger le modèle d'import CSV"}
                             >
                                 {downloadingTemplate ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileSpreadsheet className="w-5 h-5" />}
                             </button>
@@ -696,9 +750,9 @@ export default function EventDetailPage() {
                                     setImportSuccess("");
                                     setImportReport(null);
                                 }}
-                                disabled={isFreePlan}
+                                disabled={!canImportQr}
                                 className="inline-flex items-center justify-center p-2.5 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-200 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-95 transition-all shadow-sm disabled:opacity-60"
-                                title={isFreePlan ? "Disponible avec le plan Pro" : "Importer CSV"}
+                                title={!canImportQr ? "Disponible à partir du plan Essential" : "Importer CSV"}
                             >
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
                             </button>
@@ -715,10 +769,10 @@ export default function EventDetailPage() {
                     </div>
 
                 </div>
-                <PlanQuotaStatus label="QR de l'organisation sur le plan Free" quota={qrQuota} className="mt-6" />
+                <PlanQuotaStatus label="QR émis pour cet événement" quota={qrQuota} className="mt-6" />
                 {isFreePlan && (
                     <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-200">
-                        <span className="font-semibold">Plan {planName || "Free"}</span> · Passez au plan Pro pour profiter des imports CSV, des exports et des générations de QR en masse.
+                        <span className="font-semibold">Plan {planName || "Découverte"}</span> · Passez à Essential ou Pro pour profiter des imports CSV et des exports.
                     </div>
                 )}
                 {(exportingFormat || downloadingTemplate) && (
@@ -843,7 +897,7 @@ export default function EventDetailPage() {
                                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
                                                 </button>
                                                 <a
-                                                    href={`${process.env.NEXT_PUBLIC_API_URL}/qrcodes/qr_${qr.token}.png`}
+                                                    href={`${apiUrl(qr.qrUrl || `/qr/image/${qr.id}`)}?download=1`}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     className="p-1.5 text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 table-action-soft-hover rounded-lg transition-colors inline-block"
@@ -851,7 +905,7 @@ export default function EventDetailPage() {
                                                 >
                                                     <Download className="w-5 h-5" />
                                                 </a>
-                                                {(qr.cardPdfUrl || qr.cardUrl) ? (
+                                                    {(qr.cardPdfUrl || qr.cardUrl) ? (
                                                     <a
                                                         href={getCardDownloadUrl(qr.cardPdfUrl || qr.cardUrl)}
                                                         download
@@ -966,7 +1020,7 @@ export default function EventDetailPage() {
                                                 </p>
                                                 <div className="mt-3 flex flex-wrap gap-2">
                                                     <a
-                                                        href={`${process.env.NEXT_PUBLIC_API_URL}${generatedAsset.qrUrl}`}
+                                                        href={`${apiUrl(generatedAsset.qrUrl)}?download=1`}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
                                                         className="inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-2 text-xs font-bold text-slate-700 shadow-sm ring-1 ring-emerald-200 transition-colors hover:bg-emerald-100 dark:bg-slate-950 dark:text-slate-100 dark:ring-emerald-900/60 dark:hover:bg-emerald-950/40"
@@ -1206,7 +1260,7 @@ export default function EventDetailPage() {
                         <h3 className="text-sm font-bold text-slate-600 dark:text-slate-300 uppercase tracking-widest mb-6">Détails du Ticket</h3>
 
                         <div className="w-full flex flex-col items-center">
-                            <img src={`${process.env.NEXT_PUBLIC_API_URL}/qrcodes/qr_${selectedQr.token}.png`} alt="QR Code" className="w-48 h-48 rounded-2xl border border-slate-100 dark:border-slate-800 p-2 shadow-inner bg-slate-50 dark:bg-slate-900 mb-6 object-contain" />
+                            <img src={apiUrl(selectedQr.qrUrl || `/qr/image/${selectedQr.id}`)} alt="QR Code" className="w-48 h-48 rounded-2xl border border-slate-100 dark:border-slate-800 p-2 shadow-inner bg-slate-50 dark:bg-slate-900 mb-6 object-contain" />
 
                             <div className="w-full space-y-4 text-left bg-slate-50 dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
                                 <div>

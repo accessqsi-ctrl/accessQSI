@@ -19,7 +19,7 @@ exports.createArea = async (data, dbClient = prisma) => {
 
 exports.countActiveForOrg = async (orgId) => {
     return await prisma.area.count({
-        where: { org_id: orgId, deleted_at: null }
+        where: { org_id: orgId, deleted_at: null, suspended_by_plan: false }
     });
 };
 

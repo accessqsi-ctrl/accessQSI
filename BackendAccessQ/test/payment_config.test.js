@@ -4,6 +4,7 @@ const assert = require("node:assert/strict");
 const { getPaymentConfig } = require("../src/config/payment");
 const { extractProviders } = require("../src/services/pawapay.service");
 const {
+    ESSENTIAL_ANNUAL_FIXED_PRICES,
     PRO_FIXED_PRICES,
     getFixedPlanPrice,
     getPlanSummary
@@ -52,34 +53,33 @@ test("active pawaPay configuration is reduced to public provider fields", () => 
     }]);
 });
 
-test("Pro exposes the approved fixed local price catalogue", () => {
+test("the approved Pro and Essential annual prices are exposed", () => {
     assert.deepEqual(PRO_FIXED_PRICES, {
-        USD: 10,
-        CDF: 23000,
-        XOF: 5800,
-        XAF: 5800,
-        RWF: 14700,
-        ZMW: 185,
-        KES: 1300,
-        UGX: 37000,
-        TZS: 26300,
-        NGN: 13700,
-        GHS: 117
+        USD: 25,
+        CDF: 57500,
+        XOF: 14500,
+        XAF: 14500,
+        RWF: 36750,
+        ZMW: 463,
+        KES: 3250,
+        UGX: 92500,
+        TZS: 65750,
+        NGN: 34250,
+        GHS: 293
     });
-    assert.equal(getFixedPlanPrice("PRO", "USD"), 10);
-    assert.equal(getFixedPlanPrice("PRO", "CDF"), 23000);
-    assert.equal(getFixedPlanPrice("PRO", "XOF"), 5800);
-    assert.equal(getFixedPlanPrice("PRO", "RWF"), 14700);
-    assert.equal(getFixedPlanPrice("PRO", "NGN"), 13700);
+    assert.equal(getFixedPlanPrice("PRO", "USD"), 25);
+    assert.equal(getFixedPlanPrice("PRO", "CDF"), 57500);
+    assert.equal(ESSENTIAL_ANNUAL_FIXED_PRICES.USD, 144);
+    assert.equal(getFixedPlanPrice("ESSENTIAL", "USD", "ANNUAL"), 144);
     assert.equal(getFixedPlanPrice("PRO", "EUR"), null);
 });
 
-test("an expired Pro subscription is exposed as Free", () => {
+test("an expired Pro subscription is exposed as Discovery", () => {
     const summary = getPlanSummary({
         plan: { title: "PRO" },
         subscription_expires_at: new Date(Date.now() - 1000)
     });
 
-    assert.equal(summary.plan, "FREE");
+    assert.equal(summary.plan, "DISCOVERY");
     assert.equal(summary.isPro, false);
 });

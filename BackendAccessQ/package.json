@@ -3,10 +3,11 @@
   "version": "1.0.0",
   "main": "server.js",
   "scripts": {
-    "prestart": "prisma generate",
+    "prestart": "prisma generate && prisma migrate deploy",
     "start": "node server.js",
     "test": "node --test",
-    "prisma:generate": "prisma generate"
+    "prisma:generate": "prisma generate",
+    "db:deploy": "prisma migrate deploy"
   },
   "keywords": [],
   "author": "",

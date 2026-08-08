@@ -24,7 +24,13 @@ test("payment service normalizes national numbers with each country prefix", () 
     );
 });
 
-test("a Free organization can activate its Pro trial only once", async () => {
+test("a Pro trial can only be activated when explicitly enabled", async (t) => {
+    const previous = process.env.ENABLE_PRO_TRIAL;
+    process.env.ENABLE_PRO_TRIAL = "true";
+    t.after(() => {
+        if (previous === undefined) delete process.env.ENABLE_PRO_TRIAL;
+        else process.env.ENABLE_PRO_TRIAL = previous;
+    });
     clearSrcModules();
     const plans = new Map([
         ["FREE", { plan_id: 1, title: "FREE", cost: 0, currency: "USD", features: [] }],
@@ -62,7 +68,16 @@ test("a Free organization can activate its Pro trial only once", async () => {
                 Object.assign(organization, data);
                 return { count: 1 };
             }
-        }
+        },
+        subscriptionChange: { findFirst: async () => null },
+        $transaction: async (callback) => callback({
+            organization: {
+                updateMany: prisma?.organization?.updateMany,
+                findUnique: async () => withPlan()
+            },
+            subscription: { upsert: async () => ({ subscription_id: 1 }) },
+            subscriptionPeriod: { create: async ({ data }) => data }
+        })
     };
 
     mockModule("src/prisma/client.js", prisma);
@@ -135,14 +150,29 @@ test("completed pawaPay deposit activates Pro and records the access period atom
         organization: {
             findUnique: async () => ({
                 org_id: 3,
+                subscription_plan: 1,
                 subscription_started_at: null,
-                subscription_expires_at: null
+                subscription_expires_at: null,
+                plan: { plan_id: 1, title: "DISCOVERY" }
             }),
             update: async ({ data }) => {
                 organizationUpdate = data;
                 return data;
             }
-        }
+        },
+        subscription: {
+            upsert: async () => ({ subscription_id: 4, version: 1 }),
+            update: async ({ data }) => data
+        },
+        subscriptionChange: {
+            create: async ({ data }) => ({
+                subscription_change_id: 9,
+                ...data,
+                status: "AWAITING_PAYMENT"
+            }),
+            update: async ({ data }) => data
+        },
+        subscriptionPeriod: { create: async ({ data }) => data }
     };
     const prisma = {
         payment: { findUnique: async () => existingPayment },
@@ -170,13 +200,9 @@ test("completed pawaPay deposit activates Pro and records the access period atom
     assert.equal(organizationUpdate.subscription_plan, 2);
     assert.ok(organizationUpdate.subscription_started_at instanceof Date);
     assert.ok(organizationUpdate.subscription_expires_at instanceof Date);
-    assert.equal(
-        Math.round(
-            (organizationUpdate.subscription_expires_at - organizationUpdate.subscription_started_at)
-            / (24 * 60 * 60 * 1000)
-        ),
-        30
-    );
+    const expectedExpiry = new Date(organizationUpdate.subscription_started_at);
+    expectedExpiry.setUTCMonth(expectedExpiry.getUTCMonth() + 1);
+    assert.equal(organizationUpdate.subscription_expires_at.toISOString(), expectedExpiry.toISOString());
     assert.equal(paymentUpdate.provider_transaction_id, "MNO-123");
     assert.equal(paymentUpdate.status, "COMPLETED");
 });
@@ -217,4 +243,57 @@ test("reconciliation rejects a completed deposit whose amount differs", async ()
         paymentService.reconcilePayment(payment.deposit_id),
         (error) => error.code === "PAYMENT_RECONCILIATION_MISMATCH"
     );
+});
+
+test("a completed Event Pass payment creates a credit without replacing the subscription", async () => {
+    clearSrcModules();
+    const payment = {
+        payment_id: 12,
+        deposit_id: "b03cd8bb-55dd-4f4b-90b3-d2c23d88a8ba",
+        org_id: 3,
+        plan_id: 4,
+        amount: new Prisma.Decimal("7"),
+        currency: "USD",
+        country: "COD",
+        provider: "AIRTEL_COD",
+        phone_number: "243991234567",
+        status: "PENDING",
+        billing_interval: "ONE_TIME",
+        plan: { plan_id: 4, title: "EVENT_PASS", cost: 7, currency: "USD" }
+    };
+    let passData = null;
+    let organizationUpdated = false;
+    const tx = {
+        $queryRaw: async () => [],
+        payment: {
+            findUnique: async () => payment,
+            update: async ({ data }) => ({ ...payment, ...data })
+        },
+        eventPass: {
+            create: async ({ data }) => { passData = data; return data; }
+        },
+        organization: {
+            update: async () => { organizationUpdated = true; }
+        }
+    };
+    mockModule("src/prisma/client.js", {
+        payment: { findUnique: async () => payment },
+        $transaction: async (callback) => callback(tx)
+    });
+    mockModule("src/services/pawapay.service.js", {
+        checkDeposit: async () => ({
+            status: "FOUND",
+            data: {
+                depositId: payment.deposit_id,
+                status: "COMPLETED",
+                amount: "7",
+                currency: "USD"
+            }
+        })
+    });
+    const paymentService = require("../src/services/payment.service");
+    const result = await paymentService.reconcilePayment(payment.deposit_id);
+    assert.equal(result.status, "COMPLETED");
+    assert.deepEqual(passData, { org_id: 3, payment_id: 12, status: "AVAILABLE" });
+    assert.equal(organizationUpdated, false);
 });

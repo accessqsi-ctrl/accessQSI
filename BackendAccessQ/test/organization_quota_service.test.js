@@ -5,7 +5,7 @@ const {
     mockModule
 } = require("./helpers/http");
 
-const loadService = ({ plan = "FREE", currentCount = 0 }) => {
+const loadService = ({ plan = "DISCOVERY", currentCount = 0 }) => {
     clearSrcModules();
     const calls = [];
     const tx = {
@@ -48,7 +48,7 @@ const loadService = ({ plan = "FREE", currentCount = 0 }) => {
 };
 
 test("withOrganizationQuota locks, counts and creates in one serializable transaction", async () => {
-    const service = loadService({ currentCount: 2 });
+    const service = loadService({ plan: "ESSENTIAL", currentCount: 2 });
 
     const created = await service.withOrganizationQuota({
         organizationId: 42,
@@ -63,8 +63,8 @@ test("withOrganizationQuota locks, counts and creates in one serializable transa
     assert.equal(service.getTransactionOptions().isolationLevel, "Serializable");
 });
 
-test("withOrganizationQuota rolls back before creation when the Free quota is reached", async () => {
-    const service = loadService({ currentCount: 3 });
+test("withOrganizationQuota rolls back before creation when the Essential quota is reached", async () => {
+    const service = loadService({ plan: "ESSENTIAL", currentCount: 5 });
 
     await assert.rejects(
         service.withOrganizationQuota({
@@ -76,8 +76,8 @@ test("withOrganizationQuota rolls back before creation when the Free quota is re
         }),
         (error) => {
             assert.equal(error.code, "PLAN_QUOTA_EXCEEDED");
-            assert.equal(error.currentCount, 3);
-            assert.equal(error.limit, 3);
+            assert.equal(error.currentCount, 5);
+            assert.equal(error.limit, 5);
             return true;
         }
     );
@@ -94,7 +94,7 @@ test("withOrganizationQuota retries serialization conflicts", async () => {
             findUnique: async () => ({ plan: { title: "PRO" } })
         },
         event: {
-            count: async () => 30,
+            count: async () => 14,
             create: async () => ({ event_id: 1 })
         }
     };
@@ -123,9 +123,9 @@ test("withOrganizationQuota retries serialization conflicts", async () => {
     assert.equal(attempts, 2);
 });
 
-test("two concurrent Free creations cannot consume the same remaining slot", async () => {
+test("two concurrent Discovery creations cannot consume the same remaining slot", async () => {
     clearSrcModules();
-    let activeEvents = 2;
+    let activeEvents = 0;
     let nextEventId = 1;
     let transactionQueue = Promise.resolve();
 
@@ -141,7 +141,7 @@ test("two concurrent Free creations cannot consume the same remaining slot", asy
             const tx = {
                 $queryRaw: async () => [{ org_id: 42 }],
                 organization: {
-                    findUnique: async () => ({ plan: { title: "FREE" } })
+                    findUnique: async () => ({ plan: { title: "DISCOVERY" } })
                 },
                 event: {
                     count: async () => activeEvents,
@@ -176,5 +176,5 @@ test("two concurrent Free creations cannot consume the same remaining slot", asy
     assert.equal(results.filter(result => result.status === "fulfilled").length, 1);
     assert.equal(results.filter(result => result.status === "rejected").length, 1);
     assert.equal(results.find(result => result.status === "rejected").reason.code, "PLAN_QUOTA_EXCEEDED");
-    assert.equal(activeEvents, 3);
+    assert.equal(activeEvents, 1);
 });

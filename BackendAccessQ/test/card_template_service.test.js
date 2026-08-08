@@ -1,5 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const { PDFDocument } = require("pdf-lib");
 
 const cardTemplateService = require("../src/services/card_template.service");
 
@@ -52,4 +53,27 @@ test("supported templates keep their color when no image is provided", () => {
 
     assert.match(svg, /<rect x="40" y="40" width="420" height="520" rx="28" fill="#123456"/);
     assert.doesNotMatch(svg, /horizontal-primary-zone/);
+});
+
+test("generateCardsPdfBuffer creates one PDF page per QR without writing files", async () => {
+    const event = {
+        title: "Concert",
+        EventSchedules: [{
+            start_date: "2026-08-08T18:00:00.000Z",
+            area: { area_name: "Salle principale" }
+        }]
+    };
+    const qrUrl = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
+    const cards = [1, 2].map(id => ({
+        templateId: "event-ticket",
+        event,
+        qrRecord: { qr_id: id, holder_name: `Invité ${id}`, level: 1 },
+        qrUrl,
+        cardMessage: "Bienvenue"
+    }));
+
+    const bytes = await cardTemplateService.generateCardsPdfBuffer(cards);
+    const pdf = await PDFDocument.load(bytes);
+
+    assert.equal(pdf.getPageCount(), 2);
 });

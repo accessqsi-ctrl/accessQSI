@@ -4,7 +4,7 @@ const { PLAN_CAPABILITIES, hasPlanCapability } = require("../config/subscription
 
 const getOnboardingProgress = async (orgId) => {
     const [areas, models, events, qrs, agents] = await Promise.all([
-        prisma.area.count({ where: { org_id: orgId, deleted_at: null } }),
+        prisma.area.count({ where: { org_id: orgId, deleted_at: null, suspended_by_plan: false } }),
         prisma.cardTemplateCustom.count({ where: { org_id: orgId, deleted_at: null, status: "PUBLISHED" } }),
         prisma.event.count({ where: { org_id: orgId, deleted_at: null } }),
         prisma.qrCode.count({ where: { event: { org_id: orgId }, deleted_at: null } }),

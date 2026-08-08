@@ -27,6 +27,7 @@ const loadQrManagementApp = ({
     mockModule("src/services/event.service", eventService);
     mockModule("src/services/qr.service", {
         updateQr: async (id, data) => ({ qr_id: id, ...data }),
+        countQrsByEventId: async () => 0,
         ...qrService
     });
     mockModule("src/services/card_template.service", {
@@ -34,6 +35,7 @@ const loadQrManagementApp = ({
         cardExistsForToken: () => false,
         cardUrlForToken: (token) => `/cards/card_${token}.svg`,
         generateCardForQr: async () => null,
+        streamCardsPdf: async ({ output }) => output.end(Buffer.from("%PDF-test")),
         ...cardTemplateService
     });
     mockModule("src/services/custom_card_template.service", {
@@ -54,7 +56,7 @@ const loadQrManagementApp = ({
         getPlanContextForUser: async () => planContext
     });
     mockModule("src/services/organization_quota.service", {
-        withOrganizationQuota: async ({ create }) => create({})
+        withEventQrQuota: async ({ create }) => create({})
     });
     mockPackage("qrcode", {
         toBuffer: async () => Buffer.from("png"),
@@ -146,6 +148,70 @@ test("GET /qr/event/:event_id lets an organization agent read existing QR codes"
     assert.equal(res.body.pagination.total, 1);
 });
 
+test("GET /qr/image/:id generates the PNG on demand without storage", async () => {
+    let qrPayload = null;
+    const app = loadQrManagementApp({
+        user: { user_id: 7, role: "ORG_AGENT", org_id: 42 },
+        eventService: {
+            findById: async () => ({ event_id: 5, title: "Concert" })
+        },
+        qrService: {
+            getQrById: async () => ({
+                qr_id: 9,
+                event_id: 5,
+                unique_token: "token-9",
+                holder_name: "Jane Holder",
+                deleted_at: null
+            })
+        },
+        qrcode: {
+            toBuffer: async payload => {
+                qrPayload = JSON.parse(payload);
+                return Buffer.from("png-on-demand");
+            }
+        }
+    });
+
+    const res = await request(app, "GET", "/qr/image/9?download=1");
+
+    assert.equal(res.status, 200);
+    assert.equal(res.headers["content-type"], "image/png");
+    assert.match(res.headers["content-disposition"], /^attachment;/);
+    assert.deepEqual(qrPayload, { t: "token-9", e: 5 });
+});
+
+test("GET /qr/event/:event_id/cards.pdf streams one card per event QR", async () => {
+    let streamedCards = null;
+    const app = loadQrManagementApp({
+        user: { user_id: 7, role: "ORG_ADMIN", org_id: 42 },
+        eventService: {
+            findById: async () => ({ event_id: 5, title: "Concert été", EventSchedules: [] })
+        },
+        qrService: {
+            getAllQrsByEventId: async () => [
+                { qr_id: 1, event_id: 5, unique_token: "token-1", holder_name: "Alice", card_template_id: "event-ticket", deleted_at: null },
+                { qr_id: 2, event_id: 5, unique_token: "token-2", holder_name: "Bob", card_template_id: "event-ticket", deleted_at: null }
+            ]
+        },
+        cardTemplateService: {
+            isTemplateAvailable: id => id === "event-ticket",
+            streamCardsPdf: async ({ cards, output }) => {
+                streamedCards = cards;
+                output.end(Buffer.from("%PDF-on-demand"));
+            }
+        }
+    });
+
+    const res = await request(app, "GET", "/qr/event/5/cards.pdf");
+
+    assert.equal(res.status, 200);
+    assert.equal(res.headers["content-type"], "application/pdf");
+    assert.equal(res.headers["content-disposition"], 'attachment; filename="badges-Concert-ete.pdf"');
+    assert.equal(streamedCards.length, 2);
+    assert.equal(streamedCards[0].qrRecord.holder_name, "Alice");
+    assert.match(streamedCards[0].qrUrl, /^data:image\/png;base64,/);
+});
+
 test("POST /qr/generate/:event_id lets an organization agent create QR data", async () => {
     let eventLookup = null;
     let createdData = null;
@@ -188,8 +254,8 @@ test("POST /qr/generate/:event_id lets an organization agent create QR data", as
     assert.equal(createdData.usage_limit, 3);
     assert.equal(createdData.level, 2);
     assert.equal(createdData.event_id, 5);
-    assert.match(res.body.qrUrl, /^\/qrcodes\/qr_.+\.png$/);
-    assert.equal(JSON.parse(qrFileArgs[0]).e, 5);
+    assert.equal(res.body.qrUrl, "/qr/image/9");
+    assert.equal(qrFileArgs, null);
 });
 
 test("POST /qr/generate/:event_id stores unlimited access with usage_limit zero", async () => {
@@ -216,7 +282,7 @@ test("POST /qr/generate/:event_id stores unlimited access with usage_limit zero"
     assert.equal(createdData.usage_limit, 0);
 });
 
-test("POST /qr/generate/:event_id compensates the database and assets when generation fails", async () => {
+test("POST /qr/generate/:event_id does not generate or store an image during creation", async () => {
     const calls = [];
     const app = loadQrManagementApp({
         user: { user_id: 7, role: "ORG_ADMIN", org_id: 42 },
@@ -242,8 +308,9 @@ test("POST /qr/generate/:event_id compensates the database and assets when gener
         accessType: "single"
     });
 
-    assert.equal(res.status, 500);
-    assert.deepEqual(calls.map(([name]) => name).sort(), ["cleanup", "delete"]);
+    assert.equal(res.status, 201);
+    assert.equal(res.body.qrUrl, "/qr/image/9");
+    assert.deepEqual(calls, []);
 });
 
 test("POST /qr/generate/:event_id uses centralized validation for limits and dates", async () => {
@@ -329,11 +396,9 @@ test("POST /qr/generate/:event_id can generate a card from a selected template",
 
     assert.equal(res.status, 201);
     assert.equal(res.body.success, true);
-    assert.equal(res.body.cardUrl, "/cards/card-token.svg");
-    assert.equal(cardArgs.templateId, "event-ticket");
-    assert.equal(cardArgs.cardMessage, "Accès VIP");
-    assert.equal(cardArgs.qrRecord.holder_name, "Jane Holder");
-    assert.match(cardArgs.qrUrl, /^\/qrcodes\/qr_.+\.png$/);
+    assert.equal(res.body.cardUrl, null);
+    assert.equal(res.body.cardPdfUrl, "/qr/card/9/download");
+    assert.equal(cardArgs, null);
 });
 
 test("POST /qr/generate/:event_id can generate a card from a custom template", async () => {
@@ -395,15 +460,14 @@ test("POST /qr/generate/:event_id can generate a card from a custom template", a
     });
 
     assert.equal(res.status, 201);
-    assert.equal(res.body.cardUrl, "/cards/card-custom.svg");
-    assert.equal(cardArgs.templateId, "event-ticket");
-    assert.deepEqual(cardArgs.customization, customTemplate);
-    assert.equal(cardArgs.customization.customization.layoutConfig.version, 2);
+    assert.equal(res.body.cardUrl, null);
+    assert.equal(res.body.cardPdfUrl, "/qr/card/9/download");
+    assert.equal(cardArgs, null);
     assert.equal(createdData.card_template_id, "custom:12");
     assert.equal(createdData.card_template_snapshot.schemaVersion, 1);
     assert.equal(createdData.card_template_snapshot.sourceTemplateId, "custom:12");
     assert.equal(createdData.card_template_snapshot.customization.customization.title, "INVITÉ OFFICIEL");
-    assert.deepEqual(cardArgs.cardData, {
+    assert.deepEqual(createdData.card_data, {
         spouseOne: "Nom 1",
         spouseTwo: "Nom 2",
         zone: "Salle",
@@ -535,8 +599,8 @@ test("POST /qr/card/:id rejects a saved custom snapshot after downgrade to Free"
     assert.equal(updateCalled, false);
 });
 
-test("POST /qr/card/:id generates a card for an existing QR in the user's organization", async () => {
-    let cardArgs = null;
+test("POST /qr/card/:id saves the selected template for on-demand generation", async () => {
+    let updatedData = null;
     const app = loadQrManagementApp({
         user: { user_id: 7, role: "ORG_ADMIN", org_id: 42 },
         eventService: {
@@ -552,13 +616,16 @@ test("POST /qr/card/:id generates a card for an existing QR in the user's organi
                 scans_count: 0,
                 usage_limit: 1,
                 deleted_at: null
-            })
+            }),
+            updateQr: async (id, data) => {
+                updatedData = { id, data };
+                return { qr_id: id, ...data };
+            }
         },
         cardTemplateService: {
             hasTemplate: (templateId) => templateId === "staff-card",
-            generateCardForQr: async (args) => {
-                cardArgs = args;
-                return "/cards/card-token-10.svg";
+            generateCardForQr: async () => {
+                throw new Error("La génération persistante ne doit pas être appelée");
             }
         }
     });
@@ -570,10 +637,11 @@ test("POST /qr/card/:id generates a card for an existing QR in the user's organi
 
     assert.equal(res.status, 201);
     assert.equal(res.body.success, true);
-    assert.equal(res.body.cardUrl, "/cards/card-token-10.svg");
-    assert.equal(cardArgs.templateId, "staff-card");
-    assert.equal(cardArgs.cardMessage, "Badge staff");
-    assert.equal(cardArgs.qrRecord.unique_token, "token-10");
+    assert.equal(res.body.cardUrl, null);
+    assert.equal(res.body.cardPdfUrl, "/qr/card/10/download");
+    assert.equal(updatedData.id, 10);
+    assert.equal(updatedData.data.card_template_id, "staff-card");
+    assert.equal(updatedData.data.card_generation_status, "ON_DEMAND");
 });
 
 test("POST /qr/card/:id rejects unknown card templates", async () => {
@@ -774,12 +842,15 @@ test("GET /qr/template/:event_id downloads a CSV import template for an event in
 test("CSV import returns an explicit report when some lines fail after others were created", async () => {
     clearSrcModules();
     let createCount = 0;
-    let imageCount = 0;
     mockModule("src/services/event.service", {
         findById: async () => ({ event_id: 5, title: "Concert" })
     });
     mockModule("src/services/qr.service", {
-        createQr: async (data) => ({ qr_id: ++createCount, ...data }),
+        createQr: async (data) => {
+            createCount += 1;
+            if (createCount === 2) throw new Error("Base indisponible");
+            return { qr_id: createCount, ...data };
+        },
         updateQr: async () => ({}),
         deleteQrPermanently: async () => ({})
     });
@@ -796,13 +867,10 @@ test("CSV import returns an explicit report when some lines fail after others we
         writeFileAtomically: async () => {},
         removeQrAssets: async () => {}
     });
-    mockPackage("qrcode", {
-        toBuffer: async () => {
-            imageCount += 1;
-            if (imageCount === 2) throw new Error("PNG indisponible");
-            return Buffer.from("png");
-        }
+    mockModule("src/services/organization_quota.service", {
+        withEventQrQuota: async ({ create }) => create({})
     });
+    mockPackage("qrcode", { toBuffer: async () => Buffer.from("png") });
 
     const controller = require("../src/controllers/api.qr.controller");
     const csvPath = path.join(os.tmpdir(), `qr-import-${Date.now()}.csv`);

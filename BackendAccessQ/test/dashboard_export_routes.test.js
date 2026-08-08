@@ -289,9 +289,9 @@ test("GET /export/csv rejects free organizations with a clear upgrade message", 
 
     assert.equal(res.status, 403);
     assert.equal(res.body.success, false);
-    assert.match(res.body.message, /abonnement Pro/i);
+    assert.match(res.body.message, /Essential ou Pro/i);
     assert.equal(res.body.upgradeRequired, true);
-    assert.equal(res.body.plan, "FREE");
+    assert.equal(res.body.plan, "DISCOVERY");
 });
 
 test("GET /export/pdf streams a PDF response for authenticated users", async () => {

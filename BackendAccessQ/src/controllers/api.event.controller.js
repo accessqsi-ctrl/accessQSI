@@ -1,7 +1,7 @@
 const eventService = require('../services/event.service');
 const logger = require('../utils/logger');
 const storageService = require("../services/storage.service");
-const { withOrganizationQuota } = require("../services/organization_quota.service");
+const { withEventCreationQuota } = require("../services/organization_quota.service");
 
 // Récupérer tous les événements de l'organisation courante
 exports.getEvents = async (req, res) => {
@@ -45,6 +45,9 @@ exports.getEvents = async (req, res) => {
                 endDate: lastSchedule ? lastSchedule.end_date : null,
                 location: locationNames,
                 qrs: e._count?.qr_codes || 0,
+                qrLimit: e.qr_limit,
+                entitlementType: e.entitlement_type,
+                entitlementExpiresAt: e.entitlement_expires_at,
                 status: status
             };
         });
@@ -85,7 +88,7 @@ exports.createEvent = async (req, res) => {
             return res.status(401).json({ success: false, message: "Non autorisé" });
         }
 
-        const { title, description, id_area, areaIds, startDate, endDate } = req.body;
+        const { title, description, id_area, areaIds, startDate, endDate, eventPassId } = req.body;
 
         if (!title || !startDate || !endDate) {
             return res.status(400).json({ success: false, message: "Titre, Date de début et Date de fin sont requis" });
@@ -102,14 +105,25 @@ exports.createEvent = async (req, res) => {
             end_date: new Date(endDate),
             org_id: orgId
         };
-        const newEvent = await withOrganizationQuota({
+        const newEvent = await withEventCreationQuota({
             organizationId: orgId,
-            limitKey: "maxEvents",
-            resourceName: "d'événements",
-            count: (tx) => tx.event.count({
-                where: { org_id: orgId, deleted_at: null }
-            }),
-            create: (tx) => eventService.createEvent(eventData, tx)
+            eventPassId,
+            create: (tx, entitlement) => {
+                if (
+                    entitlement.entitlementType === "EVENT_PASS"
+                    && eventData.end_date > entitlement.entitlementExpiresAt
+                ) {
+                    const error = new Error("Avec un Pass événement, la date de fin doit être comprise dans les 30 jours suivant son activation.");
+                    error.code = "PASS_EVENT_OUTSIDE_VALIDITY";
+                    throw error;
+                }
+                return eventService.createEvent({
+                    ...eventData,
+                    entitlement_type: entitlement.entitlementType,
+                    qr_limit: entitlement.qrLimit,
+                    entitlement_expires_at: entitlement.entitlementExpiresAt
+                }, tx);
+            }
         });
 
         logger.info("event.created", {
@@ -124,11 +138,14 @@ exports.createEvent = async (req, res) => {
         if (error.code === "PLAN_QUOTA_EXCEEDED") {
             return res.status(403).json({
                 success: false,
-                message: `Votre quota d'événements est atteint (${error.currentCount}/${error.limit}). Passez en Pro pour créer davantage d'événements.`,
+                message: `Votre quota mensuel d'événements est atteint (${error.currentCount}/${error.limit}). Attendez le prochain cycle, changez de plan ou utilisez un Pass événement.`,
                 plan: error.plan,
                 planName: error.planName,
                 upgradeRequired: true
             });
+        }
+        if (["EVENT_PASS_NOT_AVAILABLE", "PASS_EVENT_OUTSIDE_VALIDITY"].includes(error.code)) {
+            return res.status(422).json({ success: false, code: error.code, message: error.message });
         }
         if (error.code === "INVALID_EVENT_AREAS") {
             logger.warn("event.invalid_areas", {

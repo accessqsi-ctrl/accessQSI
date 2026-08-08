@@ -123,7 +123,7 @@ export default function AreasPage() {
                 </button>
             </div>
 
-            <PlanQuotaStatus label="Zones du plan Free" quota={areaQuota} />
+            <PlanQuotaStatus label="Zones actives" quota={areaQuota} />
 
             {error && (
                 <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300">
@@ -160,12 +160,12 @@ export default function AreasPage() {
                                 </tr>
                             ) : (
                                 areas.map((area) => (
-                                    <tr key={area.area_id} className="table-row-hover group">
+                                    <tr key={area.area_id} className={`table-row-hover group ${area.suspended_by_plan ? "opacity-60" : ""}`}>
                                         <td className="px-6 py-4 font-medium text-slate-900 dark:text-white flex items-center gap-3">
                                             <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
                                                 <MapPin className="w-5 h-5" />
                                             </div>
-                                            {area.area_name}
+                                            <span>{area.area_name}{area.suspended_by_plan && <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">Suspendue par le plan</span>}</span>
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className="px-2.5 py-1 bg-amber-50 text-amber-700 rounded-full text-xs font-semibold border border-amber-100">
@@ -174,7 +174,7 @@ export default function AreasPage() {
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex items-center justify-end gap-2">
-                                                <button onClick={() => openEditModal(area)} className="p-1.5 table-action-neutral border rounded-lg transition-colors">
+                                                <button disabled={area.suspended_by_plan} onClick={() => openEditModal(area)} className="p-1.5 table-action-neutral border rounded-lg transition-colors disabled:cursor-not-allowed disabled:opacity-40">
                                                     <Edit2 className="w-4 h-4" />
                                                 </button>
                                                 <button onClick={() => setAreaToDelete(area)} className="p-1.5 text-red-600 dark:text-red-300 bg-white dark:bg-slate-900 border border-red-100 dark:border-red-900/50 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors">

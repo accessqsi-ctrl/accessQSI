@@ -16,6 +16,7 @@ model UserQ {
   role                          Role
   is_verified                   Boolean       @default(false)
   is_active                     Boolean       @default(true)
+  suspended_by_plan             Boolean       @default(false)
   verification_token            String?       @unique
   verification_token_expires_at DateTime?
   verification_email_sent_at    DateTime?
@@ -33,23 +34,32 @@ model UserQ {
 }
 
 model Organization {
-  org_id                   Int                  @id @default(autoincrement())
-  name                     String
-  created_at               DateTime             @default(now())
-  deleted_at               DateTime?
-  is_active                Boolean              @default(true)
-  subscription_plan        Int?
-  subscription_started_at  DateTime?
-  subscription_expires_at  DateTime?
-  trial_started_at         DateTime?
-  trial_expires_at         DateTime?
-  default_card_template_id String?
-  areas                    Area[]
-  card_templates           CardTemplateCustom[]
-  events                   Event[]
-  plan                     Plan?                @relation(fields: [subscription_plan], references: [plan_id])
-  payments                 Payment[]
-  usersQ                   UserQ[]
+  org_id                        Int                    @id @default(autoincrement())
+  name                          String
+  created_at                    DateTime               @default(now())
+  deleted_at                    DateTime?
+  is_active                     Boolean                @default(true)
+  subscription_plan             Int?
+  subscription_started_at       DateTime?
+  subscription_expires_at       DateTime?
+  subscription_interval         BillingInterval?
+  trial_started_at              DateTime?
+  trial_expires_at              DateTime?
+  enterprise_contract_reference String?
+  enterprise_entitlements       Json?
+  default_card_template_id      String?
+  areas                         Area[]
+  card_templates                CardTemplateCustom[]
+  events                        Event[]
+  plan                          Plan?                  @relation(fields: [subscription_plan], references: [plan_id])
+  payments                      Payment[]
+  refunds                       Refund[]
+  event_passes                  EventPass[]
+  subscription                  Subscription?
+  subscription_changes          SubscriptionChange[]
+  subscription_periods          SubscriptionPeriod[]
+  subscription_audit_logs       SubscriptionAuditLog[]
+  usersQ                        UserQ[]
 
   @@index([deleted_at])
   @@map("organizations")
@@ -84,18 +94,39 @@ model CardTemplateCustom {
 }
 
 model Event {
-  event_id       Int             @id @default(autoincrement())
-  org_id         Int
-  title          String
-  description    String?
-  created_at     DateTime        @default(now())
-  deleted_at     DateTime?
-  EventSchedules EventSchedule[]
-  organization   Organization    @relation(fields: [org_id], references: [org_id])
-  qr_codes       QrCode[]
+  event_id               Int                  @id @default(autoincrement())
+  org_id                 Int
+  title                  String
+  description            String?
+  created_at             DateTime             @default(now())
+  deleted_at             DateTime?
+  entitlement_type       EventEntitlementType @default(SUBSCRIPTION)
+  qr_limit               Int                  @default(50)
+  entitlement_expires_at DateTime?
+  EventSchedules         EventSchedule[]
+  organization           Organization         @relation(fields: [org_id], references: [org_id])
+  qr_codes               QrCode[]
+  event_pass             EventPass?
 
   @@index([org_id, deleted_at])
   @@map("events")
+}
+
+model EventPass {
+  event_pass_id Int             @id @default(autoincrement())
+  org_id        Int
+  payment_id    Int             @unique
+  event_id      Int?            @unique
+  status        EventPassStatus @default(AVAILABLE)
+  purchased_at  DateTime        @default(now())
+  activated_at  DateTime?
+  expires_at    DateTime?
+  organization  Organization    @relation(fields: [org_id], references: [org_id])
+  payment       Payment         @relation(fields: [payment_id], references: [payment_id])
+  event         Event?          @relation(fields: [event_id], references: [event_id])
+
+  @@index([org_id, status])
+  @@map("event_passes")
 }
 
 model QrCode {
@@ -155,6 +186,7 @@ model Area {
   area_name           String
   accreditation_level Int
   deleted_at          DateTime?
+  suspended_by_plan   Boolean         @default(false)
   EventSchedules      EventSchedule[]
   scan_logs           ScanLog[]
   organization        Organization    @relation(fields: [org_id], references: [org_id])
@@ -164,48 +196,164 @@ model Area {
 }
 
 model Plan {
-  plan_id       Int            @id @default(autoincrement())
-  title         String         @unique
+  plan_id       Int                  @id @default(autoincrement())
+  title         String               @unique
   cost          Int
-  currency      String         @default("USD") @db.VarChar(3)
+  currency      String               @default("USD") @db.VarChar(3)
   features      Json
   organizations Organization[]
   payments      Payment[]
+  subscriptions Subscription[]       @relation("SubscriptionPlan")
+  periods       SubscriptionPeriod[] @relation("SubscriptionPeriodPlan")
+  changes_from  SubscriptionChange[] @relation("SubscriptionChangeFromPlan")
+  changes_to    SubscriptionChange[] @relation("SubscriptionChangeToPlan")
 
   @@map("plan")
 }
 
 model Payment {
-  payment_id              Int           @id @default(autoincrement())
-  deposit_id              String        @unique @db.Uuid
+  payment_id              Int                 @id @default(autoincrement())
+  deposit_id              String              @unique @db.Uuid
   org_id                  Int
   plan_id                 Int
   initiated_by_id         Int
-  amount                  Decimal       @db.Decimal(18, 2)
-  currency                String        @db.VarChar(3)
-  reference_amount        Decimal       @db.Decimal(18, 2)
-  reference_currency      String        @default("USD") @db.VarChar(3)
-  country                 String        @db.VarChar(3)
+  amount                  Decimal             @db.Decimal(18, 2)
+  currency                String              @db.VarChar(3)
+  reference_amount        Decimal             @db.Decimal(18, 2)
+  reference_currency      String              @default("USD") @db.VarChar(3)
+  country                 String              @db.VarChar(3)
   provider                String
   phone_number            String
-  status                  PaymentStatus @default(PENDING)
+  status                  PaymentStatus       @default(PENDING)
+  billing_interval        BillingInterval     @default(MONTHLY)
   provider_transaction_id String?
   failure_code            String?
   failure_message         String?
   access_starts_at        DateTime?
   access_expires_at       DateTime?
   provider_payload        Json?
-  created_at              DateTime      @default(now())
-  updated_at              DateTime      @updatedAt
+  created_at              DateTime            @default(now())
+  updated_at              DateTime            @updatedAt
   completed_at            DateTime?
-  organization            Organization  @relation(fields: [org_id], references: [org_id])
-  plan                    Plan          @relation(fields: [plan_id], references: [plan_id])
-  initiated_by            UserQ         @relation(fields: [initiated_by_id], references: [user_id])
+  subscription_change_id  Int?                @unique
+  organization            Organization        @relation(fields: [org_id], references: [org_id])
+  plan                    Plan                @relation(fields: [plan_id], references: [plan_id])
+  initiated_by            UserQ               @relation(fields: [initiated_by_id], references: [user_id])
+  event_pass              EventPass?
+  refund                  Refund?
+  subscription_change     SubscriptionChange? @relation(fields: [subscription_change_id], references: [subscription_change_id])
 
   @@index([org_id, created_at])
   @@index([org_id, status])
   @@index([initiated_by_id])
   @@map("payments")
+}
+
+model Refund {
+  refund_id               Int          @id @default(autoincrement())
+  provider_refund_id      String       @unique @db.Uuid
+  payment_id              Int          @unique
+  org_id                  Int
+  status                  RefundStatus @default(PENDING)
+  reason                  String
+  failure_code            String?
+  failure_message         String?
+  provider_transaction_id String?
+  provider_payload        Json?
+  created_at              DateTime     @default(now())
+  updated_at              DateTime     @updatedAt
+  completed_at            DateTime?
+  payment                 Payment      @relation(fields: [payment_id], references: [payment_id])
+  organization            Organization @relation(fields: [org_id], references: [org_id])
+
+  @@index([org_id, status])
+  @@map("refunds")
+}
+
+model Subscription {
+  subscription_id      Int                  @id @default(autoincrement())
+  org_id               Int                  @unique
+  plan_id              Int
+  status               SubscriptionStatus   @default(ACTIVE)
+  billing_interval     BillingInterval?
+  current_period_start DateTime?
+  current_period_end   DateTime?
+  cancel_at_period_end Boolean              @default(false)
+  version              Int                  @default(1)
+  created_at           DateTime             @default(now())
+  updated_at           DateTime             @updatedAt
+  organization         Organization         @relation(fields: [org_id], references: [org_id])
+  plan                 Plan                 @relation("SubscriptionPlan", fields: [plan_id], references: [plan_id])
+  changes              SubscriptionChange[]
+
+  @@index([status, current_period_end])
+  @@map("subscriptions")
+}
+
+model SubscriptionChange {
+  subscription_change_id Int                      @id @default(autoincrement())
+  org_id                 Int
+  subscription_id        Int?
+  from_plan_id           Int?
+  to_plan_id             Int?
+  from_interval          BillingInterval?
+  to_interval            BillingInterval?
+  type                   SubscriptionChangeType
+  status                 SubscriptionChangeStatus @default(AWAITING_PAYMENT)
+  effective_at           DateTime?
+  quoted_amount          Decimal?                 @db.Decimal(18, 2)
+  quoted_currency        String?                  @db.VarChar(3)
+  reference_amount       Decimal?                 @db.Decimal(18, 2)
+  reference_currency     String?                  @db.VarChar(3)
+  source_version         Int                      @default(0)
+  reason                 String?
+  resource_selection     Json?
+  created_at             DateTime                 @default(now())
+  updated_at             DateTime                 @updatedAt
+  applied_at             DateTime?
+  canceled_at            DateTime?
+  organization           Organization             @relation(fields: [org_id], references: [org_id])
+  subscription           Subscription?            @relation(fields: [subscription_id], references: [subscription_id])
+  from_plan              Plan?                    @relation("SubscriptionChangeFromPlan", fields: [from_plan_id], references: [plan_id])
+  to_plan                Plan?                    @relation("SubscriptionChangeToPlan", fields: [to_plan_id], references: [plan_id])
+  payment                Payment?
+
+  @@index([org_id, status])
+  @@index([effective_at, status])
+  @@map("subscription_changes")
+}
+
+model SubscriptionPeriod {
+  subscription_period_id Int              @id @default(autoincrement())
+  org_id                 Int
+  plan_id                Int
+  payment_id             Int?
+  billing_interval       BillingInterval?
+  starts_at              DateTime
+  ends_at                DateTime?
+  source                 String
+  entitlement_snapshot   Json
+  created_at             DateTime         @default(now())
+  organization           Organization     @relation(fields: [org_id], references: [org_id])
+  plan                   Plan             @relation("SubscriptionPeriodPlan", fields: [plan_id], references: [plan_id])
+
+  @@index([org_id, starts_at])
+  @@index([payment_id])
+  @@map("subscription_periods")
+}
+
+model SubscriptionAuditLog {
+  subscription_audit_log_id Int          @id @default(autoincrement())
+  org_id                    Int
+  actor_user_id             Int?
+  action                    String
+  before_snapshot           Json?
+  after_snapshot            Json?
+  created_at                DateTime     @default(now())
+  organization              Organization @relation(fields: [org_id], references: [org_id])
+
+  @@index([org_id, created_at])
+  @@map("subscription_audit_logs")
 }
 
 model EventSchedule {
@@ -251,4 +399,60 @@ enum PaymentStatus {
   PROCESSING
   COMPLETED
   FAILED
+  EXPIRED
+  REFUND_PENDING
+  REFUNDED
+  REVIEW_REQUIRED
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  CANCELED
+  EXPIRED
+}
+
+enum SubscriptionChangeType {
+  PURCHASE
+  UPGRADE
+  DOWNGRADE
+  RENEWAL
+  INTERVAL_CHANGE
+  CANCEL
+  REACTIVATE
+}
+
+enum SubscriptionChangeStatus {
+  AWAITING_PAYMENT
+  SCHEDULED
+  APPLIED
+  FAILED
+  CANCELED
+  EXPIRED
+  REVIEW_REQUIRED
+  REFUND_PENDING
+}
+
+enum RefundStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum BillingInterval {
+  MONTHLY
+  ANNUAL
+  ONE_TIME
+}
+
+enum EventEntitlementType {
+  SUBSCRIPTION
+  EVENT_PASS
+}
+
+enum EventPassStatus {
+  AVAILABLE
+  ASSIGNED
+  EXPIRED
 }

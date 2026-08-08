@@ -34,6 +34,11 @@ router.post("/verify", canScan, qrVerifyController.verifyScan);
 // Récupération de tous les QR codes 
 router.get("/qrs", canReadQr, qrController.getAllQrs);
 
+// Génération à la demande : aucun QR ou PDF individuel n'est conservé sur disque.
+router.get("/image/:id", canReadQr, qrController.downloadQrImage);
+router.get("/card/:id/download", canReadQr, qrController.downloadCardPdf);
+router.get("/event/:event_id/cards.pdf", adminOnly, qrController.downloadEventCardsPdf);
+
 // Télécharger le modèle CSV pour importer des QR codes
 router.get("/template/:event_id", adminOnly, qrController.downloadQrImportTemplate);
 

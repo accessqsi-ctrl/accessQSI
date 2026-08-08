@@ -13,7 +13,7 @@ export default function DashboardLayout({ children }) {
     const router = useRouter();
     const [showLogoutModal, setShowLogoutModal] = useState(false);
     const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
-    const { userProfile, profileLoading, isFreePlan, planName } = useUserPlan();
+    const { userProfile, profileLoading, isProPlan, planName } = useUserPlan();
     const isOperator = userProfile?.role === "OPERATOR";
     const isAgent = userProfile?.role === "ORG_AGENT";
     const operatorAllowedPath = pathname === "/dashboard/settings";
@@ -81,8 +81,7 @@ export default function DashboardLayout({ children }) {
         return navigation.find(n => pathname === n.href || (pathname.startsWith(n.href) && n.href !== '/dashboard'))?.name || "Dashboard";
     }, [navigation, pathname]);
 
-    const planLabel = planName || userProfile?.subscription?.planName || userProfile?.planName || "Free";
-    const isProPlan = !isFreePlan;
+    const planLabel = planName || userProfile?.subscription?.planName || userProfile?.planName || "Découverte";
     const homeHref = isOperator ? "/scan" : "/dashboard";
 
     if (profileLoading || (isOperator && !operatorAllowedPath) || (isAgent && agentRestrictedPath)) {

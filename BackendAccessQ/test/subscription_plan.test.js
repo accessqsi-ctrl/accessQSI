@@ -1,6 +1,6 @@
-const test = require('node:test');
-const assert = require('node:assert/strict');
-const prisma = require('../src/prisma/client');
+const test = require("node:test");
+const assert = require("node:assert/strict");
+const prisma = require("../src/prisma/client");
 const {
   PLAN_CAPABILITIES,
   getPlanSummary,
@@ -11,231 +11,146 @@ const {
   getPlanUsage,
   hasPlanCapability,
   assignOrganizationPlan
-} = require('../src/config/subscription');
-const requireProPlan = require('../src/middleware/planAccessMiddleware');
+} = require("../src/config/subscription");
+const requireProPlan = require("../src/middleware/planAccessMiddleware");
 
-const makeResponse = () => {
-  const res = {
-    statusCode: null,
-    body: null,
-    status(code) {
-      this.statusCode = code;
-      return this;
-    },
-    json(payload) {
-      this.body = payload;
-      return this;
-    }
-  };
-
-  return res;
-};
-
-test('un plan Free avec 100 QR existants refuse une nouvelle génération', () => {
-  const summary = getPlanSummary({ plan: { title: 'FREE' } });
-  const quota = getQrQuotaStatus(summary, 100);
-
-  assert.equal(summary.plan, 'FREE');
-  assert.equal(quota.allowed, false);
-  assert.equal(quota.remaining, 0);
-  assert.equal(quota.limit, 100);
+const makeResponse = () => ({
+  statusCode: null,
+  body: null,
+  status(code) { this.statusCode = code; return this; },
+  json(payload) { this.body = payload; return this; }
 });
 
-test('un plan Pro autorise une génération illimitée', () => {
-  const summary = getPlanSummary({ plan: { title: 'PRO' } });
-  const quota = getQrQuotaStatus(summary, 1000);
-
-  assert.equal(summary.plan, 'PRO');
-  assert.equal(quota.allowed, true);
-  assert.equal(quota.remaining, null);
-  assert.equal(quota.limit, null);
+test("Découverte applique 1 événement mensuel, 50 QR par événement, 2 agents et 2 zones", () => {
+  const summary = getPlanSummary({ plan: { title: "DISCOVERY" }, created_at: new Date("2026-01-08T10:00:00Z") });
+  assert.equal(summary.plan, "DISCOVERY");
+  assert.equal(getEventQuotaStatus(summary, 1).allowed, false);
+  assert.equal(getQrQuotaStatus(summary, 50).allowed, false);
+  assert.equal(getAgentQuotaStatus(summary, 2).allowed, false);
+  assert.equal(getAreaQuotaStatus(summary, 2).allowed, false);
 });
 
-test('un plan Free refuse aussi la création d\'événements au-delà de sa limite', () => {
-  const summary = getPlanSummary({ plan: { title: 'FREE' } });
-  const quota = getEventQuotaStatus(summary, 3);
-
-  assert.equal(summary.plan, 'FREE');
-  assert.equal(quota.allowed, false);
-  assert.equal(quota.remaining, 0);
-  assert.equal(quota.limit, 3);
-});
-
-test('un plan Pro garde des limites d\'événements et de QR ouvertes', () => {
-  const summary = getPlanSummary({ plan: { title: 'PRO' } });
-  const qrQuota = getQrQuotaStatus(summary, 1000);
-  const eventQuota = getEventQuotaStatus(summary, 30);
-
-  assert.equal(summary.plan, 'PRO');
-  assert.equal(qrQuota.allowed, true);
-  assert.equal(qrQuota.limit, null);
-  assert.equal(eventQuota.allowed, true);
-  assert.equal(eventQuota.limit, null);
-});
-
-test('un plan Free limite les agents et les zones actifs à 4', () => {
-  const summary = getPlanSummary({ plan: { title: 'FREE' } });
-  const agentQuota = getAgentQuotaStatus(summary, 4);
-  const areaQuota = getAreaQuotaStatus(summary, 4);
-
-  assert.equal(summary.limits.maxAgents, 4);
-  assert.equal(summary.limits.maxAreas, 4);
-  assert.equal(agentQuota.allowed, false);
-  assert.equal(agentQuota.remaining, 0);
-  assert.equal(areaQuota.allowed, false);
-  assert.equal(areaQuota.remaining, 0);
-});
-
-test('un plan Pro garde les agents et les zones illimités', () => {
-  const summary = getPlanSummary({ plan: { title: 'PRO' } });
-
-  assert.equal(getAgentQuotaStatus(summary, 50).allowed, true);
-  assert.equal(getAgentQuotaStatus(summary, 50).limit, null);
-  assert.equal(getAreaQuotaStatus(summary, 50).allowed, true);
-  assert.equal(getAreaQuotaStatus(summary, 50).limit, null);
-});
-
-test('un essai Pro actif expose tous les droits Pro et sa date de fin', () => {
-  const trialStartedAt = new Date(Date.now() - 60_000);
-  const trialExpiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
-  const summary = getPlanSummary({
-    plan: { title: 'PRO' },
-    subscription_started_at: trialStartedAt,
-    subscription_expires_at: trialExpiresAt,
-    trial_started_at: trialStartedAt,
-    trial_expires_at: trialExpiresAt
+test("Essential applique 5 événements, 200 QR, 5 agents et 6 zones", () => {
+  const summary = getPlanSummary({ plan: { title: "ESSENTIAL" } });
+  assert.deepEqual(summary.limits, {
+    maxEvents: 5,
+    maxEventsPerCycle: 5,
+    maxQrCodes: 200,
+    maxQrCodesPerEvent: 200,
+    maxAgents: 5,
+    maxAreas: 6,
+    maxPdfPagesPerFile: 200
   });
+  assert.equal(hasPlanCapability(summary, PLAN_CAPABILITIES.SCAN_EXPORTS), true);
+  assert.equal(hasPlanCapability(summary, PLAN_CAPABILITIES.CUSTOM_CARD_TEMPLATES), false);
+});
 
-  assert.equal(summary.plan, 'PRO');
+test("Pro applique 15 événements, 700 QR, 15 agents et 20 zones", () => {
+  const summary = getPlanSummary({ plan: { title: "PRO" } });
+  assert.equal(getEventQuotaStatus(summary, 14).allowed, true);
+  assert.equal(getEventQuotaStatus(summary, 15).allowed, false);
+  assert.equal(getQrQuotaStatus(summary, 699).allowed, true);
+  assert.equal(getQrQuotaStatus(summary, 700).allowed, false);
+  assert.equal(summary.limits.maxAgents, 15);
+  assert.equal(summary.limits.maxAreas, 20);
+  assert.equal(hasPlanCapability(summary, PLAN_CAPABILITIES.ADVANCED_ANALYTICS), true);
+});
+
+test("Entreprise est administrable sur devis avec les capacités avancées", () => {
+  const summary = getPlanSummary({ plan: { title: "ENTERPRISE" } });
+  assert.equal(summary.plan, "ENTERPRISE");
+  assert.equal(summary.isPaid, true);
   assert.equal(summary.isPro, true);
-  assert.equal(summary.isTrial, true);
-  assert.equal(summary.subscriptionType, 'TRIAL');
-  assert.equal(summary.trialAvailable, false);
-  assert.equal(summary.trialExpiresAt, trialExpiresAt);
+  assert.equal(summary.limits.maxEventsPerCycle, null);
+  assert.equal(summary.limits.maxQrCodesPerEvent, null);
+  assert.equal(hasPlanCapability(summary, PLAN_CAPABILITIES.ADVANCED_ANALYTICS), true);
 });
 
-test('un essai Pro expiré revient à Free et ne peut pas être réutilisé', () => {
-  const trialStartedAt = new Date(Date.now() - 15 * 24 * 60 * 60 * 1000);
-  const trialExpiresAt = new Date(Date.now() - 24 * 60 * 60 * 1000);
+test("Entreprise applique les limites négociées du contrat", () => {
   const summary = getPlanSummary({
-    plan: { title: 'PRO' },
-    subscription_started_at: trialStartedAt,
-    subscription_expires_at: trialExpiresAt,
-    trial_started_at: trialStartedAt,
-    trial_expires_at: trialExpiresAt
+    plan: { title: "ENTERPRISE" },
+    enterprise_entitlements: {
+      maxEventsPerCycle: 80,
+      maxQrCodesPerEvent: 4000,
+      maxAgents: 35,
+      maxAreas: 50,
+      capabilities: ["scan_exports", "advanced_analytics"]
+    }
   });
-
-  assert.equal(summary.plan, 'FREE');
-  assert.equal(summary.isPro, false);
-  assert.equal(summary.isTrial, false);
-  assert.equal(summary.subscriptionType, 'FREE');
-  assert.equal(summary.trialAvailable, false);
+  assert.equal(summary.limits.maxEventsPerCycle, 80);
+  assert.equal(summary.limits.maxQrCodesPerEvent, 4000);
+  assert.equal(summary.limits.maxAgents, 35);
+  assert.equal(summary.limits.maxAreas, 50);
+  assert.deepEqual(summary.capabilities, ["scan_exports", "advanced_analytics"]);
 });
 
-test('les capacités commerciales sont dérivées de la matrice centrale du plan', () => {
-  const free = getPlanSummary({ plan: { title: 'FREE' } });
-  const pro = getPlanSummary({ plan: { title: 'PRO' } });
-
-  assert.equal(hasPlanCapability(free, PLAN_CAPABILITIES.ADVANCED_ANALYTICS), false);
-  assert.equal(hasPlanCapability(pro, PLAN_CAPABILITIES.ADVANCED_ANALYTICS), true);
-  assert.equal(hasPlanCapability(pro, PLAN_CAPABILITIES.CUSTOM_CARD_TEMPLATES), true);
-});
-
-test('le profil de consommation calcule le restant pour chaque quota Free', () => {
-  const summary = getPlanSummary({ plan: { title: 'FREE' } });
-  const usage = getPlanUsage(summary, {
-    events: 2,
-    qrCodes: 75,
-    agents: 4,
-    areas: 1
+test("un abonnement expiré revient aux avantages Découverte", () => {
+  const summary = getPlanSummary({
+    plan: { title: "PRO" },
+    subscription_expires_at: new Date(Date.now() - 1000)
   });
-
-  assert.deepEqual(usage.events, { used: 2, limit: 3, remaining: 1, reached: false });
-  assert.deepEqual(usage.qrCodes, { used: 75, limit: 100, remaining: 25, reached: false });
-  assert.deepEqual(usage.agents, { used: 4, limit: 4, remaining: 0, reached: true });
-  assert.deepEqual(usage.areas, { used: 1, limit: 4, remaining: 3, reached: false });
+  assert.equal(summary.plan, "DISCOVERY");
+  assert.equal(summary.downgraded, true);
+  assert.equal(summary.limits.maxEventsPerCycle, 1);
+  assert.equal(summary.limits.maxQrCodesPerEvent, 50);
 });
 
-test('une organisation passe de Free à Pro puis revient à Free sans conserver les droits Pro', async () => {
-  const plans = new Map([
-    ['FREE', { plan_id: 1, title: 'FREE', cost: 0, features: [] }],
-    ['PRO', {
-      plan_id: 2,
-      title: 'PRO',
-      cost: 5,
-      currency: 'USD',
-      features: Object.values(PLAN_CAPABILITIES)
-    }]
-  ]);
-  const organization = { org_id: 42, subscription_plan: 1 };
+test("le cycle mensuel conserve le jour d'ancrage même en facturation annuelle", () => {
+  const summary = getPlanSummary({
+    plan: { title: "ESSENTIAL" },
+    subscription_interval: "ANNUAL",
+    subscription_started_at: new Date("2026-01-31T10:00:00Z"),
+    subscription_expires_at: new Date("2027-01-31T10:00:00Z")
+  }, new Date("2026-03-15T10:00:00Z"));
+  assert.equal(summary.cycleStartedAt.toISOString(), "2026-02-28T10:00:00.000Z");
+  assert.equal(summary.cycleEndsAt.toISOString(), "2026-03-31T10:00:00.000Z");
+});
+
+test("le profil de consommation calcule le restant de chaque quota", () => {
+  const summary = getPlanSummary({ plan: { title: "ESSENTIAL" } });
+  const usage = getPlanUsage(summary, { events: 2, qrCodes: 75, agents: 4, areas: 1 });
+  assert.deepEqual(usage.events, { used: 2, limit: 5, remaining: 3, reached: false });
+  assert.deepEqual(usage.qrCodes, { used: 75, limit: 200, remaining: 125, reached: false });
+  assert.deepEqual(usage.agents, { used: 4, limit: 5, remaining: 1, reached: false });
+  assert.deepEqual(usage.areas, { used: 1, limit: 6, remaining: 5, reached: false });
+});
+
+test("une organisation peut passer de Découverte à Pro puis revenir à Découverte", async () => {
+  const plans = new Map();
+  let nextId = 1;
+  const organization = { org_id: 42, subscription_plan: null };
   const prismaClient = {
     plan: {
       upsert: async ({ create, update }) => {
-        const existing = plans.get(create.title);
-        const saved = existing
-          ? { ...existing, ...update }
-          : { plan_id: plans.size + 1, ...create };
+        const current = plans.get(create.title);
+        const saved = current ? { ...current, ...update } : { plan_id: nextId++, ...create };
         plans.set(create.title, saved);
         return saved;
       },
       findMany: async () => [...plans.values()],
       findUnique: async ({ where }) => plans.get(where.title) || null
     },
-    organization: {
-      update: async ({ data }) => {
-        organization.subscription_plan = data.subscription_plan;
-        return organization;
-      }
-    }
+    organization: { update: async ({ data }) => Object.assign(organization, data) }
   };
-  const currentSummary = () => {
-    const plan = [...plans.values()].find(item => item.plan_id === organization.subscription_plan);
-    return getPlanSummary({ ...organization, plan });
-  };
-
-  assert.equal(currentSummary().plan, 'FREE');
-  assert.equal(hasPlanCapability(currentSummary(), PLAN_CAPABILITIES.ADVANCED_ANALYTICS), false);
-
-  await assignOrganizationPlan(prismaClient, organization.org_id, 'PRO');
-  assert.equal(currentSummary().plan, 'PRO');
-  assert.equal(currentSummary().limits.maxEvents, null);
-  assert.equal(hasPlanCapability(currentSummary(), PLAN_CAPABILITIES.CUSTOM_CARD_TEMPLATES), true);
-
-  await assignOrganizationPlan(prismaClient, organization.org_id, 'FREE');
-  const downgraded = currentSummary();
-  assert.equal(downgraded.plan, 'FREE');
-  assert.equal(downgraded.limits.maxEvents, 3);
-  assert.equal(hasPlanCapability(downgraded, PLAN_CAPABILITIES.CUSTOM_CARD_TEMPLATES), false);
-  assert.equal(hasPlanCapability(downgraded, PLAN_CAPABILITIES.ADVANCED_ANALYTICS), false);
-  assert.equal(getPlanUsage(downgraded, { events: 8 }).events.reached, true);
+  await assignOrganizationPlan(prismaClient, organization.org_id, "DISCOVERY");
+  await assignOrganizationPlan(prismaClient, organization.org_id, "PRO");
+  let current = [...plans.values()].find((item) => item.plan_id === organization.subscription_plan);
+  assert.equal(getPlanSummary({ plan: current }).plan, "PRO");
+  await assignOrganizationPlan(prismaClient, organization.org_id, "DISCOVERY");
+  current = [...plans.values()].find((item) => item.plan_id === organization.subscription_plan);
+  assert.equal(getPlanSummary({ plan: current }).plan, "DISCOVERY");
 });
 
-test('le middleware Pro refuse l\'accès d\'une organisation Free et autorise une organisation Pro', async (t) => {
+test("le middleware Pro refuse Découverte et autorise Pro", async (t) => {
   const originalFindUnique = prisma.organization.findUnique;
-  t.after(() => {
-    prisma.organization.findUnique = originalFindUnique;
-  });
-
-  const freeResponse = makeResponse();
-  let freeNextCalled = false;
-  prisma.organization.findUnique = async () => ({ plan: { title: 'FREE' } });
-
-  await requireProPlan()( { user: { org_id: 10 } }, freeResponse, () => {
-    freeNextCalled = true;
-  });
-
-  assert.equal(freeNextCalled, false);
-  assert.equal(freeResponse.statusCode, 403);
-  assert.equal(freeResponse.body.upgradeRequired, true);
-
+  t.after(() => { prisma.organization.findUnique = originalFindUnique; });
+  const discoveryResponse = makeResponse();
+  prisma.organization.findUnique = async () => ({ plan: { title: "DISCOVERY" } });
+  await requireProPlan()({ user: { org_id: 10 } }, discoveryResponse, () => {});
+  assert.equal(discoveryResponse.statusCode, 403);
   const proResponse = makeResponse();
-  let proNextCalled = false;
-  prisma.organization.findUnique = async () => ({ plan: { title: 'PRO' } });
-
-  await requireProPlan()( { user: { org_id: 11 } }, proResponse, () => {
-    proNextCalled = true;
-  });
-
-  assert.equal(proNextCalled, true);
-  assert.equal(proResponse.statusCode, null);
+  let nextCalled = false;
+  prisma.organization.findUnique = async () => ({ plan: { title: "PRO" } });
+  await requireProPlan()({ user: { org_id: 11 } }, proResponse, () => { nextCalled = true; });
+  assert.equal(nextCalled, true);
 });

@@ -4,9 +4,18 @@ const { getPlanSummary, PLAN_KEYS } = require("../config/subscription");
 const getFreePlanContext = () => ({
     organization: null,
     plan: PLAN_KEYS.FREE,
-    planName: "Free",
+    planName: "Découverte",
     isPro: false,
-    limits: { maxEvents: 3, maxQrCodes: 100, maxAgents: 4, maxAreas: 4 },
+    isPaid: false,
+    limits: {
+        maxEvents: 1,
+        maxEventsPerCycle: 1,
+        maxQrCodes: 50,
+        maxQrCodesPerEvent: 50,
+        maxAgents: 2,
+        maxAreas: 2,
+        maxPdfPagesPerFile: 200
+    },
     capabilities: [],
     features: []
 });
@@ -33,6 +42,7 @@ const getOrganizationPlanContext = async (organizationId) => {
             plan: summary.plan,
             planName: summary.planName,
             isPro: summary.isPro,
+            isPaid: summary.isPaid,
             limits: summary.limits,
             capabilities: summary.capabilities,
             features: summary.features

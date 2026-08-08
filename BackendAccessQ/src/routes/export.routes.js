@@ -10,7 +10,7 @@ const { PLAN_CAPABILITIES } = require("../config/subscription");
 router.use(authMiddleware);
 
 const requireScanExports = requirePlanCapability(PLAN_CAPABILITIES.SCAN_EXPORTS, {
-    message: "L’export des scans nécessite un abonnement Pro."
+    message: "L’export des scans nécessite un abonnement Essential ou Pro."
 });
 
 router.get("/csv", requireScanExports, exportController.exportScansCSV);

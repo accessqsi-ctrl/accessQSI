@@ -16,9 +16,11 @@ export default function NewEventPage() {
         description: "",
         areaIds: [],
         startDate: "",
-        endDate: ""
+        endDate: "",
+        eventPassId: ""
     });
     const [areas, setAreas] = useState([]);
+    const [eventPasses, setEventPasses] = useState([]);
     const [loadingAreas, setLoadingAreas] = useState(true);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
@@ -44,6 +46,12 @@ export default function NewEventPage() {
             }
         };
         fetchAreas();
+        apiFetch("/billing")
+            .then((res) => res.json())
+            .then((data) => {
+                if (data.success) setEventPasses((data.eventPasses || []).filter((pass) => pass.status === "AVAILABLE"));
+            })
+            .catch(() => setEventPasses([]));
     }, []);
 
     const handleChange = (e) => {
@@ -65,8 +73,8 @@ export default function NewEventPage() {
         e.preventDefault();
         setError("");
 
-        if (eventQuotaReached) {
-            setError("Votre quota d'événements est atteint. Passez au plan Pro pour continuer.");
+        if (eventQuotaReached && !formData.eventPassId) {
+            setError("Votre quota mensuel d'événements est atteint. Sélectionnez un Pass événement, attendez le prochain cycle ou changez de plan.");
             return;
         }
 
@@ -130,13 +138,35 @@ export default function NewEventPage() {
                 </div>
             )}
 
-            <PlanQuotaStatus label="Événements du plan Free" quota={eventQuota} />
+            <PlanQuotaStatus label="Événements créés pendant ce cycle mensuel" quota={eventQuota} />
+
+            {eventPasses.length > 0 && (
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900/60 dark:bg-emerald-950/20">
+                    <label className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">
+                        Utiliser un Pass événement (facultatif)
+                        <select
+                            name="eventPassId"
+                            value={formData.eventPassId}
+                            onChange={handleChange}
+                            className="mt-2 w-full rounded-xl border border-emerald-200 bg-white px-4 py-3 text-slate-900 dark:border-emerald-900 dark:bg-slate-950 dark:text-white"
+                        >
+                            <option value="">Utiliser le quota de mon abonnement</option>
+                            {eventPasses.map((pass) => (
+                                <option key={pass.id} value={pass.id}>Pass #{pass.id} · 200 QR · 30 jours</option>
+                            ))}
+                        </select>
+                    </label>
+                    <p className="mt-2 text-xs text-emerald-800 dark:text-emerald-200">
+                        Le Pass sera attribué à cet événement et ses 30 jours commenceront à la création.
+                    </p>
+                </div>
+            )}
 
             {/* **************************************** */}
             {/* Formulaire de création de l'événement */}
             {/* **************************************** */}
             <form onSubmit={handleSubmit} className="bg-white dark:bg-slate-950 p-6 sm:p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-8">
-                <fieldset disabled={profileLoading || eventQuotaReached} className="contents">
+                <fieldset disabled={profileLoading || (eventQuotaReached && !formData.eventPassId)} className="contents">
                 {loading && (
                     <LoadingBar label="Création de l'événement" />
                 )}
@@ -241,7 +271,7 @@ export default function NewEventPage() {
                     </Link>
                     <button
                         type="submit"
-                        disabled={loading || profileLoading || eventQuotaReached}
+                        disabled={loading || profileLoading || (eventQuotaReached && !formData.eventPassId)}
                         className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl shadow-lg shadow-blue-500/20 active:scale-95 transition-all text-sm flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
                     >
                         {loading ? (

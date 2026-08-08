@@ -30,8 +30,8 @@ export function useUserPlan() {
         const isPro = Boolean(rawSubscription.isPro ?? userProfile?.isPro ?? false);
 
         return {
-            plan: rawSubscription.plan || userProfile?.plan || (isPro ? "PRO" : "FREE"),
-            planName: rawSubscription.planName || userProfile?.planName || (isPro ? "Pro" : "Free"),
+            plan: rawSubscription.plan || userProfile?.plan || (isPro ? "PRO" : "DISCOVERY"),
+            planName: rawSubscription.planName || userProfile?.planName || (isPro ? "Pro" : "Découverte"),
             isPro,
             planCurrency: rawSubscription.planCurrency || userProfile?.planCurrency || "USD",
             planLimits: rawSubscription.planLimits || userProfile?.planLimits || {},
@@ -41,6 +41,10 @@ export function useUserPlan() {
             startedAt: rawSubscription.subscriptionStartedAt || userProfile?.subscriptionStartedAt || null,
             expiresAt: rawSubscription.subscriptionExpiresAt || userProfile?.subscriptionExpiresAt || null,
             subscriptionType: rawSubscription.subscriptionType || userProfile?.subscriptionType || "FREE",
+            billingInterval: rawSubscription.billingInterval || userProfile?.billingInterval || null,
+            downgraded: Boolean(rawSubscription.downgraded ?? userProfile?.downgraded ?? false),
+            cycleStartedAt: rawSubscription.billingCycleStartedAt || userProfile?.billingCycleStartedAt || null,
+            cycleEndsAt: rawSubscription.billingCycleEndsAt || userProfile?.billingCycleEndsAt || null,
             isTrial: Boolean(rawSubscription.isTrial ?? userProfile?.isTrial ?? false),
             trialAvailable: Boolean(rawSubscription.trialAvailable ?? userProfile?.trialAvailable ?? false),
             trialDurationDays: rawSubscription.trialDurationDays || userProfile?.trialDurationDays || 30,
@@ -54,7 +58,9 @@ export function useUserPlan() {
         profileLoading,
         refreshPlan,
         ...subscription,
-        isFreePlan: !subscription.isPro,
-        isProPlan: subscription.isPro
+        isFreePlan: subscription.plan === "DISCOVERY" || subscription.plan === "FREE",
+        isPaidPlan: ["ESSENTIAL", "PRO"].includes(subscription.plan),
+        isProPlan: subscription.isPro,
+        hasCapability: (capability) => subscription.planCapabilities.includes(capability)
     };
 }

@@ -24,6 +24,7 @@ router.get('/organizations', orgController.listOrganizations);
 router.post('/organizations/:id/deactivate', orgController.deactivateOrganization);
 router.post('/organizations/:id/activate', orgController.activateOrganization);
 router.post('/organizations/:id/archive', orgController.archiveOrganization);
+router.post('/organizations/:id/enterprise', orgController.activateEnterprise);
 
 // Utilisateurs
 router.get('/users', userController.listUsers);

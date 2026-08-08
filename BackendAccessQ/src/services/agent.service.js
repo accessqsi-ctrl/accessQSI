@@ -63,7 +63,9 @@ exports.updateAgentStatus = async (userId, isDeleted, dbClient = prisma) => {
     return await dbClient.userQ.update({
         where: { user_id: userId },
         data: {
-            deleted_at: isDeleted ? new Date() : null
+            deleted_at: isDeleted ? new Date() : null,
+            is_active: !isDeleted,
+            suspended_by_plan: false
         }
     });
 };
@@ -71,6 +73,6 @@ exports.updateAgentStatus = async (userId, isDeleted, dbClient = prisma) => {
 exports.softDeleteAgent = async (userId, orgId) => {
     return await prisma.userQ.update({
         where: { user_id: userId },
-        data: { deleted_at: new Date() }
+        data: { deleted_at: new Date(), is_active: false, suspended_by_plan: false }
     });
 };

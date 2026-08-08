@@ -348,40 +348,44 @@ exports.viewprofile = async (req, res) => {
             return res.status(404).json({ success: false, message: "Utilisateur non trouvé" });
         }
 
-        const [organization, usageCounts] = fullUser.org_id
-            ? await Promise.all([
-                prisma.organization.findUnique({
-                    where: { org_id: fullUser.org_id },
-                    include: { plan: true }
-                }),
-                Promise.all([
-                    prisma.event.count({
-                        where: { org_id: fullUser.org_id, deleted_at: null }
-                    }),
-                    prisma.qrCode.count({
-                        where: { event: { org_id: fullUser.org_id }, deleted_at: null }
-                    }),
-                    prisma.userQ.count({
-                        where: {
-                            org_id: fullUser.org_id,
-                            role: { in: ["ORG_AGENT", "OPERATOR"] },
-                            deleted_at: null,
-                            is_active: true
-                        }
-                    }),
-                    prisma.area.count({
-                        where: { org_id: fullUser.org_id, deleted_at: null }
-                    })
-                ]).then(([events, qrCodes, agents, areas]) => ({
-                    events,
-                    qrCodes,
-                    agents,
-                    areas
-                }))
-            ])
-            : [null, { events: 0, qrCodes: 0, agents: 0, areas: 0 }];
-
+        const organization = fullUser.org_id
+            ? await prisma.organization.findUnique({
+                where: { org_id: fullUser.org_id },
+                include: { plan: true }
+            })
+            : null;
         const planSummary = getPlanSummary(organization);
+        const usageCounts = fullUser.org_id
+            ? await Promise.all([
+                prisma.event.count({
+                    where: {
+                        org_id: fullUser.org_id,
+                        entitlement_type: "SUBSCRIPTION",
+                        created_at: { gte: planSummary.cycleStartedAt, lt: planSummary.cycleEndsAt }
+                    }
+                }),
+                prisma.qrCode.groupBy({
+                    by: ["event_id"],
+                    where: { event: { org_id: fullUser.org_id, deleted_at: null } },
+                    _count: { _all: true }
+                }),
+                prisma.userQ.count({
+                    where: {
+                        org_id: fullUser.org_id,
+                        role: { in: ["ORG_AGENT", "OPERATOR"] },
+                        deleted_at: null,
+                        is_active: true
+                    }
+                }),
+                prisma.area.count({ where: { org_id: fullUser.org_id, deleted_at: null, suspended_by_plan: false } })
+            ]).then(([events, qrGroups, agents, areas]) => ({
+                events,
+                qrCodes: Math.max(0, ...qrGroups.map(group => group._count._all)),
+                agents,
+                areas
+            }))
+            : { events: 0, qrCodes: 0, agents: 0, areas: 0 };
+
         const planUsage = getPlanUsage(planSummary, usageCounts);
         const subscription = {
             plan: planSummary.plan,
@@ -395,6 +399,10 @@ exports.viewprofile = async (req, res) => {
             subscriptionStartedAt: planSummary.startedAt,
             subscriptionExpiresAt: planSummary.expiresAt,
             subscriptionType: planSummary.subscriptionType,
+            billingInterval: planSummary.billingInterval,
+            downgraded: planSummary.downgraded,
+            billingCycleStartedAt: planSummary.cycleStartedAt,
+            billingCycleEndsAt: planSummary.cycleEndsAt,
             isTrial: planSummary.isTrial,
             trialAvailable: planSummary.trialAvailable,
             trialDurationDays: planSummary.trialDurationDays,

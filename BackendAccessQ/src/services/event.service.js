@@ -24,7 +24,8 @@ const assertAreasBelongToOrg = async (tx, orgId, areaIds) => {
     where: {
       org_id: orgId,
       area_id: { in: areaIds },
-      deleted_at: null
+      deleted_at: null,
+      suspended_by_plan: false
     }
   });
 
@@ -64,7 +65,7 @@ exports.findByTitle = async (orgId, titleSearch) => {
         orderBy: { start_date: 'asc' }
       },
       _count: {
-        select: { qr_codes: { where: { status: 'active', deleted_at: null } } }
+        select: { qr_codes: true }
       }
     },
     orderBy: { created_at: 'desc' }
@@ -84,7 +85,7 @@ exports.findById = async (orgId, eventId) => {
         orderBy: { start_date: 'asc' }
       },
       _count: {
-        select: { qr_codes: { where: { status: 'active', deleted_at: null } } }
+        select: { qr_codes: true }
       }
     }
   });
@@ -106,7 +107,7 @@ exports.findAll = async (orgId) => {
         orderBy: { start_date: 'asc' }
       },
       _count: {
-        select: { qr_codes: { where: { status: 'active', deleted_at: null } } }
+        select: { qr_codes: true }
       }
     },
     orderBy: { created_at: 'desc' }

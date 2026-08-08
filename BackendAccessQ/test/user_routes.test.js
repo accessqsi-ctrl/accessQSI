@@ -338,7 +338,7 @@ test("GET /user/profile returns the authenticated user profile", async () => {
                 })
             },
             event: { count: async () => 2 },
-            qrCode: { count: async () => 15 },
+            qrCode: { groupBy: async () => [{ event_id: 1, _count: { _all: 15 } }] },
             area: { count: async () => 3 }
         }
     });
@@ -352,53 +352,14 @@ test("GET /user/profile returns the authenticated user profile", async () => {
     assert.equal(res.body.user.plan, "PRO");
     assert.equal(res.body.user.planName, "Pro");
     assert.equal(res.body.user.isPro, true);
-    assert.deepEqual(res.body.user.planLimits, {
-        maxEvents: null,
-        maxQrCodes: null,
-        maxAgents: null,
-        maxAreas: null
-    });
-    assert.deepEqual(res.body.user.subscription, {
-        plan: "PRO",
-        planName: "Pro",
-        isPro: true,
-        planCurrency: "USD",
-        planLimits: {
-            maxEvents: null,
-            maxQrCodes: null,
-            maxAgents: null,
-            maxAreas: null
-        },
-        planUsage: {
-            events: { used: 2, limit: null, remaining: null, reached: false },
-            qrCodes: { used: 15, limit: null, remaining: null, reached: false },
-            agents: { used: 0, limit: null, remaining: null, reached: false },
-            areas: { used: 3, limit: null, remaining: null, reached: false }
-        },
-        planCapabilities: [
-            "bulk_qr_import",
-            "custom_card_templates",
-            "scan_exports",
-            "advanced_analytics"
-        ],
-        planFeatures: [
-            "Événements illimités",
-            "QR illimités",
-            "Agents illimités",
-            "Zones illimitées",
-            "Imports CSV",
-            "Templates personnalisés",
-            "Exports avancés"
-        ],
-        subscriptionStartedAt: null,
-        subscriptionExpiresAt: null,
-        subscriptionType: "PAID",
-        isTrial: false,
-        trialAvailable: false,
-        trialDurationDays: 30,
-        trialStartedAt: null,
-        trialExpiresAt: null
-    });
+    assert.equal(res.body.user.planLimits.maxEventsPerCycle, 15);
+    assert.equal(res.body.user.planLimits.maxQrCodesPerEvent, 700);
+    assert.equal(res.body.user.planLimits.maxAgents, 15);
+    assert.equal(res.body.user.planLimits.maxAreas, 20);
+    assert.deepEqual(res.body.user.planUsage.events, { used: 2, limit: 15, remaining: 13, reached: false });
+    assert.deepEqual(res.body.user.planUsage.qrCodes, { used: 15, limit: 700, remaining: 685, reached: false });
+    assert.equal(res.body.user.subscription.subscriptionType, "PAID");
+    assert.equal(res.body.user.subscription.planCapabilities.includes("advanced_analytics"), true);
 });
 
 test("PUT /user/profile rejects an email already used by another user", async () => {

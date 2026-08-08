@@ -38,6 +38,14 @@ exports.evaluateQrScan = (qr, scannerOrgId, now = new Date(), requestedAreaId = 
         };
     }
 
+    if (
+        qr.event?.entitlement_type === "EVENT_PASS"
+        && qr.event?.entitlement_expires_at
+        && now > new Date(qr.event.entitlement_expires_at)
+    ) {
+        return deniedDecision("denied_event_inactive", "Le Pass de cet événement a expiré.");
+    }
+
     const effectiveStatus = getEffectiveQrStatus(qr, now);
 
     if (effectiveStatus === QR_STATUS.REVOKED) {

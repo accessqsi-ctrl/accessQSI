@@ -66,8 +66,9 @@ export default function Dashboard() {
     const [toast, setToast] = useState({ show: false, message: "" });
     const [showOnboarding, setShowOnboarding] = useState(false);
     const [exportingFormat, setExportingFormat] = useState("");
-    const { userProfile, isFreePlan, planName } = useUserPlan();
+    const { userProfile, hasCapability, planName } = useUserPlan();
     const isAgent = userProfile?.role === "ORG_AGENT";
+    const canExportScans = hasCapability("scan_exports");
 
 
     const handleExport = async (format) => {
@@ -166,27 +167,27 @@ export default function Dashboard() {
                     <div className="flex gap-3">
                         <button 
                             onClick={() => handleExport('csv')}
-                            disabled={exportingFormat === "csv" || isFreePlan}
+                            disabled={exportingFormat === "csv" || !canExportScans}
                             className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold rounded-xl transition-colors border border-slate-200 dark:border-slate-800 disabled:opacity-60"
-                            title={isFreePlan ? "Disponible avec le plan Pro" : "Exporter en CSV"}
+                            title={!canExportScans ? "Disponible à partir du plan Essential" : "Exporter en CSV"}
                         >
                             {exportingFormat === "csv" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                             CSV
                         </button>
                         <button 
                             onClick={() => handleExport('pdf')}
-                            disabled={exportingFormat === "pdf" || isFreePlan}
+                            disabled={exportingFormat === "pdf" || !canExportScans}
                             className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-900 dark:text-white font-semibold rounded-xl shadow-sm transition-colors border border-slate-200 dark:border-slate-800 disabled:opacity-60"
-                            title={isFreePlan ? "Disponible avec le plan Pro" : "Exporter en PDF"}
+                            title={!canExportScans ? "Disponible à partir du plan Essential" : "Exporter en PDF"}
                         >
                             {exportingFormat === "pdf" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                             PDF
                         </button>
                     </div>
                 </div>
-                {isFreePlan && (
+                {!canExportScans && (
                     <div className="relative z-10 mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-200">
-                        <span className="font-semibold">Plan {planName || "Free"}</span> · Passez au plan Pro pour profiter des exports CSV et PDF avancés.
+                        <span className="font-semibold">Plan {planName || "Découverte"}</span> · Passez à Essential ou Pro pour profiter des exports CSV et PDF.
                     </div>
                 )}
                 {exportingFormat && (

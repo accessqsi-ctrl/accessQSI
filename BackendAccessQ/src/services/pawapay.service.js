@@ -74,6 +74,17 @@ const checkDeposit = (depositId) => request({
     path: `/v2/deposits/${encodeURIComponent(depositId)}`
 });
 
+const initiateRefund = ({ refundId, depositId }) => request({
+    method: "POST",
+    path: "/v2/refunds",
+    data: { refundId, depositId }
+});
+
+const checkRefund = (refundId) => request({
+    method: "GET",
+    path: `/v2/refunds/${encodeURIComponent(refundId)}`
+});
+
 const getActiveConfiguration = () => {
     const { country } = getPaymentConfig();
     const params = { operationType: "DEPOSIT" };
@@ -138,6 +149,8 @@ module.exports = {
     getClientConfig,
     initiateDeposit,
     checkDeposit,
+    initiateRefund,
+    checkRefund,
     getActiveConfiguration,
     extractProviders
 };

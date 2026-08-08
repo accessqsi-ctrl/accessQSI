@@ -28,7 +28,7 @@ exports.getAgents = async (req, res) => {
                 name: agent.full_name,
                 email: agent.email,
                 role: agent.role === "ORG_ADMIN" ? "Admin" : (agent.role === "OPERATOR" ? "Opérateur" : "Agent"),
-                status: agent.deleted_at ? "Inactif" : "Actif",
+                status: agent.suspended_by_plan ? "Suspendu par le plan" : agent.deleted_at || !agent.is_active ? "Inactif" : "Actif",
                 lastActive: agent.last_login ? new Date(agent.last_login).toLocaleDateString() : (agent.created_at ? new Date(agent.created_at).toLocaleDateString() : "Jamais"),
                 scans: agent._count.scan_logs
             };
@@ -111,7 +111,7 @@ exports.addAgent = async (req, res) => {
         if (error.code === "PLAN_QUOTA_EXCEEDED") {
             return res.status(403).json({
                 success: false,
-                message: `Votre quota d'agents est atteint (${error.currentCount}/${error.limit}). Passez en Pro pour ajouter davantage d'agents.`,
+                message: `Votre quota d'agents actifs est atteint (${error.currentCount}/${error.limit}). Désactivez un agent ou changez de plan.`,
                 plan: error.plan,
                 planName: error.planName,
                 upgradeRequired: true
@@ -144,7 +144,7 @@ exports.toggleAgentStatus = async (req, res) => {
             return res.status(403).json({ success: false, message: "Vous ne pouvez pas révoquer un administrateur." });
         }
 
-        const isCurrentlyDeleted = agent.deleted_at !== null;
+        const isCurrentlyDeleted = agent.deleted_at !== null || !agent.is_active;
 
         if (isCurrentlyDeleted) {
             await withOrganizationQuota({
@@ -181,7 +181,7 @@ exports.toggleAgentStatus = async (req, res) => {
         if (error.code === "PLAN_QUOTA_EXCEEDED") {
             return res.status(403).json({
                 success: false,
-                message: `Votre quota d'agents est atteint (${error.currentCount}/${error.limit}). Passez en Pro pour restaurer cet agent.`,
+                message: `Votre quota d'agents actifs est atteint (${error.currentCount}/${error.limit}). Désactivez un autre agent ou changez de plan.`,
                 plan: error.plan,
                 planName: error.planName,
                 upgradeRequired: true

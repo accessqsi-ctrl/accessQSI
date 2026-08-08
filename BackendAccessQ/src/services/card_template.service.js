@@ -2,6 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const PDFDocument = require("pdfkit");
 const SVGtoPDF = require("svg-to-pdfkit");
+const { PassThrough } = require("stream");
 const storageService = require("./storage.service");
 
 const templates = {
@@ -187,18 +188,6 @@ const getCardMessage = (message, fallback = "Présentez ce QR à l'entrée") => 
     const trimmed = String(message || "").trim();
     return escapeXml(trimmed || fallback);
 };
-
-const cardFilenameForToken = (token) => `card_${token}.svg`;
-
-const cardPdfFilenameForToken = (token) => `card_${token}.pdf`;
-
-const cardPathForToken = (token) => storageService.storagePath("cards", cardFilenameForToken(token));
-
-const cardPdfPathForToken = (token) => storageService.storagePath("cards", cardPdfFilenameForToken(token));
-
-const cardUrlForToken = (token) => `/cards/${cardFilenameForToken(token)}`;
-
-const cardPdfUrlForToken = (token) => `/cards/${cardPdfFilenameForToken(token)}`;
 
 const hasTemplate = (templateId) => Boolean(templates[templateId]);
 const availableTemplateIds = new Set([
@@ -625,20 +614,31 @@ const localImagePathForHref = (href) => {
     return storageService.findPublicAsset(...normalizedHref.split("/")) || cleanHref;
 };
 
-const writeSvgPdf = async ({ svg, pdfPath, width, height }) => {
-    await new Promise((resolve, reject) => {
-        const doc = new PDFDocument({
-            size: [width, height],
-            margin: 0,
-            autoFirstPage: true
-        });
-        const stream = fs.createWriteStream(pdfPath);
+const normalizeCardRenderInput = ({ templateId, customization, ...payload }) => {
+    const baseTemplateId = customization?.baseTemplateId || templateId;
+    const renderCustomization = customization?.baseTemplateId
+        ? customization.customization
+        : customization;
 
-        stream.on("finish", resolve);
-        stream.on("error", reject);
-        doc.on("error", reject);
-        doc.pipe(stream);
+    if (!hasTemplate(baseTemplateId)) {
+        throw new Error("Modèle de carte invalide.");
+    }
 
+    const template = buildTemplate(baseTemplateId, renderCustomization);
+    const width = Number(template.canvasScene?.canvas?.width || template.width);
+    const height = Number(template.canvasScene?.canvas?.height || template.height);
+    const svg = renderCard(baseTemplateId, {
+        ...payload,
+        customization: renderCustomization
+    });
+
+    return { svg, width, height };
+};
+
+const renderCardsIntoPdfDocument = (doc, cards) => {
+    for (const card of cards) {
+        const { svg, width, height } = normalizeCardRenderInput(card);
+        doc.addPage({ size: [width, height], margin: 0 });
         SVGtoPDF(doc, svg, 0, 0, {
             width,
             height,
@@ -647,9 +647,48 @@ const writeSvgPdf = async ({ svg, pdfPath, width, height }) => {
             imageCallback: localImagePathForHref,
             warningCallback: () => {}
         });
+    }
+};
 
-        doc.end();
+exports.streamCardsPdf = async ({ cards, output }) => {
+    if (!Array.isArray(cards) || cards.length === 0) {
+        throw new Error("Aucune carte à générer.");
+    }
+    if (!output || typeof output.write !== "function") {
+        throw new Error("Flux de sortie PDF invalide.");
+    }
+
+    await new Promise((resolve, reject) => {
+        const doc = new PDFDocument({ autoFirstPage: false, margin: 0 });
+        let settled = false;
+        const finish = (error) => {
+            if (settled) return;
+            settled = true;
+            if (error) reject(error);
+            else resolve();
+        };
+
+        output.once("finish", () => finish());
+        output.once("error", finish);
+        doc.once("error", finish);
+        doc.pipe(output);
+
+        try {
+            renderCardsIntoPdfDocument(doc, cards);
+            doc.end();
+        } catch (error) {
+            doc.destroy(error);
+            finish(error);
+        }
     });
+};
+
+exports.generateCardsPdfBuffer = async (cards) => {
+    const output = new PassThrough();
+    const chunks = [];
+    output.on("data", chunk => chunks.push(Buffer.from(chunk)));
+    await exports.streamCardsPdf({ cards, output });
+    return Buffer.concat(chunks);
 };
 
 exports.hasTemplate = hasTemplate;
@@ -657,14 +696,6 @@ exports.isTemplateAvailable = isTemplateAvailable;
 exports.getTemplate = getTemplate;
 exports.extractCustomTemplateId = extractCustomTemplateId;
 exports.standardTemplates = templates;
-exports.cardUrlForToken = cardUrlForToken;
-exports.cardPdfUrlForToken = cardPdfUrlForToken;
-exports.cardPathForToken = cardPathForToken;
-exports.cardPdfPathForToken = cardPdfPathForToken;
-
-exports.cardExistsForToken = (token) => fs.existsSync(cardPathForToken(token));
-
-exports.cardPdfExistsForToken = (token) => fs.existsSync(cardPdfPathForToken(token));
 
 exports.renderPreview = ({ templateId, customization }) => renderCard(templateId, {
     event: {
@@ -677,38 +708,3 @@ exports.renderPreview = ({ templateId, customization }) => renderCard(templateId
     cardData: {},
     customization
 });
-
-exports.generateCardForQr = async ({ templateId, event, qrRecord, qrUrl, cardMessage, cardData, customization }) => {
-    const baseTemplateId = customization?.baseTemplateId || templateId;
-    const renderCustomization = customization?.baseTemplateId ? customization.customization : customization;
-
-    if (!hasTemplate(baseTemplateId)) {
-        throw new Error("Modèle de carte invalide.");
-    }
-
-    const cardPath = cardPathForToken(qrRecord.unique_token);
-    const pdfPath = cardPdfPathForToken(qrRecord.unique_token);
-    const dir = path.dirname(cardPath);
-    await storageService.ensureDirectory(dir);
-
-    const template = buildTemplate(baseTemplateId, renderCustomization);
-    const width = Number(template.canvasScene?.canvas?.width || template.width);
-    const height = Number(template.canvasScene?.canvas?.height || template.height);
-    const svg = renderCard(baseTemplateId, { event, qrRecord, qrUrl, cardMessage, cardData, customization: renderCustomization });
-    const suffix = `${process.pid}.${Date.now()}.tmp`;
-    const temporaryCardPath = `${cardPath}.${suffix}`;
-    const temporaryPdfPath = `${pdfPath}.${suffix}`;
-    try {
-        await fs.promises.writeFile(temporaryCardPath, svg, "utf8");
-        await writeSvgPdf({ svg, pdfPath: temporaryPdfPath, width, height });
-        await fs.promises.rename(temporaryCardPath, cardPath);
-        await fs.promises.rename(temporaryPdfPath, pdfPath);
-    } catch (error) {
-        await Promise.allSettled([
-            storageService.removeFile(temporaryCardPath),
-            storageService.removeFile(temporaryPdfPath)
-        ]);
-        throw error;
-    }
-    return cardUrlForToken(qrRecord.unique_token);
-};

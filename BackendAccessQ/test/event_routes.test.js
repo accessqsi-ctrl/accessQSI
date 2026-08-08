@@ -13,7 +13,11 @@ const loadEventApp = ({ user, eventService }) => {
     mockModule("src/middleware/authMiddleware", authAs(user));
     mockModule("src/services/event.service", eventService);
     mockModule("src/services/organization_quota.service", {
-        withOrganizationQuota: async ({ create }) => create({})
+        withEventCreationQuota: async ({ create }) => create({}, {
+            entitlementType: "SUBSCRIPTION",
+            qrLimit: 200,
+            entitlementExpiresAt: null
+        })
     });
 
     const router = require("../src/routes/event.routes");

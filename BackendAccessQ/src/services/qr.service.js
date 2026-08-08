@@ -76,6 +76,26 @@ exports.getQrsByEventId = async (orgId, eventId, options = {}) => {
     };
 };
 
+// Utilisé pour produire un document PDF complet sans dépendre de la pagination UI.
+exports.getAllQrsByEventId = async (orgId, eventId, { take = 200, skip = 0 } = {}) => {
+    const safeTake = Math.min(200, Math.max(1, Number.parseInt(take, 10) || 200));
+    const safeSkip = Math.max(0, Number.parseInt(skip, 10) || 0);
+    return prisma.qrCode.findMany({
+        where: {
+            event_id: eventId,
+            event: { org_id: orgId },
+            deleted_at: null
+        },
+        orderBy: { qr_id: "asc" },
+        skip: safeSkip,
+        take: safeTake
+    });
+};
+
+exports.countQrsByEventId = async (orgId, eventId) => prisma.qrCode.count({
+    where: { event_id: eventId, event: { org_id: orgId }, deleted_at: null }
+});
+
 // Récupérer tous les QR Codes des événements de l'organisation
 exports.getAllQrsForOrg = async (orgId, options = {}) => {
     const { page, pageSize } = normalizePagination(options);

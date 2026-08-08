@@ -52,7 +52,7 @@ exports.createArea = async (req, res) => {
             limitKey: "maxAreas",
             resourceName: "de zones",
             count: (tx) => tx.area.count({
-                where: { org_id: orgId, deleted_at: null }
+                where: { org_id: orgId, deleted_at: null, suspended_by_plan: false }
             }),
             create: (tx) => areaService.createArea(areaData, tx)
         });
@@ -67,7 +67,7 @@ exports.createArea = async (req, res) => {
         if (error.code === "PLAN_QUOTA_EXCEEDED") {
             return res.status(403).json({
                 success: false,
-                message: `Votre quota de zones est atteint (${error.currentCount}/${error.limit}). Passez en Pro pour créer davantage de zones.`,
+                message: `Votre quota de zones actives est atteint (${error.currentCount}/${error.limit}). Archivez une zone ou changez de plan.`,
                 plan: error.plan,
                 planName: error.planName,
                 upgradeRequired: true
@@ -87,6 +87,9 @@ exports.updateArea = async (req, res) => {
         const existingArea = await areaService.findById(req.user.org_id, areaId);
         if (!existingArea) {
             return res.status(404).json({ success: false, message: "Zone introuvable" });
+        }
+        if (existingArea.suspended_by_plan) {
+            return res.status(403).json({ success: false, message: "Cette zone est suspendue par les limites du plan actuel." });
         }
         const updatedArea = await areaService.updateArea(areaId, req.body);
         logger.info("area.updated", {

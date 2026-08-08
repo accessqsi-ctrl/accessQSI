@@ -171,7 +171,8 @@ test("event service updates schedules and event data in one transaction", async 
     assert.deepEqual(calls[0][1].where, {
         org_id: 42,
         area_id: { in: [2, 3] },
-        deleted_at: null
+        deleted_at: null,
+        suspended_by_plan: false
     });
 });
 

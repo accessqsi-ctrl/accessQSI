@@ -107,7 +107,7 @@ export default function AgentsPage() {
     const openAgentConfirm = (type, agent) => {
         setActionMessage("");
         if (type !== "delete" && agent.status !== "Actif" && agentQuotaReached) {
-            showActionMessage("Votre quota d'agents est atteint. Désactivez un agent ou passez au plan Pro.");
+            showActionMessage("Votre quota d'agents actifs est atteint. Désactivez un agent ou changez de plan.");
             return;
         }
         setConfirmAction({ type, agent });
@@ -223,7 +223,7 @@ export default function AgentsPage() {
                 </button>
             </div>
 
-            <PlanQuotaStatus label="Agents actifs du plan Free" quota={agentQuota} />
+            <PlanQuotaStatus label="Agents actifs" quota={agentQuota} />
 
            
 

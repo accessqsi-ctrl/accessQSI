@@ -49,6 +49,21 @@ exports.getOverview = async (req, res) => {
     }
 };
 
+exports.getQuote = async (req, res) => {
+    try {
+        const quote = await paymentService.getPaymentQuote({
+            orgId: req.user.org_id,
+            planKey: req.body.plan,
+            billingInterval: req.body.billingInterval,
+            providerCode: req.body.provider,
+            countryCode: req.body.country
+        });
+        return res.json({ success: true, quote });
+    } catch (error) {
+        return handleError(res, error);
+    }
+};
+
 exports.startTrial = async (req, res) => {
     try {
         const subscription = await paymentService.startProTrial(req.user.org_id);
@@ -62,12 +77,51 @@ exports.startTrial = async (req, res) => {
     }
 };
 
+exports.cancelSubscription = async (req, res) => {
+    try {
+        const change = await paymentService.requestCancellation(req.user.org_id);
+        return res.status(201).json({
+            success: true,
+            message: "L’abonnement restera actif jusqu’à son échéance, puis passera au plan Découverte.",
+            change
+        });
+    } catch (error) {
+        return handleError(res, error);
+    }
+};
+
+exports.cancelChange = async (req, res) => {
+    try {
+        const change = await paymentService.cancelOpenChange(req.user.org_id);
+        return res.json({
+            success: true,
+            message: "Le changement d’abonnement a été annulé.",
+            change
+        });
+    } catch (error) {
+        return handleError(res, error);
+    }
+};
+
+exports.selectRetainedResources = async (req, res) => {
+    try {
+        const change = await paymentService.selectRetainedResources(req.user.org_id, {
+            agentIds: Array.isArray(req.body.agentIds) ? req.body.agentIds : [],
+            areaIds: Array.isArray(req.body.areaIds) ? req.body.areaIds : []
+        });
+        return res.json({ success: true, message: "Sélection enregistrée.", change });
+    } catch (error) {
+        return handleError(res, error);
+    }
+};
+
 exports.initiate = async (req, res) => {
     try {
         const payment = await paymentService.initiatePayment({
             orgId: req.user.org_id,
             userId: req.user.user_id,
             planKey: req.body.plan,
+            billingInterval: req.body.billingInterval,
             providerCode: req.body.provider,
             countryCode: req.body.country,
             phoneNumber: req.body.phoneNumber
@@ -117,5 +171,21 @@ exports.callback = async (req, res) => {
         }
         logger.error("payment.callback_failed", { deposit_id: depositId, error });
         return res.status(400).json({ success: false, message: "Callback non vérifiable." });
+    }
+};
+
+exports.refundCallback = async (req, res) => {
+    if (!paymentService.arePaymentsEnabled()) {
+        return res.status(202).json({ success: true, ignored: true });
+    }
+    const refundId = req.body?.refundId;
+    if (!refundId) return res.status(400).json({ success: false, message: "refundId manquant." });
+    try {
+        const refund = await paymentService.reconcileRefund(refundId);
+        if (!refund) return res.status(202).json({ success: true, ignored: true });
+        return res.json({ success: true });
+    } catch (error) {
+        logger.error("refund.callback_failed", { refund_id: refundId, error });
+        return res.status(400).json({ success: false, message: "Callback de remboursement non vérifiable." });
     }
 };

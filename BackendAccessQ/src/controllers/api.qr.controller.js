@@ -18,37 +18,24 @@ const {
     PLAN_CAPABILITIES,
     hasPlanCapability
 } = require("../config/subscription");
-const { withOrganizationQuota } = require("../services/organization_quota.service");
+const { withEventQrQuota } = require("../services/organization_quota.service");
 
 const buildQrPayload = (uniqueToken, eventId) => JSON.stringify({ t: uniqueToken, e: eventId });
 
-const qrUrlForToken = (token) => `/qrcodes/qr_${token}.png`;
+const MAX_EVENT_PDF_PAGES = 200;
 
-const qrPathForToken = (token) => storageService.storagePath("qrcodes", `qr_${token}.png`);
+const qrDownloadUrlForId = (qrId) => `/qr/image/${qrId}`;
 
-const ensureQrImageForToken = async ({ uniqueToken, eventId }) => {
-    const qrPath = qrPathForToken(uniqueToken);
-    const image = await QRCode.toBuffer(buildQrPayload(uniqueToken, eventId), {
-        errorCorrectionLevel: 'H',
+const cardDownloadUrlForId = (qrId) => `/qr/card/${qrId}/download`;
+
+const qrDataUrl = async (qrRecord) => {
+    const image = await QRCode.toBuffer(buildQrPayload(qrRecord.unique_token, qrRecord.event_id), {
+        errorCorrectionLevel: "H",
         margin: 2,
         width: 400
     });
-    await storageService.writeFileAtomically(qrPath, image);
-
-    return qrUrlForToken(uniqueToken);
+    return `data:image/png;base64,${image.toString("base64")}`;
 };
-
-const cardPdfUrlForToken = (token) => (
-    typeof cardTemplateService.cardPdfUrlForToken === "function"
-        ? cardTemplateService.cardPdfUrlForToken(token)
-        : `/cards/card_${token}.pdf`
-);
-
-const cardPdfExistsForToken = (token) => (
-    typeof cardTemplateService.cardPdfExistsForToken === "function"
-        ? cardTemplateService.cardPdfExistsForToken(token)
-        : false
-);
 
 const isCustomTemplateId = (cardTemplateId) => {
     return Boolean(cardTemplateService.extractCustomTemplateId?.(cardTemplateId))
@@ -113,6 +100,176 @@ const normalizeCardData = (value = {}) => {
 };
 
 const importErrorMessage = (error) => String(error?.message || "Erreur inattendue").slice(0, 300);
+
+const safeDownloadName = (value, fallback) => {
+    const normalized = String(value || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-zA-Z0-9_-]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .slice(0, 80);
+    return normalized || fallback;
+};
+
+const resolveStoredCardTemplate = async ({ orgId, qrRecord, planContext }) => {
+    const snapshotTemplate = resolveTemplateSnapshot(qrRecord.card_template_snapshot);
+    if (snapshotTemplate) {
+        assertCustomTemplateAccess(planContext, snapshotTemplate.sourceTemplateId);
+        return snapshotTemplate;
+    }
+
+    const templateId = qrRecord.card_template_id || "event-ticket";
+    return resolveCardTemplate(orgId, templateId, planContext);
+};
+
+const buildCardRenderInput = async ({ orgId, event, qrRecord, planContext }) => {
+    const resolvedTemplate = await resolveStoredCardTemplate({ orgId, qrRecord, planContext });
+    if (!resolvedTemplate) {
+        const error = new Error("Le modèle associé à cette carte est introuvable.");
+        error.code = "CARD_TEMPLATE_NOT_FOUND";
+        throw error;
+    }
+
+    return {
+        templateId: resolvedTemplate.templateId,
+        customization: resolvedTemplate.customization,
+        event,
+        qrRecord,
+        qrUrl: await qrDataUrl(qrRecord),
+        cardMessage: qrRecord.card_message,
+        cardData: qrRecord.card_data
+    };
+};
+
+exports.downloadQrImage = async (req, res) => {
+    try {
+        if (!req.user?.org_id) {
+            return res.status(401).json({ success: false, message: "Non autorisé" });
+        }
+
+        const qrRecord = await qrService.getQrById(Number(req.params.id));
+        if (!qrRecord || qrRecord.deleted_at) {
+            return res.status(404).json({ success: false, message: "QR Code introuvable" });
+        }
+        const event = await eventService.findById(req.user.org_id, qrRecord.event_id);
+        if (!event) {
+            return res.status(403).json({ success: false, message: "Accès refusé" });
+        }
+
+        const image = await QRCode.toBuffer(buildQrPayload(qrRecord.unique_token, qrRecord.event_id), {
+            errorCorrectionLevel: "H",
+            margin: 2,
+            width: 400
+        });
+        const filename = `qr-${safeDownloadName(qrRecord.holder_name, String(qrRecord.qr_id))}.png`;
+        res.setHeader("Content-Type", "image/png");
+        const disposition = req.query.download === "1" ? "attachment" : "inline";
+        res.setHeader("Content-Disposition", `${disposition}; filename="${filename}"`);
+        res.setHeader("Cache-Control", "private, max-age=300");
+        return res.status(200).send(image);
+    } catch (error) {
+        console.error("Erreur lors de la génération du QR à la demande :", error);
+        return res.status(500).json({ success: false, message: "Impossible de générer le QR Code" });
+    }
+};
+
+exports.downloadCardPdf = async (req, res) => {
+    try {
+        if (!req.user?.org_id) {
+            return res.status(401).json({ success: false, message: "Non autorisé" });
+        }
+
+        const orgId = req.user.org_id;
+        const qrRecord = await qrService.getQrById(Number(req.params.id));
+        if (!qrRecord || qrRecord.deleted_at) {
+            return res.status(404).json({ success: false, message: "QR Code introuvable" });
+        }
+        const event = await eventService.findById(orgId, qrRecord.event_id);
+        if (!event) {
+            return res.status(403).json({ success: false, message: "Accès refusé" });
+        }
+
+        const planContext = req.planContext || await getPlanContextForUser(req);
+        const card = await buildCardRenderInput({ orgId, event, qrRecord, planContext });
+        const filename = `badge-${safeDownloadName(qrRecord.holder_name, String(qrRecord.qr_id))}.pdf`;
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+        res.setHeader("Cache-Control", "private, no-store");
+        await cardTemplateService.streamCardsPdf({ cards: [card], output: res });
+    } catch (error) {
+        if (res.headersSent) {
+            return res.destroy(error);
+        }
+        if (error.code === "PLAN_CAPABILITY_REQUIRED") {
+            return res.status(403).json({
+                success: false,
+                message: error.message,
+                upgradeRequired: true
+            });
+        }
+        const status = error.code === "CARD_TEMPLATE_NOT_FOUND" ? 422 : 500;
+        console.error("Erreur lors de la génération du badge PDF :", error);
+        return res.status(status).json({ success: false, message: error.message || "Impossible de générer le badge" });
+    }
+};
+
+exports.downloadEventCardsPdf = async (req, res) => {
+    try {
+        if (!req.user?.org_id) {
+            return res.status(401).json({ success: false, message: "Non autorisé" });
+        }
+
+        const orgId = req.user.org_id;
+        const eventId = Number(req.params.event_id);
+        const event = await eventService.findById(orgId, eventId);
+        if (!event) {
+            return res.status(404).json({ success: false, message: "Événement introuvable" });
+        }
+
+        const totalQr = await qrService.countQrsByEventId(orgId, eventId);
+        const totalFiles = Math.max(1, Math.ceil(totalQr / MAX_EVENT_PDF_PAGES));
+        const file = Math.max(1, Number.parseInt(req.query.file, 10) || 1);
+        if (file > totalFiles) {
+            return res.status(404).json({ success: false, message: "Cette partie du PDF n’existe pas." });
+        }
+        const qrRecords = await qrService.getAllQrsByEventId(orgId, eventId, {
+            take: MAX_EVENT_PDF_PAGES,
+            skip: (file - 1) * MAX_EVENT_PDF_PAGES
+        });
+        if (!qrRecords.length) {
+            return res.status(404).json({ success: false, message: "Aucun QR à inclure dans le PDF" });
+        }
+        const planContext = req.planContext || await getPlanContextForUser(req);
+        const cards = [];
+        for (const qrRecord of qrRecords) {
+            cards.push(await buildCardRenderInput({ orgId, event, qrRecord, planContext }));
+        }
+
+        const partSuffix = totalFiles > 1 ? `-partie-${file}-sur-${totalFiles}` : "";
+        const filename = `badges-${safeDownloadName(event.title, String(eventId))}${partSuffix}.pdf`;
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+        res.setHeader("Cache-Control", "private, no-store");
+        res.setHeader("X-PDF-File", String(file));
+        res.setHeader("X-PDF-Total-Files", String(totalFiles));
+        res.setHeader("X-PDF-Total-Pages", String(totalQr));
+        await cardTemplateService.streamCardsPdf({ cards, output: res });
+    } catch (error) {
+        if (res.headersSent) {
+            return res.destroy(error);
+        }
+        if (error.code === "PLAN_CAPABILITY_REQUIRED") {
+            return res.status(403).json({
+                success: false,
+                message: error.message,
+                upgradeRequired: true
+            });
+        }
+        const status = error.code === "CARD_TEMPLATE_NOT_FOUND" ? 422 : 500;
+        console.error("Erreur lors de la génération du PDF de l’événement :", error);
+        return res.status(status).json({ success: false, message: error.message || "Impossible de générer le PDF" });
+    }
+};
 
 // Générer un QR Code
 exports.generateQrForEvent = async (req, res) => {
@@ -186,40 +343,22 @@ exports.generateQrForEvent = async (req, res) => {
             card_generation_status: cardTemplateId ? "PENDING" : null,
             event_id: event.event_id
         };
-        qrRecord = await withOrganizationQuota({
+        qrRecord = await withEventQrQuota({
             organizationId: orgId,
-            limitKey: "maxQrCodes",
-            resourceName: "de QR",
-            count: (tx) => tx.qrCode.count({
-                where: {
-                    event: { org_id: orgId },
-                    deleted_at: null
-                }
-            }),
+            eventId,
             create: (tx) => qrService.createQr(qrData, tx)
         });
 
-        const qrUrl = await ensureQrImageForToken({
-            uniqueToken,
-            eventId: event.event_id
-        });
-        let cardUrl = null;
-        let cardPdfUrl = null;
+        const qrUrl = qrDownloadUrlForId(qrRecord.qr_id);
+        const cardUrl = null;
+        const cardPdfUrl = cardTemplateId ? cardDownloadUrlForId(qrRecord.qr_id) : null;
 
         if (cardTemplateId) {
-            try {
-                cardUrl = await cardTemplateService.generateCardForQr({
-                    templateId: resolvedCardTemplate.templateId,
-                    customization: resolvedCardTemplate.customization,
-                    event, qrRecord, qrUrl, cardMessage, cardData
-                });
-                cardPdfUrl = cardPdfUrlForToken(uniqueToken);
-                await qrService.updateQr(qrRecord.qr_id, {
-                    card_generated_at: new Date(), card_generation_status: "READY", card_generation_error: null
-                });
-            } catch (generationError) {
-                throw generationError;
-            }
+            await qrService.updateQr(qrRecord.qr_id, {
+                card_generated_at: null,
+                card_generation_status: "ON_DEMAND",
+                card_generation_error: null
+            });
         }
 
         return res.status(201).json({
@@ -236,11 +375,14 @@ exports.generateQrForEvent = async (req, res) => {
         if (error.code === "PLAN_QUOTA_EXCEEDED") {
             return res.status(403).json({
                 success: false,
-                message: `Votre quota de QR est atteint (${error.currentCount}/${error.limit}). Passez en Pro pour générer davantage de QR.`,
+                message: `Le quota de QR de cet événement est atteint (${error.currentCount}/${error.limit}).`,
                 plan: error.plan,
                 planName: error.planName,
                 upgradeRequired: true
             });
+        }
+        if (error.code === "EVENT_PASS_EXPIRED") {
+            return res.status(403).json({ success: false, code: error.code, message: error.message });
         }
         if (error.code === "PLAN_CAPABILITY_REQUIRED") {
             return res.status(403).json({
@@ -287,8 +429,9 @@ exports.getAllQrs = async (req, res) => {
                 status: getEffectiveQrStatus(qr),
                 scans: `${qr.scans_count} / ${formatUsageLimit(qr.usage_limit)}`,
                 token: qr.unique_token,
-                cardUrl: cardTemplateService.cardExistsForToken(qr.unique_token) ? cardTemplateService.cardUrlForToken(qr.unique_token) : null,
-                cardPdfUrl: cardPdfExistsForToken(qr.unique_token) ? cardPdfUrlForToken(qr.unique_token) : null,
+                qrUrl: qrDownloadUrlForId(qr.qr_id),
+                cardUrl: null,
+                cardPdfUrl: qr.card_template_id ? cardDownloadUrlForId(qr.qr_id) : null,
                 createdAt: new Date(qr.created_at).toLocaleDateString()
             };
         });
@@ -337,8 +480,9 @@ exports.getQrsByEvent = async (req, res) => {
                 scans_count: qr.scans_count,
                 usage_limit: qr.usage_limit,
                 token: qr.unique_token,
-                cardUrl: cardTemplateService.cardExistsForToken(qr.unique_token) ? cardTemplateService.cardUrlForToken(qr.unique_token) : null,
-                cardPdfUrl: cardPdfExistsForToken(qr.unique_token) ? cardPdfUrlForToken(qr.unique_token) : null,
+                qrUrl: qrDownloadUrlForId(qr.qr_id),
+                cardUrl: null,
+                cardPdfUrl: qr.card_template_id ? cardDownloadUrlForId(qr.qr_id) : null,
                 createdAt: new Date(qr.created_at).toLocaleDateString()
             };
         });
@@ -546,7 +690,10 @@ exports.importQrsFromCSV = async (req, res) => {
                 const uniqueToken = crypto.randomUUID();
                 const usageLimit = usageLimitFromAccessType(values.accessType, values.limit);
 
-                qrRecord = await qrService.createQr({
+                qrRecord = await withEventQrQuota({
+                    organizationId: orgId,
+                    eventId,
+                    create: (tx) => qrService.createQr({
                     unique_token: uniqueToken,
                     status: "active",
                     usage_limit: usageLimit,
@@ -561,21 +708,12 @@ exports.importQrsFromCSV = async (req, res) => {
                     card_message: values.cardTemplateId ? values.cardMessage || null : null,
                     card_generation_status: values.cardTemplateId ? "PENDING" : null,
                     event_id: eventId
+                    }, tx)
                 });
-                const qrUrl = await ensureQrImageForToken({ uniqueToken, eventId });
-
                 if (values.cardTemplateId) {
-                    await cardTemplateService.generateCardForQr({
-                        templateId: resolvedCardTemplate.templateId,
-                        customization: resolvedCardTemplate.customization,
-                        event,
-                        qrRecord,
-                        qrUrl,
-                        cardMessage: values.cardMessage
-                    });
                     await qrService.updateQr(qrRecord.qr_id, {
-                        card_generated_at: new Date(),
-                        card_generation_status: "READY",
+                        card_generated_at: null,
+                        card_generation_status: "ON_DEMAND",
                         card_generation_error: null
                     });
                 }
@@ -702,35 +840,21 @@ exports.generateCardForExistingQr = async (req, res) => {
             return res.status(400).json({ success: false, message: "Modèle de carte invalide." });
         }
 
-        const qrUrl = fs.existsSync(qrPathForToken(qrRecord.unique_token))
-            ? qrUrlForToken(qrRecord.unique_token)
-            : await ensureQrImageForToken({ uniqueToken: qrRecord.unique_token, eventId: qrRecord.event_id });
-
-        const cardUrl = await cardTemplateService.generateCardForQr({
-            templateId: resolvedCardTemplate.templateId,
-            customization: resolvedCardTemplate.customization,
-            event,
-            qrRecord,
-            qrUrl,
-            cardMessage,
-            cardData
-        });
-
         await qrService.updateQr(qrId, {
             card_template_id: resolvedCardTemplate.sourceTemplateId,
             card_template_snapshot: createTemplateSnapshot(resolvedCardTemplate),
-            card_generated_at: new Date(),
+            card_generated_at: null,
             card_message: cardMessage || null,
-            card_generation_status: "READY",
+            card_generation_status: "ON_DEMAND",
             card_generation_error: null,
             card_data: cardData
         });
 
         return res.status(201).json({
             success: true,
-            message: "Carte générée avec succès",
-            cardUrl,
-            cardPdfUrl: cardPdfUrlForToken(qrRecord.unique_token)
+            message: "Carte prête à être générée à la demande",
+            cardUrl: null,
+            cardPdfUrl: cardDownloadUrlForId(qrRecord.qr_id)
         });
     } catch (error) {
         if (error.code === "PLAN_CAPABILITY_REQUIRED") {
