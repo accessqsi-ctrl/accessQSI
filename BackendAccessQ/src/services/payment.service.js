@@ -232,13 +232,13 @@ const classifyChange = ({ organization, targetPlan, targetInterval, now = new Da
     return { type: "DOWNGRADE", effectiveAt: activeUntil, prorated: false };
 };
 
-const getRemainingMonthlyUnits = (anchorValue, endValue, now = new Date()) => {
+const getRemainingPeriodUnits = (anchorValue, endValue, periodMonths, now = new Date()) => {
     const end = new Date(endValue);
     let cursor = new Date(anchorValue || now);
     let units = 0;
     let guard = 0;
     while (cursor < end && guard < 120) {
-        const next = addUtcMonths(cursor, 1);
+        const next = addUtcMonths(cursor, periodMonths);
         const segmentEnd = next < end ? next : end;
         if (segmentEnd > now) {
             const overlapStart = cursor > now ? cursor : now;
@@ -249,6 +249,10 @@ const getRemainingMonthlyUnits = (anchorValue, endValue, now = new Date()) => {
     }
     return units;
 };
+
+const getRemainingMonthlyUnits = (anchorValue, endValue, now = new Date()) => (
+    getRemainingPeriodUnits(anchorValue, endValue, 1, now)
+);
 
 const calculatePaymentQuote = ({ organization, plan, provider, billingInterval, now = new Date() }) => {
     const configuredLocalPrice = getFixedPlanPrice(plan.title, provider.currency, billingInterval);
@@ -279,18 +283,24 @@ const calculatePaymentQuote = ({ organization, plan, provider, billingInterval, 
             provider.currency,
             organization.subscription_interval || BILLING_INTERVALS.MONTHLY
         );
-        const oldReferencePrice = PLAN_DETAILS[summary.plan]?.price;
+        const oldReferencePrice = billingInterval === BILLING_INTERVALS.ANNUAL
+            ? PLAN_DETAILS[summary.plan]?.annualPrice
+            : PLAN_DETAILS[summary.plan]?.price;
         if (oldLocalPrice == null || oldReferencePrice == null) {
             throw new PaymentValidationError("Le crédit de l’abonnement actuel ne peut pas être calculé.", "PRORATION_NOT_AVAILABLE");
         }
-        const units = getRemainingMonthlyUnits(
+        const units = getRemainingPeriodUnits(
             organization.subscription_started_at,
             organization.subscription_expires_at,
+            billingInterval === BILLING_INTERVALS.ANNUAL ? 12 : 1,
             now
         );
         creditAmount = roundForProvider(oldLocalPrice * units, provider.decimals);
         localPrice = roundForProvider((configuredLocalPrice - oldLocalPrice) * units, provider.decimals);
-        referencePrice = roundForProvider((Number(plan.cost) - Number(oldReferencePrice)) * units, 2);
+        const targetReferencePrice = billingInterval === BILLING_INTERVALS.ANNUAL
+            ? PLAN_DETAILS[plan.title].annualPrice
+            : Number(plan.cost);
+        referencePrice = roundForProvider((Number(targetReferencePrice) - Number(oldReferencePrice)) * units, 2);
         if (localPrice <= 0 || referencePrice <= 0) {
             throw new PaymentValidationError("Aucun montant supplémentaire n’est dû pour ce changement.", "NO_UPGRADE_PAYMENT_DUE");
         }
@@ -318,6 +328,7 @@ const getProviders = async () => {
                     ESSENTIAL_MONTHLY: getFixedPlanPrice(PLAN_KEYS.ESSENTIAL, currency, BILLING_INTERVALS.MONTHLY),
                     ESSENTIAL_ANNUAL: getFixedPlanPrice(PLAN_KEYS.ESSENTIAL, currency, BILLING_INTERVALS.ANNUAL),
                     PRO_MONTHLY: getFixedPlanPrice(PLAN_KEYS.PRO, currency, BILLING_INTERVALS.MONTHLY),
+                    PRO_ANNUAL: getFixedPlanPrice(PLAN_KEYS.PRO, currency, BILLING_INTERVALS.ANNUAL),
                     EVENT_PASS: getFixedPlanPrice(PLAN_KEYS.EVENT_PASS, currency, BILLING_INTERVALS.ONE_TIME)
                 }
             };
@@ -340,6 +351,7 @@ const getProviders = async () => {
             ESSENTIAL_MONTHLY: getFixedPlanPrice(PLAN_KEYS.ESSENTIAL, provider.currency, BILLING_INTERVALS.MONTHLY),
             ESSENTIAL_ANNUAL: getFixedPlanPrice(PLAN_KEYS.ESSENTIAL, provider.currency, BILLING_INTERVALS.ANNUAL),
             PRO_MONTHLY: getFixedPlanPrice(PLAN_KEYS.PRO, provider.currency, BILLING_INTERVALS.MONTHLY),
+            PRO_ANNUAL: getFixedPlanPrice(PLAN_KEYS.PRO, provider.currency, BILLING_INTERVALS.ANNUAL),
             EVENT_PASS: getFixedPlanPrice(PLAN_KEYS.EVENT_PASS, provider.currency, BILLING_INTERVALS.ONE_TIME)
         }
     }));
@@ -899,7 +911,7 @@ const getPaymentQuote = async ({ orgId, planKey, billingInterval, providerCode, 
     const allowed = normalizedPlan === PLAN_KEYS.ESSENTIAL
         ? [BILLING_INTERVALS.MONTHLY, BILLING_INTERVALS.ANNUAL]
         : normalizedPlan === PLAN_KEYS.PRO
-            ? [BILLING_INTERVALS.MONTHLY]
+            ? [BILLING_INTERVALS.MONTHLY, BILLING_INTERVALS.ANNUAL]
             : [BILLING_INTERVALS.ONE_TIME];
     if (!allowed.includes(normalizedInterval)) {
         throw new PaymentValidationError("Cette périodicité n’est pas disponible pour ce produit.", "BILLING_INTERVAL_NOT_AVAILABLE");
@@ -954,7 +966,7 @@ const initiatePayment = async ({ orgId, userId, planKey, billingInterval, provid
     const allowedIntervals = normalizedPlan === PLAN_KEYS.ESSENTIAL
         ? [BILLING_INTERVALS.MONTHLY, BILLING_INTERVALS.ANNUAL]
         : normalizedPlan === PLAN_KEYS.PRO
-            ? [BILLING_INTERVALS.MONTHLY]
+            ? [BILLING_INTERVALS.MONTHLY, BILLING_INTERVALS.ANNUAL]
             : [BILLING_INTERVALS.ONE_TIME];
     if (!allowedIntervals.includes(normalizedInterval)) {
         throw new PaymentValidationError("Cette périodicité n’est pas disponible pour ce produit.", "BILLING_INTERVAL_NOT_AVAILABLE");
@@ -1554,6 +1566,7 @@ module.exports = {
     subscriptionPolicy: {
         classifyChange,
         getRemainingMonthlyUnits,
+        getRemainingPeriodUnits,
         roundForProvider,
         calculatePaymentQuote
     }

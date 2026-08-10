@@ -5,6 +5,7 @@ const { getPaymentConfig } = require("../src/config/payment");
 const { extractProviders } = require("../src/services/pawapay.service");
 const {
     ESSENTIAL_ANNUAL_FIXED_PRICES,
+    PRO_ANNUAL_FIXED_PRICES,
     PRO_FIXED_PRICES,
     getFixedPlanPrice,
     getPlanSummary
@@ -69,6 +70,20 @@ test("the approved Pro and Essential annual prices are exposed", () => {
     });
     assert.equal(getFixedPlanPrice("PRO", "USD"), 25);
     assert.equal(getFixedPlanPrice("PRO", "CDF"), 57500);
+    assert.deepEqual(PRO_ANNUAL_FIXED_PRICES, {
+        USD: 240,
+        CDF: 552000,
+        XOF: 139200,
+        XAF: 139200,
+        RWF: 352800,
+        ZMW: 4440,
+        KES: 31200,
+        UGX: 888000,
+        TZS: 631200,
+        NGN: 328800,
+        GHS: 2808
+    });
+    assert.equal(getFixedPlanPrice("PRO", "USD", "ANNUAL"), 240);
     assert.equal(ESSENTIAL_ANNUAL_FIXED_PRICES.USD, 144);
     assert.equal(getFixedPlanPrice("ESSENTIAL", "USD", "ANNUAL"), 144);
     assert.equal(getFixedPlanPrice("PRO", "EUR"), null);

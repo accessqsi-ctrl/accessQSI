@@ -45,10 +45,10 @@ test("Essential applique 5 événements, 200 QR, 5 agents et 6 zones", () => {
   assert.equal(hasPlanCapability(summary, PLAN_CAPABILITIES.CUSTOM_CARD_TEMPLATES), false);
 });
 
-test("Pro applique 15 événements, 700 QR, 15 agents et 20 zones", () => {
+test("Pro applique 10 événements, 700 QR, 15 agents et 20 zones", () => {
   const summary = getPlanSummary({ plan: { title: "PRO" } });
-  assert.equal(getEventQuotaStatus(summary, 14).allowed, true);
-  assert.equal(getEventQuotaStatus(summary, 15).allowed, false);
+  assert.equal(getEventQuotaStatus(summary, 9).allowed, true);
+  assert.equal(getEventQuotaStatus(summary, 10).allowed, false);
   assert.equal(getQrQuotaStatus(summary, 699).allowed, true);
   assert.equal(getQrQuotaStatus(summary, 700).allowed, false);
   assert.equal(summary.limits.maxAgents, 15);

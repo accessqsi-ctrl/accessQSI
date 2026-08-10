@@ -48,6 +48,7 @@ const scalePrices = (factor) => Object.freeze({
 const ESSENTIAL_FIXED_PRICES = scalePrices(1.5);
 const ESSENTIAL_ANNUAL_FIXED_PRICES = scalePrices(14.4);
 const PRO_FIXED_PRICES = scalePrices(2.5);
+const PRO_ANNUAL_FIXED_PRICES = scalePrices(24);
 const EVENT_PASS_FIXED_PRICES = scalePrices(0.7);
 
 const PLAN_DETAILS = Object.freeze({
@@ -85,14 +86,16 @@ const PLAN_DETAILS = Object.freeze({
         key: PLAN_KEYS.PRO,
         name: "Pro",
         price: PRO_FIXED_PRICES.USD,
+        annualPrice: PRO_ANNUAL_FIXED_PRICES.USD,
         currency: "USD",
         fixedPrices: PRO_FIXED_PRICES,
-        maxEventsPerCycle: 15,
+        annualFixedPrices: PRO_ANNUAL_FIXED_PRICES,
+        maxEventsPerCycle: 10,
         maxQrCodesPerEvent: 700,
         maxAgents: 15,
         maxAreas: 20,
         capabilities: Object.freeze(Object.values(PLAN_CAPABILITIES)),
-        features: ["15 événements par mois", "700 QR par événement", "15 agents actifs", "20 zones actives", "Analytics et modèles avancés"]
+        features: ["10 événements par mois", "700 QR par événement", "15 agents actifs", "20 zones actives", "Analytics et modèles avancés"]
     }),
     ENTERPRISE: Object.freeze({
         key: PLAN_KEYS.ENTERPRISE,
@@ -333,6 +336,7 @@ module.exports = {
     ESSENTIAL_FIXED_PRICES,
     ESSENTIAL_ANNUAL_FIXED_PRICES,
     PRO_FIXED_PRICES,
+    PRO_ANNUAL_FIXED_PRICES,
     EVENT_PASS_FIXED_PRICES,
     PLAN_DETAILS,
     normalizePlanKey,

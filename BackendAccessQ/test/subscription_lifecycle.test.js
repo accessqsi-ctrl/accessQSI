@@ -105,6 +105,24 @@ test("le devis d’upgrade facture uniquement la différence proratisée", () =>
     assert.equal(quote.referencePrice, 5);
 });
 
+test("le devis Essential annuel vers Pro annuel utilise les tarifs annuels", () => {
+    const { calculatePaymentQuote } = loadPolicy();
+    const start = new Date("2026-01-01T00:00:00Z");
+    const end = new Date("2027-01-01T00:00:00Z");
+    const now = new Date((start.getTime() + end.getTime()) / 2);
+    const quote = calculatePaymentQuote({
+        organization: organization({ plan: "ESSENTIAL", interval: "ANNUAL", start, end }),
+        plan: { title: "PRO", cost: 25, currency: "USD" },
+        provider: { currency: "USD", decimals: 2 },
+        billingInterval: "ANNUAL",
+        now
+    });
+    assert.equal(quote.transition.type, "UPGRADE");
+    assert.equal(quote.localPrice, 48);
+    assert.equal(quote.creditAmount, 72);
+    assert.equal(quote.referencePrice, 48);
+});
+
 test("un downgrade payé est programmé sans remplacer immédiatement le plan actif", async () => {
     clearSrcModules();
     const end = new Date(Date.now() + 20 * 24 * 60 * 60 * 1000);

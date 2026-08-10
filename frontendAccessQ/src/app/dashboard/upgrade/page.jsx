@@ -38,9 +38,9 @@ const formatDate = (value) => value
     ? new Intl.DateTimeFormat("fr-CD", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value))
     : "—";
 
-const intervalForPlan = (planKey, essentialAnnual) => {
+const intervalForPlan = (planKey, annualBilling) => {
     if (planKey === "EVENT_PASS") return "ONE_TIME";
-    if (planKey === "ESSENTIAL" && essentialAnnual) return "ANNUAL";
+    if (["ESSENTIAL", "PRO"].includes(planKey) && annualBilling) return "ANNUAL";
     return "MONTHLY";
 };
 
@@ -55,7 +55,7 @@ export default function UpgradePage() {
     const [providers, setProviders] = useState([]);
     const [billing, setBilling] = useState({ subscription: null, payments: [], eventPasses: [] });
     const [selectedPlan, setSelectedPlan] = useState("ESSENTIAL");
-    const [essentialAnnual, setEssentialAnnual] = useState(false);
+    const [annualPlans, setAnnualPlans] = useState({ ESSENTIAL: false, PRO: false });
     const [form, setForm] = useState({ country: "", provider: "", phoneNumber: "" });
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
@@ -75,7 +75,7 @@ export default function UpgradePage() {
         () => plans.find((item) => item.key === selectedPlan),
         [plans, selectedPlan]
     );
-    const interval = intervalForPlan(selectedPlan, essentialAnnual);
+    const interval = intervalForPlan(selectedPlan, Boolean(annualPlans[selectedPlan]));
     const countries = useMemo(() => {
         const entries = new Map();
         providers.forEach((provider) => {
@@ -331,7 +331,9 @@ export default function UpgradePage() {
                     const selected = item.key === selectedPlan;
                     const current = item.key === plan;
                     const isPass = item.key === "EVENT_PASS";
-                    const displayPrice = item.key === "ESSENTIAL" && essentialAnnual ? item.annualPrice : item.price;
+                    const supportsAnnual = ["ESSENTIAL", "PRO"].includes(item.key) && item.annualPrice != null;
+                    const itemAnnual = Boolean(annualPlans[item.key]);
+                    const displayPrice = supportsAnnual && itemAnnual ? item.annualPrice : item.price;
                     return (
                         <article key={item.key} className={`flex flex-col rounded-3xl border bg-white p-5 shadow-sm dark:bg-slate-950 ${selected ? "border-blue-500 ring-2 ring-blue-500/15" : "border-slate-200 dark:border-slate-800"}`}>
                             <div className="flex items-start justify-between gap-3">
@@ -339,13 +341,13 @@ export default function UpgradePage() {
                                 {isPass && <TicketCheck className="h-6 w-6 text-emerald-600" />}
                             </div>
                             <p className="mt-4 text-3xl font-black text-slate-950 dark:text-white">{item.key === "ENTERPRISE" ? "Sur devis" : formatMoney(displayPrice, item.currency)}</p>
-                            <p className="text-xs text-slate-500">{item.key === "ENTERPRISE" ? "offre personnalisée" : isPass ? "paiement unique" : item.key === "ESSENTIAL" && essentialAnnual ? "par an (12 $/mois)" : "par mois"}</p>
+                            <p className="text-xs text-slate-500">{item.key === "ENTERPRISE" ? "offre personnalisée" : isPass ? "paiement unique" : supportsAnnual && itemAnnual ? `par an (${formatMoney(item.annualPrice / 12, item.currency)}/mois)` : "par mois"}</p>
                             <ul className="mt-5 flex-1 space-y-2 text-sm text-slate-600 dark:text-slate-300">
                                 {(item.features || []).map((feature) => <li key={feature} className="flex gap-2"><Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />{feature}</li>)}
                             </ul>
-                            {item.key === "ESSENTIAL" && (
+                            {supportsAnnual && (
                                 <label className="mt-4 flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300">
-                                    <input type="checkbox" checked={essentialAnnual} onChange={(event) => { setEssentialAnnual(event.target.checked); setSelectedPlan("ESSENTIAL"); }} /> Facturation annuelle (144 $)
+                                    <input type="checkbox" checked={itemAnnual} onChange={(event) => { setAnnualPlans((current) => ({ ...current, [item.key]: event.target.checked })); setSelectedPlan(item.key); }} /> Facturation annuelle ({formatMoney(item.annualPrice, item.currency)})
                                 </label>
                             )}
                             {PURCHASABLE.includes(item.key) && <button type="button" onClick={() => setSelectedPlan(item.key)} className={`mt-5 rounded-xl px-4 py-2.5 text-sm font-semibold ${selected ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-white"}`}>{selected ? "Offre sélectionnée" : "Choisir"}</button>}
