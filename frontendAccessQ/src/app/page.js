@@ -205,8 +205,8 @@ export default function Home() {
       </header>
 
       <main className="flex-1 relative flex flex-col items-center justify-center p-6 lg:p-16 text-center">
-        <div className="relative z-10 max-w-4xl mx-auto space-y-8 mt-12 mb-20">
-          <h1 className="text-4xl md:text-4xl lg:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-[1.1]">
+        <div className="relative z-10 w-full max-w-6xl mx-auto space-y-8 mt-12 mb-20">
+          <h1 className="mx-auto max-w-4xl text-4xl md:text-4xl lg:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-[1.1]">
             Gérez vos accès avec sécurité et simplicité pour votre{" "}
             <span className="bg-gradient-to-r from-blue-600 via-emerald-500 to-emerald-400 bg-clip-text text-transparent relative inline-block">
               organisation ou evenement 
@@ -217,7 +217,22 @@ export default function Home() {
             AccessQ est une solution simple et sécurisée qui permet de générer, gérer et vérifier des QR codes, de les attribuer aux personnes autorisées et de contrôler rapidement les accès physiques ou numériques. Grâce à une visibilité claire et fiable, les administrateurs et les agents assurent une gestion des accès efficace en toute simplicité.
           </p>
 
-        
+          <picture className="block overflow-hidden rounded-2xl border border-slate-200/70 bg-slate-100 shadow-2xl shadow-slate-900/10 dark:border-slate-700 dark:bg-slate-800 sm:rounded-3xl">
+            <source
+              media="(max-width: 767px)"
+              srcSet="/accessq-showcase-mobile-1080x1350.webp"
+              type="image/webp"
+            />
+            <img
+              src="/accessq-showcase-desktop-1920x1080.webp"
+              alt="Badges, billets et bracelets illustrant les usages d’AccessQ"
+              width="1920"
+              height="1080"
+              fetchPriority="high"
+              decoding="async"
+              className="block h-auto w-full"
+            />
+          </picture>
 
           <div className="flex flex-col justify-center gap-3 sm:flex-row">
             <Link
