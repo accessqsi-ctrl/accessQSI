@@ -217,22 +217,41 @@ export default function Home() {
             AccessQ est une solution simple et sécurisée qui permet de générer, gérer et vérifier des QR codes, de les attribuer aux personnes autorisées et de contrôler rapidement les accès physiques ou numériques. Grâce à une visibilité claire et fiable, les administrateurs et les agents assurent une gestion des accès efficace en toute simplicité.
           </p>
 
-          <picture className="block overflow-hidden rounded-2xl border border-slate-200/70 bg-slate-100 shadow-2xl shadow-slate-900/10 dark:border-slate-700 dark:bg-slate-800 sm:rounded-3xl">
-            <source
-              media="(max-width: 767px)"
-              srcSet="/accessq-showcase-mobile-1080x1350.webp"
-              type="image/webp"
-            />
-            <img
-              src="/accessq-showcase-desktop-1920x1080.webp"
-              alt="Badges, billets et bracelets illustrant les usages d’AccessQ"
-              width="1920"
-              height="1080"
-              fetchPriority="high"
-              decoding="async"
-              className="block h-auto w-full"
-            />
-          </picture>
+          <div className="mx-auto grid w-full max-w-5xl grid-cols-2 gap-3 text-left sm:gap-4 lg:grid-cols-3">
+            <figure className="col-span-2 overflow-hidden rounded-2xl border border-slate-200/70 bg-slate-100 shadow-xl shadow-slate-900/10 dark:border-slate-700 dark:bg-slate-800 sm:rounded-3xl lg:col-span-1">
+              <img
+                src="/accessq-billet-event.webp"
+                alt="Billets de concert avec contrôle d’accès par QR code"
+                width="1021"
+                height="1253"
+                fetchPriority="high"
+                decoding="async"
+                className="block aspect-[4/5] h-full w-full object-cover"
+              />
+            </figure>
+
+            <figure className="overflow-hidden rounded-2xl border border-slate-200/70 bg-slate-100 shadow-xl shadow-slate-900/10 dark:border-slate-700 dark:bg-slate-800 sm:rounded-3xl">
+              <img
+                src="/accessq-bracelet.webp"
+                alt="Bracelets d’accès munis d’un QR code"
+                width="940"
+                height="1254"
+                decoding="async"
+                className="block aspect-[4/5] h-full w-full object-cover"
+              />
+            </figure>
+
+            <figure className="overflow-hidden rounded-2xl border border-slate-200/70 bg-slate-100 shadow-xl shadow-slate-900/10 dark:border-slate-700 dark:bg-slate-800 sm:rounded-3xl">
+              <img
+                src="/accessq-carte-access.webp"
+                alt="Cartes professionnelles avec contrôle d’accès par QR code"
+                width="1085"
+                height="1450"
+                decoding="async"
+                className="block aspect-[4/5] h-full w-full object-cover"
+              />
+            </figure>
+          </div>
 
           <div className="flex flex-col justify-center gap-3 sm:flex-row">
             <Link
@@ -277,6 +296,53 @@ export default function Home() {
                 </div>
               ))}
             </div>
+          </div>
+
+          <div className="mt-10 grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3">
+            <figure className="col-span-2 group relative overflow-hidden rounded-2xl bg-slate-100 shadow-lg shadow-slate-900/10 dark:bg-slate-800 sm:rounded-3xl lg:col-span-1">
+              <img
+                src="/accessq-conference.webp"
+                alt="Conférence professionnelle organisée dans une grande salle"
+                width="1086"
+                height="1448"
+                loading="lazy"
+                decoding="async"
+                className="block aspect-[4/5] w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+              />
+              <figcaption className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950/85 via-slate-950/45 to-transparent px-5 pb-4 pt-14 text-base font-bold text-white">
+                Conférences
+              </figcaption>
+            </figure>
+
+            <figure className="group relative overflow-hidden rounded-2xl bg-slate-100 shadow-lg shadow-slate-900/10 dark:bg-slate-800 sm:rounded-3xl">
+              <img
+                src="/accessq-concert.webp"
+                alt="Public réuni lors d’un concert"
+                width="736"
+                height="920"
+                loading="lazy"
+                decoding="async"
+                className="block aspect-[4/5] w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+              />
+              <figcaption className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950/85 via-slate-950/45 to-transparent px-4 pb-4 pt-12 text-sm font-bold text-white sm:px-5 sm:text-base">
+                Concerts
+              </figcaption>
+            </figure>
+
+            <figure className="group relative overflow-hidden rounded-2xl bg-slate-100 shadow-lg shadow-slate-900/10 dark:bg-slate-800 sm:rounded-3xl">
+              <img
+                src="/accessq-mariage.webp"
+                alt="Salle de réception décorée pour un mariage"
+                width="735"
+                height="962"
+                loading="lazy"
+                decoding="async"
+                className="block aspect-[4/5] w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+              />
+              <figcaption className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950/85 via-slate-950/45 to-transparent px-4 pb-4 pt-12 text-sm font-bold text-white sm:px-5 sm:text-base">
+                Mariages
+              </figcaption>
+            </figure>
           </div>
 
           <div className="mt-14 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
