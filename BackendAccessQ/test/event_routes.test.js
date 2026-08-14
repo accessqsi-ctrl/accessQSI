@@ -37,7 +37,7 @@ test("GET /events returns events scoped to the authenticated organization", asyn
                     EventSchedules: [{
                         start_date: new Date("2026-01-01T10:00:00Z"),
                         end_date: new Date("2026-01-01T22:00:00Z"),
-                        area: { area_name: "VIP" }
+                        area: { area_id: 4, area_name: "VIP", accreditation_level: 2 }
                     }],
                     _count: { qr_codes: 3 }
                 }];
@@ -53,6 +53,11 @@ test("GET /events returns events scoped to the authenticated organization", asyn
     assert.equal(res.body.success, true);
     assert.equal(res.body.events[0].name, "Concert");
     assert.equal(res.body.events[0].location, "VIP");
+    assert.deepEqual(res.body.events[0].areas, [{
+        area_id: 4,
+        area_name: "VIP",
+        accreditation_level: 2
+    }]);
     assert.equal(res.body.events[0].qrs, 3);
 });
 

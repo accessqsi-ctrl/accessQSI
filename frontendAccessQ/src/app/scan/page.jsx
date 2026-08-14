@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Loader2, Camera, ShieldCheck, ShieldAlert, ArrowLeft, History, MapPin, Settings } from "lucide-react";
+import { Loader2, Camera, ShieldCheck, ShieldAlert, ArrowLeft, History, MapPin, Settings, CalendarDays } from "lucide-react";
 import Link from "next/link";
 import { apiFetch } from "../lib/api";
 import { useUserPlan } from "../lib/useUserPlan";
@@ -15,37 +15,37 @@ export default function ScanPage() {
     const [flash, setFlash] = useState(null); // 'success' | 'error'
     const [lastScans, setLastScans] = useState([]);
     const [cameraError, setCameraError] = useState(null);
-    const [areas, setAreas] = useState([]);
+    const [events, setEvents] = useState([]);
+    const [selectedEventId, setSelectedEventId] = useState("");
     const [selectedAreaId, setSelectedAreaId] = useState("");
-    const [areasError, setAreasError] = useState("");
+    const [eventsError, setEventsError] = useState("");
     
     const scannerRef = useRef(null);
 
     useEffect(() => {
         let active = true;
-        const loadAreas = async () => {
+        const loadEvents = async () => {
             try {
-                const response = await apiFetch("/areas");
+                const response = await apiFetch("/events");
                 const data = await response.json();
                 if (!active) return;
                 if (!response.ok || !data.success) {
-                    setAreasError(data.message || "Impossible de charger les zones.");
+                    setEventsError(data.message || "Impossible de charger les événements.");
                     return;
                 }
-                const availableAreas = data.areas || [];
-                setAreas(availableAreas);
-                if (availableAreas.length === 1) {
-                    setSelectedAreaId(String(availableAreas[0].area_id));
-                }
+                setEvents(data.events || []);
             } catch {
-                if (active) setAreasError("Impossible de charger les zones.");
+                if (active) setEventsError("Impossible de charger les événements.");
             }
         };
-        loadAreas();
+        loadEvents();
         return () => {
             active = false;
         };
     }, []);
+
+    const selectedEvent = events.find(event => String(event.id) === selectedEventId);
+    const areas = selectedEvent?.areas || [];
 
     // Load html5-qrcode from CDN
     useEffect(() => {
@@ -73,6 +73,10 @@ export default function ScanPage() {
 
     const startScanner = () => {
         if (!window.Html5Qrcode) return;
+        if (!selectedEventId) {
+            setCameraError("Sélectionnez d'abord l'événement à contrôler.");
+            return;
+        }
         if (!selectedAreaId) {
             setCameraError("Sélectionnez d'abord la zone de contrôle.");
             return;
@@ -143,6 +147,7 @@ export default function ScanPage() {
             const location = await getScanLocation();
             const payload = {
                 token: qrToken,
+                eventId: Number(selectedEventId),
                 areaId: Number(selectedAreaId),
                 ...(location ? { location } : {})
             };
@@ -255,32 +260,63 @@ export default function ScanPage() {
                                 Positionnez le code QR dans le cadre pour la vérification instantanée.
                             </p>
                         </div>
-                        <div className="w-full max-w-xs text-left">
-                            <label className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400">
-                                <MapPin className="h-4 w-4" />
-                                Zone de contrôle
-                            </label>
-                            <select
-                                value={selectedAreaId}
-                                onChange={(event) => {
-                                    setSelectedAreaId(event.target.value);
-                                    setCameraError(null);
-                                }}
-                                className="w-full rounded-2xl border border-slate-700 bg-slate-800 px-4 py-3 text-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
-                            >
-                                <option value="">Sélectionner une zone</option>
-                                {areas.map(area => (
-                                    <option key={area.area_id} value={area.area_id}>
-                                        {area.area_name} — niveau {area.accreditation_level}
-                                    </option>
-                                ))}
-                            </select>
-                            {areasError && <p className="mt-2 text-sm text-red-400">{areasError}</p>}
+                        <div className="w-full max-w-xs space-y-4 text-left">
+                            <div>
+                                <label className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400">
+                                    <CalendarDays className="h-4 w-4" />
+                                    Événement
+                                </label>
+                                <select
+                                    value={selectedEventId}
+                                    onChange={(event) => {
+                                        setSelectedEventId(event.target.value);
+                                        setSelectedAreaId("");
+                                        setCameraError(null);
+                                    }}
+                                    className="w-full rounded-2xl border border-slate-700 bg-slate-800 px-4 py-3 text-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                                >
+                                    <option value="">Sélectionner un événement</option>
+                                    {events.map(event => (
+                                        <option key={event.id} value={event.id}>
+                                            {event.name} — {event.status}
+                                        </option>
+                                    ))}
+                                </select>
+                                {eventsError && <p className="mt-2 text-sm text-red-400">{eventsError}</p>}
+                                {!eventsError && events.length === 0 && (
+                                    <p className="mt-2 text-sm text-amber-400">Aucun événement disponible.</p>
+                                )}
+                            </div>
+                            <div>
+                                <label className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400">
+                                    <MapPin className="h-4 w-4" />
+                                    Zone de contrôle
+                                </label>
+                                <select
+                                    value={selectedAreaId}
+                                    onChange={(event) => {
+                                        setSelectedAreaId(event.target.value);
+                                        setCameraError(null);
+                                    }}
+                                    disabled={!selectedEventId}
+                                    className="w-full rounded-2xl border border-slate-700 bg-slate-800 px-4 py-3 text-white outline-none disabled:cursor-not-allowed disabled:opacity-60 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                                >
+                                    <option value="">{selectedEventId ? "Sélectionner une zone" : "Choisissez d'abord un événement"}</option>
+                                    {areas.map(area => (
+                                        <option key={area.area_id} value={area.area_id}>
+                                            {area.area_name} — niveau {area.accreditation_level}
+                                        </option>
+                                    ))}
+                                </select>
+                                {selectedEventId && areas.length === 0 && (
+                                    <p className="mt-2 text-sm text-amber-400">Aucune zone n'est associée à cet événement.</p>
+                                )}
+                            </div>
                         </div>
                         <button
                             onClick={startScanner}
-                            disabled={!selectedAreaId || areas.length === 0}
-                            className="w-full max-w-xs py-4 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-2xl shadow-lg shadow-blue-500/25 active:scale-95 transition-all text-lg"
+                            disabled={!selectedEventId || !selectedAreaId || areas.length === 0}
+                            className="w-full max-w-xs py-4 bg-blue-600 hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 disabled:shadow-none text-white font-bold rounded-2xl shadow-lg shadow-blue-500/25 active:scale-95 transition-all text-lg"
                         >
                             Démarrer la Caméra
                         </button>

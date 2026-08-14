@@ -7,6 +7,7 @@ const OPERATOR_ALLOWED_REQUESTS = new Set([
   "PUT /user/password",
   "GET /user/logout",
   "GET /areas",
+  "GET /events",
   "POST /qr/verify"
 ]);
 

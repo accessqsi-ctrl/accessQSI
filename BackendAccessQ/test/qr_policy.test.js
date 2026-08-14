@@ -4,6 +4,7 @@ const { evaluateQrScan } = require("../src/services/qr_policy.service");
 
 const baseQr = (overrides = {}) => ({
     qr_id: 1,
+    event_id: 5,
     status: "active",
     usage_limit: 1,
     scans_count: 0,
@@ -31,6 +32,15 @@ test("evaluateQrScan rejects QR from another organization without recording", ()
     assert.equal(decision.httpStatus, 403);
     assert.equal(decision.success, false);
     assert.equal(decision.shouldRecord, false);
+});
+
+test("evaluateQrScan rejects a QR from another selected event", () => {
+    const decision = evaluateQrScan(baseQr(), 10, new Date("2026-01-01T12:00:00Z"), 4, 6);
+
+    assert.equal(decision.success, false);
+    assert.equal(decision.scanStatus, "denied_event_not_selected");
+    assert.equal(decision.reason, "Ce QR Code n'appartient pas à l'événement sélectionné.");
+    assert.equal(decision.areaId, 4);
 });
 
 test("evaluateQrScan rejects revoked QR and records denied status", () => {

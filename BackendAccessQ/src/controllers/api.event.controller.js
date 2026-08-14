@@ -36,6 +36,15 @@ exports.getEvents = async (req, res) => {
 
             // Lister tous les noms de zones
             const locationNames = schedules.map(s => s.area?.area_name).filter(Boolean).join(", ") || "N/A";
+            const areas = [...new Map(
+                schedules
+                    .filter(schedule => schedule.area)
+                    .map(schedule => [schedule.area.area_id, {
+                        area_id: schedule.area.area_id,
+                        area_name: schedule.area.area_name,
+                        accreditation_level: schedule.area.accreditation_level
+                    }])
+            ).values()];
 
             return {
                 id: e.event_id,
@@ -44,6 +53,7 @@ exports.getEvents = async (req, res) => {
                 startDate: firstSchedule ? firstSchedule.start_date : null,
                 endDate: lastSchedule ? lastSchedule.end_date : null,
                 location: locationNames,
+                areas,
                 qrs: e._count?.qr_codes || 0,
                 qrLimit: e.qr_limit,
                 entitlementType: e.entitlement_type,

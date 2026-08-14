@@ -10,7 +10,7 @@ const deniedDecision = (scanStatus, reason, areaId = null) => ({
     areaId
 });
 
-exports.evaluateQrScan = (qr, scannerOrgId, now = new Date(), requestedAreaId = null) => {
+exports.evaluateQrScan = (qr, scannerOrgId, now = new Date(), requestedAreaId = null, requestedEventId = null) => {
     if (!qr) {
         return {
             httpStatus: 404,
@@ -36,6 +36,20 @@ exports.evaluateQrScan = (qr, scannerOrgId, now = new Date(), requestedAreaId = 
             message: "Ce QR Code n'appartient pas à votre organisation.",
             shouldRecord: false
         };
+    }
+
+    const hasRequestedEvent = requestedEventId !== null
+        && requestedEventId !== undefined
+        && requestedEventId !== "";
+    const normalizedEventId = Number(requestedEventId);
+    const qrEventId = Number(qr.event_id ?? qr.event?.event_id);
+    if (hasRequestedEvent && Number.isInteger(normalizedEventId) && normalizedEventId !== qrEventId) {
+        const normalizedAreaId = Number(requestedAreaId);
+        return deniedDecision(
+            "denied_event_not_selected",
+            "Ce QR Code n'appartient pas à l'événement sélectionné.",
+            Number.isInteger(normalizedAreaId) ? normalizedAreaId : null
+        );
     }
 
     if (

@@ -160,14 +160,7 @@ export default function DashboardLayout({ children }) {
                             <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{userProfile ? (userProfile.name || userProfile.full_name) : "Chargement..."}</p>
                             <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{userProfile ? (userProfile.role === 'ORG_ADMIN' ? 'Admin' : (userProfile.role === 'OPERATOR' ? 'Opérateur' : 'Agent')) : "..."}</p>
                             {!isOperator && <div className="mt-1 flex items-center gap-2">
-                                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${isProPlan ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>
-                                    {planLabel}
-                                </span>
-                                {!isProPlan && !isAgent && (
-                                    <Link href="/dashboard/upgrade" className="text-[10px] font-semibold text-amber-600 hover:text-amber-700">
-                                        Upgrade
-                                    </Link>
-                                )}
+                               
                             </div>}
                         </div>
                         <button 
@@ -309,7 +302,6 @@ export default function DashboardLayout({ children }) {
                                 }}
                                 className="mt-3 w-full rounded-xl border border-red-100 px-4 py-2.5 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50 dark:border-red-900/50 dark:text-red-400 dark:hover:bg-red-950/30"
                             >
-                                Déconnexion
                             </button>
                         </div>
                     </aside>

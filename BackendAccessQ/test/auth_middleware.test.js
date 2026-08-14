@@ -83,6 +83,7 @@ test("authMiddleware allows operators to use scanner and password routes", () =>
         ["PUT", "/user/password"],
         ["GET", "/user/logout"],
         ["GET", "/areas?active=true"],
+        ["GET", "/events"],
         ["POST", "/qr/verify"]
     ]) {
         const req = {
@@ -109,7 +110,7 @@ test("authMiddleware blocks operators from management routes", () => {
     });
     const req = {
         method: "GET",
-        originalUrl: "/events",
+        originalUrl: "/agents",
         headers: { authorization: "Bearer access-token" },
         cookies: {}
     };

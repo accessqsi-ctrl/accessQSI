@@ -3,12 +3,22 @@ const logger = require("../utils/logger");
 
 exports.verifyScan = async (req, res) => {
     try {
-        const { token, location, areaId } = req.body;
+        const { token, location, areaId, eventId } = req.body;
         const scannerId = req.user.user_id;
         const scannerOrgId = req.user.org_id;
 
         if (!token) {
             return res.status(400).json({ success: false, message: "Token manquant." });
+        }
+
+        const selectedEventId = Number(eventId);
+        if (!Number.isInteger(selectedEventId) || selectedEventId <= 0) {
+            return res.status(400).json({ success: false, message: "Sélectionnez l'événement à contrôler." });
+        }
+
+        const selectedAreaId = Number(areaId);
+        if (!Number.isInteger(selectedAreaId) || selectedAreaId <= 0) {
+            return res.status(400).json({ success: false, message: "Sélectionnez la zone de contrôle." });
         }
 
         const scanLocation = {};
@@ -27,7 +37,8 @@ exports.verifyScan = async (req, res) => {
             token,
             scannerId,
             scannerOrgId,
-            areaId,
+            areaId: selectedAreaId,
+            eventId: selectedEventId,
             location: scanLocation
         });
 

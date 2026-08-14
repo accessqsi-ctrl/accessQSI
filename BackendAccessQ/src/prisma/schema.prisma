@@ -390,6 +390,7 @@ enum ScanStatus {
   denied_revoked
   denied_limit_reached
   denied_event_inactive
+  denied_event_not_selected
   denied_area_not_allowed
   denied_insufficient_level
 }

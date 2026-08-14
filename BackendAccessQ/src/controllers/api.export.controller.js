@@ -12,6 +12,7 @@ const formatScanStatus = (status) => {
         denied_revoked: "REFUSÉ - RÉVOQUÉ",
         denied_limit_reached: "REFUSÉ - LIMITE ATTEINTE",
         denied_event_inactive: "REFUSÉ - ÉVÉNEMENT INACTIF",
+        denied_event_not_selected: "REFUSÉ - AUTRE ÉVÉNEMENT",
         denied_area_not_allowed: "REFUSÉ - ZONE NON AUTORISÉE",
         denied_insufficient_level: "REFUSÉ - NIVEAU INSUFFISANT"
     };

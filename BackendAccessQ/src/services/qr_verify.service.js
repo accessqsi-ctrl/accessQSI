@@ -39,6 +39,7 @@ exports.verifyAndRecordScan = async ({
     scannerId,
     scannerOrgId,
     areaId,
+    eventId,
     location = {},
     now = new Date()
 }) => {
@@ -54,7 +55,7 @@ exports.verifyAndRecordScan = async ({
             where: { unique_token: token },
             include: qrScanInclude
         });
-        const decision = evaluateQrScan(qr, scannerOrgId, now, areaId);
+        const decision = evaluateQrScan(qr, scannerOrgId, now, areaId, eventId);
 
         if (!decision.shouldRecord) return { qr, decision, scan: null };
 

@@ -262,6 +262,7 @@ test("QR verification locks, evaluates, logs and consumes a scan in one transact
         token: "token-8",
         scannerId: 12,
         scannerOrgId: 42,
+        eventId: 5,
         areaId: 4,
         location: { latitude: -11.66, longitude: 27.47 },
         now: new Date("2026-01-01T12:00:00Z")

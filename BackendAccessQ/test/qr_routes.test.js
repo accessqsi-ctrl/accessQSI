@@ -30,10 +30,10 @@ const loadQrApp = ({ user, qrVerifyService }) => {
     const adaptedService = { ...qrVerifyService };
     if (!adaptedService.verifyAndRecordScan) {
         adaptedService.verifyAndRecordScan = async ({
-            token, scannerId, scannerOrgId, areaId, location
+            token, scannerId, scannerOrgId, areaId, eventId, location
         }) => {
             const qr = await adaptedService.getQrByToken(token);
-            const decision = evaluateQrScan(qr, scannerOrgId, new Date(), areaId);
+            const decision = evaluateQrScan(qr, scannerOrgId, new Date(), areaId, eventId);
             if (decision.shouldRecord) {
                 await adaptedService.recordScan(qr.qr_id, scannerId, decision.scanStatus, location, decision.areaId);
             }
@@ -51,6 +51,7 @@ const loadQrApp = ({ user, qrVerifyService }) => {
 
 const validQr = (overrides = {}) => ({
     qr_id: 1,
+    event_id: 9,
     unique_token: "token-1",
     status: "active",
     usage_limit: 2,
@@ -81,6 +82,50 @@ test("POST /qr/verify requires a token", async () => {
     assert.equal(res.body.success, false);
 });
 
+test("POST /qr/verify requires an event and an area selection", async () => {
+    const app = loadQrApp({
+        user: { user_id: 7, role: "ORG_AGENT", org_id: 42 },
+        qrVerifyService: {
+            getQrByToken: async () => validQr(),
+            recordScan: async () => {},
+            updateQrStatus: async () => {}
+        }
+    });
+
+    const missingEvent = await request(app, "POST", "/qr/verify", { token: "token-1", areaId: 4 });
+    const missingArea = await request(app, "POST", "/qr/verify", { token: "token-1", eventId: 9 });
+
+    assert.equal(missingEvent.status, 400);
+    assert.match(missingEvent.body.message, /événement/);
+    assert.equal(missingArea.status, 400);
+    assert.match(missingArea.body.message, /zone/);
+});
+
+test("POST /qr/verify rejects a QR from another selected event", async () => {
+    let recordedStatus = null;
+    const app = loadQrApp({
+        user: { user_id: 7, role: "ORG_AGENT", org_id: 42 },
+        qrVerifyService: {
+            getQrByToken: async () => validQr(),
+            recordScan: async (qrId, scannerId, status) => {
+                recordedStatus = status;
+            },
+            updateQrStatus: async () => {}
+        }
+    });
+
+    const res = await request(app, "POST", "/qr/verify", {
+        token: "token-1",
+        eventId: 10,
+        areaId: 4
+    });
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body.success, false);
+    assert.equal(res.body.reason, "Ce QR Code n'appartient pas à l'événement sélectionné.");
+    assert.equal(recordedStatus, "denied_event_not_selected");
+});
+
 test("POST /qr/verify authorizes a valid QR and records the scan", async () => {
     const calls = [];
     const app = loadQrApp({
@@ -101,6 +146,8 @@ test("POST /qr/verify authorizes a valid QR and records the scan", async () => {
 
     const res = await request(app, "POST", "/qr/verify", {
         token: "token-1",
+        eventId: 9,
+        areaId: 4,
         location: { latitude: -11.664, longitude: 27.479 }
     });
 
@@ -126,7 +173,7 @@ test("POST /qr/verify rejects QR from another organization without recording", a
         }
     });
 
-    const res = await request(app, "POST", "/qr/verify", { token: "token-1" });
+    const res = await request(app, "POST", "/qr/verify", { token: "token-1", eventId: 9, areaId: 4 });
 
     assert.equal(res.status, 403);
     assert.equal(res.body.success, false);
@@ -152,7 +199,7 @@ test("POST /qr/verify rejects QR from a deleted event without recording", async 
         }
     });
 
-    const res = await request(app, "POST", "/qr/verify", { token: "token-1" });
+    const res = await request(app, "POST", "/qr/verify", { token: "token-1", eventId: 9, areaId: 4 });
 
     assert.equal(res.status, 410);
     assert.equal(res.body.success, false);
@@ -188,6 +235,7 @@ test("POST /qr/verify records the selected checkpoint area", async () => {
 
     const res = await request(app, "POST", "/qr/verify", {
         token: "token-1",
+        eventId: 9,
         areaId: 4
     });
 
