@@ -82,7 +82,7 @@ exports.cancelSubscription = async (req, res) => {
         const change = await paymentService.requestCancellation(req.user.org_id);
         return res.status(201).json({
             success: true,
-            message: "L’abonnement restera actif jusqu’à son échéance, puis passera au plan Découverte.",
+            message: "L’abonnement restera actif jusqu’à son échéance. Toutes vos données seront conservées et les limites du plan Découverte s’appliqueront ensuite.",
             change
         });
     } catch (error) {

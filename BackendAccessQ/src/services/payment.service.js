@@ -438,7 +438,15 @@ const applyScheduledChange = async (changeId, now = new Date()) => prisma.$trans
         ? null
         : addUtcMonths(startsAt, change.to_interval === BILLING_INTERVALS.ANNUAL ? 12 : 1);
 
-    await enforceResourceLimits(tx, change.org_id, targetPlan.title, change.resource_selection);
+    // Cancellation never deletes customer data. Discovery limits are applied
+    // automatically, without asking the customer to choose resources first.
+    // Any legacy selection saved on a cancellation is deliberately ignored.
+    await enforceResourceLimits(
+        tx,
+        change.org_id,
+        targetPlan.title,
+        discovery ? null : change.resource_selection
+    );
 
     await tx.organization.update({
         where: { org_id: change.org_id },
@@ -844,10 +852,10 @@ const selectRetainedResources = async (orgId, { agentIds = [], areaIds = [] } = 
         include: { to_plan: true, from_plan: true },
         orderBy: { created_at: "desc" }
     });
-    if (!change || !["DOWNGRADE", "INTERVAL_CHANGE", "CANCEL"].includes(change.type)) {
+    if (!change || !["DOWNGRADE", "INTERVAL_CHANGE"].includes(change.type)) {
         throw new PaymentValidationError("Aucun downgrade ne nécessite une sélection de ressources.", "NO_DOWNGRADE_RESOURCE_SELECTION");
     }
-    const targetKey = change.type === "CANCEL" ? PLAN_KEYS.DISCOVERY : change.to_plan?.title;
+    const targetKey = change.to_plan?.title;
     const details = PLAN_DETAILS[targetKey] || PLAN_DETAILS.DISCOVERY;
     if (details.maxAgents != null && normalizedAgentIds.length > details.maxAgents) {
         throw new PaymentValidationError(`Vous pouvez conserver au maximum ${details.maxAgents} agents actifs.`, "TOO_MANY_RETAINED_AGENTS");

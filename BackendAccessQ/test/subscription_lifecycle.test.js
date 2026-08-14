@@ -197,6 +197,95 @@ test("un downgrade payé est programmé sans remplacer immédiatement le plan ac
     assert.equal(new Date(result.accessStartsAt).toISOString(), end.toISOString());
 });
 
+test("un non-renouvellement conserve les données et suspend automatiquement les ressources excédentaires", async () => {
+    clearSrcModules();
+    const now = new Date("2026-09-01T00:00:00Z");
+    const change = {
+        subscription_change_id: 46,
+        org_id: 3,
+        subscription_id: 8,
+        source_version: 4,
+        from_plan_id: 3,
+        from_interval: "MONTHLY",
+        type: "CANCEL",
+        status: "SCHEDULED",
+        effective_at: now,
+        resource_selection: { agentIds: [5], areaIds: [7] },
+        payment: null
+    };
+    const discovery = { plan_id: 1, title: "DISCOVERY" };
+    let suspendedAgentIds = [];
+    let suspendedAreaIds = [];
+    let organizationUpdate;
+
+    const tx = {
+        $queryRaw: async () => [],
+        subscriptionChange: {
+            findUnique: async () => change,
+            update: async ({ data }) => ({ ...change, ...data })
+        },
+        organization: {
+            findUnique: async () => ({
+                org_id: 3,
+                subscription_plan: 3,
+                subscription_started_at: new Date("2026-08-01T00:00:00Z"),
+                subscription_expires_at: now,
+                subscription_interval: "MONTHLY"
+            }),
+            update: async ({ data }) => {
+                organizationUpdate = data;
+                return data;
+            }
+        },
+        plan: {
+            upsert: async ({ create }) => ({ ...create, plan_id: create.title === "DISCOVERY" ? 1 : 2 }),
+            findMany: async () => [discovery],
+            findUnique: async () => discovery
+        },
+        subscription: {
+            upsert: async () => ({ subscription_id: 8, version: 4 }),
+            update: async ({ data }) => data
+        },
+        subscriptionPeriod: { create: async ({ data }) => data },
+        userQ: {
+            findMany: async () => Array.from({ length: 10 }, (_, index) => ({
+                user_id: index + 1,
+                created_at: new Date(`2026-01-${String(index + 1).padStart(2, "0")}T00:00:00Z`)
+            })),
+            updateMany: async ({ where, data }) => {
+                suspendedAgentIds = where.user_id.in;
+                assert.deepEqual(data, { is_active: false, suspended_by_plan: true });
+                return { count: suspendedAgentIds.length };
+            }
+        },
+        area: {
+            findMany: async () => Array.from({ length: 4 }, (_, index) => ({ area_id: index + 1 })),
+            updateMany: async ({ where, data }) => {
+                suspendedAreaIds = where.area_id.in;
+                assert.deepEqual(data, { suspended_by_plan: true });
+                return { count: suspendedAreaIds.length };
+            }
+        }
+    };
+    mockModule("src/prisma/client.js", {
+        subscriptionChange: {
+            findMany: async () => [{ subscription_change_id: change.subscription_change_id }]
+        },
+        subscription: { findMany: async () => [] },
+        $transaction: async (callback) => callback(tx)
+    });
+    mockModule("src/services/pawapay.service.js", {});
+
+    const service = require("../src/services/payment.service");
+    const applied = await service.applyDueSubscriptionChanges(3, now);
+
+    assert.equal(applied.length, 1);
+    assert.deepEqual(suspendedAgentIds, [3, 4, 5, 6, 7, 8, 9, 10]);
+    assert.deepEqual(suspendedAreaIds, [3, 4]);
+    assert.equal(organizationUpdate.subscription_plan, discovery.plan_id);
+    assert.equal(organizationUpdate.subscription_expires_at, null);
+});
+
 test("un upgrade payé conserve l’ancrage et la date de fin du cycle", async () => {
     clearSrcModules();
     const started = new Date("2026-08-01T00:00:00Z");

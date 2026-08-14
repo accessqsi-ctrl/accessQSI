@@ -148,7 +148,7 @@ export default function UpgradePage() {
 
     useEffect(() => {
         const change = billing.subscription?.pendingChange;
-        if (!change || !["DOWNGRADE", "INTERVAL_CHANGE", "CANCEL"].includes(change.type)) return;
+        if (!change || !["DOWNGRADE", "INTERVAL_CHANGE"].includes(change.type)) return;
         let active = true;
         Promise.all([apiFetch("/agents"), apiFetch("/areas")])
             .then(async (responses) => Promise.all(responses.map((response) => response.json())))
@@ -303,12 +303,13 @@ export default function UpgradePage() {
                 <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-950">
                     <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
                       <div>
-                        <p className="font-bold">Changement programmé : {billing.subscription.pendingChange.toPlan || "Découverte"}</p>
+                        <p className="font-bold">{billing.subscription.pendingChange.type === "CANCEL" ? "Non-renouvellement programmé" : `Changement programmé : ${billing.subscription.pendingChange.toPlan || "Découverte"}`}</p>
                         <p className="mt-1 text-sm">Prise d’effet le {formatDate(billing.subscription.pendingChange.effectiveAt)} · statut {billing.subscription.pendingChange.status}.</p>
+                        {billing.subscription.pendingChange.type === "CANCEL" && <p className="mt-2 text-sm">Toutes vos données resteront conservées. À l’échéance, les ressources dépassant les limites du plan Découverte seront suspendues, jamais supprimées.</p>}
                       </div>
                       <button type="button" onClick={() => updateSubscription("undo")} disabled={changingSubscription} className="rounded-xl border border-amber-300 bg-white px-4 py-2 text-sm font-semibold disabled:opacity-50">Annuler ce changement</button>
                     </div>
-                    {["DOWNGRADE", "INTERVAL_CHANGE", "CANCEL"].includes(billing.subscription.pendingChange.type) && (() => {
+                    {["DOWNGRADE", "INTERVAL_CHANGE"].includes(billing.subscription.pendingChange.type) && (() => {
                         const target = plans.find((item) => item.key === (billing.subscription.pendingChange.toPlan || "DISCOVERY"));
                         const agentLimit = target?.limits?.agents;
                         const areaLimit = target?.limits?.areas;
