@@ -16,6 +16,17 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+Configure the backend URL before starting or building the frontend:
+
+```bash
+BACKEND_API_URL=http://localhost:5000
+```
+
+Browser requests use the same-origin `/api` path, which Next.js proxies to this
+URL. `NEXT_PUBLIC_API_URL` is still accepted as a deployment fallback, but
+`BACKEND_API_URL` is preferred because the backend address does not need to be
+exposed to browser code.
+
 You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.

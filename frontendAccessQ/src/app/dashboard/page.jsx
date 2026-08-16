@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { CalendarPlus, CheckCircle2, Download, Loader2, MapPinned, Palette, Pencil, QrCode, TrendingUp, UserPlus, Users, X } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { apiFetch, refreshSession } from "../lib/api";
+import { apiFetch, apiUrl, refreshSession } from "../lib/api";
 import LoadingBar from "../components/LoadingBar";
 import { useUserPlan } from "../lib/useUserPlan";
 
@@ -81,7 +81,7 @@ export default function Dashboard() {
         try {
             const session = await refreshSession();
             if (!session.ok) return;
-            window.open(`${process.env.NEXT_PUBLIC_API_URL}/export/${format}`, '_blank');
+            window.open(apiUrl(`/export/${format}`), '_blank');
         } finally {
             setExportingFormat("");
         }

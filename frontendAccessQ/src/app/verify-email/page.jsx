@@ -2,6 +2,7 @@
 
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import { apiUrl } from "../lib/api";
 import Link from "next/link";
 import { CheckCircle, XCircle, Loader2 } from "lucide-react";
 
@@ -23,7 +24,7 @@ function VerifyEmailContent() {
     const resend = async (event) => {
         event.preventDefault(); setResending(true);
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/user/resend-verification`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) });
+            const res = await fetch(apiUrl("/user/resend-verification"), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) });
             const data = await res.json();
             setMessage(data.message || "Demande traitée.");
             if (data.success) setStatus("success");
@@ -38,7 +39,7 @@ function VerifyEmailContent() {
 
         const verifyToken = async () => {
             try {
-                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/user/verify-email`, {
+                const res = await fetch(apiUrl("/user/verify-email"), {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",

@@ -1,6 +1,9 @@
 "use client";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+// Keep browser requests on the frontend origin. Next.js proxies /api to the
+// backend, so session cookies remain first-party even when both applications
+// are hosted on different domains.
+const API_URL = "/api";
 
 const buildUrl = (path) => {
     if (path.startsWith("http")) return path;

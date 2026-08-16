@@ -503,7 +503,7 @@ export default function EventDetailPage() {
         try {
             const session = await refreshSession();
             if (!session.ok) return;
-            window.open(`${process.env.NEXT_PUBLIC_API_URL}/export/${format}?event_id=${eventId}`, '_blank');
+            window.open(apiUrl(`/export/${format}?event_id=${eventId}`), '_blank');
         } finally {
             setExportingFormat("");
         }
@@ -514,7 +514,7 @@ export default function EventDetailPage() {
         try {
             const session = await refreshSession();
             if (!session.ok) return;
-            window.open(`${process.env.NEXT_PUBLIC_API_URL}/qr/template/${eventId}`, '_blank');
+            window.open(apiUrl(`/qr/template/${eventId}`), '_blank');
         } finally {
             setDownloadingTemplate(false);
         }

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import LoadingBar from "../components/LoadingBar";
+import { apiUrl } from "../lib/api";
 
 export default function Register() {
     const [formData, setFormData] = useState({
@@ -55,7 +56,7 @@ export default function Register() {
         setLoading(true);
 
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/user/signin`, {
+            const res = await fetch(apiUrl("/user/signin"), {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -89,7 +90,7 @@ export default function Register() {
     const resendVerification = async () => {
         setResending(true); setError("");
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/user/resend-verification`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: success.email }) });
+            const res = await fetch(apiUrl("/user/resend-verification"), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: success.email }) });
             const data = await res.json();
             if (!data.success) throw new Error(data.message || "Nouvel envoi impossible.");
             setSuccess(current => ({ ...current, emailSent: true, message: data.message }));
