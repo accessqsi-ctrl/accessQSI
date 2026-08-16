@@ -17,6 +17,7 @@ const noopQrController = {
     importQrsFromCSV: (req, res) => res.status(201).json({ success: true }),
     revokeQr: (req, res) => res.json({ success: true }),
     restoreQr: (req, res) => res.json({ success: true }),
+    rechargeQr: (req, res) => res.json({ success: true }),
     generateCardForExistingQr: (req, res) => res.status(201).json({ success: true }),
     downloadQrImage: (req, res) => res.send("png"),
     downloadCardPdf: (req, res) => res.send("pdf"),

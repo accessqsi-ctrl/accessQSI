@@ -180,6 +180,81 @@ test("GET /qr/image/:id generates the PNG on demand without storage", async () =
     assert.deepEqual(qrPayload, { t: "token-9", e: 5 });
 });
 
+test("PUT /qr/recharge/:id adds passages without resetting scan consumption", async () => {
+    let update = null;
+    const app = loadQrManagementApp({
+        user: { user_id: 7, role: "ORG_ADMIN", org_id: 42 },
+        eventService: {
+            findById: async (orgId, eventId) => orgId === 42 && eventId === 5
+                ? { event_id: 5, title: "Concert" }
+                : null
+        },
+        qrService: {
+            getQrById: async () => ({
+                qr_id: 9,
+                event_id: 5,
+                status: "used_up",
+                usage_limit: 5,
+                scans_count: 5,
+                valid_until: new Date("2099-01-01T00:00:00Z"),
+                deleted_at: null
+            }),
+            updateQr: async (id, data) => {
+                update = { id, data };
+                return { qr_id: id, status: data.status, usage_limit: 15, scans_count: 5 };
+            }
+        }
+    });
+
+    const res = await request(app, "PUT", "/qr/recharge/9", { amount: 10 });
+
+    assert.equal(res.status, 200);
+    assert.deepEqual(update, {
+        id: 9,
+        data: { usage_limit: { increment: 10 }, status: "active" }
+    });
+    assert.deepEqual(res.body.qr, {
+        id: 9,
+        status: "active",
+        scans_count: 5,
+        usage_limit: 15,
+        scans: "5 / 15",
+        remaining: 10
+    });
+});
+
+test("PUT /qr/recharge/:id rejects invalid credits and QR codes that cannot be recharged", async () => {
+    const baseOptions = {
+        user: { user_id: 7, role: "ORG_ADMIN", org_id: 42 },
+        eventService: { findById: async () => ({ event_id: 5 }) }
+    };
+
+    const invalidAmountApp = loadQrManagementApp({ ...baseOptions, qrService: {} });
+    const invalidAmount = await request(invalidAmountApp, "PUT", "/qr/recharge/9", { amount: 0 });
+    assert.equal(invalidAmount.status, 422);
+
+    for (const qr of [
+        { status: "revoked", usage_limit: 5, valid_until: null },
+        { status: "expired", usage_limit: 5, valid_until: null },
+        { status: "active", usage_limit: 0, valid_until: null }
+    ]) {
+        const app = loadQrManagementApp({
+            ...baseOptions,
+            qrService: {
+                getQrById: async () => ({
+                    qr_id: 9,
+                    event_id: 5,
+                    scans_count: 5,
+                    deleted_at: null,
+                    ...qr
+                })
+            }
+        });
+        const res = await request(app, "PUT", "/qr/recharge/9", { amount: 2 });
+        assert.equal(res.status, 400);
+    }
+});
+
 test("GET /qr/event/:event_id/cards.pdf streams one card per event QR", async () => {
     let streamedCards = null;
     const app = loadQrManagementApp({

@@ -570,6 +570,71 @@ exports.restoreQr = async (req, res) => {
     }
 };
 
+// Recharge additive d'un QR limité, sans effacer sa consommation ni son historique.
+exports.rechargeQr = async (req, res) => {
+    try {
+        if (!req.user || !req.user.org_id) {
+            return res.status(401).json({ success: false, message: "Non autorisé" });
+        }
+
+        const orgId = req.user.org_id;
+        const qrId = Number(req.params.id);
+        const amount = Number(req.body.amount);
+
+        if (!Number.isInteger(qrId) || qrId <= 0) {
+            return res.status(400).json({ success: false, message: "Identifiant du QR invalide." });
+        }
+        if (!Number.isInteger(amount) || amount < 1 || amount > 1_000_000) {
+            return res.status(422).json({
+                success: false,
+                message: "Le nombre de passages à ajouter doit être un entier compris entre 1 et 1 000 000."
+            });
+        }
+
+        const qr = await qrService.getQrById(qrId);
+        if (!qr || qr.deleted_at) {
+            return res.status(404).json({ success: false, message: "QR Code introuvable" });
+        }
+
+        const event = await eventService.findById(orgId, qr.event_id);
+        if (!event) {
+            return res.status(403).json({ success: false, message: "Accès refusé" });
+        }
+        if (qr.status === "revoked") {
+            return res.status(400).json({ success: false, message: "Un QR révoqué doit d’abord être restauré." });
+        }
+        if (qr.status === "expired" || (qr.valid_until && new Date(qr.valid_until) < new Date())) {
+            return res.status(400).json({ success: false, message: "Impossible de recharger un QR expiré." });
+        }
+        if (qr.usage_limit === 0) {
+            return res.status(400).json({ success: false, message: "Ce QR possède déjà un accès illimité." });
+        }
+
+        const updatedQr = await qrService.updateQr(qrId, {
+            usage_limit: { increment: amount },
+            status: "active"
+        });
+        const usageLimit = Number(updatedQr?.usage_limit ?? qr.usage_limit + amount);
+        const scansCount = Number(updatedQr?.scans_count ?? qr.scans_count);
+
+        return res.status(200).json({
+            success: true,
+            message: `${amount} passage${amount > 1 ? "s" : ""} ajouté${amount > 1 ? "s" : ""} avec succès.`,
+            qr: {
+                id: qrId,
+                status: "active",
+                scans_count: scansCount,
+                usage_limit: usageLimit,
+                scans: `${scansCount} / ${usageLimit}`,
+                remaining: Math.max(0, usageLimit - scansCount)
+            }
+        });
+    } catch (error) {
+        console.error("Erreur lors de la recharge du QR:", error);
+        return res.status(500).json({ success: false, message: "Erreur serveur interne" });
+    }
+};
+
 exports.downloadQrImportTemplate = async (req, res) => {
     try {
         if (!req.user || !req.user.org_id) {

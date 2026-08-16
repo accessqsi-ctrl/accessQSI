@@ -60,6 +60,9 @@ router.put("/revoke/:id", adminOnly, qrController.revokeQr);
 // Restaurer un QR code révoqué encore valide
 router.put("/restore/:id", adminOnly, qrController.restoreQr);
 
+// Ajouter des passages à un QR limité encore valide
+router.put("/recharge/:id", adminOnly, qrController.rechargeQr);
+
 
 // Note: Toutes les anciennes routes (/ajoutP, /updateP, /mytransactions) 
 // qui semblaient concerner un autre projet ("produits") ont été supprimées 

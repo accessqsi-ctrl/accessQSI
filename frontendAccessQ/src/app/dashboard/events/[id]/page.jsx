@@ -177,6 +177,10 @@ export default function EventDetailPage() {
     const [selectedQr, setSelectedQr] = useState(null);
     const [qrToRevoke, setQrToRevoke] = useState(null);
     const [revokingId, setRevokingId] = useState(null);
+    const [qrToRecharge, setQrToRecharge] = useState(null);
+    const [rechargeAmount, setRechargeAmount] = useState("1");
+    const [rechargeError, setRechargeError] = useState("");
+    const [rechargingId, setRechargingId] = useState(null);
     const [generatedAsset, setGeneratedAsset] = useState(null);
     const [cardGeneratingId, setCardGeneratingId] = useState(null);
     const [exportingFormat, setExportingFormat] = useState("");
@@ -480,6 +484,48 @@ export default function EventDetailPage() {
             showToast("Erreur de connexion au serveur.");
         } finally {
             setRevokingId(null);
+        }
+    };
+
+    const openRechargeModal = (qr) => {
+        setQrToRecharge(qr);
+        setRechargeAmount("1");
+        setRechargeError("");
+    };
+
+    const handleRecharge = async (event) => {
+        event.preventDefault();
+        if (!qrToRecharge) return;
+
+        const amount = Number(rechargeAmount);
+        if (!Number.isInteger(amount) || amount < 1 || amount > 1_000_000) {
+            setRechargeError("Entrez un nombre entier compris entre 1 et 1 000 000.");
+            return;
+        }
+
+        setRechargingId(qrToRecharge.id);
+        setRechargeError("");
+        try {
+            const res = await apiFetch(`/qr/recharge/${qrToRecharge.id}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ amount })
+            });
+            const data = await res.json();
+            if (!data.success) {
+                setRechargeError(data.message || "Erreur lors de la recharge.");
+                return;
+            }
+
+            setQrCodes(current => current.map(qr => qr.id === qrToRecharge.id
+                ? { ...qr, ...data.qr }
+                : qr));
+            setQrToRecharge(null);
+            showToast(data.message || "QR Code rechargé avec succès.");
+        } catch {
+            setRechargeError("Erreur de connexion au serveur.");
+        } finally {
+            setRechargingId(null);
         }
     };
 
@@ -924,6 +970,16 @@ export default function EventDetailPage() {
                                                         {cardGeneratingId === qr.id ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileSpreadsheet className="w-5 h-5" />}
                                                     </button>
                                                 ) : null}
+                                                {canManageEvent && qr.usage_limit > 0 && qr.status !== 'expired' && qr.status !== 'revoked' ? (
+                                                    <button
+                                                        onClick={() => openRechargeModal(qr)}
+                                                        disabled={rechargingId === qr.id}
+                                                        className="p-1.5 text-blue-600 dark:text-blue-300 bg-white dark:bg-slate-900 border border-blue-100 dark:border-blue-900/50 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-lg transition-colors disabled:opacity-50"
+                                                        title="Recharger les passages"
+                                                    >
+                                                        {rechargingId === qr.id ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5" />}
+                                                    </button>
+                                                ) : null}
                                                 {canManageEvent && qr.status === 'active' ? (
                                                     <button onClick={() => setQrToRevoke(qr)} disabled={revokingId === qr.id} className="p-1.5 text-red-600 dark:text-red-300 bg-white dark:bg-slate-900 border border-red-100 dark:border-red-900/50 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors disabled:opacity-50" title="Révoquer Accès">
                                                         {revokingId === qr.id ? <Loader2 className="w-5 h-5 animate-spin" /> : <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>}
@@ -1286,6 +1342,68 @@ export default function EventDetailPage() {
                             </div>
                         </div>
                     </div>
+                </div>
+            )}
+
+            {/* Recharge d'un QR limité */}
+            {qrToRecharge && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+                    <form onSubmit={handleRecharge} className="bg-white dark:bg-slate-950 w-full max-w-md rounded-2xl shadow-2xl p-6 animate-in zoom-in duration-300">
+                        {rechargingId === qrToRecharge.id && (
+                            <LoadingBar label="Recharge en cours" className="mb-5" />
+                        )}
+                        <div className="w-12 h-12 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-300 rounded-2xl flex items-center justify-center mb-4">
+                            <Plus className="w-6 h-6" />
+                        </div>
+                        <h3 className="text-lg font-bold text-slate-900 dark:text-white">Recharger ce QR code</h3>
+                        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+                            Ajoutez des passages au QR de <span className="font-semibold text-slate-700 dark:text-slate-200">{qrToRecharge.holder}</span>. Les {qrToRecharge.scans_count} passages déjà consommés et leur historique seront conservés.
+                        </p>
+
+                        <label className="block mt-5">
+                            <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">Passages à ajouter</span>
+                            <input
+                                type="number"
+                                min="1"
+                                max="1000000"
+                                step="1"
+                                required
+                                autoFocus
+                                value={rechargeAmount}
+                                onChange={(event) => setRechargeAmount(event.target.value)}
+                                disabled={rechargingId === qrToRecharge.id}
+                                className="mt-2 w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 disabled:opacity-60"
+                            />
+                        </label>
+
+                        <div className="mt-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-4 flex items-center justify-between">
+                            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Utilisations actuelles</span>
+                            <span className="font-semibold text-slate-900 dark:text-white">{qrToRecharge.scans}</span>
+                        </div>
+
+                        {rechargeError && (
+                            <p className="mt-3 text-sm font-medium text-red-600 dark:text-red-300">{rechargeError}</p>
+                        )}
+
+                        <div className="mt-6 flex gap-3">
+                            <button
+                                type="button"
+                                onClick={() => setQrToRecharge(null)}
+                                disabled={rechargingId === qrToRecharge.id}
+                                className="flex-1 py-2.5 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-200 rounded-xl font-medium text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-60"
+                            >
+                                Annuler
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={rechargingId === qrToRecharge.id}
+                                className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium text-sm transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+                            >
+                                {rechargingId === qrToRecharge.id && <Loader2 className="w-4 h-4 animate-spin" />}
+                                Recharger
+                            </button>
+                        </div>
+                    </form>
                 </div>
             )}
 
