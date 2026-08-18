@@ -18,10 +18,20 @@ const serializeError = (error) => {
     if (!error) return undefined;
 
     return {
-        name: error.name,
-        message: error.message,
+        name: error.name || error.constructor?.name || "Error",
+        message: error.message || String(error),
         code: error.code,
-        stack: process.env.NODE_ENV === "production" ? undefined : error.stack
+        // Les logs restent côté serveur. La pile est indispensable en production
+        // pour retrouver la ligne qui a réellement provoqué une réponse 500.
+        stack: process.env.LOG_STACK_TRACES === "false" ? undefined : error.stack,
+        client_version: error.clientVersion,
+        cause: error.cause instanceof Error
+            ? {
+                name: error.cause.name,
+                message: error.cause.message,
+                code: error.cause.code
+            }
+            : undefined
     };
 };
 
