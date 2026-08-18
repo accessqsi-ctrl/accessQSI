@@ -32,6 +32,18 @@ const BCRYPT_SALT_ROUNDS = Number.isInteger(parsedSaltRounds) && parsedSaltRound
 const VERIFICATION_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
 const VERIFICATION_RESEND_COOLDOWN_MS = 60 * 1000;
 const newVerificationToken = () => crypto.randomBytes(32).toString("hex");
+const normalizeEmail = (value) => String(value || "").trim().toLowerCase();
+const loginFingerprint = (email) => crypto.createHash("sha256").update(email).digest("hex").slice(0, 12);
+const credentialHashMetadata = (hash) => {
+    const value = String(hash || "");
+    const match = value.match(/^\$(2[aby])\$(\d{2})\$/);
+    return {
+        credential_hash_format: match ? "bcrypt" : "unknown",
+        credential_hash_variant: match?.[1],
+        credential_hash_cost: match ? Number(match[2]) : undefined,
+        credential_hash_length: value.length
+    };
+};
 
 const durationToMs = (duration, fallbackMs) => {
     if (!duration || typeof duration !== "string") return fallbackMs;
@@ -102,34 +114,77 @@ const issueSession = (res, user) => {
 
 exports.login = async (req, res) => {
     try {
-        const { email, password } = req.body;
-        if (!email || !password) {
-            return res.status(400).json({ success: false, message: "L'email et le mot de passe sont requis." });
+        const email = normalizeEmail(req.body.email);
+        const password = typeof req.body.password === "string" ? req.body.password : "";
+        if (!email) {
+            logger.warn("auth.login_denied", { reason: "missing_email", request_id: req.requestId, ip: req.ip });
+            return res.status(400).json({ success: false, message: "L’adresse e-mail est requise." });
+        }
+        const fingerprint = loginFingerprint(email);
+        if (!emailPattern.test(email)) {
+            logger.warn("auth.login_denied", { reason: "invalid_email", request_id: req.requestId, ip: req.ip, login_fingerprint: fingerprint });
+            return res.status(400).json({ success: false, message: "L’adresse e-mail saisie n’est pas valide." });
+        }
+        if (!password) {
+            logger.warn("auth.login_denied", { reason: "missing_password", request_id: req.requestId, ip: req.ip, login_fingerprint: fingerprint });
+            return res.status(400).json({ success: false, message: "Le mot de passe est requis." });
         }
         const user = await userService.findByEmail(email);
         if (!user) {
+            logger.warn("auth.login_denied", {
+                reason: "user_not_found",
+                request_id: req.requestId,
+                ip: req.ip,
+                login_fingerprint: fingerprint,
+                account_found: false
+            });
             return res.status(401).json({
                 success: false,
-                message: "Identifiants incorrects. Veuillez réessayer."
+                code: "INVALID_CREDENTIALS",
+                message: "Adresse e-mail ou mot de passe incorrect."
             });
         }
 
         if (user.deleted_at !== null) {
+            logger.warn("auth.login_denied", { reason: "account_disabled", request_id: req.requestId, ip: req.ip, login_fingerprint: fingerprint, user_id: user.user_id, org_id: user.org_id });
             return res.status(403).json({
                 success: false,
                 message: "Accès refusé. Ce compte a été désactivé par un administrateur."
             });
         }
-        const validPassword = await bcrypt.compare(password, user.password_hash);
+        const credentialCheckStartedAt = Date.now();
+        let validPassword = await bcrypt.compare(password, user.password_hash);
+        let acceptedTrimmedPassword = false;
+        const trimmedPassword = password.trim();
+        // L'inscription historique supprimait les espaces extérieurs avant le hash.
+        // Ce second essai garde ces comptes utilisables après un collage sur mobile.
+        if (!validPassword && trimmedPassword && trimmedPassword !== password) {
+            validPassword = await bcrypt.compare(trimmedPassword, user.password_hash);
+            acceptedTrimmedPassword = validPassword;
+        }
         if (!validPassword) {
+            logger.warn("auth.login_denied", {
+                reason: "password_mismatch",
+                request_id: req.requestId,
+                ip: req.ip,
+                login_fingerprint: fingerprint,
+                account_found: true,
+                user_id: user.user_id,
+                org_id: user.org_id,
+                credential_check_ms: Date.now() - credentialCheckStartedAt,
+                credential_had_outer_whitespace: trimmedPassword !== password,
+                ...credentialHashMetadata(user.password_hash)
+            });
             return res.status(401).json({
                 success: false,
-                message: "Identifiants incorrects. Veuillez réessayer."
+                code: "INVALID_CREDENTIALS",
+                message: "Adresse e-mail ou mot de passe incorrect."
             });
         }
 
         // --- VÉRIFICATION DE L'EMAIL ---
         if (!user.is_verified) {
+            logger.warn("auth.login_denied", { reason: "email_not_verified", request_id: req.requestId, ip: req.ip, login_fingerprint: fingerprint, user_id: user.user_id, org_id: user.org_id });
             return res.status(403).json({
                 success: false,
                 code: "EMAIL_NOT_VERIFIED",
@@ -139,6 +194,17 @@ exports.login = async (req, res) => {
         }
 
         const { accessToken } = issueSession(res, user);
+        logger.info("auth.login_succeeded", {
+            request_id: req.requestId,
+            ip: req.ip,
+            login_fingerprint: fingerprint,
+            user_id: user.user_id,
+            org_id: user.org_id,
+            role: user.role,
+            accepted_trimmed_credential: acceptedTrimmedPassword,
+            session_secure: accessCookieOptions.secure,
+            session_same_site: accessCookieOptions.sameSite
+        });
 
         // Le JWT d'accès reste renvoyé pour les clients mobiles, mais le web utilise les cookies HttpOnly.
 
@@ -155,7 +221,7 @@ exports.login = async (req, res) => {
         });
 
     } catch (error) {
-        console.error(error);
+        logger.error("auth.login_failed", { reason: "internal_error", request_id: req.requestId, ip: req.ip, error });
         return res.status(500).json({
             success: false,
             message: "Erreur lors de la connexion."

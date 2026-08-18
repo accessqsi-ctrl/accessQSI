@@ -2,8 +2,9 @@ const prisma = require("../prisma/client");
 const { assignOrganizationPlan, ensureDefaultPlans, PLAN_KEYS } = require("../config/subscription");
 
 exports.findByEmail = (email) => {
+  const normalizedEmail = String(email || "").trim().toLowerCase();
   return prisma.userQ.findFirst({
-    where: { email: email }
+    where: { email: { equals: normalizedEmail, mode: "insensitive" } }
   });
 };
 

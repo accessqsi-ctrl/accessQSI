@@ -130,6 +130,67 @@ test("POST /user/login returns a token for verified active users", async () => {
     });
 });
 
+test("POST /user/login normalizes email casing and surrounding spaces", async () => {
+    let lookedUpEmail;
+    const app = loadUserApp({
+        userService: {
+            findByEmail: async (email) => {
+                lookedUpEmail = email;
+                return {
+                    user_id: 7,
+                    full_name: "Admin User",
+                    email: "admin@example.com",
+                    password_hash: "stored-hash",
+                    role: "ORG_ADMIN",
+                    org_id: 42,
+                    is_verified: true,
+                    deleted_at: null
+                };
+            }
+        }
+    });
+
+    const res = await request(app, "POST", "/user/login", {
+        email: "  Admin@Example.COM ",
+        password: "Strong!123"
+    });
+
+    assert.equal(res.status, 200);
+    assert.equal(lookedUpEmail, "admin@example.com");
+});
+
+test("POST /user/login tolerates outer spaces removed by historical signup", async () => {
+    const comparedPasswords = [];
+    const app = loadUserApp({
+        userService: {
+            findByEmail: async () => ({
+                user_id: 7,
+                full_name: "Admin User",
+                email: "admin@example.com",
+                password_hash: "stored-hash",
+                role: "ORG_ADMIN",
+                org_id: 42,
+                is_verified: true,
+                deleted_at: null
+            })
+        },
+        bcrypt: {
+            compare: async (password) => {
+                comparedPasswords.push(password);
+                return password === "Strong!123";
+            }
+        }
+    });
+
+    const res = await request(app, "POST", "/user/login", {
+        email: "admin@example.com",
+        password: " Strong!123 "
+    });
+
+    assert.equal(res.status, 200);
+    assert.deepEqual(comparedPasswords, [" Strong!123 ", "Strong!123"]);
+});
+
 test("POST /user/refresh issues a new short-lived access token from a refresh token", async () => {
     const signPayloads = [];
     const app = loadUserApp({
