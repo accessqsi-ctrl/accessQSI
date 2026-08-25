@@ -369,11 +369,25 @@ export default function Home() {
           </div>
 
           <div className="mt-14 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-            {useCases.slice(0, 3).map((useCase) => (
+            {useCases.slice(0, 2).map((useCase) => (
               <UseCaseCard key={useCase.title} useCase={useCase} />
             ))}
 
-            <figure className="relative left-1/2 col-span-full my-3 w-screen -translate-x-1/2 overflow-hidden bg-white dark:bg-slate-800">
+            <figure className="col-span-full overflow-hidden rounded-2xl bg-slate-800 shadow-lg shadow-slate-900/10 md:hidden">
+              <img
+                src="/accessq-mobile-showcase-2.webp"
+                alt="Exemples de badge professionnel, carte cantine, ticket de taxi et bracelets avec QR code"
+                width="1640"
+                height="725"
+                loading="lazy"
+                decoding="async"
+                className="block h-auto w-full"
+              />
+            </figure>
+
+            <UseCaseCard useCase={useCases[2]} />
+
+            <figure className="relative left-1/2 col-span-full my-3 hidden w-screen -translate-x-1/2 overflow-hidden bg-white dark:bg-slate-800 md:block">
               <img
                 src="/accessq-banni-finale.png"
                 alt="Exemples de badges, cartes, bracelets, coupons et billets personnalisés avec QR code"
@@ -385,7 +399,21 @@ export default function Home() {
               />
             </figure>
 
-            {useCases.slice(3).map((useCase) => (
+            <UseCaseCard useCase={useCases[3]} />
+
+            <figure className="col-span-full overflow-hidden rounded-2xl bg-slate-800 shadow-lg shadow-slate-900/10 md:hidden">
+              <img
+                src="/accessq-mobile-showcase-3.webp"
+                alt="Exemples de carte cadeau, coupon, pass média et invitation de mariage avec QR code"
+                width="1671"
+                height="772"
+                loading="lazy"
+                decoding="async"
+                className="block h-auto w-full"
+              />
+            </figure>
+
+            {useCases.slice(4).map((useCase) => (
               <UseCaseCard key={useCase.title} useCase={useCase} />
             ))}
           </div>
