@@ -1,4 +1,15 @@
 import Link from "next/link";
+import {
+  BadgeCheck,
+  Building2,
+  CalendarDays,
+  FileCheck2,
+  GraduationCap,
+  HandHeart,
+  Hotel,
+  Landmark,
+  ScanLine,
+} from "lucide-react";
 
 function AccueilDeuxPanel() {
   const metrics = [
@@ -125,55 +136,123 @@ const useCases = [
     title: "Événements et cérémonies",
     audience: "Mariages, conférences, concerts, galas",
     description: "Créez des invitations avec QR code, contrôlez chaque entrée et évitez les invitations dupliquées ou transférées sans autorisation.",
-    points: ["Billets personnalisés", "Contrôle à l'entrée", "Accès VIP ou zones réservées"]
+    points: ["Billets personnalisés", "Contrôle à l'entrée", "Accès VIP ou zones réservées"],
+    icon: CalendarDays,
+    tone: "blue"
   },
   {
     title: "Entreprises et sites privés",
     audience: "Bureaux, entrepôts, chantiers, visiteurs",
     description: "Gérez les accès temporaires des employés, prestataires et visiteurs avec une traçabilité claire de chaque passage.",
-    points: ["Badges journaliers", "Accès par niveau", "Révocation immédiate"]
+    points: ["Badges journaliers", "Accès par niveau", "Révocation immédiate"],
+    icon: Building2,
+    tone: "indigo"
   },
   {
     title: "Écoles et formations",
     audience: "Campus, examens, séminaires, ateliers",
     description: "Sécurisez les présences, les accès aux salles et les inscriptions sans dépendre de listes papier difficiles à maintenir.",
-    points: ["Présence vérifiable", "Salles autorisées", "Historique des scans"]
+    points: ["Présence vérifiable", "Salles autorisées", "Historique des scans"],
+    icon: GraduationCap,
+    tone: "emerald"
   },
   {
     title: "Églises et organisations",
     audience: "Cultes, retraites, conférences, programmes",
     description: "Organisez les flux d'entrée, les zones d'accueil et les accès spéciaux pour les équipes, invités et participants.",
-    points: ["Accueil fluide", "Équipes identifiées", "Zones séparées"]
+    points: ["Accueil fluide", "Équipes identifiées", "Zones séparées"],
+    icon: Landmark,
+    tone: "amber"
   },
   {
     title: "Hôtels et hébergements",
     audience: "Résidences, locations, espaces partagés",
     description: "Remettez des accès numériques limités dans le temps pour les clients, les visiteurs et les services internes.",
-    points: ["Validité par séjour", "Accès temporaires", "Contrôle discret"]
+    points: ["Validité par séjour", "Accès temporaires", "Contrôle discret"],
+    icon: Hotel,
+    tone: "cyan"
   },
   {
     title: "ONG et opérations terrain",
     audience: "Distributions, missions, centres d'aide",
     description: "Vérifiez les bénéficiaires, agents et zones d'intervention avec des QR codes simples à scanner même sur le terrain.",
-    points: ["Bénéficiaires uniques", "Limites d'usage", "Rapports exportables"]
+    points: ["Bénéficiaires uniques", "Limites d'usage", "Rapports exportables"],
+    icon: HandHeart,
+    tone: "rose"
   }
 ];
 
 const marketingStats = [
-  ["Moins de fraude", "Codes uniques, révocables et limités"],
-  ["Entrées plus rapides", "Scan mobile et décision instantanée"],
-  ["Meilleure image", "Invitations PDF propres et personnalisables"]
+  {
+    title: "Moins de fraude",
+    description: "Codes uniques, révocables et limités",
+    icon: BadgeCheck,
+    tone: "bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-200"
+  },
+  {
+    title: "Entrées plus rapides",
+    description: "Scan mobile et décision instantanée",
+    icon: ScanLine,
+    tone: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-200"
+  },
+  {
+    title: "Meilleure image",
+    description: "Invitations PDF propres et personnalisables",
+    icon: FileCheck2,
+    tone: "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-200"
+  }
 ];
 
+const useCaseStyles = {
+  blue: {
+    accent: "bg-blue-500",
+    icon: "bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-200",
+    audience: "text-blue-700 dark:text-blue-300",
+    hover: "hover:border-blue-300 dark:hover:border-blue-700"
+  },
+  indigo: {
+    accent: "bg-indigo-500",
+    icon: "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-200",
+    audience: "text-indigo-700 dark:text-indigo-300",
+    hover: "hover:border-indigo-300 dark:hover:border-indigo-700"
+  },
+  emerald: {
+    accent: "bg-emerald-500",
+    icon: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-200",
+    audience: "text-emerald-700 dark:text-emerald-300",
+    hover: "hover:border-emerald-300 dark:hover:border-emerald-700"
+  },
+  amber: {
+    accent: "bg-amber-500",
+    icon: "bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-200",
+    audience: "text-amber-700 dark:text-amber-300",
+    hover: "hover:border-amber-300 dark:hover:border-amber-700"
+  },
+  cyan: {
+    accent: "bg-cyan-500",
+    icon: "bg-cyan-50 text-cyan-700 dark:bg-cyan-950/60 dark:text-cyan-200",
+    audience: "text-cyan-700 dark:text-cyan-300",
+    hover: "hover:border-cyan-300 dark:hover:border-cyan-700"
+  },
+  rose: {
+    accent: "bg-rose-500",
+    icon: "bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-200",
+    audience: "text-rose-700 dark:text-rose-300",
+    hover: "hover:border-rose-300 dark:hover:border-rose-700"
+  }
+};
+
 function UseCaseCard({ useCase }) {
+  const Icon = useCase.icon;
+  const style = useCaseStyles[useCase.tone];
+
   return (
-    <article className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl hover:shadow-slate-200/70 dark:border-slate-700 dark:bg-slate-950 dark:hover:border-blue-700 dark:hover:shadow-slate-950/30">
-      <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-200">
-        <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-7 4h8m-9 4h10a2 2 0 002-2V7.5L14.5 3H7a2 2 0 00-2 2v13a2 2 0 002 2z" />
-        </svg>
+    <article className={`group relative flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl hover:shadow-slate-200/70 dark:border-slate-700 dark:bg-slate-950 dark:hover:shadow-slate-950/30 ${style.hover}`}>
+      <span className={`absolute inset-x-0 top-0 h-1 ${style.accent}`} />
+      <div className={`mb-5 flex h-12 w-12 items-center justify-center rounded-2xl shadow-sm transition-transform duration-300 group-hover:scale-105 ${style.icon}`}>
+        <Icon className="h-6 w-6" strokeWidth={1.9} />
       </div>
-      <p className="text-xs font-bold uppercase tracking-[0.14em] text-emerald-700 dark:text-emerald-300">{useCase.audience}</p>
+      <p className={`text-xs font-bold uppercase tracking-[0.14em] ${style.audience}`}>{useCase.audience}</p>
       <h3 className="mt-3 text-xl font-black text-slate-950 dark:text-white">{useCase.title}</h3>
       <p className="mt-3 flex-1 text-sm leading-7 text-slate-600 dark:text-slate-300">{useCase.description}</p>
       <div className="mt-6 flex flex-wrap gap-2">
@@ -227,21 +306,35 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="flex-1 relative flex flex-col items-center justify-center p-6 lg:p-16 text-center">
-        <div className="relative z-10 w-full max-w-6xl mx-auto space-y-8 mt-12 mb-20">
-          <h1 className="mx-auto max-w-4xl text-4xl md:text-4xl lg:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-[1.1]">
+      <main className="relative flex flex-1 flex-col items-center justify-center bg-gradient-to-b from-slate-50/80 via-white to-white p-6 text-center dark:from-slate-950 dark:via-slate-900 dark:to-slate-900 lg:p-16">
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div className="landing-grid absolute inset-x-0 top-0 h-[42rem] opacity-60 dark:opacity-20" />
+          <div className="absolute -left-32 top-16 h-80 w-80 rounded-full bg-blue-300/20 blur-3xl dark:bg-blue-600/10" />
+          <div className="absolute -right-28 top-72 h-96 w-96 rounded-full bg-emerald-300/20 blur-3xl dark:bg-emerald-600/10" />
+        </div>
+
+        <div className="relative z-10 mx-auto mt-12 mb-20 w-full max-w-6xl space-y-8">
+          <div className="landing-rise inline-flex items-center gap-2 rounded-full border border-blue-200/80 bg-white/85 px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-blue-800 shadow-sm backdrop-blur dark:border-blue-800 dark:bg-slate-900/80 dark:text-blue-200">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-50 motion-safe:animate-ping" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+            </span>
+            Contrôle d&apos;accès nouvelle génération
+          </div>
+
+          <h1 className="landing-rise landing-rise-delay-1 mx-auto max-w-4xl text-4xl font-extrabold leading-[1.1] tracking-tight text-slate-900 dark:text-white md:text-4xl lg:text-5xl">
             Gérez vos accès avec sécurité et simplicité pour votre{" "}
             <span className="bg-gradient-to-r from-blue-600 via-emerald-500 to-emerald-400 bg-clip-text text-transparent relative inline-block">
-              organisation ou evenement 
+              organisation ou événement
             </span>
           </h1>
 
-          <p className="max-w-2xl mx-auto text-base md:text-lg font-medium text-slate-700 dark:text-slate-300 leading-relaxed">
+          <p className="landing-rise landing-rise-delay-2 mx-auto max-w-2xl text-base font-medium leading-relaxed text-slate-700 dark:text-slate-300 md:text-lg">
             AccessQ est une solution simple et sécurisée qui permet de générer, gérer et vérifier des QR codes, de les attribuer aux personnes autorisées et de contrôler rapidement les accès physiques ou numériques. Grâce à une visibilité claire et fiable, les administrateurs et les agents assurent une gestion des accès efficace en toute simplicité.
           </p>
 
-          <div className="mx-auto grid w-full max-w-5xl grid-cols-2 gap-3 text-left sm:gap-4 lg:grid-cols-3">
-            <figure className="col-span-2 overflow-hidden rounded-2xl border border-slate-200/70 bg-slate-100 shadow-xl shadow-slate-900/10 dark:border-slate-700 dark:bg-slate-800 sm:rounded-3xl lg:col-span-1">
+          <div className="landing-rise landing-rise-delay-3 mx-auto grid w-full max-w-5xl grid-cols-2 gap-3 text-left sm:gap-4 lg:grid-cols-3">
+            <figure className="group col-span-2 overflow-hidden rounded-2xl border border-slate-200/70 bg-slate-100 shadow-xl shadow-slate-900/10 transition-all duration-500 hover:-translate-y-1 hover:shadow-2xl dark:border-slate-700 dark:bg-slate-800 sm:rounded-3xl lg:col-span-1">
               <img
                 src="/accessq-billet-event.webp"
                 alt="Billets de concert avec contrôle d’accès par QR code"
@@ -249,34 +342,34 @@ export default function Home() {
                 height="1253"
                 fetchPriority="high"
                 decoding="async"
-                className="block aspect-[4/5] h-full w-full object-cover"
+                className="block aspect-[4/5] h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.025]"
               />
             </figure>
 
-            <figure className="overflow-hidden rounded-2xl border border-slate-200/70 bg-slate-100 shadow-xl shadow-slate-900/10 dark:border-slate-700 dark:bg-slate-800 sm:rounded-3xl">
+            <figure className="group overflow-hidden rounded-2xl border border-slate-200/70 bg-slate-100 shadow-xl shadow-slate-900/10 transition-all duration-500 hover:-translate-y-1 hover:shadow-2xl dark:border-slate-700 dark:bg-slate-800 sm:rounded-3xl">
               <img
                 src="/accessq-bracelet.webp"
                 alt="Bracelets d’accès munis d’un QR code"
                 width="940"
                 height="1254"
                 decoding="async"
-                className="block aspect-[4/5] h-full w-full object-cover"
+                className="block aspect-[4/5] h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.025]"
               />
             </figure>
 
-            <figure className="overflow-hidden rounded-2xl border border-slate-200/70 bg-slate-100 shadow-xl shadow-slate-900/10 dark:border-slate-700 dark:bg-slate-800 sm:rounded-3xl">
+            <figure className="group overflow-hidden rounded-2xl border border-slate-200/70 bg-slate-100 shadow-xl shadow-slate-900/10 transition-all duration-500 hover:-translate-y-1 hover:shadow-2xl dark:border-slate-700 dark:bg-slate-800 sm:rounded-3xl">
               <img
                 src="/accessq-carte-access.webp"
                 alt="Cartes professionnelles avec contrôle d’accès par QR code"
                 width="1085"
                 height="1450"
                 decoding="async"
-                className="block aspect-[4/5] h-full w-full object-cover"
+                className="block aspect-[4/5] h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.025]"
               />
             </figure>
           </div>
 
-          <div className="flex flex-col justify-center gap-3 sm:flex-row">
+          <div className="landing-rise landing-rise-delay-4 flex flex-col justify-center gap-3 sm:flex-row">
             <Link
               href="/register"
               className="inline-flex items-center justify-center rounded-full bg-slate-900 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-slate-900/15 transition-all hover:bg-slate-800 active:scale-95 dark:bg-[#BED3C3] dark:text-slate-950 dark:hover:bg-[#AEC5B3]"
@@ -299,11 +392,13 @@ export default function Home() {
         </div>
       </main>
 
-      <section id="use-cases" className="w-full border-t border-slate-200 bg-white py-24 dark:border-slate-700 dark:bg-slate-900">
-        <div className="container mx-auto max-w-7xl px-6">
+      <section id="use-cases" className="relative w-full overflow-hidden border-t border-slate-200 bg-gradient-to-b from-white via-slate-50/80 to-white py-24 dark:border-slate-700 dark:from-slate-900 dark:via-slate-950/70 dark:to-slate-900">
+        <div aria-hidden="true" className="absolute -right-40 top-20 h-96 w-96 rounded-full bg-blue-200/20 blur-3xl dark:bg-blue-800/10" />
+        <div className="container relative mx-auto max-w-7xl px-6">
           <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
             <div>
-               <h2 className="text-3xl font-black tracking-tight text-slate-950 dark:text-white md:text-5xl">
+              <p className="mb-4 text-xs font-black uppercase tracking-[0.2em] text-blue-700 dark:text-blue-300">Une plateforme, plusieurs réalités</p>
+              <h2 className="text-3xl font-black tracking-tight text-slate-950 dark:text-white md:text-5xl">
                 Un même outil pour tous les accès qui doivent rester sous contrôle
               </h2>
               <p className="mt-5 text-lg leading-8 text-slate-600 dark:text-slate-300">
@@ -312,8 +407,11 @@ export default function Home() {
             </div>
 
             <div className="grid gap-4 sm:grid-cols-3">
-              {marketingStats.map(([title, description]) => (
-                <div key={title} className="rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-700 dark:bg-slate-800">
+              {marketingStats.map(({ title, description, icon: Icon, tone }) => (
+                <div key={title} className="group rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-sm backdrop-blur transition-all duration-300 hover:-translate-y-1 hover:shadow-lg dark:border-slate-700 dark:bg-slate-800/90">
+                  <div className={`mb-4 flex h-10 w-10 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-105 ${tone}`}>
+                    <Icon className="h-5 w-5" strokeWidth={2} />
+                  </div>
                   <p className="text-base font-black text-slate-950 dark:text-white">{title}</p>
                   <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{description}</p>
                 </div>
