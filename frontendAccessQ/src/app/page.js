@@ -165,40 +165,63 @@ const marketingStats = [
   ["Meilleure image", "Invitations PDF propres et personnalisables"]
 ];
 
+function UseCaseCard({ useCase }) {
+  return (
+    <article className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl hover:shadow-slate-200/70 dark:border-slate-700 dark:bg-slate-950 dark:hover:border-blue-700 dark:hover:shadow-slate-950/30">
+      <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-200">
+        <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-7 4h8m-9 4h10a2 2 0 002-2V7.5L14.5 3H7a2 2 0 00-2 2v13a2 2 0 002 2z" />
+        </svg>
+      </div>
+      <p className="text-xs font-bold uppercase tracking-[0.14em] text-emerald-700 dark:text-emerald-300">{useCase.audience}</p>
+      <h3 className="mt-3 text-xl font-black text-slate-950 dark:text-white">{useCase.title}</h3>
+      <p className="mt-3 flex-1 text-sm leading-7 text-slate-600 dark:text-slate-300">{useCase.description}</p>
+      <div className="mt-6 flex flex-wrap gap-2">
+        {useCase.points.map((point) => (
+          <span key={point} className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+            {point}
+          </span>
+        ))}
+      </div>
+    </article>
+  );
+}
+
 export default function Home() {
   return (
     <div className="flex min-h-screen flex-col bg-white text-slate-900 dark:bg-slate-900 dark:text-white font-sans overflow-hidden">
       <header className="sticky top-0 z-50 w-full backdrop-blur-md bg-white/80 dark:bg-slate-900/85 border-b border-slate-200 dark:border-slate-700 shadow-sm transition-all duration-300">
-        <div className="container mx-auto px-6 h-20 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3 group">
+        <div className="container mx-auto flex min-h-16 items-center justify-between gap-2 px-3 py-3 sm:h-20 sm:px-6 sm:py-0">
+          <Link href="/" className="group flex shrink-0 items-center gap-2 sm:gap-3">
             <img
               src="/logo/access_logo.png"
               alt="AccessQ"
-              className="w-12 h-auto drop-shadow-md group-hover:scale-105 transition-transform duration-300"
+              className="h-auto w-9 drop-shadow-md transition-transform duration-300 group-hover:scale-105 sm:w-12"
             />
-            <span className="font-bold text-xl tracking-tight bg-gradient-to-r from-blue-700 to-emerald-600 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-blue-700 to-emerald-600 bg-clip-text text-base font-bold tracking-tight text-transparent sm:text-xl">
               AccessQ
             </span>
           </Link>
 
-          <nav className="flex items-center gap-6">
+          <nav className="flex shrink-0 items-center gap-2 sm:gap-6">
             <a
-              href="mailto:access.qsi@gmail.com"
+              href="mailto:access.supportclient@gmail.com"
               className="hidden text-sm font-semibold text-slate-600 transition-colors hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400 sm:inline"
             >
               Nous contacter
             </a>
             <Link
               href="/login"
-              className="text-sm font-semibold text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              className="text-xs font-semibold text-slate-600 transition-colors hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400 sm:text-sm"
             >
               Connexion
             </Link>
             <Link
               href="/register"
-              className="text-sm font-semibold text-white dark:text-slate-900 bg-slate-900 dark:bg-[#BED3C3] hover:bg-slate-800 dark:hover:bg-[#AEC5B3] px-5 py-2.5 rounded-full transition-all shadow-md hover:shadow-lg active:scale-95"
+              className="rounded-full bg-slate-900 px-3 py-2 text-xs font-semibold text-white shadow-md transition-all hover:bg-slate-800 hover:shadow-lg active:scale-95 dark:bg-[#BED3C3] dark:text-slate-900 dark:hover:bg-[#AEC5B3] sm:px-5 sm:py-2.5 sm:text-sm"
             >
-              Créer un compte
+              <span className="sm:hidden">Inscription</span>
+              <span className="hidden sm:inline">Créer un compte</span>
             </Link>
           </nav>
         </div>
@@ -346,24 +369,24 @@ export default function Home() {
           </div>
 
           <div className="mt-14 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-            {useCases.map((useCase) => (
-              <article key={useCase.title} className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl hover:shadow-slate-200/70 dark:border-slate-700 dark:bg-slate-950 dark:hover:border-blue-700 dark:hover:shadow-slate-950/30">
-                <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-200">
-                  <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-7 4h8m-9 4h10a2 2 0 002-2V7.5L14.5 3H7a2 2 0 00-2 2v13a2 2 0 002 2z" />
-                  </svg>
-                </div>
-                <p className="text-xs font-bold uppercase tracking-[0.14em] text-emerald-700 dark:text-emerald-300">{useCase.audience}</p>
-                <h3 className="mt-3 text-xl font-black text-slate-950 dark:text-white">{useCase.title}</h3>
-                <p className="mt-3 flex-1 text-sm leading-7 text-slate-600 dark:text-slate-300">{useCase.description}</p>
-                <div className="mt-6 flex flex-wrap gap-2">
-                  {useCase.points.map((point) => (
-                    <span key={point} className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
-                      {point}
-                    </span>
-                  ))}
-                </div>
-              </article>
+            {useCases.slice(0, 3).map((useCase) => (
+              <UseCaseCard key={useCase.title} useCase={useCase} />
+            ))}
+
+            <figure className="relative left-1/2 col-span-full my-3 w-screen -translate-x-1/2 overflow-hidden bg-white dark:bg-slate-800">
+              <img
+                src="/accessq-banni-finale.png"
+                alt="Exemples de badges, cartes, bracelets, coupons et billets personnalisés avec QR code"
+                width="1738"
+                height="429"
+                loading="lazy"
+                decoding="async"
+                className="block h-auto w-full"
+              />
+            </figure>
+
+            {useCases.slice(3).map((useCase) => (
+              <UseCaseCard key={useCase.title} useCase={useCase} />
             ))}
           </div>
         </div>
@@ -432,7 +455,7 @@ export default function Home() {
         <div className="container mx-auto flex flex-col items-center justify-center gap-2 px-6 text-center text-sm text-slate-500 dark:text-slate-400 sm:flex-row sm:gap-4">
           <p>&copy; 2026 Tinkli Software. Tous droits réservés.</p>
           <a
-            href="mailto:access.qsi@gmail.com"
+            href="mailto:access.supportclient@gmail.com"
             className="font-semibold text-blue-700 transition-colors hover:text-blue-600 hover:underline dark:text-blue-300 dark:hover:text-blue-200"
           >
             Nous contacter

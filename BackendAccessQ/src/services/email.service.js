@@ -6,7 +6,7 @@ const escapeHtml = (value) => String(value || "").replace(/[&<>"']/g, character 
 // Expéditeur par défaut chargé depuis les variables d'environnement
 const defaultSender = {
     name: process.env.BREVO_SENDER_NAME || "AccessQ",
-    email: process.env.BREVO_SENDER_EMAIL || "access.qsi@gmail.com",
+    email: process.env.BREVO_SENDER_EMAIL || "access.supportclient@gmail.com",
 };
 
 /**

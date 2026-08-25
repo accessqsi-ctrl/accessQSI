@@ -352,7 +352,7 @@ export default function UpgradePage() {
                                 </label>
                             )}
                             {PURCHASABLE.includes(item.key) && <button type="button" onClick={() => setSelectedPlan(item.key)} className={`mt-5 rounded-xl px-4 py-2.5 text-sm font-semibold ${selected ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-white"}`}>{selected ? "Offre sélectionnée" : "Choisir"}</button>}
-                            {item.key === "ENTERPRISE" && <a href="mailto:access.qsi@gmail.com?subject=Offre%20Entreprise%20AccessQ" className="mt-5 rounded-xl bg-slate-900 px-4 py-2.5 text-center text-sm font-semibold text-white dark:bg-slate-100 dark:text-slate-900">Nous contacter</a>}
+                            {item.key === "ENTERPRISE" && <a href="mailto:access.supportclient@gmail.com?subject=Offre%20Entreprise%20AccessQ" className="mt-5 rounded-xl bg-slate-900 px-4 py-2.5 text-center text-sm font-semibold text-white dark:bg-slate-100 dark:text-slate-900">Nous contacter</a>}
                         </article>
                     );
                 })}
