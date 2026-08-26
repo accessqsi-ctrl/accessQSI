@@ -137,6 +137,9 @@ export default function Login() {
                                 <label className="text-sm font-semibold text-slate-700 dark:text-slate-200 block">
                                     Mot de passe
                                 </label>
+                                <Link href="/forgot-password" className="text-sm font-semibold text-blue-600 dark:text-blue-400 hover:underline">
+                                    Mot de passe oublié ?
+                                </Link>
                             </div>
                             <div className="relative">
                                 <input

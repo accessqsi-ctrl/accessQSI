@@ -8,6 +8,7 @@ const userController = require('../controllers/user.controller');
 router.get('/login', authController.renderLogin);
 router.post('/login', authController.login);
 router.get('/logout', authController.logout);
+router.post('/logout', authController.logout);
 
 // Root redirects to dashboard
 router.get('/', (req, res) => {

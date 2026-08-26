@@ -69,6 +69,34 @@ exports.sendVerificationEmail = async (toEmail, fullName, token) => {
     }
 };
 
+exports.sendPasswordResetEmail = async (toEmail, fullName, token) => {
+    try {
+        const baseUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+        const resetUrl = `${baseUrl}/reset-password?token=${encodeURIComponent(token)}`;
+        const safeName = escapeHtml(fullName);
+
+        await sendEmail({
+            to: [{ email: toEmail, name: fullName }],
+            subject: "Réinitialisez votre mot de passe - AccessQ",
+            textContent: `Bonjour ${fullName},\n\nPour choisir un nouveau mot de passe, ouvrez ce lien (valable 30 minutes) :\n${resetUrl}\n\nSi vous n’êtes pas à l’origine de cette demande, ignorez cet e-mail.`,
+            htmlContent: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                    <h2 style="color: #2563eb;">Réinitialisation du mot de passe</h2>
+                    <p>Bonjour <strong>${safeName}</strong>,</p>
+                    <p>Une demande de réinitialisation a été effectuée pour votre compte AccessQ.</p>
+                    <a href="${resetUrl}" style="display: inline-block; padding: 12px 20px; margin-top: 15px; color: white; background-color: #2563eb; text-decoration: none; border-radius: 6px;">Choisir un nouveau mot de passe</a>
+                    <p style="margin-top: 25px; font-size: 12px; color: #6b7280;">Ce lien est à usage unique et expire dans 30 minutes. Si vous n’êtes pas à l’origine de cette demande, ignorez ce message.</p>
+                    <p style="font-size: 12px; color: #3b82f6; word-break: break-all;">${resetUrl}</p>
+                </div>
+            `,
+        });
+        return true;
+    } catch (error) {
+        console.error("Erreur lors de l'envoi de l'e-mail de réinitialisation :", error?.response?.data || error.message);
+        return false;
+    }
+};
+
 exports.sendAgentInvitation = async (toEmail, fullName, rawPassword) => {
     try {
         const baseUrl = process.env.FRONTEND_URL;

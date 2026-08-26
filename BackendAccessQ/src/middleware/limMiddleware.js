@@ -49,4 +49,12 @@ const verificationEmailLimiter = rateLimit({
     legacyHeaders: false,
 });
 
-module.exports = { generalLimiter, loginLimiter, signinLimiter, refreshLimiter, verificationEmailLimiter };
+const passwordResetLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 5,
+    message: { success: false, message: "Trop de demandes. Veuillez réessayer dans une heure." },
+    standardHeaders: "draft-7",
+    legacyHeaders: false,
+});
+
+module.exports = { generalLimiter, loginLimiter, signinLimiter, refreshLimiter, verificationEmailLimiter, passwordResetLimiter };

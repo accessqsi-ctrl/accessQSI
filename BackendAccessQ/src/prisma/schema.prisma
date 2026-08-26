@@ -20,6 +20,9 @@ model UserQ {
   verification_token            String?       @unique
   verification_token_expires_at DateTime?
   verification_email_sent_at    DateTime?
+  password_reset_token_hash     String?       @unique
+  password_reset_expires_at     DateTime?
+  password_reset_email_sent_at  DateTime?
   deleted_at                    DateTime?
   created_at                    DateTime      @default(now())
   last_login                    DateTime?

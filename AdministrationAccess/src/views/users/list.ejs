@@ -1,108 +1,15 @@
-<%- include('../partials/header') %>
-
-<nav class="bg-white border-b border-slate-200">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between h-16">
-            <div class="flex items-center space-x-8">
-                <span class="text-2xl font-bold text-primary">AccessQ Admin</span>
-                <div class="hidden md:flex space-x-4">
-                    <a href="/dashboard" class="text-slate-500 hover:text-slate-900 px-3 py-2 rounded-md text-sm font-medium">Tableau de bord</a>
-                    <a href="/organizations" class="text-slate-500 hover:text-slate-900 px-3 py-2 rounded-md text-sm font-medium">Organisations</a>
-                    <a href="/users" class="bg-slate-100 text-slate-900 px-3 py-2 rounded-md text-sm font-medium">Utilisateurs</a>
-                </div>
-            </div>
-            <div class="flex items-center space-x-4">
-                <a href="/logout" class="text-slate-500 hover:text-red-600 px-3 py-2 rounded-md text-sm font-medium transition-colors">
-                    Déconnexion
-                </a>
-            </div>
-        </div>
-    </div>
-</nav>
-
-<main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
-    <div class="flex justify-between items-center mb-6">
-        <div>
-            <h1 class="text-2xl font-bold text-slate-900">Gestion des Utilisateurs</h1>
-            <p class="text-slate-500 mt-1">Supervisez l'ensemble des utilisateurs de la plateforme.</p>
-        </div>
-    </div>
-
-    <% if (error) { %>
-        <div class="bg-red-50 text-red-600 p-4 rounded-lg mb-6"><%= error %></div>
-    <% } %>
-    <% if (success) { %>
-        <div class="bg-green-50 text-green-600 p-4 rounded-lg mb-6"><%= success %></div>
-    <% } %>
-
-    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-slate-200">
-                <thead class="bg-slate-50">
-                    <tr>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Utilisateur</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Organisation</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Rôle</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Statut</th>
-                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Actions</th>
-                    </tr>
-                </thead>
-                <tbody class="bg-white divide-y divide-slate-200">
-                    <% users.forEach(u => { %>
-                        <% if (!u.deleted_at) { %>
-                            <tr class="hover:bg-slate-50 transition-colors">
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm font-medium text-slate-900"><%= u.full_name %></div>
-                                    <div class="text-sm text-slate-500"><%= u.email %></div>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                                    <% if (u.organization) { %>
-                                        <%= u.organization.name %>
-                                    <% } else { %>
-                                        <span class="text-slate-400 italic">Aucune</span>
-                                    <% } %>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800">
-                                        <%= u.role %>
-                                    </span>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <% if (u.is_active) { %>
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                            Actif
-                                        </span>
-                                    <% } else { %>
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                            Désactivé
-                                        </span>
-                                    <% } %>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                    <% if (u.role !== 'SUPER_ADMIN' || user.id !== u.user_id) { %>
-                                        <% if (u.is_active) { %>
-                                            <form action="/users/<%= u.user_id %>/deactivate" method="POST" class="inline">
-                                                <button type="submit" class="text-yellow-600 hover:text-yellow-900" onclick="return confirm('Voulez-vous vraiment désactiver cet utilisateur ?')">Désactiver</button>
-                                            </form>
-                                        <% } else { %>
-                                            <form action="/users/<%= u.user_id %>/activate" method="POST" class="inline">
-                                                <button type="submit" class="text-green-600 hover:text-green-900" onclick="return confirm('Voulez-vous réactiver cet utilisateur ?')">Réactiver</button>
-                                            </form>
-                                        <% } %>
-                                    <% } %>
-                                </td>
-                            </tr>
-                        <% } %>
-                    <% }) %>
-                    <% if (users.filter(u => !u.deleted_at).length === 0) { %>
-                        <tr>
-                            <td colspan="5" class="px-6 py-8 text-center text-slate-500">Aucun utilisateur trouvé.</td>
-                        </tr>
-                    <% } %>
-                </tbody>
-            </table>
-        </div>
-    </div>
-</main>
-
-<%- include('../partials/footer') %>
+<%- include('../partials/header', { title: 'Utilisateurs' }) %>
+<%- include('../partials/app-shell-start', { currentPage: 'users', pageTitle: 'Utilisateurs', pageDescription: 'Comptes, rôles et états d’accès' }) %>
+<section class="page-intro"><div><h2>Gestion des utilisateurs</h2><p>Contrôlez les accès individuels tout en préservant le compte administrateur connecté.</p></div><span class="badge badge-blue"><%= users.filter(u => !u.deleted_at).length %> utilisateur(s)</span></section>
+<% if (error) { %><div class="alert alert-error" role="alert"><%= error %></div><% } %><% if (success) { %><div class="alert alert-success" role="status"><%= success %></div><% } %>
+<section class="panel"><div class="panel-header"><div><h3>Comptes de la plateforme</h3><p>Les comptes archivés ne sont pas affichés.</p></div></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Utilisateur</th><th>Organisation</th><th>Rôle</th><th>Statut</th><th class="align-right">Actions</th></tr></thead><tbody>
+<% users.filter(u => !u.deleted_at).forEach(u => { %><tr>
+    <td><div class="cell-title"><%= u.full_name %></div><div class="cell-subtitle"><%= u.email %></div></td>
+    <td><%= u.organization ? u.organization.name : '—' %></td>
+    <td><span class="badge badge-purple"><%= u.role %></span><% if (u.user_id === user.id) { %> <span class="badge badge-slate">Vous</span><% } %></td>
+    <td><span class="badge <%= u.is_active ? 'badge-green' : 'badge-amber' %>"><%= u.is_active ? 'Actif' : 'Désactivé' %></span><% if (u.suspended_by_plan) { %><div class="cell-subtitle">Suspendu par le plan</div><% } %></td>
+    <td class="align-right"><% if (u.user_id !== user.id) { %><div class="action-row"><% if (u.is_active) { %><form action="/users/<%= u.user_id %>/deactivate" method="POST"><button class="action-button warning" onclick="return confirm('Désactiver cet utilisateur ?')">Désactiver</button></form><% } else { %><form action="/users/<%= u.user_id %>/activate" method="POST"><button class="action-button success">Réactiver</button></form><% } %></div><% } else { %><span class="cell-subtitle">Session actuelle</span><% } %></td>
+</tr><% }) %>
+<% if (!users.some(u => !u.deleted_at)) { %><tr><td colspan="5" class="empty-state">Aucun utilisateur à afficher.</td></tr><% } %>
+</tbody></table></div></section>
+<%- include('../partials/app-shell-end') %><%- include('../partials/footer') %>

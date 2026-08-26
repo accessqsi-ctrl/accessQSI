@@ -8,24 +8,28 @@ datasource db {
 }
 
 model UserQ {
-  user_id            Int           @id @default(autoincrement())
-  clef               String        @unique
-  full_name          String
-  email              String        @unique
-  password_hash      String
-  role               Role
-  is_verified        Boolean       @default(false)
-  is_active          Boolean       @default(true)
-  suspended_by_plan  Boolean       @default(false)
-  verification_token String?       @unique
-  deleted_at         DateTime?
-  created_at         DateTime      @default(now())
-  last_login         DateTime?
-  org_id             Int?
-  scan_logs          ScanLog[]
-  organization       Organization? @relation(fields: [org_id], references: [org_id])
-  payments           Payment[]
+  user_id                       Int           @id @default(autoincrement())
+  clef                          String        @unique
+  full_name                     String
+  email                         String        @unique
+  password_hash                 String
+  role                          Role
+  is_verified                   Boolean       @default(false)
+  is_active                     Boolean       @default(true)
+  suspended_by_plan             Boolean       @default(false)
+  verification_token            String?       @unique
+  verification_token_expires_at DateTime?
+  verification_email_sent_at    DateTime?
+  deleted_at                    DateTime?
+  created_at                    DateTime      @default(now())
+  last_login                    DateTime?
+  org_id                        Int?
+  scan_logs                     ScanLog[]
+  organization                  Organization? @relation(fields: [org_id], references: [org_id])
+  payments                      Payment[]
 
+  @@index([org_id, deleted_at])
+  @@index([role])
   @@map("usersQ")
 }
 
@@ -43,49 +47,116 @@ model Organization {
   trial_expires_at              DateTime?
   enterprise_contract_reference String?
   enterprise_entitlements       Json?
+  default_card_template_id      String?
   areas                         Area[]
+  card_templates                CardTemplateCustom[]
   events                        Event[]
   plan                          Plan?                  @relation(fields: [subscription_plan], references: [plan_id])
   payments                      Payment[]
+  refunds                       Refund[]
+  event_passes                  EventPass[]
   subscription                  Subscription?
+  subscription_changes          SubscriptionChange[]
   subscription_periods          SubscriptionPeriod[]
   subscription_audit_logs       SubscriptionAuditLog[]
   usersQ                        UserQ[]
 
+  @@index([deleted_at])
   @@map("organizations")
 }
 
-model Event {
-  event_id       Int             @id @default(autoincrement())
-  org_id         Int
-  title          String
-  description    String?
-  created_at     DateTime        @default(now())
-  deleted_at     DateTime?
-  EventSchedules EventSchedule[]
-  organization   Organization    @relation(fields: [org_id], references: [org_id])
-  qr_codes       QrCode[]
+model CardTemplateCustom {
+  id                   Int          @id @default(autoincrement())
+  org_id               Int
+  base_template_id     String
+  name                 String
+  primary_color        String
+  secondary_color      String
+  title                String
+  card_message_default String?
+  logo_url             String?
+  background_image_url String?
+  qr_position          String
+  visible_fields       Json
+  layout_config        Json?
+  canvas_scene         Json?
+  layout               String
+  is_default           Boolean      @default(false)
+  status               String       @default("DRAFT")
+  deleted_at           DateTime?
+  created_at           DateTime     @default(now())
+  updated_at           DateTime     @updatedAt
+  organization         Organization @relation(fields: [org_id], references: [org_id])
 
+  @@index([org_id, deleted_at])
+  @@index([org_id, is_default])
+  @@map("card_template_customs")
+}
+
+model Event {
+  event_id               Int                  @id @default(autoincrement())
+  org_id                 Int
+  title                  String
+  description            String?
+  created_at             DateTime             @default(now())
+  deleted_at             DateTime?
+  entitlement_type       EventEntitlementType @default(SUBSCRIPTION)
+  qr_limit               Int                  @default(50)
+  entitlement_expires_at DateTime?
+  EventSchedules         EventSchedule[]
+  organization           Organization         @relation(fields: [org_id], references: [org_id])
+  qr_codes               QrCode[]
+  event_pass             EventPass?
+
+  @@index([org_id, deleted_at])
   @@map("events")
 }
 
-model QrCode {
-  qr_id        Int       @id @default(autoincrement())
-  event_id     Int
-  unique_token String    @unique
-  status       QrStatus
-  usage_limit  Int       @default(1)
-  scans_count  Int       @default(0)
-  valid_from   DateTime?
-  valid_until  DateTime?
-  deleted_at   DateTime?
-  level        Int?
-  holder_name  String?
-  holder_email String?
-  holder_phone String?
-  event        Event     @relation(fields: [event_id], references: [event_id])
-  scan_logs    ScanLog[]
+model EventPass {
+  event_pass_id Int             @id @default(autoincrement())
+  org_id        Int
+  payment_id    Int             @unique
+  event_id      Int?            @unique
+  status        EventPassStatus @default(AVAILABLE)
+  purchased_at  DateTime        @default(now())
+  activated_at  DateTime?
+  expires_at    DateTime?
+  organization  Organization    @relation(fields: [org_id], references: [org_id])
+  payment       Payment         @relation(fields: [payment_id], references: [payment_id])
+  event         Event?          @relation(fields: [event_id], references: [event_id])
 
+  @@index([org_id, status])
+  @@map("event_passes")
+}
+
+model QrCode {
+  qr_id                  Int       @id @default(autoincrement())
+  event_id               Int
+  unique_token           String    @unique
+  status                 QrStatus
+  usage_limit            Int       @default(1)
+  scans_count            Int       @default(0)
+  valid_from             DateTime?
+  valid_until            DateTime?
+  deleted_at             DateTime?
+  level                  Int?
+  holder_name            String?
+  holder_email           String?
+  holder_phone           String?
+  card_data              Json?
+  card_template_id       String?
+  card_template_snapshot Json?
+  card_generated_at      DateTime?
+  card_message           String?
+  card_generation_status String?
+  card_generation_error  String?
+  created_at             DateTime  @default(now())
+  updated_at             DateTime  @updatedAt
+  event                  Event     @relation(fields: [event_id], references: [event_id])
+  scan_logs              ScanLog[]
+
+  @@index([event_id, status, deleted_at])
+  @@index([card_template_id])
   @@map("qr_codes")
 }
 
@@ -93,13 +164,19 @@ model ScanLog {
   id            Int        @id @default(autoincrement())
   qr_code_id    Int
   scanned_by_id Int
+  area_id       Int?
   scanned_at    DateTime   @default(now())
   location_lat  Decimal?
   location_long Decimal?
   status        ScanStatus
   qr_code       QrCode     @relation(fields: [qr_code_id], references: [qr_id])
   scanned_by    UserQ      @relation(fields: [scanned_by_id], references: [user_id])
+  area          Area?      @relation(fields: [area_id], references: [area_id])
 
+  @@index([qr_code_id])
+  @@index([scanned_by_id])
+  @@index([area_id])
+  @@index([scanned_at])
   @@map("scan_logs")
 }
 
@@ -111,14 +188,16 @@ model Area {
   deleted_at          DateTime?
   suspended_by_plan   Boolean         @default(false)
   EventSchedules      EventSchedule[]
+  scan_logs           ScanLog[]
   organization        Organization    @relation(fields: [org_id], references: [org_id])
 
+  @@index([org_id, deleted_at])
   @@map("area")
 }
 
 model Plan {
   plan_id       Int                  @id @default(autoincrement())
-  title         String
+  title         String               @unique
   cost          Int
   currency      String               @default("USD") @db.VarChar(3)
   features      Json
@@ -126,36 +205,43 @@ model Plan {
   payments      Payment[]
   subscriptions Subscription[]       @relation("SubscriptionPlan")
   periods       SubscriptionPeriod[] @relation("SubscriptionPeriodPlan")
+  changes_from  SubscriptionChange[] @relation("SubscriptionChangeFromPlan")
+  changes_to    SubscriptionChange[] @relation("SubscriptionChangeToPlan")
 
   @@map("plan")
 }
 
 model Payment {
-  payment_id              Int           @id @default(autoincrement())
-  deposit_id              String        @unique @db.Uuid
+  payment_id              Int                 @id @default(autoincrement())
+  deposit_id              String              @unique @db.Uuid
   org_id                  Int
   plan_id                 Int
   initiated_by_id         Int
-  amount                  Decimal       @db.Decimal(18, 2)
-  currency                String        @db.VarChar(3)
-  reference_amount        Decimal       @db.Decimal(18, 2)
-  reference_currency      String        @default("USD") @db.VarChar(3)
-  country                 String        @db.VarChar(3)
+  amount                  Decimal             @db.Decimal(18, 2)
+  currency                String              @db.VarChar(3)
+  reference_amount        Decimal             @db.Decimal(18, 2)
+  reference_currency      String              @default("USD") @db.VarChar(3)
+  country                 String              @db.VarChar(3)
   provider                String
   phone_number            String
-  status                  PaymentStatus @default(PENDING)
+  status                  PaymentStatus       @default(PENDING)
+  billing_interval        BillingInterval     @default(MONTHLY)
   provider_transaction_id String?
   failure_code            String?
   failure_message         String?
   access_starts_at        DateTime?
   access_expires_at       DateTime?
   provider_payload        Json?
-  created_at              DateTime      @default(now())
-  updated_at              DateTime      @updatedAt
+  created_at              DateTime            @default(now())
+  updated_at              DateTime            @updatedAt
   completed_at            DateTime?
-  organization            Organization  @relation(fields: [org_id], references: [org_id])
-  plan                    Plan          @relation(fields: [plan_id], references: [plan_id])
-  initiated_by            UserQ         @relation(fields: [initiated_by_id], references: [user_id])
+  subscription_change_id  Int?                @unique
+  organization            Organization        @relation(fields: [org_id], references: [org_id])
+  plan                    Plan                @relation(fields: [plan_id], references: [plan_id])
+  initiated_by            UserQ               @relation(fields: [initiated_by_id], references: [user_id])
+  event_pass              EventPass?
+  refund                  Refund?
+  subscription_change     SubscriptionChange? @relation(fields: [subscription_change_id], references: [subscription_change_id])
 
   @@index([org_id, created_at])
   @@index([org_id, status])
@@ -163,33 +249,78 @@ model Payment {
   @@map("payments")
 }
 
-enum PaymentStatus {
-  PENDING
-  PROCESSING
-  COMPLETED
-  FAILED
-  EXPIRED
-  REFUND_PENDING
-  REFUNDED
-  REVIEW_REQUIRED
+model Refund {
+  refund_id               Int          @id @default(autoincrement())
+  provider_refund_id      String       @unique @db.Uuid
+  payment_id              Int          @unique
+  org_id                  Int
+  status                  RefundStatus @default(PENDING)
+  reason                  String
+  failure_code            String?
+  failure_message         String?
+  provider_transaction_id String?
+  provider_payload        Json?
+  created_at              DateTime     @default(now())
+  updated_at              DateTime     @updatedAt
+  completed_at            DateTime?
+  payment                 Payment      @relation(fields: [payment_id], references: [payment_id])
+  organization            Organization @relation(fields: [org_id], references: [org_id])
+
+  @@index([org_id, status])
+  @@map("refunds")
 }
 
 model Subscription {
-  subscription_id      Int                @id @default(autoincrement())
-  org_id               Int                @unique
+  subscription_id      Int                  @id @default(autoincrement())
+  org_id               Int                  @unique
   plan_id              Int
-  status               SubscriptionStatus @default(ACTIVE)
+  status               SubscriptionStatus   @default(ACTIVE)
   billing_interval     BillingInterval?
   current_period_start DateTime?
   current_period_end   DateTime?
-  cancel_at_period_end Boolean            @default(false)
-  version              Int                @default(1)
-  created_at           DateTime           @default(now())
-  updated_at           DateTime           @updatedAt
-  organization         Organization       @relation(fields: [org_id], references: [org_id])
-  plan                 Plan               @relation("SubscriptionPlan", fields: [plan_id], references: [plan_id])
+  cancel_at_period_end Boolean              @default(false)
+  version              Int                  @default(1)
+  created_at           DateTime             @default(now())
+  updated_at           DateTime             @updatedAt
+  organization         Organization         @relation(fields: [org_id], references: [org_id])
+  plan                 Plan                 @relation("SubscriptionPlan", fields: [plan_id], references: [plan_id])
+  changes              SubscriptionChange[]
 
+  @@index([status, current_period_end])
   @@map("subscriptions")
+}
+
+model SubscriptionChange {
+  subscription_change_id Int                      @id @default(autoincrement())
+  org_id                 Int
+  subscription_id        Int?
+  from_plan_id           Int?
+  to_plan_id             Int?
+  from_interval          BillingInterval?
+  to_interval            BillingInterval?
+  type                   SubscriptionChangeType
+  status                 SubscriptionChangeStatus @default(AWAITING_PAYMENT)
+  effective_at           DateTime?
+  quoted_amount          Decimal?                 @db.Decimal(18, 2)
+  quoted_currency        String?                  @db.VarChar(3)
+  reference_amount       Decimal?                 @db.Decimal(18, 2)
+  reference_currency     String?                  @db.VarChar(3)
+  source_version         Int                      @default(0)
+  reason                 String?
+  resource_selection     Json?
+  created_at             DateTime                 @default(now())
+  updated_at             DateTime                 @updatedAt
+  applied_at             DateTime?
+  canceled_at            DateTime?
+  organization           Organization             @relation(fields: [org_id], references: [org_id])
+  subscription           Subscription?            @relation(fields: [subscription_id], references: [subscription_id])
+  from_plan              Plan?                    @relation("SubscriptionChangeFromPlan", fields: [from_plan_id], references: [plan_id])
+  to_plan                Plan?                    @relation("SubscriptionChangeToPlan", fields: [to_plan_id], references: [plan_id])
+  payment                Payment?
+
+  @@index([org_id, status])
+  @@index([effective_at, status])
+  @@map("subscription_changes")
 }
 
 model SubscriptionPeriod {
@@ -206,6 +337,8 @@ model SubscriptionPeriod {
   organization           Organization     @relation(fields: [org_id], references: [org_id])
   plan                   Plan             @relation("SubscriptionPeriodPlan", fields: [plan_id], references: [plan_id])
 
+  @@index([org_id, starts_at])
+  @@index([payment_id])
   @@map("subscription_periods")
 }
 
@@ -219,20 +352,8 @@ model SubscriptionAuditLog {
   created_at                DateTime     @default(now())
   organization              Organization @relation(fields: [org_id], references: [org_id])
 
+  @@index([org_id, created_at])
   @@map("subscription_audit_logs")
-}
-
-enum SubscriptionStatus {
-  TRIALING
-  ACTIVE
-  CANCELED
-  EXPIRED
-}
-
-enum BillingInterval {
-  MONTHLY
-  ANNUAL
-  ONE_TIME
 }
 
 model EventSchedule {
@@ -244,6 +365,8 @@ model EventSchedule {
   area       Area     @relation(fields: [id_area], references: [area_id])
   event      Event    @relation(fields: [id_event], references: [event_id])
 
+  @@index([id_event])
+  @@index([id_area])
   @@map("EventSchedule")
 }
 
@@ -266,4 +389,71 @@ enum ScanStatus {
   denied_expired
   denied_revoked
   denied_limit_reached
+  denied_event_inactive
+  denied_event_not_selected
+  denied_area_not_allowed
+  denied_insufficient_level
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  EXPIRED
+  REFUND_PENDING
+  REFUNDED
+  REVIEW_REQUIRED
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  CANCELED
+  EXPIRED
+}
+
+enum SubscriptionChangeType {
+  PURCHASE
+  UPGRADE
+  DOWNGRADE
+  RENEWAL
+  INTERVAL_CHANGE
+  CANCEL
+  REACTIVATE
+}
+
+enum SubscriptionChangeStatus {
+  AWAITING_PAYMENT
+  SCHEDULED
+  APPLIED
+  FAILED
+  CANCELED
+  EXPIRED
+  REVIEW_REQUIRED
+  REFUND_PENDING
+}
+
+enum RefundStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum BillingInterval {
+  MONTHLY
+  ANNUAL
+  ONE_TIME
+}
+
+enum EventEntitlementType {
+  SUBSCRIPTION
+  EVENT_PASS
+}
+
+enum EventPassStatus {
+  AVAILABLE
+  ASSIGNED
+  EXPIRED
 }

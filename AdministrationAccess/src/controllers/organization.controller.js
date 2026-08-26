@@ -1,5 +1,9 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
+
+const parseId = (value) => {
+    const id = Number.parseInt(value, 10);
+    return Number.isInteger(id) && id > 0 ? id : null;
+};
 
 exports.listOrganizations = async (req, res) => {
     try {
@@ -18,7 +22,7 @@ exports.listOrganizations = async (req, res) => {
         res.render('organizations/list', {
             user: req.user,
             organizations,
-            error: null,
+            error: req.query.error || null,
             success: req.query.success || null
         });
     } catch (error) {
@@ -39,7 +43,7 @@ const parseLimit = (value) => {
 };
 
 exports.activateEnterprise = async (req, res) => {
-    const orgId = Number.parseInt(req.params.id, 10);
+    const orgId = parseId(req.params.id);
     const startsAt = req.body.startsAt ? new Date(req.body.startsAt) : new Date();
     const endsAt = new Date(req.body.endsAt);
     const reference = String(req.body.contractReference || "").trim();
@@ -50,7 +54,7 @@ exports.activateEnterprise = async (req, res) => {
         maxAreas: parseLimit(req.body.maxAreas),
         capabilities: ["bulk_qr_import", "custom_card_templates", "scan_exports", "advanced_analytics"]
     };
-    if (!Number.isInteger(orgId) || !reference || Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime()) || endsAt <= startsAt) {
+    if (!orgId || !reference || Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime()) || endsAt <= startsAt) {
         return res.redirect('/organizations?error=Référence et dates de contrat invalides.');
     }
     if (Object.values(limits).slice(0, 4).some((value) => value === undefined)) {
@@ -117,7 +121,7 @@ exports.activateEnterprise = async (req, res) => {
             await tx.subscriptionAuditLog.create({
                 data: {
                     org_id: orgId,
-                    actor_user_id: req.user?.user_id || null,
+                actor_user_id: req.user?.id || null,
                     action: "ENTERPRISE_CONTRACT_ACTIVATED",
                     before_snapshot: before,
                     after_snapshot: { plan: "ENTERPRISE", startsAt, endsAt, contractReference: reference, entitlements: limits }
@@ -135,19 +139,14 @@ exports.activateEnterprise = async (req, res) => {
 };
 
 exports.deactivateOrganization = async (req, res) => {
-    const orgId = parseInt(req.params.id);
+    const orgId = parseId(req.params.id);
+    if (!orgId) return res.redirect('/organizations?error=Organisation invalide.');
     try {
         // Update organization is_active to false
-        await prisma.organization.update({
-            where: { org_id: orgId },
-            data: { is_active: false }
-        });
-
-        // Also deactivate all users belonging to this organization
-        await prisma.userQ.updateMany({
-            where: { org_id: orgId },
-            data: { is_active: false }
-        });
+        await prisma.$transaction([
+            prisma.organization.update({ where: { org_id: orgId }, data: { is_active: false } }),
+            prisma.userQ.updateMany({ where: { org_id: orgId }, data: { is_active: false } })
+        ]);
 
         res.redirect('/organizations?success=Organisation et utilisateurs désactivés avec succès.');
     } catch (error) {
@@ -157,19 +156,20 @@ exports.deactivateOrganization = async (req, res) => {
 };
 
 exports.archiveOrganization = async (req, res) => {
-    const orgId = parseInt(req.params.id);
+    const orgId = parseId(req.params.id);
+    if (!orgId) return res.redirect('/organizations?error=Organisation invalide.');
     try {
-        // Soft delete the organization by setting deleted_at
-        await prisma.organization.update({
-            where: { org_id: orgId },
-            data: { deleted_at: new Date() }
-        });
-
-        // Also soft delete the users of this organization
-        await prisma.userQ.updateMany({
-            where: { org_id: orgId },
-            data: { deleted_at: new Date() }
-        });
+        const archivedAt = new Date();
+        await prisma.$transaction([
+            prisma.organization.update({
+                where: { org_id: orgId },
+                data: { deleted_at: archivedAt, is_active: false }
+            }),
+            prisma.userQ.updateMany({
+                where: { org_id: orgId },
+                data: { deleted_at: archivedAt, is_active: false }
+            })
+        ]);
 
         res.redirect('/organizations?success=Organisation et utilisateurs archivés avec succès.');
     } catch (error) {
@@ -179,19 +179,16 @@ exports.archiveOrganization = async (req, res) => {
 };
 
 exports.activateOrganization = async (req, res) => {
-    const orgId = parseInt(req.params.id);
+    const orgId = parseId(req.params.id);
+    if (!orgId) return res.redirect('/organizations?error=Organisation invalide.');
     try {
-        // Update organization is_active to true
-        await prisma.organization.update({
-            where: { org_id: orgId },
-            data: { is_active: true }
-        });
-
-        // Also activate all users belonging to this organization
-        await prisma.userQ.updateMany({
-            where: { org_id: orgId, suspended_by_plan: false, deleted_at: null },
-            data: { is_active: true }
-        });
+        await prisma.$transaction([
+            prisma.organization.update({ where: { org_id: orgId }, data: { is_active: true } }),
+            prisma.userQ.updateMany({
+                where: { org_id: orgId, suspended_by_plan: false, deleted_at: null },
+                data: { is_active: true }
+            })
+        ]);
 
         res.redirect('/organizations?success=Organisation et utilisateurs réactivés avec succès.');
     } catch (error) {
