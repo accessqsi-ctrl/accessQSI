@@ -1,12 +1,16 @@
 {
   "name": "administrationaccess",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Console de super-administration AccessQ",
+  "main": "server.js",
   "scripts": {
+    "prestart": "prisma generate && node scripts/style-css-access.js",
     "start": "node server.js",
+    "predev": "prisma generate && node scripts/style-css-access.js",
     "dev": "nodemon server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "seed:admin": "node scripts/style-css-access.js",
+    "prisma:generate": "prisma generate",
+    "check": "prisma validate && node --check server.js && node --check scripts/style-css-access.js && node --check src/controllers/auth.controller.js && node --check src/controllers/organization.controller.js && node --check src/controllers/user.controller.js"
   },
   "keywords": [],
   "author": "",

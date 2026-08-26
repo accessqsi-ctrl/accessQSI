@@ -31,7 +31,11 @@ const BCRYPT_SALT_ROUNDS = Number.isInteger(parsedSaltRounds) && parsedSaltRound
     : 10;
 const VERIFICATION_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
 const VERIFICATION_RESEND_COOLDOWN_MS = 60 * 1000;
+const PASSWORD_RESET_TOKEN_TTL_MS = 30 * 60 * 1000;
+const PASSWORD_RESET_RESEND_COOLDOWN_MS = 60 * 1000;
 const newVerificationToken = () => crypto.randomBytes(32).toString("hex");
+const newPasswordResetToken = () => crypto.randomBytes(32).toString("hex");
+const hashPasswordResetToken = (token) => crypto.createHash("sha256").update(token).digest("hex");
 const normalizeEmail = (value) => String(value || "").trim().toLowerCase();
 const loginFingerprint = (email) => crypto.createHash("sha256").update(email).digest("hex").slice(0, 12);
 const credentialHashMetadata = (hash) => {
@@ -193,6 +197,30 @@ exports.login = async (req, res) => {
             });
         }
 
+        const firstLogin = user.last_login === null;
+        let welcomeOffer = null;
+
+        if (firstLogin && user.org_id) {
+            const organization = await prisma.organization.findUnique({
+                where: { org_id: user.org_id },
+                include: { plan: true }
+            });
+            const planSummary = getPlanSummary(organization);
+            if (planSummary.plan === "ESSENTIAL" && planSummary.isTrial) {
+                welcomeOffer = {
+                    plan: planSummary.plan,
+                    planName: planSummary.planName,
+                    expiresAt: planSummary.trialExpiresAt || planSummary.expiresAt,
+                    features: planSummary.features
+                };
+            }
+        }
+
+        await prisma.userQ.update({
+            where: { user_id: user.user_id },
+            data: { last_login: new Date() }
+        });
+
         const { accessToken } = issueSession(res, user);
         logger.info("auth.login_succeeded", {
             request_id: req.requestId,
@@ -212,6 +240,7 @@ exports.login = async (req, res) => {
             success: true,
             message: "Connexion réussie",
             token: accessToken, // Optionnel pour les apps mobiles, NextJS doit utiliser le cookie
+            welcomeOffer,
             user: {
                 user_id: user.user_id,
                 name: user.full_name,
@@ -322,8 +351,8 @@ exports.signin = async (req, res) => {
                 emailSent,
                 email,
                 message: emailSent
-                    ? "Compte créé. Un e-mail de vérification vous a été envoyé."
-                    : "Compte créé, mais l’e-mail n’a pas pu être envoyé. Vous pouvez demander un nouvel envoi.",
+                    ? "Compte créé avec un mois d’Essentiel offert. Un e-mail de vérification vous a été envoyé."
+                    : "Compte créé avec un mois d’Essentiel offert, mais l’e-mail n’a pas pu être envoyé. Vous pouvez demander un nouvel envoi.",
             });
         } else {
             if (!user.is_verified) {
@@ -399,6 +428,108 @@ exports.resendVerificationEmail = async (req, res) => {
     } catch (error) {
         logger.error("verification_email.resend_failed", { error, request_id: req.requestId });
         return res.status(500).json({ success: false, message: "Impossible de renvoyer l’e-mail pour le moment." });
+    }
+};
+
+const passwordResetRequestMessage = "Si un compte actif correspond à cette adresse, un e-mail de réinitialisation sera envoyé.";
+
+exports.forgotPassword = async (req, res) => {
+    try {
+        const email = normalizeEmail(req.body.email);
+        if (!email || !emailPattern.test(email)) {
+            return res.status(400).json({ success: false, message: "Adresse e-mail invalide." });
+        }
+
+        const user = await userService.findByEmail(email);
+        if (!user || user.deleted_at || user.is_active === false) {
+            return res.status(202).json({ success: true, message: passwordResetRequestMessage });
+        }
+
+        const lastSent = user.password_reset_email_sent_at
+            ? new Date(user.password_reset_email_sent_at).getTime()
+            : 0;
+        if (lastSent + PASSWORD_RESET_RESEND_COOLDOWN_MS > Date.now()) {
+            return res.status(202).json({ success: true, message: passwordResetRequestMessage });
+        }
+
+        const token = newPasswordResetToken();
+        await prisma.userQ.update({
+            where: { user_id: user.user_id },
+            data: {
+                password_reset_token_hash: hashPasswordResetToken(token),
+                password_reset_expires_at: new Date(Date.now() + PASSWORD_RESET_TOKEN_TTL_MS)
+            }
+        });
+
+        const sent = await emailService.sendPasswordResetEmail(user.email, user.full_name, token);
+        if (sent) {
+            await prisma.userQ.update({
+                where: { user_id: user.user_id },
+                data: { password_reset_email_sent_at: new Date() }
+            });
+        } else {
+            await prisma.userQ.update({
+                where: { user_id: user.user_id },
+                data: { password_reset_token_hash: null, password_reset_expires_at: null }
+            });
+        }
+
+        return res.status(202).json({ success: true, message: passwordResetRequestMessage });
+    } catch (error) {
+        logger.error("password_reset.request_failed", { error, request_id: req.requestId });
+        return res.status(500).json({ success: false, message: "Impossible de traiter la demande pour le moment." });
+    }
+};
+
+exports.resetPassword = async (req, res) => {
+    try {
+        const token = typeof req.body.token === "string" ? req.body.token.trim() : "";
+        const password = typeof req.body.password === "string" ? req.body.password : "";
+        if (!token) {
+            return res.status(400).json({ success: false, message: "Le lien de réinitialisation est invalide ou expiré." });
+        }
+        if (pm.validate(password, { list: true }).length > 0) {
+            return res.status(400).json({ success: false, message: passwordPolicyMessage });
+        }
+
+        const tokenHash = hashPasswordResetToken(token);
+        const user = await prisma.userQ.findFirst({
+            where: {
+                password_reset_token_hash: tokenHash,
+                password_reset_expires_at: { gt: new Date() },
+                deleted_at: null,
+                is_active: true
+            }
+        });
+        if (!user) {
+            return res.status(400).json({ success: false, message: "Le lien de réinitialisation est invalide ou expiré." });
+        }
+
+        const passwordHash = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
+        const updated = await prisma.userQ.updateMany({
+            where: {
+                user_id: user.user_id,
+                password_reset_token_hash: tokenHash,
+                password_reset_expires_at: { gt: new Date() }
+            },
+            data: {
+                password_hash: passwordHash,
+                password_reset_token_hash: null,
+                password_reset_expires_at: null,
+                password_reset_email_sent_at: null
+            }
+        });
+        if (updated.count !== 1) {
+            return res.status(400).json({ success: false, message: "Le lien de réinitialisation est invalide ou expiré." });
+        }
+
+        res.clearCookie("token", cookieOptions);
+        res.clearCookie("refreshToken", cookieOptions);
+        logger.info("password_reset.completed", { request_id: req.requestId, user_id: user.user_id, org_id: user.org_id });
+        return res.status(200).json({ success: true, message: "Votre mot de passe a été modifié. Vous pouvez maintenant vous connecter." });
+    } catch (error) {
+        logger.error("password_reset.failed", { error, request_id: req.requestId });
+        return res.status(500).json({ success: false, message: "Impossible de réinitialiser le mot de passe pour le moment." });
     }
 };
 

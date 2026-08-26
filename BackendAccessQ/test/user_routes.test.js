@@ -26,12 +26,14 @@ const loadUserApp = ({
         loginLimiter: passThroughLimiter,
         signinLimiter: passThroughLimiter,
         refreshLimiter: passThroughLimiter,
-        verificationEmailLimiter: passThroughLimiter
+        verificationEmailLimiter: passThroughLimiter,
+        passwordResetLimiter: passThroughLimiter
     });
     mockModule("src/services/user.service", userService);
     mockModule("src/services/email.service", {
         sendVerificationEmail: async () => {},
         sendAgentInvitation: async () => {},
+        sendPasswordResetEmail: async () => true,
         ...emailService
     });
     mockModule("src/prisma/client", {
@@ -41,6 +43,7 @@ const loadUserApp = ({
             findUnique: async () => null,
             count: async () => 0,
             update: async () => ({}),
+            updateMany: async () => ({ count: 0 }),
             ...(prisma.userQ || {})
         },
         event: {
@@ -78,6 +81,96 @@ test("POST /user/login rejects missing credentials", async () => {
 
     assert.equal(res.status, 400);
     assert.equal(res.body.success, false);
+});
+
+test("POST /user/forgot-password returns the same response for an unknown email", async () => {
+    const app = loadUserApp({ userService: { findByEmail: async () => null } });
+
+    const res = await request(app, "POST", "/user/forgot-password", { email: "unknown@example.com" });
+
+    assert.equal(res.status, 202);
+    assert.equal(res.body.success, true);
+    assert.match(res.body.message, /Si un compte actif/);
+});
+
+test("POST /user/forgot-password stores only a token hash and sends the raw token", async () => {
+    const updates = [];
+    let emailedToken = null;
+    const app = loadUserApp({
+        userService: {
+            findByEmail: async () => ({
+                user_id: 7,
+                email: "admin@example.com",
+                full_name: "Admin",
+                deleted_at: null,
+                is_active: true,
+                password_reset_email_sent_at: null
+            })
+        },
+        emailService: {
+            sendPasswordResetEmail: async (email, name, token) => {
+                emailedToken = token;
+                return true;
+            }
+        },
+        prisma: {
+            userQ: { update: async (args) => { updates.push(args); return {}; } }
+        }
+    });
+
+    const res = await request(app, "POST", "/user/forgot-password", { email: " Admin@Example.COM " });
+
+    assert.equal(res.status, 202);
+    assert.equal(emailedToken.length, 64);
+    assert.notEqual(updates[0].data.password_reset_token_hash, emailedToken);
+    assert.equal(updates[0].data.password_reset_token_hash.length, 64);
+    assert.ok(updates[0].data.password_reset_expires_at instanceof Date);
+    assert.ok(updates[1].data.password_reset_email_sent_at instanceof Date);
+});
+
+test("POST /user/reset-password consumes a valid token and saves the new hash", async () => {
+    let findWhere = null;
+    let updateArgs = null;
+    const app = loadUserApp({
+        prisma: {
+            userQ: {
+                findFirst: async ({ where }) => {
+                    findWhere = where;
+                    return { user_id: 7, org_id: 42 };
+                },
+                updateMany: async (args) => {
+                    updateArgs = args;
+                    return { count: 1 };
+                }
+            }
+        },
+        bcrypt: { hash: async (password) => `hashed:${password}` }
+    });
+
+    const res = await request(app, "POST", "/user/reset-password", {
+        token: "raw-reset-token",
+        password: "NewStrong!123"
+    });
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body.success, true);
+    assert.equal(findWhere.password_reset_token_hash.length, 64);
+    assert.notEqual(findWhere.password_reset_token_hash, "raw-reset-token");
+    assert.equal(updateArgs.data.password_hash, "hashed:NewStrong!123");
+    assert.equal(updateArgs.data.password_reset_token_hash, null);
+    assert.equal(updateArgs.data.password_reset_expires_at, null);
+});
+
+test("POST /user/reset-password rejects an expired or already used token", async () => {
+    const app = loadUserApp({ prisma: { userQ: { findFirst: async () => null } } });
+
+    const res = await request(app, "POST", "/user/reset-password", {
+        token: "expired-token",
+        password: "NewStrong!123"
+    });
+
+    assert.equal(res.status, 400);
+    assert.match(res.body.message, /invalide ou expiré/);
 });
 
 test("POST /user/login returns a token for verified active users", async () => {
@@ -128,6 +221,92 @@ test("POST /user/login returns a token for verified active users", async () => {
         org_id: 42,
         token_type: "refresh"
     });
+});
+
+test("POST /user/login returns the Essential welcome offer only on the first login", async () => {
+    let lastLoginUpdate = null;
+    const expiry = new Date("2026-09-26T10:00:00Z");
+    const app = loadUserApp({
+        userService: {
+            findByEmail: async () => ({
+                user_id: 7,
+                full_name: "Admin User",
+                email: "admin@example.com",
+                password_hash: "stored-hash",
+                role: "ORG_ADMIN",
+                org_id: 42,
+                is_verified: true,
+                deleted_at: null,
+                last_login: null
+            })
+        },
+        prisma: {
+            organization: {
+                findUnique: async () => ({
+                    org_id: 42,
+                    plan: { title: "ESSENTIAL" },
+                    subscription_started_at: new Date("2026-08-26T10:00:00Z"),
+                    subscription_expires_at: expiry,
+                    trial_started_at: new Date("2026-08-26T10:00:00Z"),
+                    trial_expires_at: expiry
+                })
+            },
+            userQ: {
+                update: async (args) => {
+                    lastLoginUpdate = args;
+                    return {};
+                }
+            }
+        }
+    });
+
+    const res = await request(app, "POST", "/user/login", {
+        email: "admin@example.com",
+        password: "Strong!123"
+    });
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body.welcomeOffer.plan, "ESSENTIAL");
+    assert.equal(res.body.welcomeOffer.expiresAt, expiry.toISOString());
+    assert.equal(res.body.welcomeOffer.features.length > 0, true);
+    assert.deepEqual(lastLoginUpdate.where, { user_id: 7 });
+    assert.ok(lastLoginUpdate.data.last_login instanceof Date);
+});
+
+test("POST /user/login does not return the welcome offer after the first login", async () => {
+    let organizationLookupCalled = false;
+    const app = loadUserApp({
+        userService: {
+            findByEmail: async () => ({
+                user_id: 7,
+                full_name: "Admin User",
+                email: "admin@example.com",
+                password_hash: "stored-hash",
+                role: "ORG_ADMIN",
+                org_id: 42,
+                is_verified: true,
+                deleted_at: null,
+                last_login: new Date("2026-08-26T10:00:00Z")
+            })
+        },
+        prisma: {
+            organization: {
+                findUnique: async () => {
+                    organizationLookupCalled = true;
+                    return null;
+                }
+            }
+        }
+    });
+
+    const res = await request(app, "POST", "/user/login", {
+        email: "admin@example.com",
+        password: "Strong!123"
+    });
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body.welcomeOffer, null);
+    assert.equal(organizationLookupCalled, false);
 });
 
 test("POST /user/login normalizes email casing and surrounding spaces", async () => {

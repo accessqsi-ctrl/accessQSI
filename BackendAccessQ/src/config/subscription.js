@@ -212,7 +212,7 @@ const getPlanSummary = (organization, now = new Date()) => {
     const subscriptionExpiryTime = subscriptionExpiresAt ? new Date(subscriptionExpiresAt).getTime() : null;
     const isPro = [PLAN_KEYS.PRO, PLAN_KEYS.ENTERPRISE].includes(details.key);
     const isPaid = [PLAN_KEYS.ESSENTIAL, PLAN_KEYS.PRO, PLAN_KEYS.ENTERPRISE].includes(details.key);
-    const isTrial = Boolean(isPro && trialStartedAt && trialExpiryTime > nowTime && (!subscriptionExpiryTime || subscriptionExpiryTime <= trialExpiryTime));
+    const isTrial = Boolean(isPaid && trialStartedAt && trialExpiryTime > nowTime && (!subscriptionExpiryTime || subscriptionExpiryTime <= trialExpiryTime));
     const cycle = getMonthlyCycle(organization, now);
 
     return {

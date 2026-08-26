@@ -8,6 +8,63 @@ const loadService = (servicePath, prisma) => {
     return require(servicePath);
 };
 
+test("user service offre un mois d'Essential aux nouvelles organisations", async () => {
+    const calls = {};
+    const plans = new Map();
+    let nextPlanId = 1;
+    const tx = {
+        plan: {
+            upsert: async ({ create, update }) => {
+                const current = plans.get(create.title);
+                const saved = current ? { ...current, ...update } : { plan_id: nextPlanId++, ...create };
+                plans.set(create.title, saved);
+                return saved;
+            },
+            findMany: async () => [...plans.values()],
+            findUnique: async ({ where }) => plans.get(where.title) || null
+        },
+        organization: {
+            create: async ({ data }) => {
+                calls.organization = data;
+                return { org_id: 42, ...data };
+            }
+        },
+        userQ: {
+            create: async ({ data }) => {
+                calls.user = data;
+                return { user_id: 7, ...data };
+            }
+        },
+        subscription: { create: async ({ data }) => { calls.subscription = data; return data; } },
+        subscriptionPeriod: { create: async ({ data }) => { calls.period = data; return data; } },
+        subscriptionAuditLog: { create: async ({ data }) => { calls.audit = data; return data; } }
+    };
+    const userService = loadService("../src/services/user.service", {
+        $transaction: async (callback) => callback(tx)
+    });
+
+    await userService.createOrgAndAdminUser(
+        { name: "Access Org" },
+        { full_name: "Admin", email: "admin@example.com" }
+    );
+
+    const essentialPlan = plans.get("ESSENTIAL");
+    assert.equal(calls.organization.subscription_plan, essentialPlan.plan_id);
+    assert.equal(calls.organization.subscription_interval, "MONTHLY");
+    assert.equal(calls.organization.trial_started_at, calls.organization.subscription_started_at);
+    assert.equal(calls.organization.trial_expires_at, calls.organization.subscription_expires_at);
+    const expectedExpiry = require("../src/config/subscription").addUtcMonths(
+        calls.organization.trial_started_at,
+        1
+    );
+    assert.equal(calls.organization.trial_expires_at.toISOString(), expectedExpiry.toISOString());
+    assert.equal(calls.subscription.status, "TRIALING");
+    assert.equal(calls.subscription.plan_id, essentialPlan.plan_id);
+    assert.equal(calls.period.source, "SIGNUP_ESSENTIAL_TRIAL");
+    assert.equal(calls.audit.action, "SIGNUP_ESSENTIAL_TRIAL_STARTED");
+    assert.equal(calls.user.org_id, 42);
+});
+
 test("area service filters and soft-deletes areas instead of hard deleting them", async () => {
     const calls = [];
     const areaService = loadService("../src/services/area.service", {

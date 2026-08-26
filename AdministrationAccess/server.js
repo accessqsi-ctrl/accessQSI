@@ -10,6 +10,7 @@ const PORT = process.env.PORT || 4000;
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+app.disable('x-powered-by');
 
 // Static files
 app.use(express.static(path.join(__dirname, 'src/public')));
@@ -23,9 +24,13 @@ const indexRoutes = require('./src/routes/index.routes');
 app.use('/', indexRoutes);
 
 // Error handling
+app.use((req, res) => {
+    res.status(404).send('Page introuvable');
+});
+
 app.use((err, req, res, next) => {
     console.error(err.stack);
-    res.status(500).send('Something broke!');
+    res.status(500).send('Une erreur interne est survenue.');
 });
 
 app.listen(PORT, () => {

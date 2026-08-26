@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Crown, Mail, Menu, X } from "lucide-react";
+import { ArrowRight, CalendarDays, CheckCircle2, Crown, Mail, Menu, Sparkles, X } from "lucide-react";
 
 import { useState, useEffect, useMemo } from "react";
 import { apiFetch } from "../lib/api";
@@ -13,6 +13,7 @@ export default function DashboardLayout({ children }) {
     const router = useRouter();
     const [showLogoutModal, setShowLogoutModal] = useState(false);
     const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+    const [welcomeOffer, setWelcomeOffer] = useState(null);
     const { userProfile, profileLoading, isProPlan, planName } = useUserPlan();
     const isOperator = userProfile?.role === "OPERATOR";
     const isAgent = userProfile?.role === "ORG_AGENT";
@@ -35,6 +36,27 @@ export default function DashboardLayout({ children }) {
             router.replace("/dashboard");
         }
     }, [agentRestrictedPath, isAgent, profileLoading, router]);
+
+    useEffect(() => {
+        if (profileLoading) return;
+        try {
+            const storedOffer = sessionStorage.getItem("accessq-essential-welcome");
+            if (!storedOffer) return;
+            sessionStorage.removeItem("accessq-essential-welcome");
+            setWelcomeOffer(JSON.parse(storedOffer));
+        } catch {
+            setWelcomeOffer(null);
+        }
+    }, [profileLoading]);
+
+    useEffect(() => {
+        if (!welcomeOffer) return undefined;
+        const closeOnEscape = (event) => {
+            if (event.key === "Escape") setWelcomeOffer(null);
+        };
+        window.addEventListener("keydown", closeOnEscape);
+        return () => window.removeEventListener("keydown", closeOnEscape);
+    }, [welcomeOffer]);
 
     const handleLogout = async () => {
         try {
@@ -334,6 +356,78 @@ export default function DashboardLayout({ children }) {
                                     Déconnexion
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {welcomeOffer && (
+                <div className="fixed inset-0 z-[70] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="essential-welcome-title">
+                    <button
+                        type="button"
+                        aria-label="Fermer la fenêtre de bienvenue"
+                        onClick={() => setWelcomeOffer(null)}
+                        className="absolute inset-0 bg-slate-950/65 backdrop-blur-md"
+                    />
+                    <div className="relative w-full max-w-lg overflow-hidden rounded-3xl border border-white/20 bg-white shadow-2xl shadow-blue-950/30 dark:bg-slate-900">
+                        <div className="relative overflow-hidden bg-gradient-to-br from-blue-700 via-indigo-600 to-emerald-500 px-6 pb-8 pt-7 text-white sm:px-8">
+                            <div className="absolute -right-12 -top-16 h-44 w-44 rounded-full bg-white/15 blur-2xl" />
+                            <div className="absolute -bottom-20 -left-10 h-40 w-40 rounded-full bg-emerald-200/20 blur-2xl" />
+                            <button
+                                type="button"
+                                onClick={() => setWelcomeOffer(null)}
+                                aria-label="Fermer"
+                                className="absolute right-4 top-4 rounded-full bg-white/15 p-2 text-white transition hover:bg-white/25"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                            <div className="relative">
+                                <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/15 px-3 py-1.5 text-xs font-bold uppercase tracking-wider backdrop-blur-sm">
+                                    <Sparkles className="h-4 w-4" />
+                                    Cadeau de bienvenue
+                                </div>
+                                <h2 id="essential-welcome-title" className="max-w-md text-3xl font-black leading-tight sm:text-4xl">
+                                    Votre premier mois Essentiel est offert !
+                                </h2>
+                                <p className="mt-3 max-w-md text-sm leading-relaxed text-blue-50 sm:text-base">
+                                    Bienvenue sur AccessQ. Toutes les fonctionnalités du plan Essentiel sont activées dès maintenant, sans paiement.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="px-6 py-6 sm:px-8">
+                            {welcomeOffer.expiresAt && (
+                                <div className="mb-5 flex items-center gap-3 rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-blue-900 dark:border-blue-900/50 dark:bg-blue-950/40 dark:text-blue-100">
+                                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white">
+                                        <CalendarDays className="h-5 w-5" />
+                                    </span>
+                                    <div>
+                                        <p className="text-xs font-semibold uppercase tracking-wide text-blue-500">Offre valable jusqu’au</p>
+                                        <p className="font-bold">
+                                            {new Intl.DateTimeFormat("fr-FR", { dateStyle: "long" }).format(new Date(welcomeOffer.expiresAt))}
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="grid gap-3 sm:grid-cols-2">
+                                {(welcomeOffer.features || []).slice(0, 4).map((feature) => (
+                                    <div key={feature} className="flex items-start gap-2.5 text-sm font-medium text-slate-700 dark:text-slate-200">
+                                        <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-500" />
+                                        <span>{feature}</span>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <Link
+                                href="/dashboard/getting-started"
+                                onClick={() => setWelcomeOffer(null)}
+                                className="mt-7 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-700 to-indigo-600 px-5 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-600/20 transition hover:-translate-y-0.5 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                            >
+                                Découvrir mon espace
+                                <ArrowRight className="h-4 w-4" />
+                            </Link>
+                            <p className="mt-3 text-center text-xs text-slate-400">Aucun moyen de paiement requis.</p>
                         </div>
                     </div>
                 </div>

@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { loginLimiter, signinLimiter, refreshLimiter, verificationEmailLimiter } = require('../middleware/limMiddleware');
+const { loginLimiter, signinLimiter, refreshLimiter, verificationEmailLimiter, passwordResetLimiter } = require('../middleware/limMiddleware');
 
 router.use(express.urlencoded({ extended: true }));
 router.use(express.static("public"));
@@ -23,6 +23,8 @@ router.post('/signin', signinLimiter, userController.signin);
 // VÉRIFICATION EMAIL
 router.post("/verify-email", userController.verifyEmail);
 router.post("/resend-verification", verificationEmailLimiter, userController.resendVerificationEmail);
+router.post("/forgot-password", passwordResetLimiter, userController.forgotPassword);
+router.post("/reset-password", passwordResetLimiter, userController.resetPassword);
 
 
 // Page profile

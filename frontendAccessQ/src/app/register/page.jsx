@@ -137,7 +137,7 @@ export default function Register() {
                             Créer un compte
                         </h1>
                         <p className="text-slate-500 dark:text-slate-400 text-base">
-                            Ces informations créeront le premier compte administrateur.
+                            Créez votre compte et profitez gratuitement du plan Essentiel pendant un mois.
                         </p>
                     </div>
 

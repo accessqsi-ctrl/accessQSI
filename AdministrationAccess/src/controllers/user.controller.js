@@ -1,5 +1,9 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
+
+const parseId = (value) => {
+    const id = Number.parseInt(value, 10);
+    return Number.isInteger(id) && id > 0 ? id : null;
+};
 
 exports.listUsers = async (req, res) => {
     try {
@@ -17,7 +21,7 @@ exports.listUsers = async (req, res) => {
         res.render('users/list', {
             user: req.user,
             users,
-            error: null,
+            error: req.query.error || null,
             success: req.query.success || null
         });
     } catch (error) {
@@ -32,7 +36,9 @@ exports.listUsers = async (req, res) => {
 };
 
 exports.deactivateUser = async (req, res) => {
-    const userId = parseInt(req.params.id);
+    const userId = parseId(req.params.id);
+    if (!userId) return res.redirect('/users?error=Utilisateur invalide.');
+    if (req.user.id === userId) return res.redirect('/users?error=Vous ne pouvez pas désactiver votre propre compte.');
     try {
         await prisma.userQ.update({
             where: { user_id: userId },
@@ -46,12 +52,16 @@ exports.deactivateUser = async (req, res) => {
 };
 
 exports.activateUser = async (req, res) => {
-    const userId = parseInt(req.params.id);
+    const userId = parseId(req.params.id);
+    if (!userId) return res.redirect('/users?error=Utilisateur invalide.');
     try {
-        await prisma.userQ.update({
-            where: { user_id: userId },
+        const result = await prisma.userQ.updateMany({
+            where: { user_id: userId, deleted_at: null, suspended_by_plan: false },
             data: { is_active: true }
         });
+        if (result.count === 0) {
+            return res.redirect('/users?error=Ce compte est archivé ou suspendu par son plan.');
+        }
         res.redirect('/users?success=Utilisateur réactivé avec succès.');
     } catch (error) {
         console.error("Erreur activateUser:", error);

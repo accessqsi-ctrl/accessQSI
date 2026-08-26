@@ -1,5 +1,11 @@
 const prisma = require("../prisma/client");
-const { assignOrganizationPlan, ensureDefaultPlans, PLAN_KEYS } = require("../config/subscription");
+const {
+  addUtcMonths,
+  getPlanByKey,
+  PLAN_DETAILS,
+  PLAN_KEYS,
+  BILLING_INTERVALS
+} = require("../config/subscription");
 
 exports.findByEmail = (email) => {
   const normalizedEmail = String(email || "").trim().toLowerCase();
@@ -10,18 +16,75 @@ exports.findByEmail = (email) => {
 
 exports.createOrgAndAdminUser = async (orgData, userData) => {
   return await prisma.$transaction(async (tx) => {
-    await ensureDefaultPlans(tx);
+    const essentialPlan = await getPlanByKey(tx, PLAN_KEYS.ESSENTIAL);
+    if (!essentialPlan) {
+      throw new Error("Le plan Essentiel est indisponible.");
+    }
+
+    const trialStartedAt = new Date();
+    const trialExpiresAt = addUtcMonths(trialStartedAt, 1);
 
     const org = await tx.organization.create({
-      data: orgData
+      data: {
+        ...orgData,
+        subscription_plan: essentialPlan.plan_id,
+        subscription_started_at: trialStartedAt,
+        subscription_expires_at: trialExpiresAt,
+        subscription_interval: BILLING_INTERVALS.MONTHLY,
+        trial_started_at: trialStartedAt,
+        trial_expires_at: trialExpiresAt
+      }
     });
-
-    await assignOrganizationPlan(tx, org.org_id, PLAN_KEYS.FREE);
 
     const user = await tx.userQ.create({
       data: {
         ...userData,
         org_id: org.org_id
+      }
+    });
+
+    await tx.subscription.create({
+      data: {
+        org_id: org.org_id,
+        plan_id: essentialPlan.plan_id,
+        status: "TRIALING",
+        billing_interval: BILLING_INTERVALS.MONTHLY,
+        current_period_start: trialStartedAt,
+        current_period_end: trialExpiresAt
+      }
+    });
+
+    await tx.subscriptionPeriod.create({
+      data: {
+        org_id: org.org_id,
+        plan_id: essentialPlan.plan_id,
+        billing_interval: BILLING_INTERVALS.MONTHLY,
+        starts_at: trialStartedAt,
+        ends_at: trialExpiresAt,
+        source: "SIGNUP_ESSENTIAL_TRIAL",
+        entitlement_snapshot: {
+          plan: PLAN_KEYS.ESSENTIAL,
+          limits: {
+            maxEventsPerCycle: PLAN_DETAILS.ESSENTIAL.maxEventsPerCycle,
+            maxQrCodesPerEvent: PLAN_DETAILS.ESSENTIAL.maxQrCodesPerEvent,
+            maxAgents: PLAN_DETAILS.ESSENTIAL.maxAgents,
+            maxAreas: PLAN_DETAILS.ESSENTIAL.maxAreas
+          },
+          capabilities: [...PLAN_DETAILS.ESSENTIAL.capabilities]
+        }
+      }
+    });
+
+    await tx.subscriptionAuditLog.create({
+      data: {
+        org_id: org.org_id,
+        actor_user_id: user.user_id,
+        action: "SIGNUP_ESSENTIAL_TRIAL_STARTED",
+        after_snapshot: {
+          plan: PLAN_KEYS.ESSENTIAL,
+          startsAt: trialStartedAt,
+          expiresAt: trialExpiresAt
+        }
       }
     });
 

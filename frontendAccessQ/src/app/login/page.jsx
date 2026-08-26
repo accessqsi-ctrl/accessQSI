@@ -41,6 +41,13 @@ export default function Login() {
             const data = await res.json();
 
             if (data.success) {
+                if (data.welcomeOffer) {
+                    try {
+                        sessionStorage.setItem("accessq-essential-welcome", JSON.stringify(data.welcomeOffer));
+                    } catch {
+                        // La connexion doit rester utilisable si le stockage du navigateur est désactivé.
+                    }
+                }
                 // The backend now sets an HttpOnly cookie securely.
                 // We no longer manually sore it in localStorage.
                 router.push(data.user?.role === "OPERATOR" ? "/scan" : "/dashboard");
@@ -137,6 +144,9 @@ export default function Login() {
                                 <label className="text-sm font-semibold text-slate-700 dark:text-slate-200 block">
                                     Mot de passe
                                 </label>
+                                <Link href="/forgot-password" className="text-sm font-semibold text-blue-600 dark:text-blue-400 hover:underline">
+                                    Mot de passe oublié ?
+                                </Link>
                             </div>
                             <div className="relative">
                                 <input
