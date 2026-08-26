@@ -45,6 +45,21 @@ test("Essential applique 5 événements, 200 QR, 5 agents et 6 zones", () => {
   assert.equal(hasPlanCapability(summary, PLAN_CAPABILITIES.CUSTOM_CARD_TEMPLATES), false);
 });
 
+test("Essential est identifié comme un essai pendant sa période gratuite", () => {
+  const now = new Date("2026-08-26T10:00:00Z");
+  const summary = getPlanSummary({
+    plan: { title: "ESSENTIAL" },
+    subscription_started_at: new Date("2026-08-01T10:00:00Z"),
+    subscription_expires_at: new Date("2026-09-01T10:00:00Z"),
+    trial_started_at: new Date("2026-08-01T10:00:00Z"),
+    trial_expires_at: new Date("2026-09-01T10:00:00Z")
+  }, now);
+
+  assert.equal(summary.plan, "ESSENTIAL");
+  assert.equal(summary.isTrial, true);
+  assert.equal(summary.subscriptionType, "TRIAL");
+});
+
 test("Pro applique 10 événements, 700 QR, 15 agents et 20 zones", () => {
   const summary = getPlanSummary({ plan: { title: "PRO" } });
   assert.equal(getEventQuotaStatus(summary, 9).allowed, true);

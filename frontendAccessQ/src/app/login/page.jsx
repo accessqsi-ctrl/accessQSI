@@ -41,6 +41,13 @@ export default function Login() {
             const data = await res.json();
 
             if (data.success) {
+                if (data.welcomeOffer) {
+                    try {
+                        sessionStorage.setItem("accessq-essential-welcome", JSON.stringify(data.welcomeOffer));
+                    } catch {
+                        // La connexion doit rester utilisable si le stockage du navigateur est désactivé.
+                    }
+                }
                 // The backend now sets an HttpOnly cookie securely.
                 // We no longer manually sore it in localStorage.
                 router.push(data.user?.role === "OPERATOR" ? "/scan" : "/dashboard");

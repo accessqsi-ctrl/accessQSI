@@ -223,6 +223,92 @@ test("POST /user/login returns a token for verified active users", async () => {
     });
 });
 
+test("POST /user/login returns the Essential welcome offer only on the first login", async () => {
+    let lastLoginUpdate = null;
+    const expiry = new Date("2026-09-26T10:00:00Z");
+    const app = loadUserApp({
+        userService: {
+            findByEmail: async () => ({
+                user_id: 7,
+                full_name: "Admin User",
+                email: "admin@example.com",
+                password_hash: "stored-hash",
+                role: "ORG_ADMIN",
+                org_id: 42,
+                is_verified: true,
+                deleted_at: null,
+                last_login: null
+            })
+        },
+        prisma: {
+            organization: {
+                findUnique: async () => ({
+                    org_id: 42,
+                    plan: { title: "ESSENTIAL" },
+                    subscription_started_at: new Date("2026-08-26T10:00:00Z"),
+                    subscription_expires_at: expiry,
+                    trial_started_at: new Date("2026-08-26T10:00:00Z"),
+                    trial_expires_at: expiry
+                })
+            },
+            userQ: {
+                update: async (args) => {
+                    lastLoginUpdate = args;
+                    return {};
+                }
+            }
+        }
+    });
+
+    const res = await request(app, "POST", "/user/login", {
+        email: "admin@example.com",
+        password: "Strong!123"
+    });
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body.welcomeOffer.plan, "ESSENTIAL");
+    assert.equal(res.body.welcomeOffer.expiresAt, expiry.toISOString());
+    assert.equal(res.body.welcomeOffer.features.length > 0, true);
+    assert.deepEqual(lastLoginUpdate.where, { user_id: 7 });
+    assert.ok(lastLoginUpdate.data.last_login instanceof Date);
+});
+
+test("POST /user/login does not return the welcome offer after the first login", async () => {
+    let organizationLookupCalled = false;
+    const app = loadUserApp({
+        userService: {
+            findByEmail: async () => ({
+                user_id: 7,
+                full_name: "Admin User",
+                email: "admin@example.com",
+                password_hash: "stored-hash",
+                role: "ORG_ADMIN",
+                org_id: 42,
+                is_verified: true,
+                deleted_at: null,
+                last_login: new Date("2026-08-26T10:00:00Z")
+            })
+        },
+        prisma: {
+            organization: {
+                findUnique: async () => {
+                    organizationLookupCalled = true;
+                    return null;
+                }
+            }
+        }
+    });
+
+    const res = await request(app, "POST", "/user/login", {
+        email: "admin@example.com",
+        password: "Strong!123"
+    });
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body.welcomeOffer, null);
+    assert.equal(organizationLookupCalled, false);
+});
+
 test("POST /user/login normalizes email casing and surrounding spaces", async () => {
     let lookedUpEmail;
     const app = loadUserApp({
