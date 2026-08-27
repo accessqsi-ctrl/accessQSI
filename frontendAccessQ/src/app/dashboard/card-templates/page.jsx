@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Check, Copy, ImagePlus, Loader2, Pencil, Plus, Save, Star, Trash2, X } from "lucide-react";
 import { apiFetch, apiUrl } from "../../lib/api";
 import { useUserPlan } from "../../lib/useUserPlan";
+import DismissiblePlanPromotion from "../../components/DismissiblePlanPromotion";
 
 const BASE_TEMPLATES = [
     { id: "event-ticket", name: "Billet événement", format: "Horizontal", accent: "#2563eb", soft: "#dbeafe" },
@@ -80,7 +81,7 @@ export default function CardTemplatesPage() {
     const [showWorkflowGuide, setShowWorkflowGuide] = useState(false);
     const [templateToDelete, setTemplateToDelete] = useState(null);
     const [uploadingPrimaryImage, setUploadingPrimaryImage] = useState(false);
-    const { isFreePlan, planName, profileLoading } = useUserPlan();
+    const { userProfile, isFreePlan, planName, profileLoading } = useUserPlan();
 
     useEffect(() => {
         setShowWorkflowGuide(localStorage.getItem(MODEL_WORKFLOW_ONBOARDING_KEY) !== "true");
@@ -205,9 +206,9 @@ export default function CardTemplatesPage() {
             )}
 
             {isFreePlan && (
-                <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-200">
+                <DismissiblePlanPromotion promotionId="card-templates-pro" userId={userProfile?.user_id} className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 pr-12 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-200">
                     <span className="font-semibold">Plan {planName || "Free"}</span> · Passez au plan Pro pour profiter des modèles personnalisés et des actions de publication.
-                </div>
+                </DismissiblePlanPromotion>
             )}
 
             {notice && <div role="status" className={`rounded-xl border px-4 py-3 text-sm font-semibold ${notice.type === "error" ? "border-red-200 bg-red-50 text-red-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"}`}>{notice.text}</div>}

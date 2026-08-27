@@ -3,13 +3,15 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { CheckCircle, KeyRound, Loader2 } from "lucide-react";
+import { CheckCircle, Eye, EyeOff, KeyRound, Loader2 } from "lucide-react";
 import { apiUrl } from "../lib/api";
 
 function ResetPasswordContent() {
     const token = useSearchParams().get("token") || "";
     const [password, setPassword] = useState("");
     const [confirmation, setConfirmation] = useState("");
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmation, setShowConfirmation] = useState(false);
     const [message, setMessage] = useState("");
     const [error, setError] = useState(token ? "" : "Ce lien de réinitialisation est invalide ou incomplet.");
     const [loading, setLoading] = useState(false);
@@ -59,11 +61,21 @@ function ResetPasswordContent() {
                         {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">{error}</div>}
                         <div>
                             <label htmlFor="password" className="mb-1.5 block text-sm font-semibold">Nouveau mot de passe</label>
-                            <input id="password" type="password" required autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-800 dark:bg-slate-900" />
+                            <div className="relative">
+                                <input id="password" type={showPassword ? "text" : "password"} required autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 pr-12 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-800 dark:bg-slate-900" />
+                                <button type="button" onClick={() => setShowPassword((visible) => !visible)} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 transition-colors hover:text-slate-700 dark:hover:text-slate-200" aria-label={showPassword ? "Masquer le nouveau mot de passe" : "Afficher le nouveau mot de passe"} aria-pressed={showPassword}>
+                                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                                </button>
+                            </div>
                         </div>
                         <div>
                             <label htmlFor="confirmation" className="mb-1.5 block text-sm font-semibold">Confirmer le mot de passe</label>
-                            <input id="confirmation" type="password" required autoComplete="new-password" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-800 dark:bg-slate-900" />
+                            <div className="relative">
+                                <input id="confirmation" type={showConfirmation ? "text" : "password"} required autoComplete="new-password" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 pr-12 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-800 dark:bg-slate-900" />
+                                <button type="button" onClick={() => setShowConfirmation((visible) => !visible)} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 transition-colors hover:text-slate-700 dark:hover:text-slate-200" aria-label={showConfirmation ? "Masquer la confirmation du mot de passe" : "Afficher la confirmation du mot de passe"} aria-pressed={showConfirmation}>
+                                    {showConfirmation ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                                </button>
+                            </div>
                         </div>
                         <button disabled={loading || !token} className="w-full rounded-lg bg-gradient-to-r from-blue-600 to-emerald-500 px-4 py-3 font-semibold text-white disabled:opacity-60">{loading ? "Mise à jour..." : "Modifier le mot de passe"}</button>
                         <Link href="/forgot-password" className="block text-center text-sm font-semibold text-blue-600 hover:underline dark:text-blue-400">Demander un nouveau lien</Link>

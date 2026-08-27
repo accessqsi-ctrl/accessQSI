@@ -8,6 +8,7 @@ import { apiFetch, apiUrl, refreshSession } from "../../../lib/api";
 import LoadingBar from "../../../components/LoadingBar";
 import { useUserPlan } from "../../../lib/useUserPlan";
 import PlanQuotaStatus from "../../../components/PlanQuotaStatus";
+import DismissiblePlanPromotion from "../../../components/DismissiblePlanPromotion";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -817,9 +818,9 @@ export default function EventDetailPage() {
                 </div>
                 <PlanQuotaStatus label="QR émis pour cet événement" quota={qrQuota} className="mt-6" />
                 {isFreePlan && (
-                    <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-200">
+                    <DismissiblePlanPromotion promotionId="event-import-export" userId={userProfile?.user_id} className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 pr-12 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-200">
                         <span className="font-semibold">Plan {planName || "Découverte"}</span> · Passez à Essential ou Pro pour profiter des imports CSV et des exports.
-                    </div>
+                    </DismissiblePlanPromotion>
                 )}
                 {(exportingFormat || downloadingTemplate) && (
                     <LoadingBar
