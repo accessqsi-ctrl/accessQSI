@@ -6,6 +6,7 @@ import { CalendarPlus, CheckCircle2, Download, Loader2, MapPinned, Palette, Penc
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { apiFetch, apiUrl, refreshSession } from "../lib/api";
 import LoadingBar from "../components/LoadingBar";
+import DismissiblePlanPromotion from "../components/DismissiblePlanPromotion";
 import { useUserPlan } from "../lib/useUserPlan";
 
 const ONBOARDING_STORAGE_KEY = "qrAccessDashboardOnboardingV2Dismissed";
@@ -185,10 +186,10 @@ export default function Dashboard() {
                         </button>
                     </div>
                 </div>
-                {!canExportScans && (
-                    <div className="relative z-10 mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-200">
+                {!canExportScans && !isAgent && (
+                    <DismissiblePlanPromotion promotionId="dashboard-exports" userId={userProfile?.user_id} className="relative z-10 mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 pr-12 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-200">
                         <span className="font-semibold">Plan {planName || "Découverte"}</span> · Passez à Essential ou Pro pour profiter des exports CSV et PDF.
-                    </div>
+                    </DismissiblePlanPromotion>
                 )}
                 {exportingFormat && (
                     <LoadingBar label={`Préparation export ${exportingFormat.toUpperCase()}`} className="relative z-10 mt-6" />
@@ -431,7 +432,7 @@ export default function Dashboard() {
                 </div>
             </div>
             ) : (
-                <div className="flex flex-col gap-4 rounded-lg border border-amber-200 bg-amber-50 p-5 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100 sm:flex-row sm:items-center">
+                <DismissiblePlanPromotion promotionId="dashboard-advanced-statistics" userId={userProfile?.user_id} className="flex flex-col gap-4 rounded-lg border border-amber-200 bg-amber-50 p-5 pr-12 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100 sm:flex-row sm:items-center">
                     <div className="min-w-0 flex-1">
                         <h3 className="font-bold">Statistiques avancées</h3>
                         <p className="mt-1 text-sm text-amber-800 dark:text-amber-200">
@@ -443,7 +444,7 @@ export default function Dashboard() {
                             Découvrir Pro
                         </Link>
                     )}
-                </div>
+                </DismissiblePlanPromotion>
             )}
 
             {/* **************************************** */}
