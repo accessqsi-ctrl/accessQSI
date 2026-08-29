@@ -33,7 +33,7 @@ const PLAN_CAPABILITIES = Object.freeze({
 
 const scalePrices = (factor) => Object.freeze({
     USD: Number((10 * factor).toFixed(2)),
-    CDF: Math.round(23000 * factor),
+    CDF: Math.round(22500 * factor),
     XOF: Math.round(5800 * factor),
     XAF: Math.round(5800 * factor),
     RWF: Math.round(14700 * factor),

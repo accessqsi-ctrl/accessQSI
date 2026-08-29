@@ -181,13 +181,13 @@ export default function CardTemplatesPage() {
     if (loading) return <div className="flex min-h-[55vh] items-center justify-center"><Loader2 className="h-9 w-9 animate-spin text-blue-600" /></div>;
 
     return (
-        <div className="mx-auto max-w-7xl space-y-6">
+        <div className="aq-page space-y-6">
             {/* **************************************** */}
             {/* En-tête et action de création */}
             {/* **************************************** */}
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-                <div><h1 className="text-2xl font-black text-slate-950 dark:text-white">Modèles de cartes</h1><p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Créez une identité visuelle pour vos billets, badges et invitations.</p><p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Pour des modeles avancés, contactez nous, notre équipe est là pour vous aider.</p></div>
-                <button onClick={openNew} disabled={isFreePlan} className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-black text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"><Plus className="h-4 w-4" /> Nouveau modèle</button>
+            <div className="aq-page-header">
+                <div><p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-blue-700 dark:text-blue-300">Identité des accès</p><h1 className="aq-page-title">Modèles de cartes</h1><p className="aq-page-subtitle">Créez une identité visuelle pour vos billets, badges et invitations.</p><p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Pour des modèles avancés, contactez-nous : notre équipe est là pour vous aider.</p></div>
+                <button onClick={openNew} disabled={isFreePlan} className="aq-button-primary"><Plus className="h-4 w-4" /> Nouveau modèle</button>
             </div>
 
             {/* **************************************** */}
@@ -220,7 +220,7 @@ export default function CardTemplatesPage() {
                 <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center dark:border-slate-700 dark:bg-slate-950"><div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600"><Plus /></div><h2 className="font-black text-slate-900 dark:text-white">Aucun modèle personnalisé</h2><p className="mt-2 text-sm text-slate-500">Créez votre premier modèle à partir de l’un des 4 formats disponibles.</p><button onClick={openNew} disabled={isFreePlan} title={isFreePlan ? "Disponible avec le plan Pro" : "Créer un modèle"} className="mt-5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50">Créer un modèle</button></div>
             ) : (
                 <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">{templates.map(template => (
-                    <article key={template.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                    <article key={template.id} className="aq-panel">
                         <div className="bg-slate-100 p-5 dark:bg-slate-900"><TemplatePreview template={template} /></div>
                         <div className="p-5"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><h2 className="truncate font-black text-slate-900 dark:text-white">{template.name}</h2><p className="mt-1 text-xs text-slate-500">{BASE_TEMPLATES.find(item => item.id === template.baseTemplateId)?.name} · {template.status === "DRAFT" ? "Brouillon" : template.status === "ARCHIVED" ? "Archivé" : "Publié"}</p></div>{defaultId === template.templateId && <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-1 text-[10px] font-black text-amber-700"><Star className="h-3 w-3 fill-current" /> PAR DÉFAUT</span>}</div>
                             <div className="mt-5 grid grid-cols-5 gap-2">

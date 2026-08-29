@@ -175,14 +175,15 @@ export default function PdfTemplatesPage() {
     }
 
     return (
-        <div className="mx-auto max-w-7xl space-y-6">
+        <div className="aq-page space-y-6">
             {/* **************************************** */}
             {/* En-tête et réinitialisation du formulaire */}
             {/* **************************************** */}
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div className="aq-page-header">
                 <div>
-                    <h1 className="text-2xl font-black text-slate-950 dark:text-white">Modèles PDF</h1>
-                    <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300">
+                    <p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-blue-700 dark:text-blue-300">Documents d'accès</p>
+                    <h1 className="aq-page-title">Modèles PDF</h1>
+                    <p className="aq-page-subtitle">
                         Choisissez un modèle, donnez-lui un nom, prévisualisez le document et téléchargez le PDF final.
                     </p>
                 </div>
@@ -193,7 +194,7 @@ export default function PdfTemplatesPage() {
                         setGeneratedDocument(null);
                         setError("");
                     }}
-                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-900"
+                    className="aq-button-secondary"
                 >
                     <RefreshCw className="h-4 w-4" />
                     Réinitialiser
@@ -281,7 +282,7 @@ export default function PdfTemplatesPage() {
                         <button
                             type="submit"
                             disabled={generating || !selectedTemplateId}
-                            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-black text-white shadow-lg shadow-blue-600/15 transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-black text-white shadow-sm transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                             {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                             Générer le PDF

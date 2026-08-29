@@ -103,20 +103,21 @@ export default function AreasPage() {
     };
 
     return (
-        <div className="max-w-7xl mx-auto space-y-6">
+        <div className="aq-page space-y-6">
             {/* **************************************** */}
             {/* En-tête et action d'ajout */}
             {/* **************************************** */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="aq-page-header">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Zones d'accès</h1>
-                    <p className="text-slate-500 dark:text-slate-400 mt-1">Gérez les lieux physiques de votre organisation.</p>
+                    <p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-blue-700 dark:text-blue-300">Périmètres d'accès</p>
+                    <h1 className="aq-page-title">Zones d'accès</h1>
+                    <p className="aq-page-subtitle">Gérez les lieux physiques de votre organisation.</p>
                 </div>
                 <button
                     onClick={() => { setEditingArea(null); setFormData({ area_name: "", accreditation_level: 1 }); setIsModalOpen(true); }}
                     disabled={areaQuotaReached}
                     title={areaQuotaReached ? "Quota de zones atteint" : "Ajouter une zone"}
-                    className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl shadow-sm transition-all text-sm disabled:cursor-not-allowed disabled:opacity-50"
+                    className="aq-button-primary"
                 >
                     <Plus className="w-5 h-5" />
                     Ajouter une zone
@@ -134,11 +135,11 @@ export default function AreasPage() {
             {/* **************************************** */}
             {/* Tableau des zones d'accès */}
             {/* **************************************** */}
-            <div className="bg-white dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+            <div className="aq-panel">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                         <thead>
-                            <tr className="bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 text-sm border-b border-slate-200 dark:border-slate-800">
+                            <tr className="aq-table-head text-sm">
                                 <th className="px-6 py-4 font-semibold uppercase tracking-wider">Nom de la zone</th>
                                 <th className="px-6 py-4 font-semibold uppercase tracking-wider">Niveau d'accréditation</th>
                                 <th className="px-6 py-4 font-semibold uppercase tracking-wider text-right">Actions</th>

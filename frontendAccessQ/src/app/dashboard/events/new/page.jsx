@@ -118,17 +118,18 @@ export default function NewEventPage() {
     };
 
     return (
-        <div className="max-w-4xl mx-auto space-y-6">
+        <div className="mx-auto max-w-4xl space-y-6 pb-8">
             {/* **************************************** */}
             {/* Retour et en-tête de la page */}
             {/* **************************************** */}
-            <div className="flex items-center gap-4 mb-8">
+            <div className="aq-page-header mb-8 justify-start">
                 <Link href="/dashboard/events" className="p-2 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
                 </Link>
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Créer un événement</h1>
-                    <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Associez une période de validité aux zones de contrôle.</p>
+                    <p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-blue-700 dark:text-blue-300">Nouvel accès</p>
+                    <h1 className="aq-page-title">Créer un événement</h1>
+                    <p className="aq-page-subtitle">Associez une période de validité aux zones de contrôle.</p>
                 </div>
             </div>
 
@@ -165,7 +166,7 @@ export default function NewEventPage() {
             {/* **************************************** */}
             {/* Formulaire de création de l'événement */}
             {/* **************************************** */}
-            <form onSubmit={handleSubmit} className="bg-white dark:bg-slate-950 p-6 sm:p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-8">
+            <form onSubmit={handleSubmit} className="aq-panel space-y-8 p-6 sm:p-8">
                 <fieldset disabled={profileLoading || (eventQuotaReached && !formData.eventPassId)} className="contents">
                 {loading && (
                     <LoadingBar label="Création de l'événement" />
@@ -272,7 +273,7 @@ export default function NewEventPage() {
                     <button
                         type="submit"
                         disabled={loading || profileLoading || (eventQuotaReached && !formData.eventPassId)}
-                        className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl shadow-lg shadow-blue-500/20 active:scale-95 transition-all text-sm flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                        className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl shadow-sm active:scale-95 transition-all text-sm flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
                     >
                         {loading ? (
                             <Loader2 className="w-4 h-4 animate-spin" />

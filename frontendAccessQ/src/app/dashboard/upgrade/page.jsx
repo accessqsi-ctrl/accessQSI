@@ -281,8 +281,8 @@ export default function UpgradePage() {
     const activePasses = billing.eventPasses.filter((item) => item.status === "AVAILABLE");
 
     return (
-        <div className="mx-auto flex max-w-7xl flex-col gap-6">
-            <section className="rounded-3xl bg-gradient-to-br from-slate-950 via-blue-950 to-blue-700 p-7 text-white shadow-xl lg:p-10">
+        <div className="aq-page flex flex-col gap-6">
+            <section className="rounded-3xl bg-slate-950 p-7 text-white shadow-xl dark:bg-gradient-to-br dark:from-slate-950 dark:via-blue-950 dark:to-blue-700 lg:p-10">
                 <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
                     <div>
                         <p className="text-sm font-bold uppercase tracking-[0.2em] text-blue-200">Offres AccessQ</p>

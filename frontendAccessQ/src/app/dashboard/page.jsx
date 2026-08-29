@@ -155,21 +155,22 @@ export default function Dashboard() {
     }
 
     return (
-        <div className="max-w-7xl mx-auto space-y-8">
+        <div className="aq-page space-y-8">
             {/* **************************************** */}
             {/* En-tête du tableau de bord et actions d'export */}
             {/* **************************************** */}
-            <div className="relative overflow-hidden bg-white dark:bg-slate-950 rounded-2xl p-8 border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-black/20">
+            <div className="aq-page-header">
                 <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div>
-                        <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white mb-2 mt-2">Tableau de bord{userName ? `, ${userName}` : ""}</h2>
-                        <p className="text-slate-500 dark:text-slate-400 text-base">Suivi des accès, des scans et des agents de votre organisation.</p>
+                        <p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-blue-700 dark:text-blue-300">Centre de contrôle</p>
+                        <h2 className="aq-page-title">Tableau de bord{userName ? `, ${userName}` : ""}</h2>
+                        <p className="aq-page-subtitle">Suivi des accès, des scans et des agents de votre organisation.</p>
                     </div>
                     <div className="flex gap-3">
                         <button 
                             onClick={() => handleExport('csv')}
                             disabled={exportingFormat === "csv" || !canExportScans}
-                            className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold rounded-xl transition-colors border border-slate-200 dark:border-slate-800 disabled:opacity-60"
+                            className="aq-button-secondary"
                             title={!canExportScans ? "Disponible à partir du plan Essential" : "Exporter en CSV"}
                         >
                             {exportingFormat === "csv" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
@@ -178,7 +179,7 @@ export default function Dashboard() {
                         <button 
                             onClick={() => handleExport('pdf')}
                             disabled={exportingFormat === "pdf" || !canExportScans}
-                            className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-900 dark:text-white font-semibold rounded-xl shadow-sm transition-colors border border-slate-200 dark:border-slate-800 disabled:opacity-60"
+                            className="aq-button-secondary"
                             title={!canExportScans ? "Disponible à partir du plan Essential" : "Exporter en PDF"}
                         >
                             {exportingFormat === "pdf" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
@@ -273,7 +274,7 @@ export default function Dashboard() {
                 {/* **************************************** */}
                 {/* Indicateur des QR actifs */}
                 {/* **************************************** */}
-                <div className="bg-white dark:bg-slate-950 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-black/20 hover:shadow-md transition-shadow">
+                <div className="aq-panel p-6 hover:shadow-md transition-shadow">
                     <div className="flex items-center gap-4 mb-4">
                         <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
@@ -289,7 +290,7 @@ export default function Dashboard() {
                 {/* **************************************** */}
                 {/* Indicateur des scans enregistrés */}
                 {/* **************************************** */}
-                <div className="bg-white dark:bg-slate-950 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-black/20 hover:shadow-md transition-shadow">
+                <div className="aq-panel p-6 hover:shadow-md transition-shadow">
                     <div className="flex items-center gap-4 mb-4">
                         <div className="w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600">
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
@@ -305,7 +306,7 @@ export default function Dashboard() {
                 {/* **************************************** */}
                 {/* Indicateur des événements à venir */}
                 {/* **************************************** */}
-                <div className="bg-white dark:bg-slate-950 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-black/20 hover:shadow-md transition-shadow">
+                <div className="aq-panel p-6 hover:shadow-md transition-shadow">
                     <div className="flex items-center gap-4 mb-4">
                         <div className="w-12 h-12 rounded-xl bg-orange-50 flex items-center justify-center text-orange-600">
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
@@ -323,7 +324,7 @@ export default function Dashboard() {
                 {/* **************************************** */}
                 {/* Indicateur des agents actifs */}
                 {/* **************************************** */}
-                <div className="bg-white dark:bg-slate-950 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-black/20 hover:shadow-md transition-shadow">
+                <div className="aq-panel p-6 hover:shadow-md transition-shadow">
                     <div className="flex items-center gap-4 mb-4">
                         <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
@@ -347,7 +348,7 @@ export default function Dashboard() {
                 {/* **************************************** */}
                 {/* Courbe d'activité des scans */}
                 {/* **************************************** */}
-                <div className="lg:col-span-2 bg-white dark:bg-slate-950 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-black/20">
+                <div className="aq-panel lg:col-span-2 p-6">
                     <div className="flex items-center justify-between mb-8">
                         <div>
                             <h3 className="text-lg font-bold text-slate-900 dark:text-white">Activité des scans</h3>
@@ -392,7 +393,7 @@ export default function Dashboard() {
                 {/* **************************************** */}
                 {/* Classement des agents */}
                 {/* **************************************** */}
-                <div className="bg-white dark:bg-slate-950 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-black/20">
+                <div className="aq-panel p-6">
                     <div className="flex items-center justify-between mb-8">
                         <div>
                             <h3 className="text-lg font-bold text-slate-900 dark:text-white">Agents les plus actifs</h3>
@@ -450,7 +451,7 @@ export default function Dashboard() {
             {/* **************************************** */}
             {/* Tableau des derniers scans */}
             {/* **************************************** */}
-            <div className="bg-white dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-black/20 overflow-hidden">
+            <div className="aq-panel">
                 <div className="px-8 py-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                     <h3 className="text-lg font-bold text-slate-900 dark:text-white">Derniers scans</h3>
                 </div>
