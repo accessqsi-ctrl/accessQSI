@@ -197,11 +197,14 @@ export default function SettingsPage() {
             {/* **************************************** */}
             {/* En-tête des paramètres */}
             {/* **************************************** */}
-            <div>
-                <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Paramètres</h1>
-                <p className="text-slate-500 dark:text-slate-400 mt-1">
+            <div className="aq-page-header">
+                <div>
+                <p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-blue-700 dark:text-blue-300">Compte et organisation</p>
+                <h1 className="aq-page-title">Paramètres</h1>
+                <p className="aq-page-subtitle">
                     {isOperator ? "Modifiez le mot de passe de votre compte." : "Gérez vos informations personnelles et celles de votre organisation."}
                 </p>
+                </div>
             </div>
 
             <div className={`grid grid-cols-1 gap-8 ${isOperator ? "max-w-2xl mx-auto" : "md:grid-cols-3"}`}>

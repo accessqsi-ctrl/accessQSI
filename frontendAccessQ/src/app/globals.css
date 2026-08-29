@@ -3,6 +3,16 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --aq-ink: #0b1633;
+  --aq-primary: #1d4ed8;
+  --aq-primary-strong: #173ea6;
+  --aq-signal: #10b981;
+  --aq-canvas: #fbfbfb;
+  --aq-surface: #ffffff;
+  --aq-border: #dfe7f1;
+  --aq-muted: #607089;
+  --aq-shadow-sm: 0 1px 2px rgb(15 23 42 / 0.05), 0 8px 24px rgb(15 23 42 / 0.045);
+  --aq-shadow-md: 0 18px 45px -24px rgb(15 23 42 / 0.22);
   color-scheme: light;
 }
 
@@ -26,7 +36,291 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+/* AccessQ application language */
+.aq-app-shell {
+  background: var(--aq-canvas);
+}
+
+.aq-app-main {
+  position: relative;
+  background-color: transparent;
+  background-image:
+    linear-gradient(rgb(15 23 42 / 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(15 23 42 / 0.055) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+.aq-sidebar {
+  position: relative;
+  background: linear-gradient(180deg, #ffffff 0%, #fafafa 62%, #f5f5f5 100%);
+  border-color: var(--aq-border);
+  box-shadow: 8px 0 32px rgb(15 23 42 / 0.04);
+}
+
+.aq-sidebar::after {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  content: "";
+  background: var(--aq-primary);
+}
+
+.aq-topbar {
+  border-color: rgb(203 213 225 / 0.7);
+  background: rgb(255 255 255 / 0.76);
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.8);
+}
+
+.aq-page {
+  width: 100%;
+  max-width: 80rem;
+  margin-inline: auto;
+  padding-bottom: 2rem;
+}
+
+.aq-page-header {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  overflow: hidden;
+  padding: 1.5rem;
+  border: 1px solid var(--aq-border);
+  border-radius: 1.25rem;
+  background: #ffffff;
+  box-shadow: var(--aq-shadow-sm);
+}
+
+.aq-page-header::before {
+  position: absolute;
+  z-index: -1;
+  top: -7rem;
+  right: -5rem;
+  width: 18rem;
+  height: 18rem;
+  content: "";
+  border-radius: 999px;
+  display: none;
+}
+
+.aq-page-header::after {
+  position: absolute;
+  z-index: -1;
+  inset: auto 0 0;
+  height: 3px;
+  content: "";
+  background: var(--aq-primary);
+}
+
+.aq-page-title {
+  color: var(--aq-ink);
+  font-size: clamp(1.5rem, 2vw, 2rem);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.15;
+}
+
+.aq-page-subtitle {
+  max-width: 44rem;
+  margin-top: 0.5rem;
+  color: var(--aq-muted);
+  font-size: 0.925rem;
+  line-height: 1.55;
+}
+
+.aq-panel {
+  overflow: hidden;
+  border: 1px solid var(--aq-border);
+  border-radius: 1.25rem;
+  background: var(--aq-surface);
+  box-shadow: var(--aq-shadow-sm);
+}
+
+.aq-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--aq-border);
+  border-radius: 1rem;
+  background: rgb(255 255 255 / 0.9);
+  box-shadow: var(--aq-shadow-sm);
+  backdrop-filter: blur(12px);
+}
+
+.aq-button-primary {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1.15rem;
+  border: 1px solid rgb(23 62 166 / 0.18);
+  border-radius: 0.85rem;
+  background: var(--aq-primary);
+  box-shadow: 0 5px 12px -8px rgb(15 23 42 / 0.55);
+  color: #ffffff;
+  font-size: 0.875rem;
+  font-weight: 700;
+  transition: transform 180ms ease, box-shadow 180ms ease, background 180ms ease;
+}
+
+.aq-button-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: var(--aq-primary-strong);
+  box-shadow: 0 7px 14px -8px rgb(15 23 42 / 0.6);
+}
+
+.aq-button-primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.aq-button-primary:disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
+  box-shadow: none;
+}
+
+.aq-button-secondary {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1rem;
+  border: 1px solid var(--aq-border);
+  border-radius: 0.85rem;
+  background: #ffffff;
+  color: #334155;
+  font-size: 0.875rem;
+  font-weight: 700;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.04);
+  transition: border-color 180ms ease, background 180ms ease, color 180ms ease;
+}
+
+.aq-button-secondary:hover:not(:disabled) {
+  border-color: #b9c8dd;
+  background: #f7f7f7;
+  color: var(--aq-primary-strong);
+}
+
+.aq-button-secondary:disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
+}
+
+.aq-table-head {
+  border-bottom: 1px solid var(--aq-border);
+  background: #f5f5f5;
+  color: #52627a;
+}
+
+.aq-table-head th {
+  font-size: 0.7rem;
+  font-weight: 750;
+  letter-spacing: 0.075em;
+}
+
+@media (prefers-color-scheme: light) {
+  .aq-app-shell [class~="bg-blue-50"],
+  .aq-app-shell [class~="bg-blue-50/60"],
+  .aq-app-shell [class~="bg-blue-50/70"] {
+    background-color: #f7f7f7;
+  }
+
+  .aq-app-shell [class~="bg-blue-100"],
+  .aq-app-shell [class~="bg-blue-200"] {
+    background-color: #eeeeee;
+  }
+
+  .aq-app-shell [class~="hover:bg-blue-50"]:hover,
+  .aq-app-shell [class~="hover:bg-blue-50/70"]:hover,
+  .aq-app-shell [class~="hover:bg-blue-100"]:hover {
+    background-color: #eeeeee;
+  }
+}
+
+@media (max-width: 639px) {
+  .aq-page-header,
+  .aq-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .aq-app-shell {
+    background: #020617;
+  }
+
+  .aq-app-main {
+    background-image:
+      linear-gradient(rgb(96 165 250 / 0.07) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(96 165 250 / 0.07) 1px, transparent 1px);
+  }
+
+  .aq-sidebar,
+  .aq-topbar,
+  .aq-page-header,
+  .aq-panel,
+  .aq-toolbar {
+    border-color: #1e293b;
+    background: rgb(2 6 23 / 0.94);
+  }
+
+  .aq-sidebar {
+    background: #020617;
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.18);
+  }
+
+  .aq-sidebar::after {
+    display: none;
+  }
+
+  .aq-topbar {
+    border-color: rgb(30 41 59 / 0.6);
+    background: rgb(2 6 23 / 0.5);
+  }
+
+  .aq-page-header::after {
+    background: linear-gradient(90deg, #2563eb, #10b981);
+  }
+
+  .aq-page-header::before {
+    display: block;
+  }
+
+  .aq-page-title {
+    color: #f8fafc;
+  }
+
+  .aq-page-subtitle {
+    color: #94a3b8;
+  }
+
+  .aq-button-secondary {
+    border-color: #334155;
+    background: #0f172a;
+    color: #e2e8f0;
+  }
+
+  .aq-button-secondary:hover:not(:disabled) {
+    border-color: #475569;
+    background: #172033;
+    color: #ffffff;
+  }
+
+  .aq-table-head {
+    border-color: #1e293b;
+    background: #0f172a;
+    color: #cbd5e1;
+  }
 }
 
 .landing-grid {

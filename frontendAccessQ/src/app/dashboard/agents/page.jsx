@@ -203,20 +203,21 @@ export default function AgentsPage() {
     }
 
     return (
-        <div className="max-w-7xl mx-auto space-y-6">
+        <div className="aq-page space-y-6">
             {/* **************************************** */}
             {/* En-tête et action d'ajout */}
             {/* **************************************** */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="aq-page-header">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Agents et équipe</h1>
-                    <p className="text-slate-500 dark:text-slate-400 mt-1">Gérez les membres autorisés à scanner les codes QR.</p>
+                    <p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-blue-700 dark:text-blue-300">Équipe de contrôle</p>
+                    <h1 className="aq-page-title">Agents et équipe</h1>
+                    <p className="aq-page-subtitle">Gérez les membres autorisés à scanner les codes QR.</p>
                 </div>
                 <button
                     onClick={() => setIsAddModalOpen(true)}
                     disabled={agentQuotaReached}
                     title={agentQuotaReached ? "Quota d'agents atteint" : "Ajouter un agent"}
-                    className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl shadow-sm hover:shadow active:scale-95 transition-all text-sm disabled:cursor-not-allowed disabled:opacity-50"
+                    className="aq-button-primary"
                 >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>
                     Ajouter un agent
@@ -231,7 +232,7 @@ export default function AgentsPage() {
             {/* **************************************** */}
             {/* Résumé des comptes actifs et inactifs */}
             {/* **************************************** */}
-            <div className="bg-white dark:bg-slate-950 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-black/20 flex flex-col md:flex-row items-center gap-8">
+            <div className="aq-panel flex flex-col items-center gap-8 p-6 md:flex-row">
                 <div className="flex-1 flex items-center gap-4 w-full">
                     <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
@@ -259,7 +260,7 @@ export default function AgentsPage() {
             {/* **************************************** */}
             {/* Recherche et filtres */}
             {/* **************************************** */}
-            <div className="bg-white dark:bg-slate-950 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
+            <div className="aq-toolbar flex-col md:flex-row">
                 <div className="relative w-full md:w-96">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <svg className="h-5 w-5 text-slate-400 dark:text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -293,11 +294,11 @@ export default function AgentsPage() {
             {/* **************************************** */}
             {/* Tableau des agents */}
             {/* **************************************** */}
-            <div className="bg-white dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+            <div className="aq-panel">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse min-w-[800px]">
                         <thead>
-                            <tr className="bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 text-sm border-b border-slate-200 dark:border-slate-800">
+                            <tr className="aq-table-head text-sm">
                                 <th className="px-6 py-4 font-semibold uppercase tracking-wider">Détails Agent</th>
                                 <th className="px-6 py-4 font-semibold uppercase tracking-wider">Rôle</th>
                                 <th className="px-6 py-4 font-semibold uppercase tracking-wider">Statut</th>
@@ -500,7 +501,7 @@ export default function AgentsPage() {
                             <button
                                 type="submit"
                                 disabled={adding}
-                                className="w-full mt-6 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                                className="w-full mt-6 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-sm active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                             >
                                 {adding ? <Loader2 className="w-5 h-5 animate-spin"/> : "Envoyer l'Invitation"}
                             </button>

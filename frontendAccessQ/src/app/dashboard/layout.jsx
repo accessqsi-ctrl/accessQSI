@@ -115,11 +115,11 @@ export default function DashboardLayout({ children }) {
     }
 
     return (
-        <div className="flex h-screen bg-slate-50 dark:bg-slate-950 font-sans text-slate-900 dark:text-white overflow-hidden">
+        <div className="aq-app-shell flex h-screen font-sans text-slate-900 dark:text-white overflow-hidden">
             {/* **************************************** */}
             {/* Navigation latérale sur ordinateur */}
             {/* **************************************** */}
-            <aside className="hidden lg:flex flex-col w-64 bg-white dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800 shadow-sm z-20">
+            <aside className="aq-sidebar hidden lg:flex flex-col w-64 border-r z-20">
                 {/* **************************************** */}
                 {/* Logo de l'application */}
                 {/* **************************************** */}
@@ -147,11 +147,11 @@ export default function DashboardLayout({ children }) {
                             <Link
                                 key={item.name}
                                 href={item.href}
-                                className={`flex items-center gap-3 px-3.5 py-2.5 rounded-lg font-medium text-sm transition-colors ${isActive
-                                    ? "bg-blue-50 text-blue-700 border border-blue-100/50 shadow-sm"
+                                className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-semibold text-sm transition-all ${isActive
+                                    ? "bg-blue-50 text-blue-800 border border-blue-100 shadow-sm dark:bg-blue-50 dark:text-blue-700 dark:border-blue-100/50"
                                     : item.special
-                                        ? "bg-blue-600 text-white hover:bg-blue-700 shadow-md shadow-blue-500/20"
-                                        : "text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
+                                        ? "bg-blue-700 text-white hover:bg-blue-800 shadow-sm dark:bg-blue-600 dark:hover:bg-blue-700 dark:shadow-md dark:shadow-blue-500/20"
+                                        : "text-slate-600 dark:text-slate-300 hover:bg-blue-50/70 dark:hover:bg-slate-800 hover:text-blue-900 dark:hover:text-white"
                                     }`}
                             >
                                 {ItemIcon ? (
@@ -203,7 +203,7 @@ export default function DashboardLayout({ children }) {
                 {/* **************************************** */}
                 {/* En-tête de navigation sur mobile */}
                 {/* **************************************** */}
-                <header className="lg:hidden h-16 bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-4 z-20 shadow-sm">
+                <header className="aq-topbar lg:hidden h-16 border-b flex items-center justify-between px-4 z-20 backdrop-blur-md">
                     <Link href={homeHref} className="flex items-center gap-2">
                         <img
                             src="/logo/access_logo.png"
@@ -228,7 +228,7 @@ export default function DashboardLayout({ children }) {
                 {/* **************************************** */}
                 {/* Barre supérieure sur ordinateur */}
                 {/* **************************************** */}
-                <header className="hidden lg:flex h-20 bg-white/50 dark:bg-slate-950/50 backdrop-blur-md border-b border-slate-200/60 dark:border-slate-800/60 items-center justify-between px-8 z-10 sticky top-0">
+                <header className="aq-topbar hidden lg:flex h-20 backdrop-blur-md border-b items-center justify-between px-8 z-10 sticky top-0">
                     <div className="flex items-center">
                         <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">
                             {pageTitle}
@@ -240,7 +240,7 @@ export default function DashboardLayout({ children }) {
                 {/* **************************************** */}
                 {/* Contenu de la page active */}
                 {/* **************************************** */}
-                <main className="flex-1 overflow-y-auto bg-slate-50/50 dark:bg-slate-950 p-4 sm:p-6 lg:p-8">
+                <main className="aq-app-main flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
                     {children}
                 </main>
             </div>
@@ -256,7 +256,7 @@ export default function DashboardLayout({ children }) {
                         onClick={() => setIsMobileNavOpen(false)}
                         className="absolute inset-0 bg-slate-900/45 backdrop-blur-sm"
                     />
-                    <aside className="relative flex h-full w-[min(19rem,86vw)] flex-col bg-white shadow-2xl dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800">
+                    <aside className="aq-sidebar relative flex h-full w-[min(19rem,86vw)] flex-col border-r shadow-2xl">
                         <div className="h-16 flex items-center justify-between px-4 border-b border-slate-100 dark:border-slate-800">
                             <Link href={homeHref} className="flex items-center gap-2">
                                 <img
@@ -286,11 +286,11 @@ export default function DashboardLayout({ children }) {
                                     <Link
                                         key={item.name}
                                         href={item.href}
-                                        className={`flex items-center gap-3 px-3.5 py-3 rounded-lg font-medium text-sm transition-colors ${isActive
-                                            ? "bg-blue-50 text-blue-700 border border-blue-100/50 shadow-sm"
+                                        className={`flex items-center gap-3 px-3.5 py-3 rounded-xl font-semibold text-sm transition-all ${isActive
+                                            ? "bg-blue-50 text-blue-800 border border-blue-100 shadow-sm dark:bg-blue-50 dark:text-blue-700 dark:border-blue-100/50"
                                             : item.special
-                                                ? "bg-blue-600 text-white hover:bg-blue-700 shadow-md shadow-blue-500/20"
-                                                : "text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
+                                                ? "bg-blue-700 text-white hover:bg-blue-800 shadow-sm dark:bg-blue-600 dark:hover:bg-blue-700 dark:shadow-md dark:shadow-blue-500/20"
+                                                : "text-slate-600 dark:text-slate-300 hover:bg-blue-50/70 dark:hover:bg-slate-800 hover:text-blue-900 dark:hover:text-white"
                                             }`}
                                     >
                                         {ItemIcon ? (
@@ -369,8 +369,8 @@ export default function DashboardLayout({ children }) {
                         onClick={() => setWelcomeOffer(null)}
                         className="absolute inset-0 bg-slate-950/65 backdrop-blur-md"
                     />
-                    <div className="relative w-full max-w-lg overflow-hidden rounded-3xl border border-white/20 bg-white shadow-2xl shadow-blue-950/30 dark:bg-slate-900">
-                        <div className="relative overflow-hidden bg-gradient-to-br from-blue-700 via-indigo-600 to-emerald-500 px-6 pb-8 pt-7 text-white sm:px-8">
+                    <div className="relative w-full max-w-lg overflow-hidden rounded-3xl border border-white/20 bg-white shadow-2xl dark:bg-slate-900">
+                        <div className="relative overflow-hidden bg-slate-900 px-6 pb-8 pt-7 text-white sm:px-8 dark:bg-gradient-to-br dark:from-blue-700 dark:via-indigo-600 dark:to-emerald-500">
                             <div className="absolute -right-12 -top-16 h-44 w-44 rounded-full bg-white/15 blur-2xl" />
                             <div className="absolute -bottom-20 -left-10 h-40 w-40 rounded-full bg-emerald-200/20 blur-2xl" />
                             <button
@@ -422,7 +422,7 @@ export default function DashboardLayout({ children }) {
                             <Link
                                 href="/dashboard/getting-started"
                                 onClick={() => setWelcomeOffer(null)}
-                                className="mt-7 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-700 to-indigo-600 px-5 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-600/20 transition hover:-translate-y-0.5 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                                className="mt-7 flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-700 px-5 py-3.5 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:bg-gradient-to-r dark:from-blue-700 dark:to-indigo-600"
                             >
                                 Découvrir mon espace
                                 <ArrowRight className="h-4 w-4" />

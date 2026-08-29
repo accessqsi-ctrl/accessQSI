@@ -8,7 +8,6 @@ import { apiFetch, apiUrl, refreshSession } from "../../../lib/api";
 import LoadingBar from "../../../components/LoadingBar";
 import { useUserPlan } from "../../../lib/useUserPlan";
 import PlanQuotaStatus from "../../../components/PlanQuotaStatus";
-import DismissiblePlanPromotion from "../../../components/DismissiblePlanPromotion";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -189,7 +188,7 @@ export default function EventDetailPage() {
     const [downloadingTemplate, setDownloadingTemplate] = useState(false);
     const [cardTemplates, setCardTemplates] = useState([]);
     const [selectedCardTemplateId, setSelectedCardTemplateId] = useState("");
-    const { userProfile, isFreePlan, planName, planLimits, hasCapability, refreshPlan } = useUserPlan();
+    const { userProfile, planLimits, hasCapability, refreshPlan } = useUserPlan();
     const canManageEvent = userProfile?.role === "ORG_ADMIN" || userProfile?.role === "SUPER_ADMIN";
     const canCreateQr = canManageEvent || userProfile?.role === "ORG_AGENT";
     const eventQrLimit = event?.entitlement_type === "EVENT_PASS" || planLimits?.maxQrCodesPerEvent == null
@@ -704,7 +703,7 @@ export default function EventDetailPage() {
     const canDeleteEvent = deleteConfirmationText.trim() === expectedDeleteConfirmation;
 
     return (
-        <div className="max-w-7xl mx-auto space-y-6">
+        <div className="aq-page space-y-6">
             {/* Retour à la liste et actions sur l'événement */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <Link href="/dashboard/events" className="inline-flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors text-sm font-medium">
@@ -730,9 +729,10 @@ export default function EventDetailPage() {
             </div>
 
             {/* Résumé de l'événement et actions d'export */}
-            <div className="bg-white dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-6 sm:p-8">
-                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                    <div className="space-y-3 flex-1">
+            <div className="aq-page-header p-6 sm:p-8">
+                <div className="w-full">
+                <div className="flex w-full flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0 flex-1 space-y-3">
                         <div className="flex items-center gap-3 flex-wrap">
                             <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${evtStatus.style}`}>{evtStatus.label}</span>
                             <span className="text-xs text-slate-400 dark:text-slate-500 font-medium">ID #{event.id}</span>
@@ -764,7 +764,7 @@ export default function EventDetailPage() {
                             </div>
                         </div>
                     </div>
-                    <div className="flex gap-2 flex-shrink-0">
+                    <div className="flex flex-wrap justify-start gap-2 sm:justify-end">
                         <button
                             onClick={() => handleExport('csv')}
                             disabled={exportingFormat === "csv" || !canExportScans}
@@ -817,22 +817,18 @@ export default function EventDetailPage() {
 
                 </div>
                 <PlanQuotaStatus label="QR émis pour cet événement" quota={qrQuota} className="mt-6" />
-                {isFreePlan && (
-                    <DismissiblePlanPromotion promotionId="event-import-export" userId={userProfile?.user_id} className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 pr-12 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-200">
-                        <span className="font-semibold">Plan {planName || "Découverte"}</span> · Passez à Essential ou Pro pour profiter des imports CSV et des exports.
-                    </DismissiblePlanPromotion>
-                )}
                 {(exportingFormat || downloadingTemplate) && (
                     <LoadingBar
                         label={downloadingTemplate ? "Préparation du modèle CSV" : `Préparation export ${exportingFormat.toUpperCase()}`}
                         className="mt-6"
                     />
                 )}
+                </div>
             </div>
 
             {/* Gestion des codes QR de l'événement */}
             
-            <div className="bg-white dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+            <div className="aq-panel">
                 <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                     <h2 className="text-lg font-bold text-slate-900 dark:text-white">Codes QR de cet événement</h2>
                     <span className="text-sm text-slate-500 dark:text-slate-400">{qrPagination.total} total</span>
@@ -1296,7 +1292,7 @@ export default function EventDetailPage() {
                                 <button
                                     type="submit"
                                     disabled={generatingQr || qrQuotaReached}
-                                    className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl shadow-lg shadow-blue-600/20 active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-60"
+                                    className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl shadow-sm active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-60"
                                 >
                                     {generatingQr ? <Loader2 className="w-5 h-5 animate-spin" /> : <QrCode className="w-5 h-5" />}
                                     {generatingQr ? "Génération en cours..." : "Générer & Sauvegarder"}

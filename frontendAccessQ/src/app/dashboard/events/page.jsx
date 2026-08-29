@@ -62,14 +62,15 @@ export default function EventsPage() {
     });
 
     return (
-        <div className="max-w-7xl mx-auto space-y-6">
+        <div className="aq-page space-y-6">
             {/* **************************************** */}
             {/* En-tête et action de création */}
             {/* **************************************** */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="aq-page-header">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Événements et zones d'accès</h1>
-                    <p className="text-slate-500 dark:text-slate-400 mt-1">Définissez les périodes et lieux où les QR peuvent être validés.</p>
+                    <p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-blue-700 dark:text-blue-300">Organisation</p>
+                    <h1 className="aq-page-title">Événements et zones d'accès</h1>
+                    <p className="aq-page-subtitle">Définissez les périodes et lieux où les QR peuvent être validés.</p>
                 </div>
                 {(userRole === "SUPER_ADMIN" || userRole === "ORG_ADMIN") && (
                     eventQuotaReached ? (
@@ -77,7 +78,7 @@ export default function EventsPage() {
                         type="button"
                         disabled
                         title="Quota d'événements atteint"
-                        className="inline-flex cursor-not-allowed items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-medium text-white opacity-50"
+                        className="aq-button-primary"
                     >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path></svg>
                         Créer un événement
@@ -86,7 +87,7 @@ export default function EventsPage() {
                         <Link
                             href="/dashboard/events/new"
                             aria-disabled={profileLoading}
-                            className={`inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-all hover:bg-blue-700 ${profileLoading ? "pointer-events-none opacity-50" : ""}`}
+                            className={`aq-button-primary ${profileLoading ? "pointer-events-none opacity-50" : ""}`}
                         >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path></svg>
                             Créer un événement
@@ -100,7 +101,7 @@ export default function EventsPage() {
             {/* **************************************** */}
             {/* Recherche et filtre par statut */}
             {/* **************************************** */}
-            <div className="bg-white dark:bg-slate-900/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
+            <div className="aq-toolbar flex-col md:flex-row">
                 <div className="relative w-full md:w-96">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <svg className="h-5 w-5 text-slate-400 dark:text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -129,11 +130,11 @@ export default function EventsPage() {
             {/* **************************************** */}
             {/* Tableau des événements */}
             {/* **************************************** */}
-            <div className="bg-white dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+            <div className="aq-panel">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse min-w-[800px]">
                         <thead>
-                            <tr className="bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 text-sm border-b border-slate-200 dark:border-slate-800">
+                            <tr className="aq-table-head text-sm">
                                 <th className="px-6 py-4 font-semibold uppercase tracking-wider">Événement</th>
                                 <th className="px-6 py-4 font-semibold uppercase tracking-wider">Période</th>
                                 <th className="px-6 py-4 font-semibold uppercase tracking-wider">Zone</th>
