@@ -80,8 +80,8 @@ test("le prorata couvre aussi les mois déjà prépayés et respecte les décima
     const { getRemainingMonthlyUnits, roundForProvider } = loadPolicy();
     const units = getRemainingMonthlyUnits(
         new Date("2026-08-01T00:00:00Z"),
-        new Date("2026-10-01T00:00:00Z"),
-        new Date("2026-08-16T12:00:00Z")
+        new Date("2026-09-30T00:00:00Z"),
+        new Date("2026-08-16T00:00:00Z")
     );
     assert.ok(units > 1.49 && units < 1.51);
     assert.equal(roundForProvider(184.6, 0), 185);
@@ -91,13 +91,13 @@ test("le prorata couvre aussi les mois déjà prépayés et respecte les décima
 test("le devis d’upgrade facture uniquement la différence proratisée", () => {
     const { calculatePaymentQuote } = loadPolicy();
     const start = new Date("2026-08-01T00:00:00Z");
-    const end = new Date("2026-09-01T00:00:00Z");
+    const end = new Date("2026-08-31T00:00:00Z");
     const quote = calculatePaymentQuote({
         organization: organization({ plan: "ESSENTIAL", start, end }),
         plan: { title: "PRO", cost: 25, currency: "USD" },
         provider: { currency: "USD", decimals: 2 },
         billingInterval: "MONTHLY",
-        now: new Date("2026-08-16T12:00:00Z")
+        now: new Date("2026-08-16T00:00:00Z")
     });
     assert.equal(quote.transition.type, "UPGRADE");
     assert.equal(quote.localPrice, 5);
@@ -108,7 +108,7 @@ test("le devis d’upgrade facture uniquement la différence proratisée", () =>
 test("le devis Essential annuel vers Pro annuel utilise les tarifs annuels", () => {
     const { calculatePaymentQuote } = loadPolicy();
     const start = new Date("2026-01-01T00:00:00Z");
-    const end = new Date("2027-01-01T00:00:00Z");
+    const end = new Date(start.getTime() + 360 * 24 * 60 * 60 * 1000);
     const now = new Date((start.getTime() + end.getTime()) / 2);
     const quote = calculatePaymentQuote({
         organization: organization({ plan: "ESSENTIAL", interval: "ANNUAL", start, end }),

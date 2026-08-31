@@ -5,6 +5,63 @@ const { clearSrcModules, mockModule } = require("./helpers/http");
 
 process.env.PRO_PAYMENTS_ENABLED = "true";
 
+test("payment reasons identify the purchased product and operation", () => {
+    clearSrcModules();
+    mockModule("src/prisma/client.js", {});
+    mockModule("src/services/pawapay.service.js", {});
+    const {
+        buildPaymentReason,
+        buildProviderCustomerMessage,
+        publicPaymentFailureMessage,
+        serializePayment
+    } = require("../src/services/payment.service");
+
+    assert.equal(buildPaymentReason({
+        planKey: "PRO",
+        billingInterval: "ANNUAL",
+        transitionType: "RENEWAL"
+    }), "Renouvellement de l’abonnement Pro (annuel)");
+    assert.equal(buildPaymentReason({
+        planKey: "EVENT_PASS",
+        billingInterval: "ONE_TIME"
+    }), "Achat d’un Pass événement AccessQ");
+    assert.equal(buildProviderCustomerMessage({
+        planKey: "ESSENTIAL",
+        billingInterval: "MONTHLY",
+        transitionType: "PURCHASE"
+    }), "AccessQ Essential mens");
+    assert.equal(
+        publicPaymentFailureMessage({
+            failureReason: {
+                failureCode: "INVALID_PAYER_FORMAT",
+                failureMessage: "The MSISDN is too long for the identified country COG"
+            }
+        }),
+        "Le numéro saisi est trop long pour ce pays."
+    );
+    assert.equal(
+        publicPaymentFailureMessage({
+            failureReason: {
+                failureCode: "NOT_ENOUGH_FUNDS",
+                failureMessage: "Payer does not have enough funds"
+            }
+        }),
+        "Le solde du compte Mobile Money est insuffisant."
+    );
+    const serialized = serializePayment({
+        payment_id: 1,
+        deposit_id: "7ca37a1d-f8c3-4f4b-972d-0249220ad35c",
+        plan: { title: "PRO" },
+        billing_interval: "MONTHLY",
+        amount: "25",
+        currency: "USD",
+        failure_code: "INVALID_PAYER_FORMAT",
+        failure_message: "The MSISDN is too long for the identified country COG"
+    });
+    assert.equal(serialized.failureMessage, "Le numéro saisi est trop long pour ce pays.");
+    assert.doesNotMatch(serialized.failureMessage, /MSISDN|COG/);
+});
+
 test("payment service normalizes national numbers with each country prefix", () => {
     clearSrcModules();
     mockModule("src/prisma/client.js", {});
@@ -200,8 +257,9 @@ test("completed pawaPay deposit activates Pro and records the access period atom
     assert.equal(organizationUpdate.subscription_plan, 2);
     assert.ok(organizationUpdate.subscription_started_at instanceof Date);
     assert.ok(organizationUpdate.subscription_expires_at instanceof Date);
-    const expectedExpiry = new Date(organizationUpdate.subscription_started_at);
-    expectedExpiry.setUTCMonth(expectedExpiry.getUTCMonth() + 1);
+    const expectedExpiry = new Date(
+        organizationUpdate.subscription_started_at.getTime() + 30 * 24 * 60 * 60 * 1000
+    );
     assert.equal(organizationUpdate.subscription_expires_at.toISOString(), expectedExpiry.toISOString());
     assert.equal(paymentUpdate.provider_transaction_id, "MNO-123");
     assert.equal(paymentUpdate.status, "COMPLETED");

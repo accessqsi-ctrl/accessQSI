@@ -7,6 +7,7 @@ const { getPaymentConfig } = require("../config/payment");
 const {
     PLAN_KEYS,
     BILLING_INTERVALS,
+    SUBSCRIPTION_MONTH_DAYS,
     PLAN_DETAILS,
     ensureDefaultPlans,
     getFixedPlanPrice,
@@ -71,11 +72,114 @@ const maskPhoneNumber = (phoneNumber) => {
     return `${value.slice(0, 4)}••••${value.slice(-3)}`;
 };
 
+const buildPaymentReason = ({ planKey, billingInterval, transitionType } = {}) => {
+    if (planKey === PLAN_KEYS.EVENT_PASS) return "Achat d’un Pass événement AccessQ";
+
+    const planName = PLAN_DETAILS[planKey]?.name || planKey || "AccessQ";
+    const intervalLabel = billingInterval === BILLING_INTERVALS.ANNUAL ? "annuel" : "mensuel";
+    switch (transitionType) {
+    case "RENEWAL":
+        return `Renouvellement de l’abonnement ${planName} (${intervalLabel})`;
+    case "UPGRADE":
+        return `Passage à l’abonnement ${planName} (${intervalLabel})`;
+    case "DOWNGRADE":
+        return `Changement vers l’abonnement ${planName} (${intervalLabel})`;
+    case "INTERVAL_CHANGE":
+        return `Passage à l’abonnement ${planName} ${intervalLabel}`;
+    default:
+        return `Achat de l’abonnement ${planName} (${intervalLabel})`;
+    }
+};
+
+const buildProviderCustomerMessage = ({ planKey, billingInterval, transitionType } = {}) => {
+    if (planKey === PLAN_KEYS.EVENT_PASS) return "AccessQ Pass evenement";
+    const planName = PLAN_DETAILS[planKey]?.name || planKey || "Plan";
+    if (transitionType === "RENEWAL") return `Renouv AccessQ ${planName}`.slice(0, 22);
+    if (transitionType === "UPGRADE") return `Passage AccessQ ${planName}`.slice(0, 22);
+    const intervalLabel = billingInterval === BILLING_INTERVALS.ANNUAL ? "annuel" : "mensuel";
+    return `AccessQ ${planName} ${intervalLabel}`.slice(0, 22);
+};
+
+const extractPawaPayFailure = (payload) => {
+    const normalizedPayload = Array.isArray(payload) ? payload[0] : payload;
+    const source = normalizedPayload?.failureReason
+        || normalizedPayload?.errors?.[0]
+        || normalizedPayload?.data?.failureReason
+        || normalizedPayload?.error?.failureReason
+        || normalizedPayload?.data?.error
+        || normalizedPayload?.error
+        || normalizedPayload
+        || {};
+    return {
+        code: source.failureCode || source.code || normalizedPayload?.status || null,
+        message: typeof source === "string"
+            ? source
+            : source.failureMessage || source.message || source.errorMessage || source.detail || null
+    };
+};
+
+const publicPaymentFailureMessage = (payload) => {
+    const failure = extractPawaPayFailure(payload);
+    const searchable = `${failure.code || ""} ${failure.message || ""}`.toLowerCase();
+
+    if (/(msisdn|phone|payer|subscriber).*(too long|longer|max(imum)? length)|too long.*(msisdn|phone|payer)/.test(searchable)) {
+        return "Le numéro saisi est trop long pour ce pays.";
+    }
+    if (/(msisdn|phone|payer|subscriber).*(too short|shorter|min(imum)? length)|too short.*(msisdn|phone|payer)/.test(searchable)) {
+        return "Le numéro saisi est trop court pour ce pays.";
+    }
+    if (/(invalid|incorrect|malformed).*(msisdn|phone|payer|subscriber)|(msisdn|phone|payer).*(invalid|incorrect|format)/.test(searchable)) {
+        return "Le numéro saisi n’est pas valide pour ce pays.";
+    }
+    if (/payer.not.found|subscriber.not.found|unknown subscriber|number.*not found/.test(searchable)) {
+        return "Ce numéro Mobile Money n’a pas été reconnu par l’opérateur.";
+    }
+    if (/insufficient|not.enough.funds|balance.*low/.test(searchable)) {
+        return "Le solde du compte Mobile Money est insuffisant.";
+    }
+    if (/limit.*(reached|exceeded)|payer.limit|transaction.limit/.test(searchable)) {
+        return "La limite de transaction de ce compte Mobile Money a été atteinte.";
+    }
+    if (/expired|timeout|timed.out/.test(searchable)) {
+        return "La demande de paiement a expiré. Veuillez réessayer.";
+    }
+    if (/cancelled.by.(payer|customer|user)|user.cancelled|payer.cancelled/.test(searchable)) {
+        return "Le paiement a été annulé sur le téléphone.";
+    }
+    if (/declined|not.approved|rejected|payment.refused/.test(searchable)) {
+        return "Le paiement a été refusé. Vérifiez votre compte Mobile Money puis réessayez.";
+    }
+    if (/provider.*(unavailable|offline|not available)|temporarily.unavailable/.test(searchable)) {
+        return "L’opérateur Mobile Money est temporairement indisponible. Veuillez réessayer plus tard.";
+    }
+    if (/unsupported.*(provider|operator)|provider.*not.supported/.test(searchable)) {
+        return "Cet opérateur Mobile Money n’est pas pris en charge.";
+    }
+    if (/unsupported.*country|country.*not.supported|invalid.country/.test(searchable)) {
+        return "Les paiements Mobile Money ne sont pas disponibles pour ce pays.";
+    }
+    if (/amount.*(too low|below|min)|minimum.*amount/.test(searchable)) {
+        return "Le montant est inférieur au minimum accepté par l’opérateur.";
+    }
+    if (/amount.*(too high|above|max)|maximum.*amount/.test(searchable)) {
+        return "Le montant dépasse le maximum accepté par l’opérateur.";
+    }
+    if (/currency.*(invalid|unsupported|not supported)/.test(searchable)) {
+        return "La devise sélectionnée n’est pas acceptée par cet opérateur.";
+    }
+    return "Le paiement n’a pas pu être traité. Vérifiez les informations saisies puis réessayez.";
+};
+
 const serializePayment = (payment) => ({
     id: payment.payment_id,
     depositId: payment.deposit_id,
     plan: payment.plan?.title || null,
     billingInterval: payment.billing_interval,
+    reason: buildPaymentReason({
+        planKey: payment.plan?.title,
+        billingInterval: payment.billing_interval,
+        transitionType: payment.subscription_change?.type
+    }),
     amount: payment.amount?.toString?.() || String(payment.amount),
     currency: payment.currency,
     referenceAmount: payment.reference_amount == null
@@ -88,7 +192,12 @@ const serializePayment = (payment) => ({
     status: payment.status,
     providerTransactionId: payment.provider_transaction_id,
     failureCode: payment.failure_code,
-    failureMessage: payment.failure_message,
+    failureMessage: payment.failure_message
+        ? publicPaymentFailureMessage({
+            failureCode: payment.failure_code,
+            failureMessage: payment.failure_message
+        })
+        : null,
     accessStartsAt: payment.access_starts_at,
     accessExpiresAt: payment.access_expires_at,
     createdAt: payment.created_at,
@@ -233,21 +342,10 @@ const classifyChange = ({ organization, targetPlan, targetInterval, now = new Da
 };
 
 const getRemainingPeriodUnits = (anchorValue, endValue, periodMonths, now = new Date()) => {
+    void anchorValue;
     const end = new Date(endValue);
-    let cursor = new Date(anchorValue || now);
-    let units = 0;
-    let guard = 0;
-    while (cursor < end && guard < 120) {
-        const next = addUtcMonths(cursor, periodMonths);
-        const segmentEnd = next < end ? next : end;
-        if (segmentEnd > now) {
-            const overlapStart = cursor > now ? cursor : now;
-            units += Math.max(0, segmentEnd - overlapStart) / Math.max(1, segmentEnd - cursor);
-        }
-        cursor = next;
-        guard += 1;
-    }
-    return units;
+    const periodDuration = Number(periodMonths) * SUBSCRIPTION_MONTH_DAYS * 24 * 60 * 60 * 1000;
+    return Math.max(0, end.getTime() - now.getTime()) / periodDuration;
 };
 
 const getRemainingMonthlyUnits = (anchorValue, endValue, now = new Date()) => (
@@ -941,6 +1039,11 @@ const getPaymentQuote = async ({ orgId, planKey, billingInterval, providerCode, 
     return {
         plan: normalizedPlan,
         billingInterval: normalizedInterval,
+        reason: buildPaymentReason({
+            planKey: normalizedPlan,
+            billingInterval: normalizedInterval,
+            transitionType: quote.transition?.type
+        }),
         amount: String(quote.localPrice),
         currency: provider.currency,
         referenceAmount: String(quote.referencePrice),
@@ -1085,11 +1188,23 @@ const initiatePayment = async ({ orgId, userId, planKey, billingInterval, provid
             }
         },
         clientReferenceId: `ACCESSQ-${payment.payment_id}`,
-        customerMessage: paymentConfig.customerMessage,
+        customerMessage: buildProviderCustomerMessage({
+            planKey: normalizedPlan,
+            billingInterval: normalizedInterval,
+            transitionType: transition?.type
+        }),
         metadata: [
             { organizationId: String(orgId), isPII: false },
             { plan: plan.title, isPII: false },
             { billingInterval: normalizedInterval, isPII: false },
+            {
+                paymentReason: buildPaymentReason({
+                    planKey: normalizedPlan,
+                    billingInterval: normalizedInterval,
+                    transitionType: transition?.type
+                }),
+                isPII: false
+            },
             { referencePrice: `${referencePrice} ${plan.currency}`, isPII: false }
         ]
     };
@@ -1097,6 +1212,16 @@ const initiatePayment = async ({ orgId, userId, planKey, billingInterval, provid
     try {
         const response = await pawaPay.initiateDeposit(payload);
         const accepted = ["ACCEPTED", "DUPLICATE_IGNORED", "PROCESSING"].includes(response?.status);
+        const rawFailure = extractPawaPayFailure(response);
+        if (!accepted) {
+            logger.warn("payment.pawapay_rejected", {
+                payment_id: payment.payment_id,
+                deposit_id: depositId,
+                org_id: orgId,
+                pawapay_failure_code: rawFailure.code,
+                pawapay_failure_message: rawFailure.message
+            });
+        }
         const updated = await prisma.payment.update({
             where: { payment_id: payment.payment_id },
             data: accepted
@@ -1106,8 +1231,8 @@ const initiatePayment = async ({ orgId, userId, planKey, billingInterval, provid
                 }
                 : {
                     status: "FAILED",
-                    failure_code: response?.failureReason?.failureCode || response?.status || "REJECTED",
-                    failure_message: response?.failureReason?.failureMessage || "La demande de paiement a été rejetée.",
+                    failure_code: rawFailure.code || "REJECTED",
+                    failure_message: rawFailure.message || rawFailure.code || "REJECTED",
                     provider_payload: response
                 },
             include: {
@@ -1123,10 +1248,13 @@ const initiatePayment = async ({ orgId, userId, planKey, billingInterval, provid
         }
         return serializePayment(updated);
     } catch (error) {
+        const rawFailure = extractPawaPayFailure(error.responseData);
         logger.error("payment.initiation_uncertain", {
             payment_id: payment.payment_id,
             deposit_id: depositId,
             org_id: orgId,
+            pawapay_failure_code: rawFailure.code,
+            pawapay_failure_message: rawFailure.message,
             error
         });
         error.payment = serializePayment(payment);
@@ -1481,13 +1609,24 @@ const reconcilePayment = async (depositId) => {
     }
 
     const failure = remote.failureReason || {};
+    if (remote.status === "FAILED") {
+        logger.warn("payment.pawapay_failed", {
+            payment_id: existing.payment_id,
+            deposit_id: depositId,
+            org_id: existing.org_id,
+            pawapay_failure_code: failure.failureCode || "FAILED",
+            pawapay_failure_message: failure.failureMessage || null
+        });
+    }
     const updated = await prisma.payment.update({
         where: { payment_id: existing.payment_id },
         data: {
             status: remote.status === "FAILED" ? "FAILED" : "PROCESSING",
             provider_transaction_id: remote.providerTransactionId || null,
             failure_code: remote.status === "FAILED" ? failure.failureCode || "FAILED" : null,
-            failure_message: remote.status === "FAILED" ? failure.failureMessage || "Le paiement a échoué." : null,
+            failure_message: remote.status === "FAILED"
+                ? failure.failureMessage || failure.failureCode || "FAILED"
+                : null,
             provider_payload: remote
         },
         include: {
@@ -1540,7 +1679,13 @@ const reconcilePendingTransactions = async (now = new Date()) => {
                 });
             }
         } catch (error) {
-            logger.warn("payment.background_reconciliation_failed", { deposit_id: payment.deposit_id, error });
+            const rawFailure = extractPawaPayFailure(error.responseData);
+            logger.warn("payment.background_reconciliation_failed", {
+                deposit_id: payment.deposit_id,
+                pawapay_failure_code: rawFailure.code,
+                pawapay_failure_message: rawFailure.message,
+                error
+            });
         }
     }
     for (const refund of refunds) {
@@ -1557,6 +1702,10 @@ module.exports = {
     PaymentValidationError,
     arePaymentsEnabled,
     normalizePhoneNumber,
+    buildPaymentReason,
+    buildProviderCustomerMessage,
+    extractPawaPayFailure,
+    publicPaymentFailureMessage,
     serializePayment,
     getProviders,
     getPlans,

@@ -139,7 +139,7 @@ export default function NewEventPage() {
                 </div>
             )}
 
-            <PlanQuotaStatus label="Événements créés pendant ce cycle mensuel" quota={eventQuota} />
+            <PlanQuotaStatus label="Événements créés ce mois" quota={eventQuota} />
 
             {eventPasses.length > 0 && (
                 <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900/60 dark:bg-emerald-950/20">
@@ -153,7 +153,7 @@ export default function NewEventPage() {
                         >
                             <option value="">Utiliser le quota de mon abonnement</option>
                             {eventPasses.map((pass) => (
-                                <option key={pass.id} value={pass.id}>Pass #{pass.id} · 200 QR · 30 jours</option>
+                                <option key={pass.id} value={pass.id}>Pass # {pass.id} · 200 QR · 30 jours</option>
                             ))}
                         </select>
                     </label>

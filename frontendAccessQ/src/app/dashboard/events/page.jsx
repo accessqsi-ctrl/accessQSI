@@ -96,7 +96,7 @@ export default function EventsPage() {
                 )}
             </div>
 
-            <PlanQuotaStatus label="Événements créés pendant ce cycle mensuel" quota={eventQuota} />
+            <PlanQuotaStatus label="Événements créés ce mois" quota={eventQuota} />
 
             {/* **************************************** */}
             {/* Recherche et filtre par statut */}
