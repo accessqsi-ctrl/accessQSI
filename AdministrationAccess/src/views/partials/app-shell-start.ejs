@@ -14,12 +14,12 @@
             <p class="nav-label">Pilotage</p>
             <a href="/dashboard" class="nav-item <%= currentPage === 'dashboard' ? 'is-active' : '' %>"><svg viewBox="0 0 24 24" fill="none"><path d="M3 11 12 3l9 8M5 10v10h14V10M9 20v-6h6v6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Tableau de bord</span></a>
             <a href="/organizations" class="nav-item <%= currentPage === 'organizations' ? 'is-active' : '' %>"><svg viewBox="0 0 24 24" fill="none"><path d="M4 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16M16 9h2a2 2 0 0 1 2 2v10M8 7h4M8 11h4M8 15h4M2 21h20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Organisations</span></a>
-            <a href="/users" class="nav-item <%= currentPage === 'users' ? 'is-active' : '' %>"><svg viewBox="0 0 24 24" fill="none"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span>Utilisateurs</span></a>
+            <a href="/users" class="nav-item <%= currentPage === 'users' ? 'is-active' : '' %>"><svg viewBox="0 0 24 24" fill="none"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span>Agents</span></a>
         </nav>
         <div class="sidebar-account">
             <div class="account-avatar"><%= (user.email || 'A').charAt(0).toUpperCase() %></div>
             <div class="account-copy"><strong>Super-admin</strong><span><%= user.email %></span></div>
-            <form action="/logout" method="POST"><button type="submit" class="logout-button" aria-label="Se déconnecter" title="Se déconnecter"><svg viewBox="0 0 24 24" fill="none"><path d="M10 17l5-5-5-5M15 12H3M14 3h5a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></form>
+            <form action="/logout" method="POST"><input type="hidden" name="_csrf" value="<%= user.csrf %>"><button type="submit" class="logout-button" aria-label="Se déconnecter" title="Se déconnecter"><svg viewBox="0 0 24 24" fill="none"><path d="M10 17l5-5-5-5M15 12H3M14 3h5a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></form>
         </div>
     </aside>
     <section class="admin-stage">

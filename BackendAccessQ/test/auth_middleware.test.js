@@ -1,12 +1,27 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { clearSrcModules, mockPackage } = require("./helpers/http");
+const { clearSrcModules, mockModule, mockPackage } = require("./helpers/http");
 
-const loadAuthMiddleware = (verify) => {
+const loadAuthMiddleware = (verify, currentUser = null) => {
     clearSrcModules();
+    mockModule("src/prisma/client", {
+        userQ: {
+            findUnique: async ({ where }) => currentUser || {
+                user_id: where.user_id,
+                email: "user@example.com",
+                role: "ORG_ADMIN",
+                org_id: 42,
+                is_active: true,
+                deleted_at: null,
+                organization: { org_id: 42, is_active: true, deleted_at: null }
+            }
+        }
+    });
     mockPackage("jsonwebtoken", { verify });
     return require("../src/middleware/authMiddleware");
 };
+
+const settleMiddleware = () => new Promise((resolve) => setImmediate(resolve));
 
 const makeResponse = () => {
     return {
@@ -27,7 +42,7 @@ const makeResponse = () => {
     };
 };
 
-test("authMiddleware accepts only access tokens", () => {
+test("authMiddleware accepts only access tokens", async () => {
     const authMiddleware = loadAuthMiddleware((token, publicKey, options, callback) => {
         callback(null, { user_id: 7, role: "ORG_ADMIN", org_id: 42, token_type: "access" });
     });
@@ -38,6 +53,7 @@ test("authMiddleware accepts only access tokens", () => {
     authMiddleware(req, res, () => {
         nextCalled = true;
     });
+    await settleMiddleware();
 
     assert.equal(nextCalled, true);
     assert.equal(req.user.user_id, 7);
@@ -73,9 +89,13 @@ test("authMiddleware rejects missing tokens", () => {
     assert.equal(res.body.message, "Accès refusé. Token manquant.");
 });
 
-test("authMiddleware allows operators to use scanner and password routes", () => {
+test("authMiddleware allows operators to use scanner and password routes", async () => {
     const authMiddleware = loadAuthMiddleware((token, publicKey, options, callback) => {
         callback(null, { user_id: 9, role: "OPERATOR", org_id: 42, token_type: "access" });
+    }, {
+        user_id: 9, email: "operator@example.com", role: "OPERATOR", org_id: 42,
+        is_active: true, deleted_at: null,
+        organization: { org_id: 42, is_active: true, deleted_at: null }
     });
 
     for (const [method, originalUrl] of [
@@ -98,15 +118,20 @@ test("authMiddleware allows operators to use scanner and password routes", () =>
         authMiddleware(req, res, () => {
             nextCalled = true;
         });
+        await settleMiddleware();
 
         assert.equal(nextCalled, true, `${method} ${originalUrl} should be allowed`);
         assert.equal(res.statusCode, null);
     }
 });
 
-test("authMiddleware blocks operators from management routes", () => {
+test("authMiddleware blocks operators from management routes", async () => {
     const authMiddleware = loadAuthMiddleware((token, publicKey, options, callback) => {
         callback(null, { user_id: 9, role: "OPERATOR", org_id: 42, token_type: "access" });
+    }, {
+        user_id: 9, email: "operator@example.com", role: "OPERATOR", org_id: 42,
+        is_active: true, deleted_at: null,
+        organization: { org_id: 42, is_active: true, deleted_at: null }
     });
     const req = {
         method: "GET",
@@ -120,8 +145,41 @@ test("authMiddleware blocks operators from management routes", () => {
     authMiddleware(req, res, () => {
         nextCalled = true;
     });
+    await settleMiddleware();
 
     assert.equal(nextCalled, false);
     assert.equal(res.statusCode, 403);
     assert.match(res.body.message, /uniquement scanner/);
+});
+
+test("authMiddleware immediately rejects a disabled account", async () => {
+    const authMiddleware = loadAuthMiddleware((token, publicKey, options, callback) => {
+        callback(null, { user_id: 7, role: "ORG_ADMIN", org_id: 42, token_type: "access" });
+    }, {
+        user_id: 7, email: "admin@example.com", role: "ORG_ADMIN", org_id: 42,
+        is_active: false, deleted_at: null,
+        organization: { org_id: 42, is_active: true, deleted_at: null }
+    });
+    const req = { method: "GET", originalUrl: "/user/profile", headers: { authorization: "Bearer token" }, cookies: {} };
+    const res = makeResponse();
+    authMiddleware(req, res, () => assert.fail("next must not be called"));
+    await settleMiddleware();
+    assert.equal(res.statusCode, 403);
+    assert.equal(res.body.code, "ACCOUNT_DISABLED");
+});
+
+test("authMiddleware immediately rejects a disabled organization", async () => {
+    const authMiddleware = loadAuthMiddleware((token, publicKey, options, callback) => {
+        callback(null, { user_id: 7, role: "ORG_ADMIN", org_id: 42, token_type: "access" });
+    }, {
+        user_id: 7, email: "admin@example.com", role: "ORG_ADMIN", org_id: 42,
+        is_active: true, deleted_at: null,
+        organization: { org_id: 42, is_active: false, deleted_at: null }
+    });
+    const req = { method: "GET", originalUrl: "/user/profile", headers: { authorization: "Bearer token" }, cookies: {} };
+    const res = makeResponse();
+    authMiddleware(req, res, () => assert.fail("next must not be called"));
+    await settleMiddleware();
+    assert.equal(res.statusCode, 403);
+    assert.equal(res.body.code, "ORGANIZATION_DISABLED");
 });

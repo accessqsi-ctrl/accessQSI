@@ -1,6 +1,6 @@
-<%- include('../partials/header', { title: 'Utilisateurs' }) %>
-<%- include('../partials/app-shell-start', { currentPage: 'users', pageTitle: 'Utilisateurs', pageDescription: 'Comptes, rôles et états d’accès' }) %>
-<section class="page-intro"><div><h2>Gestion des utilisateurs</h2><p>Contrôlez les accès individuels tout en préservant le compte administrateur connecté.</p></div><span class="badge badge-blue"><%= users.filter(u => !u.deleted_at).length %> utilisateur(s)</span></section>
+<%- include('../partials/header', { title: 'Agents' }) %>
+<%- include('../partials/app-shell-start', { currentPage: 'users', pageTitle: 'Agents', pageDescription: 'Agents, opérateurs et états d’accès' }) %>
+<section class="page-intro"><div><h2>Gestion des agents</h2><p>Contrôlez les accès des agents et opérateurs sans confondre suspension et suppression.</p></div><span class="badge badge-blue"><%= users.length %> agent(s)</span></section>
 <% if (error) { %><div class="alert alert-error" role="alert"><%= error %></div><% } %><% if (success) { %><div class="alert alert-success" role="status"><%= success %></div><% } %>
 <section class="panel"><div class="panel-header"><div><h3>Comptes de la plateforme</h3><p>Les comptes archivés ne sont pas affichés.</p></div></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Utilisateur</th><th>Organisation</th><th>Rôle</th><th>Statut</th><th class="align-right">Actions</th></tr></thead><tbody>
 <% users.filter(u => !u.deleted_at).forEach(u => { %><tr>
@@ -8,7 +8,7 @@
     <td><%= u.organization ? u.organization.name : '—' %></td>
     <td><span class="badge badge-purple"><%= u.role %></span><% if (u.user_id === user.id) { %> <span class="badge badge-slate">Vous</span><% } %></td>
     <td><span class="badge <%= u.is_active ? 'badge-green' : 'badge-amber' %>"><%= u.is_active ? 'Actif' : 'Désactivé' %></span><% if (u.suspended_by_plan) { %><div class="cell-subtitle">Suspendu par le plan</div><% } %></td>
-    <td class="align-right"><% if (u.user_id !== user.id) { %><div class="action-row"><% if (u.is_active) { %><form action="/users/<%= u.user_id %>/deactivate" method="POST"><button class="action-button warning" onclick="return confirm('Désactiver cet utilisateur ?')">Désactiver</button></form><% } else { %><form action="/users/<%= u.user_id %>/activate" method="POST"><button class="action-button success">Réactiver</button></form><% } %></div><% } else { %><span class="cell-subtitle">Session actuelle</span><% } %></td>
+    <td class="align-right"><div class="action-row"><% if (u.is_active) { %><form action="/users/<%= u.user_id %>/deactivate" method="POST"><input type="hidden" name="_csrf" value="<%= user.csrf %>"><button class="action-button warning" data-confirm="Désactiver cet agent ?">Désactiver</button></form><% } else { %><form action="/users/<%= u.user_id %>/activate" method="POST"><input type="hidden" name="_csrf" value="<%= user.csrf %>"><button class="action-button success">Réactiver</button></form><% } %></div></td>
 </tr><% }) %>
 <% if (!users.some(u => !u.deleted_at)) { %><tr><td colspan="5" class="empty-state">Aucun utilisateur à afficher.</td></tr><% } %>
 </tbody></table></div></section>

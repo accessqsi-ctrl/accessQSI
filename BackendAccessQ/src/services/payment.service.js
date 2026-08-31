@@ -986,27 +986,49 @@ const selectRetainedResources = async (orgId, { agentIds = [], areaIds = [] } = 
     return serializeChange(updated);
 };
 
-const findProvider = async (providerCode, countryCode) => {
+const selectProviderConfiguration = (providers, providerCode, countryCode, currencyCode) => {
     const normalized = String(providerCode || "").trim().toUpperCase();
     if (!normalized) {
         throw new PaymentValidationError("Choisissez un opérateur Mobile Money.", "PROVIDER_REQUIRED");
     }
-    const providers = await getProviders();
     const normalizedCountry = String(countryCode || "").trim().toUpperCase();
-    const provider = providers.find((item) => (
+    const matches = providers.filter((item) => (
         item.provider === normalized
         && (!normalizedCountry || item.country === normalizedCountry)
     ));
-    if (!provider) {
+    if (matches.length === 0) {
         throw new PaymentValidationError(
             "Cet opérateur n'est pas disponible pour votre compte pawaPay.",
             "PROVIDER_NOT_AVAILABLE"
         );
     }
+    const normalizedCurrency = String(currencyCode || "").trim().toUpperCase();
+    if (!normalizedCurrency) {
+        const currencies = new Set(matches.map((item) => item.currency).filter(Boolean));
+        if (currencies.size > 1) {
+            throw new PaymentValidationError(
+                "Choisissez la devise de votre compte Mobile Money.",
+                "CURRENCY_REQUIRED"
+            );
+        }
+        return matches[0];
+    }
+    const provider = matches.find((item) => item.currency === normalizedCurrency);
+    if (!provider) {
+        throw new PaymentValidationError(
+            "Cette devise n'est pas disponible pour l'opérateur sélectionné.",
+            "CURRENCY_NOT_AVAILABLE"
+        );
+    }
     return provider;
 };
 
-const getPaymentQuote = async ({ orgId, planKey, billingInterval, providerCode, countryCode }) => {
+const findProvider = async (providerCode, countryCode, currencyCode) => {
+    const providers = await getProviders();
+    return selectProviderConfiguration(providers, providerCode, countryCode, currencyCode);
+};
+
+const getPaymentQuote = async ({ orgId, planKey, billingInterval, providerCode, countryCode, currencyCode }) => {
     const normalizedPlan = String(planKey || "").trim().toUpperCase();
     if (![PLAN_KEYS.ESSENTIAL, PLAN_KEYS.PRO, PLAN_KEYS.EVENT_PASS].includes(normalizedPlan)) {
         throw new PaymentValidationError("Ce produit ne peut pas être acheté.", "PLAN_NOT_PURCHASABLE");
@@ -1025,7 +1047,7 @@ const getPaymentQuote = async ({ orgId, planKey, billingInterval, providerCode, 
     const [organization, plan, provider] = await Promise.all([
         prisma.organization.findUnique({ where: { org_id: orgId }, include: { plan: true } }),
         getPlanByKey(prisma, normalizedPlan),
-        findProvider(providerCode, countryCode)
+        findProvider(providerCode, countryCode, currencyCode)
     ]);
     if (!organization || organization.deleted_at || !organization.is_active || !plan) {
         throw new PaymentValidationError("Organisation ou plan introuvable.", "ORGANIZATION_NOT_FOUND");
@@ -1057,7 +1079,7 @@ const getPaymentQuote = async ({ orgId, planKey, billingInterval, providerCode, 
     };
 };
 
-const initiatePayment = async ({ orgId, userId, planKey, billingInterval, providerCode, countryCode, phoneNumber }) => {
+const initiatePayment = async ({ orgId, userId, planKey, billingInterval, providerCode, countryCode, currencyCode, phoneNumber }) => {
     const paymentConfig = getPaymentConfig();
     if (!paymentConfig.enabled) {
         throw new PaymentValidationError(
@@ -1086,7 +1108,7 @@ const initiatePayment = async ({ orgId, userId, planKey, billingInterval, provid
     const [organization, plan, provider] = await Promise.all([
         prisma.organization.findUnique({ where: { org_id: orgId }, include: { plan: true } }),
         getPlanByKey(prisma, normalizedPlan),
-        findProvider(providerCode, countryCode)
+        findProvider(providerCode, countryCode, currencyCode)
     ]);
     if (!organization || organization.deleted_at || !organization.is_active) {
         throw new PaymentValidationError("Organisation inactive ou introuvable.", "ORGANIZATION_NOT_FOUND");
@@ -1725,6 +1747,7 @@ module.exports = {
         getRemainingMonthlyUnits,
         getRemainingPeriodUnits,
         roundForProvider,
-        calculatePaymentQuote
+        calculatePaymentQuote,
+        selectProviderConfiguration
     }
 };
