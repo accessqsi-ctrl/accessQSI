@@ -15,6 +15,7 @@ const BILLING_INTERVALS = Object.freeze({
 
 const DEFAULT_TRIAL_DURATION_DAYS = 30;
 const EVENT_PASS_DURATION_DAYS = 30;
+const SUBSCRIPTION_MONTH_DAYS = 30;
 const PDF_PAGES_PER_FILE = 200;
 
 const getTrialDurationDays = () => {
@@ -179,25 +180,15 @@ const getPlanDetails = (organization, now = new Date()) => {
 
 const addUtcMonths = (date, months) => {
     const source = new Date(date);
-    const day = source.getUTCDate();
-    const result = new Date(source);
-    result.setUTCDate(1);
-    result.setUTCMonth(result.getUTCMonth() + months);
-    const lastDay = new Date(Date.UTC(result.getUTCFullYear(), result.getUTCMonth() + 1, 0)).getUTCDate();
-    result.setUTCDate(Math.min(day, lastDay));
-    return result;
+    return new Date(source.getTime() + Number(months) * SUBSCRIPTION_MONTH_DAYS * 24 * 60 * 60 * 1000);
 };
 
 const getMonthlyCycle = (organization, now = new Date()) => {
     const anchor = new Date(organization?.subscription_started_at || organization?.created_at || now);
     if (anchor > now) return { start: new Date(now), end: addUtcMonths(now, 1) };
-    let elapsedMonths = (now.getUTCFullYear() - anchor.getUTCFullYear()) * 12
-        + now.getUTCMonth() - anchor.getUTCMonth();
-    let start = addUtcMonths(anchor, elapsedMonths);
-    if (start > now) {
-        elapsedMonths -= 1;
-        start = addUtcMonths(anchor, elapsedMonths);
-    }
+    const cycleDuration = SUBSCRIPTION_MONTH_DAYS * 24 * 60 * 60 * 1000;
+    const elapsedMonths = Math.floor((now.getTime() - anchor.getTime()) / cycleDuration);
+    const start = addUtcMonths(anchor, elapsedMonths);
     const end = addUtcMonths(anchor, elapsedMonths + 1);
     return { start, end };
 };
@@ -331,6 +322,7 @@ module.exports = {
     BILLING_INTERVALS,
     DEFAULT_TRIAL_DURATION_DAYS,
     EVENT_PASS_DURATION_DAYS,
+    SUBSCRIPTION_MONTH_DAYS,
     PDF_PAGES_PER_FILE,
     PLAN_CAPABILITIES,
     ESSENTIAL_FIXED_PRICES,

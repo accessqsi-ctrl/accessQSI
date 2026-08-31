@@ -27,6 +27,7 @@ exports.getAgents = async (req, res) => {
                 id: agent.user_id,
                 name: agent.full_name,
                 email: agent.email,
+                rawRole: agent.role,
                 role: agent.role === "ORG_ADMIN" ? "Admin" : (agent.role === "OPERATOR" ? "Opérateur" : "Agent"),
                 status: agent.suspended_by_plan ? "Suspendu par le plan" : agent.deleted_at || !agent.is_active ? "Inactif" : "Actif",
                 lastActive: agent.last_login ? new Date(agent.last_login).toLocaleDateString() : (agent.created_at ? new Date(agent.created_at).toLocaleDateString() : "Jamais"),

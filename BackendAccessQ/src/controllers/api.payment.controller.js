@@ -13,10 +13,18 @@ const handleError = (res, error) => {
         return res.status(503).json({ success: false, code: error.code, message: error.message });
     }
     if (error instanceof PawaPayRequestError) {
+        const rawFailure = paymentService.extractPawaPayFailure(error.responseData);
+        logger.warn("payment.pawapay_request_failed", {
+            status: error.status,
+            pawapay_failure_code: rawFailure.code,
+            pawapay_failure_message: rawFailure.message
+        });
         return res.status(502).json({
             success: false,
             code: error.code,
-            message: "Le service Mobile Money est temporairement indisponible.",
+            message: rawFailure.code || rawFailure.message
+                ? paymentService.publicPaymentFailureMessage(error.responseData)
+                : "Le service Mobile Money est temporairement indisponible.",
             payment: error.payment || null
         });
     }
@@ -128,6 +136,7 @@ exports.initiate = async (req, res) => {
         });
         return res.status(payment.status === "FAILED" ? 422 : 202).json({
             success: payment.status !== "FAILED",
+            message: payment.status === "FAILED" ? payment.failureMessage : undefined,
             payment
         });
     } catch (error) {
@@ -167,6 +176,12 @@ exports.callback = async (req, res) => {
         return res.json({ success: true });
     } catch (error) {
         if (error instanceof PawaPayRequestError) {
+            const rawFailure = paymentService.extractPawaPayFailure(error.responseData);
+            logger.warn("payment.callback_pawapay_failed", {
+                deposit_id: depositId,
+                pawapay_failure_code: rawFailure.code,
+                pawapay_failure_message: rawFailure.message
+            });
             return res.status(503).json({ success: false, message: "Vérification temporairement indisponible." });
         }
         logger.error("payment.callback_failed", { deposit_id: depositId, error });
@@ -185,7 +200,13 @@ exports.refundCallback = async (req, res) => {
         if (!refund) return res.status(202).json({ success: true, ignored: true });
         return res.json({ success: true });
     } catch (error) {
-        logger.error("refund.callback_failed", { refund_id: refundId, error });
+        const rawFailure = paymentService.extractPawaPayFailure(error.responseData);
+        logger.error("refund.callback_failed", {
+            refund_id: refundId,
+            pawapay_failure_code: rawFailure.code,
+            pawapay_failure_message: rawFailure.message,
+            error
+        });
         return res.status(400).json({ success: false, message: "Callback de remboursement non vérifiable." });
     }
 };

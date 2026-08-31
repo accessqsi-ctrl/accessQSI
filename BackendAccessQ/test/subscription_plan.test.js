@@ -110,15 +110,15 @@ test("un abonnement expiré revient aux avantages Découverte", () => {
   assert.equal(summary.limits.maxQrCodesPerEvent, 50);
 });
 
-test("le cycle mensuel conserve le jour d'ancrage même en facturation annuelle", () => {
+test("le cycle mensuel utilise des périodes fixes de 30 jours même en facturation annuelle", () => {
   const summary = getPlanSummary({
     plan: { title: "ESSENTIAL" },
     subscription_interval: "ANNUAL",
     subscription_started_at: new Date("2026-01-31T10:00:00Z"),
-    subscription_expires_at: new Date("2027-01-31T10:00:00Z")
+    subscription_expires_at: new Date("2027-01-26T10:00:00Z")
   }, new Date("2026-03-15T10:00:00Z"));
-  assert.equal(summary.cycleStartedAt.toISOString(), "2026-02-28T10:00:00.000Z");
-  assert.equal(summary.cycleEndsAt.toISOString(), "2026-03-31T10:00:00.000Z");
+  assert.equal(summary.cycleStartedAt.toISOString(), "2026-03-02T10:00:00.000Z");
+  assert.equal(summary.cycleEndsAt.toISOString(), "2026-04-01T10:00:00.000Z");
 });
 
 test("le profil de consommation calcule le restant de chaque quota", () => {

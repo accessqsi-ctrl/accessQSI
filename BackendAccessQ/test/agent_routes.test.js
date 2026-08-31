@@ -85,6 +85,7 @@ test("GET /agents returns formatted agents for the authenticated organization", 
     assert.equal(receivedOrgId, 42);
     assert.equal(res.body.success, true);
     assert.equal(res.body.agents[0].name, "Alice Agent");
+    assert.equal(res.body.agents[0].rawRole, "ORG_AGENT");
     assert.equal(res.body.agents[0].scans, 5);
 });
 
