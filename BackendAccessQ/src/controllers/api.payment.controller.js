@@ -64,7 +64,8 @@ exports.getQuote = async (req, res) => {
             planKey: req.body.plan,
             billingInterval: req.body.billingInterval,
             providerCode: req.body.provider,
-            countryCode: req.body.country
+            countryCode: req.body.country,
+            currencyCode: req.body.currency
         });
         return res.json({ success: true, quote });
     } catch (error) {
@@ -132,6 +133,7 @@ exports.initiate = async (req, res) => {
             billingInterval: req.body.billingInterval,
             providerCode: req.body.provider,
             countryCode: req.body.country,
+            currencyCode: req.body.currency,
             phoneNumber: req.body.phoneNumber
         });
         return res.status(payment.status === "FAILED" ? 422 : 202).json({

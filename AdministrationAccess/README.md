@@ -19,3 +19,11 @@ Au premier démarrage, un compte `SUPER_ADMIN` est créé s'il n'existe pas enco
 - `npm run seed:admin` crée manuellement le compte administrateur par défaut s'il est absent.
 
 Le fichier `prisma/schema.prisma` doit rester synchronisé avec `BackendAccessQ/src/prisma/schema.prisma`. Les migrations de la base restent pilotées par `BackendAccessQ`.
+
+## Sécurité des accès
+
+- La désactivation est réversible et modifie uniquement l'état d'accès. Elle ne supprime pas les données personnelles.
+- L'archivage et l'effacement RGPD restent des opérations séparées, soumises à la politique de conservation de l'organisation.
+- Toutes les actions sensibles nécessitent une session `SUPER_ADMIN` active et un jeton CSRF valide.
+- La réactivation d'un agent respecte l'état de son organisation, sa suspension commerciale et le quota de son plan.
+- Les événements de sécurité sont journalisés avec des identifiants techniques, sans adresse e-mail ni mot de passe.

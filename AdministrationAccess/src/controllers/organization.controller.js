@@ -1,4 +1,5 @@
 const prisma = require('../lib/prisma');
+const { writeAudit } = require('../services/audit.service');
 
 const parseId = (value) => {
     const id = Number.parseInt(value, 10);
@@ -142,13 +143,14 @@ exports.deactivateOrganization = async (req, res) => {
     const orgId = parseId(req.params.id);
     if (!orgId) return res.redirect('/organizations?error=Organisation invalide.');
     try {
-        // Update organization is_active to false
-        await prisma.$transaction([
-            prisma.organization.update({ where: { org_id: orgId }, data: { is_active: false } }),
-            prisma.userQ.updateMany({ where: { org_id: orgId }, data: { is_active: false } })
-        ]);
+        const result = await prisma.organization.updateMany({
+            where: { org_id: orgId, deleted_at: null },
+            data: { is_active: false }
+        });
+        if (result.count === 0) return res.redirect('/organizations?error=Organisation introuvable ou archivée.');
+        writeAudit({ actorId: req.user.id, action: 'ORGANIZATION_DEACTIVATED', targetType: 'ORGANIZATION', targetId: orgId, organizationId: orgId });
 
-        res.redirect('/organizations?success=Organisation et utilisateurs désactivés avec succès.');
+        res.redirect('/organizations?success=Organisation désactivée. Les états individuels des agents ont été conservés.');
     } catch (error) {
         console.error("Erreur deactivateOrganization:", error);
         res.redirect('/organizations?error=Erreur lors de la désactivation.');
@@ -182,15 +184,14 @@ exports.activateOrganization = async (req, res) => {
     const orgId = parseId(req.params.id);
     if (!orgId) return res.redirect('/organizations?error=Organisation invalide.');
     try {
-        await prisma.$transaction([
-            prisma.organization.update({ where: { org_id: orgId }, data: { is_active: true } }),
-            prisma.userQ.updateMany({
-                where: { org_id: orgId, suspended_by_plan: false, deleted_at: null },
-                data: { is_active: true }
-            })
-        ]);
+        const result = await prisma.organization.updateMany({
+            where: { org_id: orgId, deleted_at: null },
+            data: { is_active: true }
+        });
+        if (result.count === 0) return res.redirect('/organizations?error=Organisation introuvable ou archivée.');
+        writeAudit({ actorId: req.user.id, action: 'ORGANIZATION_ACTIVATED', targetType: 'ORGANIZATION', targetId: orgId, organizationId: orgId });
 
-        res.redirect('/organizations?success=Organisation et utilisateurs réactivés avec succès.');
+        res.redirect('/organizations?success=Organisation réactivée. Les états individuels des agents ont été conservés.');
     } catch (error) {
         console.error("Erreur activateOrganization:", error);
         res.redirect('/organizations?error=Erreur lors de la réactivation.');

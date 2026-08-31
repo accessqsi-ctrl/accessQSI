@@ -40,7 +40,15 @@ const loadUserApp = ({
         ...prisma,
         userQ: {
             findFirst: async () => null,
-            findUnique: async () => null,
+            findUnique: async ({ where }) => ({
+                user_id: where.user_id,
+                email: "admin@example.com",
+                role: "ORG_ADMIN",
+                org_id: 42,
+                is_active: true,
+                deleted_at: null,
+                organization: { org_id: 42, is_active: true, deleted_at: null }
+            }),
             count: async () => 0,
             update: async () => ({}),
             updateMany: async () => ({ count: 0 }),
@@ -57,6 +65,10 @@ const loadUserApp = ({
         area: {
             count: async () => 0,
             ...(prisma.area || {})
+        },
+        organization: {
+            findUnique: async () => ({ org_id: 42, is_active: true, deleted_at: null }),
+            ...(prisma.organization || {})
         }
     });
     mockPackage("bcrypt", {
@@ -221,6 +233,54 @@ test("POST /user/login returns a token for verified active users", async () => {
         org_id: 42,
         token_type: "refresh"
     });
+});
+
+test("POST /user/login rejects a valid password when the account is disabled", async () => {
+    const app = loadUserApp({
+        userService: {
+            findByEmail: async () => ({
+                user_id: 7, full_name: "Disabled User", email: "disabled@example.com",
+                password_hash: "stored-hash", role: "ORG_AGENT", org_id: 42,
+                is_verified: true, deleted_at: null
+            })
+        },
+        prisma: {
+            userQ: {
+                findUnique: async () => ({
+                    user_id: 7, email: "disabled@example.com", role: "ORG_AGENT", org_id: 42,
+                    is_active: false, deleted_at: null,
+                    organization: { org_id: 42, is_active: true, deleted_at: null }
+                })
+            }
+        }
+    });
+    const res = await request(app, "POST", "/user/login", { email: "disabled@example.com", password: "Strong!123" });
+    assert.equal(res.status, 403);
+    assert.equal(res.body.code, "ACCOUNT_DISABLED");
+});
+
+test("POST /user/login rejects users of a disabled organization", async () => {
+    const app = loadUserApp({
+        userService: {
+            findByEmail: async () => ({
+                user_id: 7, full_name: "Agent", email: "agent@example.com",
+                password_hash: "stored-hash", role: "ORG_AGENT", org_id: 42,
+                is_verified: true, deleted_at: null
+            })
+        },
+        prisma: {
+            userQ: {
+                findUnique: async () => ({
+                    user_id: 7, email: "agent@example.com", role: "ORG_AGENT", org_id: 42,
+                    is_active: true, deleted_at: null,
+                    organization: { org_id: 42, is_active: false, deleted_at: null }
+                })
+            }
+        }
+    });
+    const res = await request(app, "POST", "/user/login", { email: "agent@example.com", password: "Strong!123" });
+    assert.equal(res.status, 403);
+    assert.equal(res.body.code, "ORGANIZATION_DISABLED");
 });
 
 test("POST /user/login returns the Essential welcome offer only on the first login", async () => {
@@ -412,6 +472,31 @@ test("POST /user/refresh rejects missing refresh token", async () => {
 
     assert.equal(res.status, 401);
     assert.equal(res.body.success, false);
+});
+
+test("POST /user/refresh cannot renew a disabled account session", async () => {
+    let signCalled = false;
+    const app = loadUserApp({
+        prisma: {
+            userQ: {
+                findUnique: async () => ({
+                    user_id: 7, email: "agent@example.com", role: "ORG_AGENT", org_id: 42,
+                    is_active: false, deleted_at: null,
+                    organization: { org_id: 42, is_active: true, deleted_at: null }
+                })
+            }
+        },
+        jwt: {
+            verify: (token, publicKey, options, callback) => callback(null, {
+                user_id: 7, email: "agent@example.com", role: "ORG_AGENT", org_id: 42, token_type: "refresh"
+            }),
+            sign: () => { signCalled = true; return "unexpected-token"; }
+        }
+    });
+    const res = await request(app, "POST", "/user/refresh", {}, { cookies: { refreshToken: "valid-refresh-token" } });
+    assert.equal(res.status, 403);
+    assert.equal(res.body.code, "ACCOUNT_DISABLED");
+    assert.equal(signCalled, false);
 });
 
 test("POST /user/refresh rejects non-refresh tokens", async () => {

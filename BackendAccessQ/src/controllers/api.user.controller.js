@@ -9,6 +9,7 @@ const { getPrivateKey, getPublicKey } = require("../config/jwtKeys");
 const logger = require("../utils/logger");
 const PasswordValidator = require('password-validator');
 const { getPlanSummary, getPlanUsage } = require("../config/subscription");
+const { evaluateAccess, findUserAccessState } = require("../services/account_access.service");
 const pm = new PasswordValidator();
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -89,6 +90,11 @@ const refreshCookieOptions = {
     maxAge: durationToMs(REFRESH_TOKEN_EXPIRES_IN, 7 * 24 * 60 * 60 * 1000)
 };
 
+const clearSessionCookies = (res) => {
+    res.clearCookie("token", { ...cookieOptions, maxAge: 0 });
+    res.clearCookie("refreshToken", { ...cookieOptions, maxAge: 0 });
+};
+
 const buildTokenPayload = (user, tokenType) => ({
     user_id: user.user_id,
     email: user.email,
@@ -149,13 +155,6 @@ exports.login = async (req, res) => {
             });
         }
 
-        if (user.deleted_at !== null) {
-            logger.warn("auth.login_denied", { reason: "account_disabled", request_id: req.requestId, ip: req.ip, login_fingerprint: fingerprint, user_id: user.user_id, org_id: user.org_id });
-            return res.status(403).json({
-                success: false,
-                message: "Accès refusé. Ce compte a été désactivé par un administrateur."
-            });
-        }
         const credentialCheckStartedAt = Date.now();
         let validPassword = await bcrypt.compare(password, user.password_hash);
         let acceptedTrimmedPassword = false;
@@ -183,6 +182,25 @@ exports.login = async (req, res) => {
                 success: false,
                 code: "INVALID_CREDENTIALS",
                 message: "Adresse e-mail ou mot de passe incorrect."
+            });
+        }
+
+        const currentUser = await findUserAccessState(user.user_id);
+        const access = evaluateAccess(currentUser);
+        if (!access.allowed) {
+            logger.warn("auth.login_denied", {
+                reason: access.code,
+                request_id: req.requestId,
+                ip: req.ip,
+                login_fingerprint: fingerprint,
+                user_id: user.user_id,
+                org_id: user.org_id
+            });
+            clearSessionCookies(res);
+            return res.status(403).json({
+                success: false,
+                code: access.code,
+                message: "Accès refusé. Le compte ou l’organisation n’est pas actif."
             });
         }
 
@@ -221,7 +239,12 @@ exports.login = async (req, res) => {
             data: { last_login: new Date() }
         });
 
-        const { accessToken } = issueSession(res, user);
+        const sessionUser = {
+            ...user,
+            role: currentUser.role,
+            org_id: currentUser.org_id
+        };
+        const { accessToken } = issueSession(res, sessionUser);
         logger.info("auth.login_succeeded", {
             request_id: req.requestId,
             ip: req.ip,
@@ -270,7 +293,7 @@ exports.refreshSession = async (req, res) => {
         return res.status(401).json({ success: false, message: "Session expirée. Veuillez vous reconnecter." });
     }
 
-    jwt.verify(refreshToken, getPublicKey(), { algorithms: ["RS256"] }, (err, decoded) => {
+    jwt.verify(refreshToken, getPublicKey(), { algorithms: ["RS256"] }, async (err, decoded) => {
         if (err || decoded.token_type !== "refresh") {
             logger.warn("session.refresh_failed", {
                 reason: err ? "invalid_refresh_token" : "wrong_token_type",
@@ -280,21 +303,44 @@ exports.refreshSession = async (req, res) => {
                 org_id: decoded?.org_id,
                 error: err
             });
+            clearSessionCookies(res);
             return res.status(403).json({ success: false, message: "Session invalide." });
         }
 
-        const { accessToken } = issueSession(res, decoded);
-        logger.info("session.refreshed", {
-            request_id: req.requestId,
-            user_id: decoded.user_id,
-            org_id: decoded.org_id
-        });
+        try {
+            const currentUser = await findUserAccessState(decoded.user_id);
+            const access = evaluateAccess(currentUser, decoded);
+            if (!access.allowed) {
+                logger.warn("session.refresh_failed", {
+                    reason: access.code,
+                    request_id: req.requestId,
+                    user_id: decoded.user_id,
+                    org_id: decoded.org_id
+                });
+                clearSessionCookies(res);
+                return res.status(403).json({
+                    success: false,
+                    code: access.code,
+                    message: "Session révoquée. Le compte ou l’organisation n’est pas actif."
+                });
+            }
 
-        return res.status(200).json({
-            success: true,
-            message: "Session renouvelée.",
-            token: accessToken
-        });
+            const { accessToken } = issueSession(res, currentUser);
+            logger.info("session.refreshed", {
+                request_id: req.requestId,
+                user_id: currentUser.user_id,
+                org_id: currentUser.org_id
+            });
+
+            return res.status(200).json({
+                success: true,
+                message: "Session renouvelée.",
+                token: accessToken
+            });
+        } catch (error) {
+            logger.error("session.refresh_failed", { reason: "state_check_failed", request_id: req.requestId, error });
+            return res.status(503).json({ success: false, message: "Impossible de vérifier la session pour le moment." });
+        }
     });
 };
 

@@ -3,10 +3,24 @@ const router = express.Router();
 const authController = require('../controllers/auth.controller');
 const orgController = require('../controllers/organization.controller');
 const userController = require('../controllers/user.controller');
+const { rateLimit } = require('express-rate-limit');
+
+const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 5,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+    skipSuccessfulRequests: true,
+    handler: (req, res) => res.status(429).render('login', {
+        error: 'Trop de tentatives. Réessayez dans quelques minutes.',
+        email: String(req.body?.email || ''),
+        loginCsrf: req.cookies?.adminLoginCsrf || ''
+    })
+});
 
 // Authentification
 router.get('/login', authController.renderLogin);
-router.post('/login', authController.login);
+router.post('/login', authController.requireLoginCsrf, loginLimiter, authController.login);
 router.get('/logout', authController.logout);
 router.post('/logout', authController.logout);
 
@@ -17,6 +31,7 @@ router.get('/', (req, res) => {
 
 // Zone protégée (Nécessite d'être SUPER_ADMIN)
 router.use(authController.requireAuth);
+router.use(authController.requireCsrf);
 
 router.get('/dashboard', authController.renderDashboard);
 

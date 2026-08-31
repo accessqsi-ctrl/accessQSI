@@ -81,6 +81,35 @@ test("payment service normalizes national numbers with each country prefix", () 
     );
 });
 
+test("provider selection distinguishes a DRC operator's CDF and USD configurations", () => {
+    clearSrcModules();
+    mockModule("src/prisma/client.js", {});
+    mockModule("src/services/pawapay.service.js", {});
+    const { selectProviderConfiguration } = require("../src/services/payment.service").subscriptionPolicy;
+    const providers = [
+        { provider: "ORANGE_COD", country: "COD", currency: "CDF" },
+        { provider: "ORANGE_COD", country: "COD", currency: "USD" },
+        { provider: "MTN_MOMO_GHA", country: "GHA", currency: "GHS" }
+    ];
+
+    assert.equal(
+        selectProviderConfiguration(providers, "ORANGE_COD", "COD", "CDF").currency,
+        "CDF"
+    );
+    assert.equal(
+        selectProviderConfiguration(providers, "ORANGE_COD", "COD", "USD").currency,
+        "USD"
+    );
+    assert.throws(
+        () => selectProviderConfiguration(providers, "ORANGE_COD", "COD"),
+        (error) => error.code === "CURRENCY_REQUIRED"
+    );
+    assert.equal(
+        selectProviderConfiguration(providers, "MTN_MOMO_GHA", "GHA").currency,
+        "GHS"
+    );
+});
+
 test("a Pro trial can only be activated when explicitly enabled", async (t) => {
     const previous = process.env.ENABLE_PRO_TRIAL;
     process.env.ENABLE_PRO_TRIAL = "true";

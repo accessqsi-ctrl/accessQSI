@@ -56,7 +56,7 @@ export default function UpgradePage() {
     const [billing, setBilling] = useState({ subscription: null, payments: [], eventPasses: [] });
     const [selectedPlan, setSelectedPlan] = useState("ESSENTIAL");
     const [annualPlans, setAnnualPlans] = useState({ ESSENTIAL: false, PRO: false });
-    const [form, setForm] = useState({ country: "", provider: "", phoneNumber: "" });
+    const [form, setForm] = useState({ country: "", provider: "", currency: "", phoneNumber: "" });
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [refreshingId, setRefreshingId] = useState(null);
@@ -88,12 +88,27 @@ export default function UpgradePage() {
         return Array.from(entries, ([code, name]) => ({ code, name })).sort((a, b) => a.name.localeCompare(b.name, "fr"));
     }, [providers]);
     const countryProviders = useMemo(
-        () => providers.filter((provider) => provider.country === form.country),
+        () => Array.from(new Map(
+            providers
+                .filter((provider) => provider.country === form.country)
+                .map((provider) => [provider.provider, provider])
+        ).values()),
         [providers, form.country]
     );
-    const selectedProvider = useMemo(
-        () => providers.find((provider) => provider.country === form.country && provider.provider === form.provider),
+    const providerCurrencies = useMemo(
+        () => [...new Set(providers
+            .filter((provider) => provider.country === form.country && provider.provider === form.provider)
+            .map((provider) => provider.currency)
+            .filter(Boolean))],
         [providers, form.country, form.provider]
+    );
+    const selectedProvider = useMemo(
+        () => providers.find((provider) => (
+            provider.country === form.country
+            && provider.provider === form.provider
+            && provider.currency === form.currency
+        )),
+        [providers, form.country, form.provider, form.currency]
     );
     const localPrice = selectedProvider?.prices?.[providerPriceKey(selectedPlan, interval)] ?? null;
     const referencePrice = interval === "ANNUAL" ? chosenPlan?.annualPrice : chosenPlan?.price;
@@ -115,11 +130,18 @@ export default function UpgradePage() {
             });
             const availableProviders = responses[2]?.ok ? payloads[2].providers || [] : [];
             setProviders(availableProviders);
-            setForm((current) => ({
-                ...current,
-                country: current.country || availableProviders[0]?.country || "",
-                provider: current.provider || availableProviders[0]?.provider || ""
-            }));
+            setForm((current) => {
+                const country = current.country || availableProviders[0]?.country || "";
+                const countryOptions = availableProviders.filter((provider) => provider.country === country);
+                const provider = countryOptions.some((item) => item.provider === current.provider)
+                    ? current.provider
+                    : countryOptions[0]?.provider || "";
+                const currencyOptions = countryOptions.filter((item) => item.provider === provider);
+                const currency = currencyOptions.some((item) => item.currency === current.currency)
+                    ? current.currency
+                    : currencyOptions[0]?.currency || "";
+                return { ...current, country, provider, currency };
+            });
         } catch (error) {
             setNotice({ type: "error", text: error.message });
         } finally {
@@ -130,7 +152,7 @@ export default function UpgradePage() {
     useEffect(() => { loadBilling(); }, [loadBilling]);
 
     useEffect(() => {
-        if (!PAYMENTS_ENABLED || !form.country || !form.provider || !selectedPlan) {
+        if (!PAYMENTS_ENABLED || !form.country || !form.provider || !form.currency || !selectedPlan) {
             setQuote(null);
             return;
         }
@@ -138,13 +160,13 @@ export default function UpgradePage() {
         apiFetch("/billing/quote", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ plan: selectedPlan, billingInterval: interval, country: form.country, provider: form.provider })
+            body: JSON.stringify({ plan: selectedPlan, billingInterval: interval, country: form.country, provider: form.provider, currency: form.currency })
         }).then(async (response) => {
             const data = await response.json();
             if (active) setQuote(response.ok ? data.quote : null);
         }).catch(() => { if (active) setQuote(null); });
         return () => { active = false; };
-    }, [form.country, form.provider, selectedPlan, interval]);
+    }, [form.country, form.provider, form.currency, selectedPlan, interval]);
 
     useEffect(() => {
         const change = billing.subscription?.pendingChange;
@@ -215,6 +237,7 @@ export default function UpgradePage() {
                     billingInterval: interval,
                     country: form.country,
                     provider: form.provider,
+                    currency: form.currency,
                     phoneNumber: form.phoneNumber
                 })
             });
@@ -367,8 +390,9 @@ export default function UpgradePage() {
                 <section className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
                     <form onSubmit={submitPayment} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
                         <div className="flex items-center gap-3"><Smartphone className="h-6 w-6 text-blue-600" /><div><h2 className="font-bold text-slate-900 dark:text-white">Payer {chosenPlan?.name}</h2><p className="text-sm text-slate-500">Le PIN reste saisi sur votre téléphone.</p></div></div>
-                        <label className="mt-6 block text-sm font-semibold">Pays<select value={form.country} onChange={(event) => { const country = event.target.value; const first = providers.find((provider) => provider.country === country); setForm((current) => ({ ...current, country, provider: first?.provider || "" })); }} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900" required><option value="">Choisir</option>{countries.map((country) => <option key={country.code} value={country.code}>{country.name}</option>)}</select></label>
-                        <label className="mt-4 block text-sm font-semibold">Opérateur<select value={form.provider} onChange={(event) => setForm((current) => ({ ...current, provider: event.target.value }))} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900" required><option value="">Choisir</option>{countryProviders.map((provider) => <option key={provider.provider} value={provider.provider}>{provider.displayName}</option>)}</select></label>
+                        <label className="mt-6 block text-sm font-semibold">Pays<select value={form.country} onChange={(event) => { const country = event.target.value; const first = providers.find((provider) => provider.country === country); setForm((current) => ({ ...current, country, provider: first?.provider || "", currency: first?.currency || "" })); }} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900" required><option value="">Choisir</option>{countries.map((country) => <option key={country.code} value={country.code}>{country.name}</option>)}</select></label>
+                        <label className="mt-4 block text-sm font-semibold">Opérateur<select value={form.provider} onChange={(event) => { const provider = event.target.value; const first = providers.find((item) => item.country === form.country && item.provider === provider); setForm((current) => ({ ...current, provider, currency: first?.currency || "" })); }} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900" required><option value="">Choisir</option>{countryProviders.map((provider) => <option key={provider.provider} value={provider.provider}>{provider.displayName}</option>)}</select></label>
+                        <label className="mt-4 block text-sm font-semibold">Devise du compte Mobile Money<select value={form.currency} onChange={(event) => setForm((current) => ({ ...current, currency: event.target.value }))} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900" required><option value="">Choisir</option>{providerCurrencies.map((currency) => <option key={currency} value={currency}>{currency}</option>)}</select></label>
                         <label className="mt-4 block text-sm font-semibold">Numéro Mobile Money<input type="tel" value={form.phoneNumber} onChange={(event) => setForm((current) => ({ ...current, phoneNumber: event.target.value }))} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900" required /></label>
                         {selectedProvider && <div className="mt-5 rounded-xl bg-blue-50 p-4 text-sm text-blue-900 dark:bg-blue-950/30 dark:text-blue-100"><div className="flex justify-between gap-4"><span>Motif du paiement</span><strong className="text-right">{quote?.reason || `Achat de ${chosenPlan?.name || "l’offre AccessQ"}`}</strong></div><div className="mt-2 flex justify-between"><span>Montant débité</span><strong>{payableAmount == null ? "Tarif indisponible" : formatMoney(payableAmount, quote?.currency || selectedProvider.currency)}</strong></div><div className="mt-2 flex justify-between text-xs"><span>Prix de référence</span><span>{formatMoney(quote?.referenceAmount ?? referencePrice, quote?.referenceCurrency || chosenPlan?.currency)}</span></div>{Number(quote?.creditAmount || 0) > 0 && <div className="mt-2 flex justify-between text-xs text-emerald-700"><span>Crédit de la période restante</span><span>− {formatMoney(quote.creditAmount, quote.currency)}</span></div>}{quote?.transition && <p className="mt-3 border-t border-blue-100 pt-2 text-xs">{quote.transition.type === "UPGRADE" ? "Upgrade immédiat après confirmation, sans changer la date de renouvellement." : ["DOWNGRADE", "INTERVAL_CHANGE"].includes(quote.transition.type) ? `Changement programmé pour le ${formatDate(quote.transition.effectiveAt)}.` : quote.transition.type === "RENEWAL" ? "La nouvelle période sera ajoutée après l’échéance actuelle." : "Activation immédiate après confirmation."}</p>}</div>}
                         <button type="submit" disabled={!canPay || submitting} className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white disabled:opacity-50">{submitting || activeDepositId ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}{activeDepositId ? "Confirmation en attente…" : `Payer ${chosenPlan?.name || "l’offre"}`}</button>

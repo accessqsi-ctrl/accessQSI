@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
+const crypto = require('crypto');
 const prisma = require('../lib/prisma');
 
 const getJwtSecret = () => {
@@ -7,6 +8,19 @@ const getJwtSecret = () => {
         throw new Error('JWT_SECRET_MISSING');
     }
     return process.env.JWT_SECRET;
+};
+
+const csrfCookieOptions = () => ({
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    maxAge: 30 * 60 * 1000
+});
+
+const safeTokenMatch = (expectedValue, receivedValue) => {
+    const expected = Buffer.from(String(expectedValue || ''), 'utf8');
+    const received = Buffer.from(String(receivedValue || ''), 'utf8');
+    return expected.length > 0 && expected.length === received.length && crypto.timingSafeEqual(expected, received);
 };
 
 exports.renderLogin = (req, res) => {
@@ -20,7 +34,16 @@ exports.renderLogin = (req, res) => {
             // Invalid token, proceed to login
         }
     }
-    res.render('login', { error: null, email: '' });
+    const loginCsrf = crypto.randomBytes(32).toString('hex');
+    res.cookie('adminLoginCsrf', loginCsrf, csrfCookieOptions());
+    res.render('login', { error: null, email: '', loginCsrf });
+};
+
+exports.requireLoginCsrf = (req, res, next) => {
+    if (!safeTokenMatch(req.cookies?.adminLoginCsrf, req.body?._csrf)) {
+        return res.status(403).send('Requête de connexion refusée : jeton de sécurité invalide.');
+    }
+    next();
 };
 
 exports.login = async (req, res) => {
@@ -31,7 +54,8 @@ exports.login = async (req, res) => {
         if (!email || !password) {
             return res.status(400).render('login', {
                 error: 'Veuillez saisir votre adresse e-mail et votre mot de passe.',
-                email
+                email,
+                loginCsrf: req.cookies?.adminLoginCsrf || ''
             });
         }
         
@@ -40,19 +64,19 @@ exports.login = async (req, res) => {
             where: { email }
         });
 
-        if (!user || user.role !== 'SUPER_ADMIN') {
-            return res.status(401).render('login', { error: 'Identifiants invalides ou accès refusé.', email });
+        if (!user || user.role !== 'SUPER_ADMIN' || user.deleted_at || !user.is_active) {
+            return res.status(401).render('login', { error: 'Identifiants invalides ou accès refusé.', email, loginCsrf: req.cookies?.adminLoginCsrf || '' });
         }
 
         // Check password
         const isMatch = await bcrypt.compare(password, user.password_hash);
         if (!isMatch) {
-            return res.status(401).render('login', { error: 'Identifiants invalides ou accès refusé.', email });
+            return res.status(401).render('login', { error: 'Identifiants invalides ou accès refusé.', email, loginCsrf: req.cookies?.adminLoginCsrf || '' });
         }
 
         // Generate token
         const token = jwt.sign(
-            { id: user.user_id, role: user.role, email: user.email },
+            { id: user.user_id, role: user.role, email: user.email, csrf: crypto.randomBytes(32).toString('hex') },
             getJwtSecret(),
             { expiresIn: '1d' }
         );
@@ -64,6 +88,7 @@ exports.login = async (req, res) => {
             sameSite: 'strict',
             maxAge: 24 * 60 * 60 * 1000 // 1 day
         });
+        res.clearCookie('adminLoginCsrf', csrfCookieOptions());
 
         res.redirect('/dashboard');
     } catch (error) {
@@ -71,7 +96,7 @@ exports.login = async (req, res) => {
         const message = error.message === 'JWT_SECRET_MISSING'
             ? 'La configuration de sécurité du serveur est incomplète.'
             : 'Une erreur est survenue lors de la connexion.';
-        res.status(500).render('login', { error: message, email: String(req.body.email || '') });
+        res.status(500).render('login', { error: message, email: String(req.body.email || ''), loginCsrf: req.cookies?.adminLoginCsrf || '' });
     }
 };
 
@@ -84,7 +109,7 @@ exports.logout = (req, res) => {
     res.redirect('/login');
 };
 
-exports.requireAuth = (req, res, next) => {
+exports.requireAuth = async (req, res, next) => {
     const token = req.cookies.adminToken;
     
     if (!token) {
@@ -93,16 +118,27 @@ exports.requireAuth = (req, res, next) => {
 
     try {
         const decoded = jwt.verify(token, getJwtSecret());
-        req.user = decoded;
-        
-        if (req.user.role !== 'SUPER_ADMIN') {
+        const currentUser = await prisma.userQ.findUnique({
+            where: { user_id: Number(decoded.id) },
+            select: { user_id: true, email: true, role: true, is_active: true, deleted_at: true }
+        });
+        if (!currentUser || currentUser.role !== 'SUPER_ADMIN' || !currentUser.is_active || currentUser.deleted_at) {
+            res.clearCookie('adminToken');
             return res.redirect('/login');
         }
-        
+        req.user = { id: currentUser.user_id, email: currentUser.email, role: currentUser.role, csrf: decoded.csrf };
         next();
     } catch (error) {
         return res.redirect('/login');
     }
+};
+
+exports.requireCsrf = (req, res, next) => {
+    if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) return next();
+    if (!safeTokenMatch(req.user?.csrf, req.body?._csrf)) {
+        return res.status(403).send('Requête refusée : jeton de sécurité invalide.');
+    }
+    next();
 };
 
 exports.renderDashboard = async (req, res) => {
