@@ -12,6 +12,10 @@ La console écoute sur `http://localhost:4000` par défaut.
 
 Au premier démarrage, un compte `SUPER_ADMIN` est créé s'il n'existe pas encore. Ses identifiants viennent de `DEFAULT_ADMIN_EMAIL` et `DEFAULT_ADMIN_PASSWORD`. Les valeurs de démonstration présentes dans `.env.example` doivent être remplacées en production.
 
+## Gestion par organisation
+
+La liste `/organizations` ouvre une fiche pour chaque organisation. Cette fiche centralise les informations du compte client, l'abonnement, les administrateurs et les agents/opérateurs avec leurs actions autorisées.
+
 ## Vérifications
 
 - `npm run check` valide le schéma Prisma et la syntaxe des fichiers serveur.

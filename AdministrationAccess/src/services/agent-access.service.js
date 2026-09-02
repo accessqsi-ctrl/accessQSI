@@ -43,9 +43,10 @@ const setAgentActive = async ({ userId, active }) => runSerializable(async (tx) 
         where: { org_id: agent.org_id },
         include: { plan: true }
     });
-    if (!organization || organization.deleted_at || !organization.is_active) throw accessError('ORGANIZATION_INACTIVE');
+    if (!organization || organization.deleted_at) throw accessError('ORGANIZATION_INACTIVE');
 
     if (active) {
+        if (!organization.is_active) throw accessError('ORGANIZATION_INACTIVE');
         if (agent.suspended_by_plan) throw accessError('AGENT_SUSPENDED_BY_PLAN');
         if (!agent.is_active) {
             const limit = getAgentLimit(organization);
