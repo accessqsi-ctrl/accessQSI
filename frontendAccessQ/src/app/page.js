@@ -3,6 +3,7 @@ import {
   BadgeCheck,
   Building2,
   CalendarDays,
+  Check,
   FileCheck2,
   GraduationCap,
   HandHeart,
@@ -203,6 +204,46 @@ const marketingStats = [
   }
 ];
 
+const pricingPlans = [
+  {
+    name: "Découverte",
+    price: "Gratuit",
+    description: "Pour tester un premier contrôle à petite échelle.",
+    features: ["1 événement par mois", "50 QR par événement", "2 agents actifs", "2 zones actives", "Dashboard basique"],
+    cta: "Créer mon compte",
+    href: "/register"
+  },
+  {
+    name: "Essential",
+    price: "15 $",
+    cadence: "/ mois",
+    annual: "144 $ par an — économisez 20 %",
+    description: "Pour les organisateurs et équipes aux besoins réguliers.",
+    features: ["5 événements par mois", "200 QR par événement", "5 agents actifs", "6 zones actives", "Imports CSV et exports"],
+    cta: "Essayer Essential gratuitement",
+    href: "/register",
+    featured: true
+  },
+  {
+    name: "Pro",
+    price: "25 $",
+    cadence: "/ mois",
+    annual: "240 $ par an — économisez 20 %",
+    description: "Pour les opérations exigeantes et les volumes importants.",
+    features: ["10 événements par mois", "700 QR par événement", "15 agents actifs", "20 zones actives", "Analytics et modèles personnalisés"],
+    cta: "Créer mon compte",
+    href: "/register"
+  },
+  {
+    name: "Entreprise",
+    price: "Sur devis",
+    description: "Pour les grands comptes et les déploiements sur mesure.",
+    features: ["Volumes personnalisés", "Support événementiel", "Personnalisation avancée", "Toutes les capacités Pro", "SLA sur mesure"],
+    cta: "Nous contacter",
+    href: "mailto:access.supportclient@gmail.com"
+  }
+];
+
 const useCaseStyles = {
   blue: {
     accent: "bg-blue-500",
@@ -284,6 +325,12 @@ export default function Home() {
 
           <nav className="flex shrink-0 items-center gap-2 sm:gap-6">
             <a
+              href="#pricing"
+              className="hidden text-sm font-semibold text-slate-600 transition-colors hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400 md:inline"
+            >
+              Tarifs
+            </a>
+            <a
               href="mailto:access.supportclient@gmail.com"
               className="hidden text-sm font-semibold text-slate-600 transition-colors hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400 sm:inline"
             >
@@ -300,7 +347,7 @@ export default function Home() {
               className="rounded-full bg-slate-900 px-3 py-2 text-xs font-semibold text-white shadow-md transition-all hover:bg-slate-800 hover:shadow-lg active:scale-95 dark:bg-[#BED3C3] dark:text-slate-900 dark:hover:bg-[#AEC5B3] sm:px-5 sm:py-2.5 sm:text-sm"
             >
               <span className="sm:hidden">Inscription</span>
-              <span className="hidden sm:inline">Créer un compte</span>
+              <span className="hidden sm:inline">Essayer gratuitement</span>
             </Link>
           </nav>
         </div>
@@ -374,7 +421,7 @@ export default function Home() {
               href="/register"
               className="inline-flex items-center justify-center rounded-full bg-slate-900 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-slate-900/15 transition-all hover:bg-slate-800 active:scale-95 dark:bg-[#BED3C3] dark:text-slate-950 dark:hover:bg-[#AEC5B3]"
             >
-              Essayer AccessQ
+              Créer mon événement gratuitement
             </Link>
             <a
               href="#use-cases"
@@ -574,6 +621,86 @@ export default function Home() {
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      <section id="pricing" className="relative w-full overflow-hidden border-t border-slate-200 bg-white py-24 dark:border-slate-700 dark:bg-slate-900">
+        <div aria-hidden="true" className="absolute left-1/2 top-0 h-72 w-[42rem] -translate-x-1/2 rounded-full bg-blue-100/60 blur-3xl dark:bg-blue-900/15" />
+        <div className="container relative mx-auto max-w-7xl px-6">
+          <div className="mx-auto max-w-3xl text-center">
+            <h2 className="text-3xl font-black tracking-tight text-slate-950 dark:text-white md:text-5xl">
+              Commencez gratuitement, évoluez selon vos événements
+            </h2>
+            <p className="mt-5 text-lg leading-8 text-slate-600 dark:text-slate-300">
+              Chaque nouvelle organisation bénéficie d&apos;un mois d&apos;Essential offert. À la fin de l&apos;essai, choisissez votre formule ou poursuivez avec le plan Découverte.
+            </p>
+          </div>
+
+          <div className="mt-14 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+            {pricingPlans.map((plan) => (
+              <article
+                key={plan.name}
+                className={`relative flex h-full flex-col rounded-3xl border p-7 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${plan.featured
+                  ? "border-blue-500 bg-slate-950 text-white shadow-blue-900/15 dark:border-emerald-400 dark:bg-slate-950"
+                  : "border-slate-200 bg-white text-slate-950 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                }`}
+              >
+                {plan.featured && (
+                  <span className="absolute -top-3 left-6 rounded-full bg-emerald-400 px-3 py-1 text-xs font-black uppercase tracking-wider text-slate-950">
+                    1 mois offert
+                  </span>
+                )}
+                <p className={`text-sm font-black uppercase tracking-[0.16em] ${plan.featured ? "text-blue-200" : "text-blue-700 dark:text-blue-300"}`}>{plan.name}</p>
+                <div className="mt-4 flex min-h-12 items-end gap-2">
+                  <span className="text-4xl font-black tracking-tight">{plan.price}</span>
+                  {plan.cadence && <span className={`pb-1 text-sm ${plan.featured ? "text-slate-300" : "text-slate-500 dark:text-slate-400"}`}>{plan.cadence}</span>}
+                </div>
+                <p className={`mt-2 min-h-6 text-xs font-bold ${plan.featured ? "text-emerald-300" : "text-emerald-700 dark:text-emerald-300"}`}>
+                  {plan.annual || "Tarification adaptée à votre besoin"}
+                </p>
+                <p className={`mt-5 text-sm leading-6 ${plan.featured ? "text-slate-300" : "text-slate-600 dark:text-slate-300"}`}>{plan.description}</p>
+                <ul className="mt-6 flex-1 space-y-3">
+                  {plan.features.map((feature) => (
+                    <li key={feature} className="flex items-start gap-3 text-sm">
+                      <Check className={`mt-0.5 h-4 w-4 shrink-0 ${plan.featured ? "text-emerald-400" : "text-emerald-600 dark:text-emerald-400"}`} strokeWidth={3} />
+                      <span className={plan.featured ? "text-slate-200" : "text-slate-700 dark:text-slate-200"}>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+                {plan.href.startsWith("/") ? (
+                  <Link href={plan.href} className={`mt-8 inline-flex min-h-11 items-center justify-center rounded-full px-5 py-3 text-center text-sm font-black transition-all active:scale-95 ${plan.featured ? "bg-emerald-400 text-slate-950 hover:bg-emerald-300" : "bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100"}`}>
+                    {plan.cta}
+                  </Link>
+                ) : (
+                  <a href={plan.href} className="mt-8 inline-flex min-h-11 items-center justify-center rounded-full bg-slate-900 px-5 py-3 text-center text-sm font-black text-white transition-all hover:bg-slate-800 active:scale-95 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100">
+                    {plan.cta}
+                  </a>
+                )}
+              </article>
+            ))}
+          </div>
+
+          <div className="mt-6 grid gap-5 rounded-3xl border border-amber-200 bg-amber-50 p-7 shadow-sm dark:border-amber-700/60 dark:bg-amber-950/25 md:grid-cols-[1fr_auto] md:items-center">
+            <div>
+              <div className="flex flex-wrap items-center gap-3">
+                <p className="text-lg font-black text-slate-950 dark:text-white">Pass événement</p>
+                <span className="rounded-full bg-amber-200 px-3 py-1 text-xs font-black uppercase tracking-wider text-amber-900 dark:bg-amber-800 dark:text-amber-100">Paiement unique</span>
+              </div>
+              <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-300">
+                Un seul événement, jusqu&apos;à 200 QR et 30 jours de validité après attribution. Idéal si vous n&apos;avez pas besoin d&apos;un abonnement récurrent.
+              </p>
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <p className="whitespace-nowrap text-3xl font-black text-slate-950 dark:text-white">7 $</p>
+              <Link href="/register" className="inline-flex min-h-11 items-center justify-center rounded-full bg-amber-500 px-5 py-3 text-center text-sm font-black text-slate-950 transition-all hover:bg-amber-400 active:scale-95">
+                Commencer gratuitement
+              </Link>
+            </div>
+          </div>
+
+          <p className="mx-auto mt-6 max-w-3xl text-center text-xs leading-5 text-slate-500 dark:text-slate-400">
+            Prix de référence en dollars américains. Le paiement Mobile Money peut être présenté dans la devise locale prise en charge par votre opérateur. L&apos;essai Essential est réservé aux nouvelles organisations et ne nécessite aucun paiement initial.
+          </p>
         </div>
       </section>
 

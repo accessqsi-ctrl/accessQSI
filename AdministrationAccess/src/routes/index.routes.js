@@ -37,13 +37,13 @@ router.get('/dashboard', authController.renderDashboard);
 
 // Organisations
 router.get('/organizations', orgController.listOrganizations);
+router.get('/organizations/:id', orgController.showOrganization);
 router.post('/organizations/:id/deactivate', orgController.deactivateOrganization);
 router.post('/organizations/:id/activate', orgController.activateOrganization);
 router.post('/organizations/:id/archive', orgController.archiveOrganization);
 router.post('/organizations/:id/enterprise', orgController.activateEnterprise);
 
-// Utilisateurs
-router.get('/users', userController.listUsers);
+// Gestion des agents depuis une organisation
 router.post('/users/:id/deactivate', userController.deactivateUser);
 router.post('/users/:id/activate', userController.activateUser);
 

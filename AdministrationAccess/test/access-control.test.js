@@ -50,6 +50,13 @@ test('agent activation is denied when its organization is inactive', async () =>
     assert.equal(db.updates.length, 0);
 });
 
+test('agent deactivation remains possible when its organization is inactive', async () => {
+    const db = makeDatabase({ agent: { is_active: true }, organization: { is_active: false } });
+    const { setAgentActive } = mockPrisma(db.prisma);
+    await setAgentActive({ userId: 12, active: false });
+    assert.deepEqual(db.updates, [{ is_active: false }]);
+});
+
 test('agent activation enforces the active-agent plan quota', async () => {
     const db = makeDatabase({ activeCount: 2 });
     const { setAgentActive } = mockPrisma(db.prisma);

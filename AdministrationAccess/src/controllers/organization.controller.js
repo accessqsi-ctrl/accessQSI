@@ -37,6 +37,68 @@ exports.listOrganizations = async (req, res) => {
     }
 };
 
+exports.showOrganization = async (req, res) => {
+    const orgId = parseId(req.params.id);
+    if (!orgId) return res.redirect('/organizations?error=Organisation invalide.');
+
+    try {
+        const [organization, qrCodeCount] = await Promise.all([
+            prisma.organization.findFirst({
+                where: { org_id: orgId, deleted_at: null },
+                include: {
+                    plan: true,
+                    subscription: {
+                        select: {
+                            status: true,
+                            billing_interval: true,
+                            current_period_start: true,
+                            current_period_end: true,
+                            cancel_at_period_end: true
+                        }
+                    },
+                    usersQ: {
+                        where: { role: { in: ['ORG_ADMIN', 'ORG_AGENT', 'OPERATOR'] } },
+                        select: {
+                            user_id: true,
+                            full_name: true,
+                            email: true,
+                            role: true,
+                            is_verified: true,
+                            is_active: true,
+                            suspended_by_plan: true,
+                            deleted_at: true,
+                            created_at: true,
+                            last_login: true
+                        },
+                        orderBy: [{ role: 'asc' }, { created_at: 'asc' }]
+                    },
+                    _count: { select: { usersQ: true, events: true, areas: true, payments: true } }
+                }
+            }),
+            prisma.qrCode.count({
+                where: { deleted_at: null, event: { org_id: orgId, deleted_at: null } }
+            })
+        ]);
+
+        if (!organization) {
+            return res.redirect('/organizations?error=Organisation introuvable ou archivée.');
+        }
+
+        res.render('organizations/detail', {
+            user: req.user,
+            organization,
+            administrators: organization.usersQ.filter(({ role }) => role === 'ORG_ADMIN'),
+            agents: organization.usersQ.filter(({ role }) => role === 'ORG_AGENT' || role === 'OPERATOR'),
+            qrCodeCount,
+            error: req.query.error || null,
+            success: req.query.success || null
+        });
+    } catch (error) {
+        console.error('Erreur showOrganization:', error);
+        res.redirect('/organizations?error=Erreur lors du chargement de l’organisation.');
+    }
+};
+
 const parseLimit = (value) => {
     if (value === undefined || value === null || String(value).trim() === "") return null;
     const parsed = Number(value);

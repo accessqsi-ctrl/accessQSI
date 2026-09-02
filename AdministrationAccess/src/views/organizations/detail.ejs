@@ -1,0 +1,95 @@
+<%- include('../partials/header', { title: organization.name }) %>
+<%- include('../partials/app-shell-start', { currentPage: 'organizations', pageTitle: organization.name, pageDescription: 'Informations et gestion des accès de l’organisation' }) %>
+
+<a href="/organizations" class="back-link">← Retour aux organisations</a>
+
+<section class="org-hero">
+    <div>
+        <div class="eyebrow">Organisation #<%= organization.org_id %></div>
+        <h2><%= organization.name %></h2>
+        <p>Créée le <%= new Date(organization.created_at).toLocaleDateString('fr-FR') %> · plan <%= organization.plan?.title || 'DISCOVERY' %></p>
+    </div>
+    <div class="hero-actions">
+        <span class="badge <%= organization.is_active ? 'badge-green' : 'badge-amber' %>"><%= organization.is_active ? 'Active' : 'Désactivée' %></span>
+        <% if (organization.is_active) { %>
+            <form action="/organizations/<%= organization.org_id %>/deactivate" method="POST">
+                <input type="hidden" name="_csrf" value="<%= user.csrf %>">
+                <button class="action-button warning" data-confirm="Suspendre les accès de cette organisation ?">Désactiver l’organisation</button>
+            </form>
+        <% } else { %>
+            <form action="/organizations/<%= organization.org_id %>/activate" method="POST">
+                <input type="hidden" name="_csrf" value="<%= user.csrf %>">
+                <button class="action-button success">Réactiver l’organisation</button>
+            </form>
+        <% } %>
+    </div>
+</section>
+
+<% if (error) { %><div class="alert alert-error" role="alert"><%= error %></div><% } %>
+<% if (success) { %><div class="alert alert-success" role="status"><%= success %></div><% } %>
+
+<section class="stats-grid org-stats">
+    <article class="stat-card"><div class="stat-label">Utilisateurs</div><div class="stat-value"><%= organization._count.usersQ %></div><div class="stat-meta">Tous les comptes rattachés</div></article>
+    <article class="stat-card"><div class="stat-label">Agents et opérateurs</div><div class="stat-value"><%= agents.length %></div><div class="stat-meta"><%= agents.filter(agent => agent.is_active && !agent.deleted_at).length %> compte(s) actif(s)</div></article>
+    <article class="stat-card"><div class="stat-label">Événements</div><div class="stat-value"><%= organization._count.events %></div><div class="stat-meta">Dans cette organisation</div></article>
+    <article class="stat-card"><div class="stat-label">Codes QR</div><div class="stat-value"><%= qrCodeCount %></div><div class="stat-meta">Non archivés</div></article>
+    <article class="stat-card"><div class="stat-label">Zones</div><div class="stat-value"><%= organization._count.areas %></div><div class="stat-meta">Zones de contrôle</div></article>
+</section>
+
+<section class="detail-grid">
+    <article class="panel detail-panel">
+        <div class="panel-header"><div><h3>Informations de l’organisation</h3><p>Données commerciales et état de l’abonnement.</p></div></div>
+        <dl class="detail-list">
+            <div><dt>Plan</dt><dd><span class="badge badge-blue"><%= organization.plan?.title || 'DISCOVERY' %></span></dd></div>
+            <div><dt>Abonnement</dt><dd><%= organization.subscription?.status || 'Non renseigné' %></dd></div>
+            <div><dt>Facturation</dt><dd><%= organization.subscription?.billing_interval || organization.subscription_interval || 'Non renseignée' %></dd></div>
+            <div><dt>Période actuelle</dt><dd><%= organization.subscription?.current_period_start ? new Date(organization.subscription.current_period_start).toLocaleDateString('fr-FR') : '—' %> au <%= organization.subscription?.current_period_end ? new Date(organization.subscription.current_period_end).toLocaleDateString('fr-FR') : '—' %></dd></div>
+            <div><dt>Fin d’essai</dt><dd><%= organization.trial_expires_at ? new Date(organization.trial_expires_at).toLocaleDateString('fr-FR') : '—' %></dd></div>
+            <div><dt>Référence Entreprise</dt><dd><%= organization.enterprise_contract_reference || '—' %></dd></div>
+            <div><dt>Paiements</dt><dd><%= organization._count.payments %></dd></div>
+        </dl>
+    </article>
+
+    <article class="panel detail-panel">
+        <div class="panel-header"><div><h3>Administrateurs de l’organisation</h3><p>Comptes responsables de la gestion côté client.</p></div></div>
+        <div class="identity-list">
+            <% administrators.forEach(admin => { %>
+                <div class="identity-row">
+                    <div><strong><%= admin.full_name %></strong><span><%= admin.email %></span></div>
+                    <div class="identity-status"><span class="badge <%= admin.deleted_at ? 'badge-slate' : (admin.is_active ? 'badge-green' : 'badge-amber') %>"><%= admin.deleted_at ? 'Archivé' : (admin.is_active ? 'Actif' : 'Inactif') %></span><small>Dernière connexion : <%= admin.last_login ? new Date(admin.last_login).toLocaleString('fr-FR') : 'jamais' %></small></div>
+                </div>
+            <% }) %>
+            <% if (!administrators.length) { %><p class="empty-state">Aucun administrateur rattaché.</p><% } %>
+        </div>
+    </article>
+</section>
+
+<section class="panel">
+    <div class="panel-header"><div><h3>Agents et opérateurs</h3><p>Les actions ci-dessous modifient uniquement le compte sélectionné. Une organisation désactivée bloque tous ses accès.</p></div><span class="badge badge-slate"><%= agents.length %> compte(s)</span></div>
+    <div class="table-wrap"><table class="data-table"><thead><tr><th>Compte</th><th>Rôle</th><th>Vérification</th><th>État</th><th>Dernière connexion</th><th class="align-right">Actions</th></tr></thead><tbody>
+        <% agents.forEach(agent => { %><tr>
+            <td><div class="cell-title"><%= agent.full_name %></div><div class="cell-subtitle"><%= agent.email %></div></td>
+            <td><span class="badge badge-blue"><%= agent.role === 'OPERATOR' ? 'Opérateur' : 'Agent' %></span></td>
+            <td><span class="badge <%= agent.is_verified ? 'badge-green' : 'badge-amber' %>"><%= agent.is_verified ? 'Vérifié' : 'À vérifier' %></span></td>
+            <td>
+                <% if (agent.deleted_at) { %><span class="badge badge-slate">Archivé</span>
+                <% } else if (agent.suspended_by_plan) { %><span class="badge badge-amber">Suspendu par le plan</span>
+                <% } else { %><span class="badge <%= agent.is_active ? 'badge-green' : 'badge-amber' %>"><%= agent.is_active ? 'Actif' : 'Inactif' %></span><% } %>
+                <% if (!organization.is_active && !agent.deleted_at) { %><div class="cell-subtitle">Accès bloqué par l’organisation</div><% } %>
+            </td>
+            <td><%= agent.last_login ? new Date(agent.last_login).toLocaleString('fr-FR') : 'Jamais' %></td>
+            <td class="align-right"><div class="action-row">
+                <% if (agent.deleted_at) { %><span class="action-note">Aucune action</span>
+                <% } else if (agent.is_active) { %>
+                    <form action="/users/<%= agent.user_id %>/deactivate" method="POST"><input type="hidden" name="_csrf" value="<%= user.csrf %>"><input type="hidden" name="returnTo" value="/organizations/<%= organization.org_id %>"><button class="action-button warning" data-confirm="Désactiver cet agent ?">Désactiver</button></form>
+                <% } else if (agent.suspended_by_plan || !organization.is_active) { %><span class="action-note"><%= agent.suspended_by_plan ? 'Quota du plan à régulariser' : 'Réactivez d’abord l’organisation' %></span>
+                <% } else { %>
+                    <form action="/users/<%= agent.user_id %>/activate" method="POST"><input type="hidden" name="_csrf" value="<%= user.csrf %>"><input type="hidden" name="returnTo" value="/organizations/<%= organization.org_id %>"><button class="action-button success">Réactiver</button></form>
+                <% } %>
+            </div></td>
+        </tr><% }) %>
+        <% if (!agents.length) { %><tr><td colspan="6" class="empty-state">Aucun agent ou opérateur rattaché.</td></tr><% } %>
+    </tbody></table></div>
+</section>
+
+<%- include('../partials/app-shell-end') %><%- include('../partials/footer') %>

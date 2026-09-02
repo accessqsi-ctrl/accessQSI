@@ -137,7 +137,7 @@ export default function Register() {
                             Créer un compte
                         </h1>
                         <p className="text-slate-500 dark:text-slate-400 text-base">
-                            Créez votre compte et profitez gratuitement du plan Essentiel pendant un mois.
+                            Créez votre organisation et profitez d&apos;un mois d&apos;Essential offert, sans paiement initial.
                         </p>
                     </div>
 

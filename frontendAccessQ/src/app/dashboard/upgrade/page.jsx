@@ -66,6 +66,7 @@ export default function UpgradePage() {
     const [resourceOptions, setResourceOptions] = useState({ agents: [], areas: [] });
     const [retainedResources, setRetainedResources] = useState({ agentIds: [], areaIds: [] });
     const [quote, setQuote] = useState(null);
+    const [passPopupDismissed, setPassPopupDismissed] = useState(false);
 
     const availablePlans = useMemo(
         () => plans.filter((item) => ["DISCOVERY", ...PURCHASABLE, "ENTERPRISE"].includes(item.key)),
@@ -384,7 +385,14 @@ export default function UpgradePage() {
                 })}
             </section>
 
-            {activePasses.length > 0 && <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900 dark:border-emerald-900/60 dark:bg-emerald-950/20 dark:text-emerald-100"><strong>{activePasses.length} Pass disponible{activePasses.length > 1 ? "s" : ""}.</strong> Attribuez-en un depuis la page « Créer un événement ». Le délai de 30 jours commencera à ce moment-là.</div>}
+            {activePasses.length > 0 && !passPopupDismissed && (
+                <div role="status" className="fixed bottom-5 right-5 z-50 w-[calc(100%-2.5rem)] max-w-sm rounded-2xl border border-emerald-200 bg-emerald-50 p-5 pr-12 text-sm text-emerald-900 shadow-2xl dark:border-emerald-900/60 dark:bg-emerald-950 dark:text-emerald-100">
+                    <button type="button" onClick={() => setPassPopupDismissed(true)} aria-label="Fermer la notification" className="absolute right-3 top-3 rounded-lg p-1 text-emerald-700 transition hover:bg-emerald-100 dark:text-emerald-200 dark:hover:bg-emerald-900">
+                        <XCircle className="h-5 w-5" />
+                    </button>
+                    <p><strong>{activePasses.length} Pass disponible{activePasses.length > 1 ? "s" : ""}.</strong> Attribuez-en un depuis la page « Créer un événement ». Le délai de 30 jours commencera à ce moment-là.</p>
+                </div>
+            )}
 
             {PAYMENTS_ENABLED ? (
                 <section className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
