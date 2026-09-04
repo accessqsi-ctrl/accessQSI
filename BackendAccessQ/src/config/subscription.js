@@ -92,11 +92,11 @@ const PLAN_DETAILS = Object.freeze({
         fixedPrices: PRO_FIXED_PRICES,
         annualFixedPrices: PRO_ANNUAL_FIXED_PRICES,
         maxEventsPerCycle: 7,
-        maxQrCodesPerEvent: 500,
+        maxQrCodesPerEvent: 350,
         maxAgents: 10,
         maxAreas: 15,
         capabilities: Object.freeze(Object.values(PLAN_CAPABILITIES)),
-        features: ["7 événements par mois", "500 QR par événement", "10 agents actifs", "15 zones actives", "Analytics et modèles avancés"]
+        features: ["7 événements par mois", "350 QR par événement", "10 agents actifs", "15 zones actives", "Analytics et modèles avancés"]
     }),
     ENTERPRISE: Object.freeze({
         key: PLAN_KEYS.ENTERPRISE,
