@@ -64,6 +64,12 @@ test('agent activation enforces the active-agent plan quota', async () => {
     assert.equal(db.updates.length, 0);
 });
 
+test('Pro limits active agents to 10', () => {
+    const db = makeDatabase();
+    const { getAgentLimit } = mockPrisma(db.prisma);
+    assert.equal(getAgentLimit({ plan: { title: 'PRO' }, subscription_expires_at: null }), 10);
+});
+
 test('agent activation cannot target an organization administrator', async () => {
     const db = makeDatabase({ agent: { role: 'ORG_ADMIN' } });
     const { setAgentActive } = mockPrisma(db.prisma);

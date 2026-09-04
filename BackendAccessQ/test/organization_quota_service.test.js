@@ -94,7 +94,7 @@ test("withOrganizationQuota retries serialization conflicts", async () => {
             findUnique: async () => ({ plan: { title: "PRO" } })
         },
         event: {
-            count: async () => 9,
+            count: async () => 6,
             create: async () => ({ event_id: 1 })
         }
     };

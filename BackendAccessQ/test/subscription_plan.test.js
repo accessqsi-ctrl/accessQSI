@@ -60,14 +60,14 @@ test("Essential est identifié comme un essai pendant sa période gratuite", () 
   assert.equal(summary.subscriptionType, "TRIAL");
 });
 
-test("Pro applique 10 événements, 700 QR, 15 agents et 20 zones", () => {
+test("Pro applique 7 événements, 500 QR, 10 agents et 15 zones", () => {
   const summary = getPlanSummary({ plan: { title: "PRO" } });
-  assert.equal(getEventQuotaStatus(summary, 9).allowed, true);
-  assert.equal(getEventQuotaStatus(summary, 10).allowed, false);
-  assert.equal(getQrQuotaStatus(summary, 699).allowed, true);
-  assert.equal(getQrQuotaStatus(summary, 700).allowed, false);
-  assert.equal(summary.limits.maxAgents, 15);
-  assert.equal(summary.limits.maxAreas, 20);
+  assert.equal(getEventQuotaStatus(summary, 6).allowed, true);
+  assert.equal(getEventQuotaStatus(summary, 7).allowed, false);
+  assert.equal(getQrQuotaStatus(summary, 499).allowed, true);
+  assert.equal(getQrQuotaStatus(summary, 500).allowed, false);
+  assert.equal(summary.limits.maxAgents, 10);
+  assert.equal(summary.limits.maxAreas, 15);
   assert.equal(hasPlanCapability(summary, PLAN_CAPABILITIES.ADVANCED_ANALYTICS), true);
 });
 

@@ -230,7 +230,7 @@ const pricingPlans = [
     cadence: "/ mois",
     annual: "240 $ par an — économisez 20 %",
     description: "Pour les opérations exigeantes et les volumes importants.",
-    features: ["10 événements par mois", "700 QR par événement", "15 agents actifs", "20 zones actives", "Analytics et modèles personnalisés"],
+    features: ["7 événements par mois", "500 QR par événement", "10 agents actifs", "15 zones actives", "Analytics et modèles personnalisés"],
     cta: "Créer mon compte",
     href: "/register"
   },

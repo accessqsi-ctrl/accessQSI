@@ -219,7 +219,7 @@ table(
         ["Découverte", "Gratuit", "1 / mois", "50", "2 actifs", "2 actives"],
         ["Essential", "15 $ / mois\nou 144 $ / an", "5 / mois", "200", "5 actifs", "6 actives"],
         ["Pass événement", "7 $ / événement", "1 crédit", "200", "Selon le compte", "Selon le compte"],
-        ["Pro", "25 $ / mois\nou 240 $ / an", "10 / mois", "700", "15 actifs", "20 actives"],
+        ["Pro", "25 $ / mois\nou 240 $ / an", "7 / mois", "500", "10 actifs", "15 actives"],
         ["Entreprise", "Sur devis", "Personnalisé", "Personnalisé", "Personnalisé", "Personnalisé"]
     ],
     [88, 83, 84, 88, 76, 76],
@@ -234,7 +234,7 @@ paragraph("La période d'abonnement est l'intervalle déjà payé. Un abonnement
 subTitle("Cycle mensuel de quota");
 paragraph("Les événements sont comptés par cycle mensuel ancré sur la date de début de l'abonnement. Même avec Essential annuel, le quota de 5 événements se renouvelle chaque mois. Un événement supprimé reste compté dans le cycle pendant lequel il a été créé.");
 subTitle("Quota propre à l'événement");
-paragraph("Chaque événement possède son propre quota QR. Essential autorise jusqu'à 200 QR pour chacun de ses événements ; Pro en autorise 700. Supprimer un QR ne rend pas son unité au quota, ce qui empêche la génération et la suppression répétées.");
+paragraph("Chaque événement possède son propre quota QR. Essential autorise jusqu'à 200 QR pour chacun de ses événements ; Pro en autorise 500. Supprimer un QR ne rend pas son unité au quota, ce qui empêche la génération et la suppression répétées.");
 subTitle("Ressources actives");
 paragraph("Les limites d'agents et de zones portent sur les ressources actives. Les ressources suspendues ou archivées restent dans l'historique, mais ne consomment pas le quota actif.");
 callout("Règle de conservation", "Un renouvellement ou un changement de plan ne supprime jamais les événements, QR, scans, agents ou zones. Les restrictions portent sur les nouvelles créations et sur le statut actif des ressources.", "blue");
@@ -304,7 +304,7 @@ callout("Renouvellement", "Le renouvellement est manuel ou prépayé : le client
 
 sectionTitle(7, "Quotas lors d'un upgrade ou downgrade", "Le changement de plan modifie le plafond total, pas la consommation déjà enregistrée.");
 subTitle("Upgrade sans remise à zéro");
-paragraph("Si un client Essential a déjà créé 5 événements puis passe à Pro, son plafond devient 10 pour le même cycle. Il lui reste donc 5 événements, et non 10 supplémentaires. La date d'ancrage et les consommations existantes sont préservées.");
+paragraph("Si un client Essential a déjà créé 5 événements puis passe à Pro, son plafond devient 7 pour le même cycle. Il lui reste donc 2 événements, et non 7 supplémentaires. La date d'ancrage et les consommations existantes sont préservées.");
 subTitle("Downgrade avec dépassement");
 paragraph("Les événements et QR existants restent consultables. Les nouvelles créations sont bloquées lorsqu'elles dépassent les limites du nouveau plan. Les agents et zones excédentaires sont suspendus sans être supprimés.");
 paragraph("Avant l'échéance, l'administrateur de l'organisation peut sélectionner les agents et zones qu'il souhaite conserver. Si aucune sélection n'est enregistrée, AccessQ applique un choix déterministe parmi les ressources actives les plus anciennes.");
