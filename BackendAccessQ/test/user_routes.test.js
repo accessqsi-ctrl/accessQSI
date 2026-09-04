@@ -678,11 +678,11 @@ test("GET /user/profile returns the authenticated user profile", async () => {
     assert.equal(res.body.user.planName, "Pro");
     assert.equal(res.body.user.isPro, true);
     assert.equal(res.body.user.planLimits.maxEventsPerCycle, 7);
-    assert.equal(res.body.user.planLimits.maxQrCodesPerEvent, 500);
+    assert.equal(res.body.user.planLimits.maxQrCodesPerEvent, 350);
     assert.equal(res.body.user.planLimits.maxAgents, 10);
     assert.equal(res.body.user.planLimits.maxAreas, 15);
     assert.deepEqual(res.body.user.planUsage.events, { used: 2, limit: 7, remaining: 5, reached: false });
-    assert.deepEqual(res.body.user.planUsage.qrCodes, { used: 15, limit: 500, remaining: 485, reached: false });
+    assert.deepEqual(res.body.user.planUsage.qrCodes, { used: 15, limit: 350, remaining: 335, reached: false });
     assert.equal(res.body.user.subscription.subscriptionType, "PAID");
     assert.equal(res.body.user.subscription.planCapabilities.includes("advanced_analytics"), true);
 });
