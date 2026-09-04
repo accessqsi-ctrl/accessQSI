@@ -2,7 +2,7 @@ const { Prisma } = require('@prisma/client');
 const prisma = require('../lib/prisma');
 
 const AGENT_ROLES = Object.freeze(['ORG_AGENT', 'OPERATOR']);
-const PLAN_AGENT_LIMITS = Object.freeze({ DISCOVERY: 2, FREE: 2, ESSENTIAL: 5, PRO: 15, ENTERPRISE: null });
+const PLAN_AGENT_LIMITS = Object.freeze({ DISCOVERY: 2, FREE: 2, ESSENTIAL: 5, PRO: 10, ENTERPRISE: null });
 
 const accessError = (code) => Object.assign(new Error(code), { code });
 
