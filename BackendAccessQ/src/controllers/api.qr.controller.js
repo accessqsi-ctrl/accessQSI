@@ -475,6 +475,7 @@ exports.getQrsByEvent = async (req, res) => {
                 holder: qr.holder_name || "Inconnu",
                 email: qr.holder_email || "-",
                 phone: qr.holder_phone || "-",
+                level: qr.level ?? 1,
                 status: getEffectiveQrStatus(qr),
                 scans: `${qr.scans_count} / ${formatUsageLimit(qr.usage_limit)}`,
                 scans_count: qr.scans_count,

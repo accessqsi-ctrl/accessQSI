@@ -1,0 +1,98 @@
+[0:v]format=yuv420p,
+drawbox=x='-500+mod(t*75,2600)':y=40:w=620:h=10:color=0x18e6cf@0.28:t=fill,
+drawbox=x='1700-mod(t*45,2450)':y=1020:w=780:h=8:color=0x1687d9@0.24:t=fill,
+drawbox=x=1450:y=-180:w=620:h=620:color=0x0c3550@0.42:t=fill,
+drawbox=x=-240:y=760:w=620:h=620:color=0x0a2940@0.55:t=fill[base];
+
+[1:v]scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,eq=brightness=-0.34:saturation=0.82,format=rgba,fade=t=in:st=0:d=0.45:alpha=1,fade=t=out:st=4.55:d=0.45:alpha=1[concert];
+[2:v]scale=-1:900,format=rgba,fade=t=in:st=5:d=0.45:alpha=1,fade=t=out:st=9.55:d=0.45:alpha=1[poster];
+[3:v]scale=880:-1,format=rgba,fade=t=in:st=14:d=0.45:alpha=1,fade=t=out:st=19.55:d=0.45:alpha=1[invites];
+[4:v]scale=860:-1,format=rgba,fade=t=in:st=33:d=0.45:alpha=1,fade=t=out:st=37.55:d=0.45:alpha=1[conference];
+[5:v]scale=1080:-1,format=rgba,fade=t=in:st=38:d=0.45:alpha=1,fade=t=out:st=41.55:d=0.45:alpha=1[supports];
+[6:v]scale=205:-1,format=rgba,split=2[logo1][logo2];
+[logo1]fade=t=in:st=10:d=0.4:alpha=1,fade=t=out:st=13.55:d=0.4:alpha=1[brandlogo];
+[logo2]fade=t=in:st=42:d=0.35:alpha=1[ctalogo];
+
+[base][concert]overlay=0:0:enable='between(t,0,5)'[v1];
+[v1][poster]overlay=1240:90:enable='between(t,5,10)'[v2];
+[v2][brandlogo]overlay=858:135:enable='between(t,10,14)'[v3];
+[v3][invites]overlay=990:230:enable='between(t,14,20)'[v4];
+[v4][conference]overlay=1030:270:enable='between(t,33,38)'[v5];
+[v5][supports]overlay=720:280:enable='between(t,38,42)'[v6];
+[v6][ctalogo]overlay=858:95:enable='between(t,42,45)'[v7];
+
+[v7]
+drawbox=x=0:y=0:w=1920:h=1080:color=0x020912@0.36:t=fill:enable='between(t,0,5)',
+drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='À L’ENTRÉE':fontcolor=0x27ead0:fontsize=46:x=120:y=285:enable='between(t,0.5,5)',
+drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='CHAQUE SECONDE COMPTE.':fontcolor=white:fontsize=76:x=120:y=355:enable='between(t,0.5,5)',
+drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:text='Chaque accès aussi.':fontcolor=white@0.90:fontsize=42:x=124:y=465:enable='between(t,1.1,5)',
+drawbox=x=120:y=550:w=580:h=3:color=0x27ead0:t=fill:enable='between(t,1.2,5)',
+
+drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='UN QR PARTAGÉ':fontcolor=white:fontsize=70:x=120:y=270:enable='between(t,5,10)',
+drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='NE DOIT PAS DEVENIR':fontcolor=white:fontsize=70:x=120:y=360:enable='between(t,5,10)',
+drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='DEUX ENTRÉES.':fontcolor=0xff5667:fontsize=78:x=120:y=450:enable='between(t,5,10)',
+drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:text='AccessQ détecte immédiatement les doublons.':fontcolor=white@0.86:fontsize=31:x=124:y=570:enable='between(t,6,10)',
+
+drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='Access':fontcolor=white:fontsize=92:x=735:y=400:enable='between(t,10,14)',
+drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='Q':fontcolor=0x27ead0:fontsize=92:x=1060:y=400:enable='between(t,10,14)',
+drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='UN QR.  UNE RÈGLE.  UNE DÉCISION IMMÉDIATE.':fontcolor=white:fontsize=41:x=(w-text_w)/2:y=555:enable='between(t,10.7,14)',
+
+drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='CRÉEZ VOTRE ÉVÉNEMENT':fontcolor=white:fontsize=64:x=110:y=285:enable='between(t,14,20)',
+drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='ET VOS INVITATIONS':fontcolor=0x27ead0:fontsize=64:x=110:y=370:enable='between(t,14,20)',
+drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:text='Un QR unique pour chaque personne.':fontcolor=white@0.90:fontsize=36:x=114:y=485:enable='between(t,15,20)',
+drawbox=x=110:y=560:w=590:h=62:color=0x0d3047@0.90:t=fill:enable='between(t,15.3,20)',
+drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='MARIAGE • CONFÉRENCE • CONCERT':fontcolor=white:fontsize=23:x=145:y=579:enable='between(t,15.3,20)',
+
+drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='SCANNEZ DEPUIS':fontcolor=white:fontsize=67:x=110:y=235:enable='between(t,20,27)',
+drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='UN SMARTPHONE':fontcolor=0x27ead0:fontsize=76:x=110:y=320:enable='between(t,20,27)',
+drawbox=x=1170:y=130:w=520:h=820:color=0x02070c@0.95:t=fill:enable='between(t,20,27)',
+drawbox=x=1200:y=160:w=460:h=760:color=0x102737:t=fill:enable='between(t,20,27)',
+drawbox=x=1290:y=270:w=280:h=280:color=white:t=fill:enable='between(t,20,27)',
+drawbox=x=1320:y=300:w=55:h=55:color=0x061522:t=fill:enable='between(t,20,27)',
+drawbox=x=1485:y=300:w=55:h=55:color=0x061522:t=fill:enable='between(t,20,27)',
+drawbox=x=1320:y=465:w=55:h=55:color=0x061522:t=fill:enable='between(t,20,27)',
+drawbox=x=1400:y=375:w=38:h=38:color=0x061522:t=fill:enable='between(t,20,27)',
+drawbox=x=1455:y=430:w=45:h=45:color=0x061522:t=fill:enable='between(t,20,27)',
+drawbox=x=1235:y=660:w=390:h=110:color=0x12b981:t=fill:enable='between(t,20,23.4)',
+drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='✓  ACCÈS VALIDÉ':fontcolor=white:fontsize=34:x=1270:y=696:enable='between(t,20,23.4)',
+drawbox=x=1235:y=660:w=390:h=110:color=0xe65061:t=fill:enable='between(t,23.4,27)',
+drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='×  DÉJÀ UTILISÉ':fontcolor=white:fontsize=34:x=1263:y=696:enable='between(t,23.4,27)',
+drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:text='Une réponse claire. En une seconde.':fontcolor=white@0.88:fontsize=34:x=114:y=470:enable='between(t,21,27)',
+
+drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='VOUS FIXEZ LES RÈGLES.':fontcolor=white:fontsize=70:x=(w-text_w)/2:y=155:enable='between(t,27,33)',
+drawbox=x=165:y=360:w=460:h=330:color=0x0d2c42@0.92:t=fill:enable='between(t,27,33)',
+drawbox=x=730:y=360:w=460:h=330:color=0x0d2c42@0.92:t=fill:enable='between(t,27,33)',
+drawbox=x=1295:y=360:w=460:h=330:color=0x0d2c42@0.92:t=fill:enable='between(t,27,33)',
+drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='ZONES':fontcolor=0x27ead0:fontsize=45:x=310:y=445:enable='between(t,27,33)',
+drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:text='VIP • Hall • Coulisses':fontcolor=white:fontsize=28:x=235:y=535:enable='between(t,27.4,33)',
+drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='HORAIRES':fontcolor=0x27ead0:fontsize=45:x=835:y=445:enable='between(t,27,33)',
+drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:text='Valide au bon moment':fontcolor=white:fontsize=28:x=805:y=535:enable='between(t,27.4,33)',
+drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='PASSAGES':fontcolor=0x27ead0:fontsize=45:x=1390:y=445:enable='between(t,27,33)',
+drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:text='Unique ou multiple':fontcolor=white:fontsize=28:x=1388:y=535:enable='between(t,27.4,33)',
+drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:text='Modifiez ou révoquez un accès à tout moment.':fontcolor=white@0.83:fontsize=34:x=(w-text_w)/2:y=795:enable='between(t,28,33)',
+
+drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='GARDEZ LA MAÎTRISE':fontcolor=white:fontsize=68:x=110:y=270:enable='between(t,33,38)',
+drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='EN TEMPS RÉEL.':fontcolor=0x27ead0:fontsize=73:x=110:y=355:enable='between(t,33,38)',
+drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:text='Validé. Refusé. Déjà contrôlé.':fontcolor=white@0.9:fontsize=36:x=114:y=480:enable='between(t,33.6,38)',
+drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:text='Chaque passage laisse une trace.':fontcolor=white@0.78:fontsize=31:x=114:y=540:enable='between(t,34,38)',
+
+drawbox=x=115:y=190:w=505:h=590:color=0x09283d@0.92:t=fill:enable='between(t,38,42)',
+drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='PLUS RAPIDE':fontcolor=0x27ead0:fontsize=42:x=175:y=280:enable='between(t,38,42)',
+drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:text='Scan mobile':fontcolor=white:fontsize=31:x=175:y=345:enable='between(t,38.2,42)',
+drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='PLUS SÛR':fontcolor=0x27ead0:fontsize=42:x=175:y=455:enable='between(t,38,42)',
+drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:text='Doublons bloqués':fontcolor=white:fontsize=31:x=175:y=520:enable='between(t,38.2,42)',
+drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='PLUS CLAIR':fontcolor=0x27ead0:fontsize=42:x=175:y=630:enable='between(t,38,42)',
+drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:text='Historique complet':fontcolor=white:fontsize=31:x=175:y=695:enable='between(t,38.2,42)',
+
+drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='Access':fontcolor=white:fontsize=88:x=742:y=335:enable='between(t,42,45)',
+drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='Q':fontcolor=0x27ead0:fontsize=88:x=1054:y=335:enable='between(t,42,45)',
+drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='CRÉEZ VOTRE ÉVÉNEMENT GRATUITEMENT':fontcolor=white:fontsize=49:x=(w-text_w)/2:y=535:enable='between(t,42,45)',
+drawbox=x=670:y=655:w=580:h=100:color=0x18cdb8:t=fill:enable='between(t,42.2,45)',
+drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='COMMENCER MAINTENANT':fontcolor=0x05202b:fontsize=32:x=(w-text_w)/2:y=688:enable='between(t,42.2,45)',
+drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:text='À l’entrée, chaque seconde compte. Chaque accès aussi.':fontcolor=white@0.72:fontsize=24:x=(w-text_w)/2:y=845:enable='between(t,42.4,45)',
+fade=t=in:st=0:d=0.25,fade=t=out:st=44.65:d=0.35[vout];
+
+[7:a]volume=0.025[a1];
+[8:a]volume=0.018[a2];
+[9:a]volume=0.012[a3];
+[a1][a2][a3]amix=inputs=3:normalize=0,tremolo=f=0.18:d=0.35,lowpass=f=900,afade=t=in:st=0:d=1.5,afade=t=out:st=43:d=2,volume=0.85[aout]

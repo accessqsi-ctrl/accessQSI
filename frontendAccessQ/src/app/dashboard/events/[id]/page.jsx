@@ -1324,6 +1324,10 @@ export default function EventDetailPage() {
                                     <p className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-tighter">Événement</p>
                                     <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{event.title}</p>
                                 </div>
+                                <div>
+                                    <p className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-tighter">Niveau d’accréditation</p>
+                                    <p className="text-sm font-bold text-slate-700 dark:text-slate-200">Niveau {selectedQr.level ?? 1}</p>
+                                </div>
                                 <div className="flex justify-between items-end">
                                     <div>
                                         <p className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-tighter">Statut</p>
