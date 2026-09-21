@@ -41,6 +41,7 @@ router.get('/organizations/:id', orgController.showOrganization);
 router.post('/organizations/:id/deactivate', orgController.deactivateOrganization);
 router.post('/organizations/:id/activate', orgController.activateOrganization);
 router.post('/organizations/:id/archive', orgController.archiveOrganization);
+router.post('/organizations/:id/subscription', orgController.changeSubscription);
 router.post('/organizations/:id/enterprise', orgController.activateEnterprise);
 
 // Gestion des agents depuis une organisation

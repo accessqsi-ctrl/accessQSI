@@ -16,6 +16,8 @@ Au premier démarrage, un compte `SUPER_ADMIN` est créé s'il n'existe pas enco
 
 La liste `/organizations` ouvre une fiche pour chaque organisation. Cette fiche centralise les informations du compte client, l'abonnement, les administrateurs et les agents/opérateurs avec leurs actions autorisées.
 
+Le super-admin peut y appliquer immédiatement un plan Discovery, Essential ou Pro. Les changements d'abonnement et l'activation d'un contrat Entreprise demandent une nouvelle saisie de son mot de passe, mettent à jour les quotas et créent une entrée d'audit.
+
 ## Vérifications
 
 - `npm run check` valide le schéma Prisma et la syntaxe des fichiers serveur.

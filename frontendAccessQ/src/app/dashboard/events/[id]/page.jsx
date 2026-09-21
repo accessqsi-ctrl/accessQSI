@@ -412,6 +412,9 @@ export default function EventDetailPage() {
         const holderName = qrForm.fullName.trim();
         const payload = {
             ...qrForm,
+            // Send the complete controlled input explicitly. This avoids a
+            // stale or browser-autofilled value being replaced by another field.
+            fullName: holderName,
             email: qrForm.email.trim().toLowerCase(),
             phone: normalizePhone(qrForm.phone),
             cardTemplateId: selectedCardTemplateId
@@ -1110,14 +1113,17 @@ export default function EventDetailPage() {
                                         <div className="space-y-4">
                                             <div className="space-y-2">
                                                 <label className="text-sm font-semibold text-slate-800 dark:text-slate-100">Nom complet *</label>
-                                        <input
-                                            required
-                                            type="text"
+                                                <input
+                                                    required
+                                                    type="text"
+                                                    name="fullName"
+                                                    autoComplete="name"
+                                                    maxLength={120}
                                                     placeholder="Ex. Jane Smith"
-                                            value={qrForm.fullName}
-                                            onChange={(e) => setQrForm({ ...qrForm, fullName: e.target.value })}
+                                                    value={qrForm.fullName}
+                                                    onChange={(e) => setQrForm({ ...qrForm, fullName: e.target.value })}
                                                     className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all"
-                                        />
+                                                />
                                             </div>
 
                                             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

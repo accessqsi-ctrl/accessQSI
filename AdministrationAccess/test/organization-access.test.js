@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
+const bcrypt = require('bcrypt');
 
 const loadController = (prisma) => {
     const prismaPath = require.resolve(path.join(process.cwd(), 'src/lib/prisma.js'));
@@ -72,4 +73,78 @@ test('an archived organization cannot be reactivated', async () => {
     const res = response();
     await controller.activateOrganization({ params: { id: '42' }, user: { id: 1 } }, res);
     assert.match(res.destination, /error=/);
+});
+
+test('subscription change requires the current super-admin password', async () => {
+    const passwordHash = await bcrypt.hash('correct-password', 4);
+    let transactions = 0;
+    const controller = loadController({
+        userQ: { findFirst: async () => ({ password_hash: passwordHash }) },
+        $transaction: async () => { transactions += 1; }
+    });
+    const res = response();
+
+    await controller.changeSubscription({
+        params: { id: '42' },
+        body: { targetPlan: 'PRO', billingInterval: 'MONTHLY', superAdminPassword: 'wrong-password' },
+        user: { id: 1 }
+    }, res);
+
+    assert.equal(transactions, 0);
+    assert.match(res.destination, /Mot%20de%20passe%20incorrect/);
+});
+
+test('confirmed subscription change updates both subscription records and audit history', async () => {
+    const passwordHash = await bcrypt.hash('correct-password', 4);
+    const calls = {};
+    const tx = {
+        $queryRaw: async () => [],
+        organization: {
+            findFirst: async () => ({
+                org_id: 42,
+                plan: { title: 'ESSENTIAL' },
+                subscription_interval: 'MONTHLY',
+                subscription_started_at: new Date('2026-01-01T00:00:00Z'),
+                subscription_expires_at: new Date('2026-01-31T00:00:00Z'),
+                subscription: { status: 'ACTIVE' }
+            }),
+            update: async ({ data }) => { calls.organization = data; return data; }
+        },
+        plan: { findUnique: async () => ({ plan_id: 3, title: 'PRO' }) },
+        userQ: {
+            findMany: async () => [],
+            updateMany: async () => ({ count: 0 })
+        },
+        area: {
+            findMany: async () => [],
+            updateMany: async () => ({ count: 0 })
+        },
+        subscription: { upsert: async ({ update }) => { calls.subscription = update; return update; } },
+        subscriptionPeriod: { create: async ({ data }) => { calls.period = data; return data; } },
+        subscriptionAuditLog: { create: async ({ data }) => { calls.audit = data; return data; } }
+    };
+    let transactionOptions;
+    const controller = loadController({
+        userQ: { findFirst: async () => ({ password_hash: passwordHash }) },
+        $transaction: async (operation, options) => {
+            transactionOptions = options;
+            return operation(tx);
+        }
+    });
+    const res = response();
+
+    await controller.changeSubscription({
+        params: { id: '42' },
+        body: { targetPlan: 'PRO', billingInterval: 'ANNUAL', superAdminPassword: 'correct-password' },
+        user: { id: 7 }
+    }, res);
+
+    assert.equal(calls.organization.subscription_plan, 3);
+    assert.equal(calls.organization.subscription_interval, 'ANNUAL');
+    assert.equal(calls.subscription.status, 'ACTIVE');
+    assert.equal(calls.period.source, 'SUPER_ADMIN_OVERRIDE');
+    assert.equal(calls.audit.actor_user_id, 7);
+    assert.equal(calls.audit.action, 'SUPER_ADMIN_SUBSCRIPTION_CHANGED');
+    assert.deepEqual(transactionOptions, { maxWait: 5000, timeout: 20000 });
+    assert.match(res.destination, /success=/);
 });
