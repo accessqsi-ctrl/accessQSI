@@ -12,126 +12,6 @@ import {
   ScanLine,
 } from "lucide-react";
 
-function AccueilDeuxPanel() {
-  const metrics = [
-    ["Accès validés", "248", "+18 aujourd'hui"],
-    ["Zones actives", "12", "4 sites ouverts"],
-    ["Agents en ligne", "7", "scan en direct"]
-  ];
-
-  const activity = [
-    ["QR-1842", "Entrée principale", "Validé", "text-emerald-700 dark:text-emerald-300"],
-    ["QR-0931", "Salon VIP", "Déjà utilisé", "text-amber-700 dark:text-amber-300"],
-    ["QR-7710", "Back office", "Refusé", "text-rose-700 dark:text-rose-300"]
-  ];
-
-  return (
-    <div className="w-full text-left">
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-200/60 dark:border-slate-700 dark:bg-slate-900 dark:shadow-slate-950/20">
-        <div className="flex flex-col gap-4 border-b border-slate-200 bg-slate-50 px-5 py-4 dark:border-slate-700 dark:bg-slate-800 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm font-semibold text-slate-900 dark:text-white">Centre de contrôle AccessQ</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Vue instantanée des accès et validations</p>
-          </div>
-          <div className="flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 dark:border-emerald-700/70 dark:bg-emerald-900/40 dark:text-emerald-200">
-            <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_0_4px_rgba(16,185,129,0.16)]" />
-            En service
-          </div>
-        </div>
-
-        <div className="grid gap-5 p-5 lg:grid-cols-[1.05fr_0.95fr]">
-          <div className="space-y-4">
-            <div className="grid gap-3 sm:grid-cols-3">
-              {metrics.map(([label, value, hint]) => (
-                <div key={label} className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800">
-                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{label}</p>
-                  <p className="mt-2 text-2xl font-black tracking-tight text-slate-950 dark:text-white">{value}</p>
-                  <p className="mt-1 text-xs font-medium text-emerald-700 dark:text-emerald-200">{hint}</p>
-                </div>
-              ))}
-            </div>
-
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800">
-              <div className="mb-4 flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-sm font-bold text-slate-900 dark:text-white">Activité récente</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Dernières décisions du contrôle</p>
-                </div>
-                <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-600 ring-1 ring-slate-200 dark:bg-slate-700 dark:text-slate-200 dark:ring-slate-600">
-                  Direct
-                </span>
-              </div>
-
-              <div className="space-y-2.5">
-                {activity.map(([code, place, status, color]) => (
-                  <div key={code} className="flex items-center justify-between gap-4 rounded-lg border border-slate-200 bg-white px-3 py-3 dark:border-slate-700 dark:bg-slate-900/70">
-                    <div>
-                      <p className="text-sm font-bold text-slate-900 dark:text-white">{code}</p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">{place}</p>
-                    </div>
-                    <span className={`text-right text-xs font-bold ${color}`}>{status}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-700/60 dark:bg-blue-900/35">
-                <p className="text-xs font-semibold uppercase text-blue-700 dark:text-blue-200">Validation QR</p>
-                <p className="mt-2 text-sm font-semibold text-slate-900 dark:text-white">Scanner web et mobile</p>
-              </div>
-              
-            </div>
-          </div>
-
-          <div className="flex flex-col justify-between rounded-xl border border-slate-200 bg-slate-900 p-5 text-white shadow-lg shadow-slate-900/20 dark:border-slate-700 dark:bg-slate-800">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-sm font-bold">Scan en cours</p>
-                <p className="text-xs text-slate-300">Contrôle Entrée principale</p>
-              </div>
-              <span className="rounded-full bg-emerald-400/15 px-3 py-1 text-xs font-bold text-emerald-200 ring-1 ring-emerald-300/30">
-                Autorisé
-              </span>
-            </div>
-
-            <div className="my-8 flex items-center justify-center">
-              <div className="grid h-40 w-40 grid-cols-5 grid-rows-5 gap-1 rounded-2xl bg-white p-4 shadow-2xl shadow-emerald-500/20">
-                {Array.from({ length: 25 }).map((_, index) => (
-                  <span
-                    key={index}
-                    className={`rounded-sm ${
-                      [0, 1, 2, 5, 7, 10, 11, 12, 14, 18, 20, 22, 23, 24].includes(index)
-                        ? "bg-slate-950"
-                        : index % 4 === 0
-                          ? "bg-emerald-500"
-                          : "bg-slate-200"
-                    }`}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <div className="flex items-center justify-between gap-4 rounded-lg bg-white/12 px-4 py-3 ring-1 ring-white/15">
-                <span className="text-xs text-slate-200">Titulaire</span>
-                <span className="text-sm font-bold">Invité validé</span>
-              </div>
-              <div className="flex items-center justify-between gap-4 rounded-lg bg-white/12 px-4 py-3 ring-1 ring-white/15">
-                <span className="text-xs text-slate-200">Zone</span>
-                <span className="text-sm font-bold">Hall A</span>
-              </div>
-              <div className="h-2 overflow-hidden rounded-full bg-white/15">
-                <div className="h-full w-[78%] rounded-full bg-emerald-400" />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 const useCases = [
   {
     title: "Événements et cérémonies",
@@ -432,11 +312,6 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="relative z-10 w-full max-w-5xl mx-auto mt-12 mb-12 rounded-2xl border border-slate-200/50 dark:border-slate-700/70 bg-white dark:bg-slate-800 shadow-2xl shadow-blue-900/5 overflow-hidden p-2 lg:p-4">
-          <div className="w-full min-h-[400px] md:min-h-[500px] lg:min-h-[560px] bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-100 dark:border-slate-700 flex items-center justify-center p-6 md:p-10">
-            <AccueilDeuxPanel />
-          </div>
-        </div>
       </main>
 
       <section id="use-cases" className="relative w-full overflow-hidden border-t border-slate-200 bg-gradient-to-b from-white via-slate-50/80 to-white py-24 dark:border-slate-700 dark:from-slate-900 dark:via-slate-950/70 dark:to-slate-900">
