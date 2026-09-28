@@ -6,7 +6,6 @@ const eventService = require('../services/event.service');
 const qrService = require('../services/qr.service');
 const cardTemplateService = require('../services/card_template.service');
 const customCardTemplateService = require('../services/custom_card_template.service');
-const storageService = require("../services/storage.service");
 const { validateQrPayload } = require("../services/qr_validation.service");
 const {
     getEffectiveQrStatus,
@@ -395,10 +394,7 @@ exports.generateQrForEvent = async (req, res) => {
         }
         console.error('Erreur lors de la génération du QR:', error);
         if (qrRecord) {
-            await Promise.allSettled([
-                qrService.deleteQrPermanently?.(qrRecord.qr_id),
-                storageService.removeQrAssets(uniqueToken)
-            ]);
+            await Promise.allSettled([qrService.deleteQrPermanently?.(qrRecord.qr_id)]);
         }
         return res.status(500).json({ success: false, message: 'Erreur serveur interne' });
     }
@@ -797,15 +793,14 @@ exports.importQrsFromCSV = async (req, res) => {
             } catch (error) {
                 const detail = {
                     line,
-                    stage: qrRecord ? "asset_generation" : "database",
+                    stage: qrRecord ? "database_update" : "database",
                     message: importErrorMessage(error),
                     ...(qrRecord ? { qrId: qrRecord.qr_id } : {})
                 };
                 let rollbackFailed = false;
                 if (qrRecord) {
                     const rollbackResults = await Promise.allSettled([
-                        qrService.deleteQrPermanently(qrRecord.qr_id),
-                        storageService.removeQrAssets(qrRecord.unique_token)
+                        qrService.deleteQrPermanently(qrRecord.qr_id)
                     ]);
                     rollbackFailed = rollbackResults.some(result => result.status === "rejected");
                     for (const result of rollbackResults) {

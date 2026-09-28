@@ -19,7 +19,6 @@ const loadQrManagementApp = ({
     qrcode = {},
     cardTemplateService = {},
     customCardTemplateService = {},
-    storageService = {},
     planContext = { isPro: true, plan: "PRO", planName: "Pro", limits: {}, features: [] }
 }) => {
     clearSrcModules();
@@ -42,12 +41,6 @@ const loadQrManagementApp = ({
         resolveCustomForRender: async () => null,
         getDefaultForOrg: async () => "",
         ...customCardTemplateService
-    });
-    mockModule("src/services/storage.service", {
-        storagePath: (...segments) => path.join(os.tmpdir(), ...segments),
-        writeFileAtomically: async () => {},
-        removeQrAssets: async () => {},
-        ...storageService
     });
     mockModule("src/controllers/api.qr_verify.controller", {
         verifyScan: (req, res) => res.json({ success: true })
@@ -375,9 +368,6 @@ test("POST /qr/generate/:event_id does not generate or store an image during cre
             toBuffer: async () => {
                 throw new Error("PNG indisponible");
             }
-        },
-        storageService: {
-            removeQrAssets: async (token) => calls.push(["cleanup", token])
         }
     });
 
@@ -939,11 +929,6 @@ test("CSV import returns an explicit report when some lines fail after others we
     mockModule("src/services/custom_card_template.service", {
         resolveCustomForRender: async () => null,
         getDefaultForOrg: async () => ""
-    });
-    mockModule("src/services/storage.service", {
-        storagePath: (...segments) => path.join(os.tmpdir(), ...segments),
-        writeFileAtomically: async () => {},
-        removeQrAssets: async () => {}
     });
     mockModule("src/services/organization_quota.service", {
         withEventQrQuota: async ({ create }) => create({})

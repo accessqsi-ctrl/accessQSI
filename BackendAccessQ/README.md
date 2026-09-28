@@ -73,14 +73,39 @@ Pour une utilisation en production et pour permettre le scan via mobile :
 - **Frontend** : Next.js, TailwindCSS, Lucide-React, Recharts.
 - **QR Engine** : node-qrcode.
 
-### Stockage persistant des QR et cartes
+### Stockage persistant des ressources de modèles
 
-Définissez `FILE_STORAGE_ROOT` vers un répertoire partagé et persistant lorsque
-plusieurs instances du backend sont utilisées. Les URLs publiques restent
-`/qrcodes/...`, `/cards/...` et `/card-backgrounds/...`.
+Définissez `FILE_STORAGE_ROOT` vers un répertoire persistant hors du dépôt, par
+exemple `/srv/accessq/storage` sur un serveur Linux. Ce répertoire conserve les
+images nécessaires aux modèles (`card-backgrounds` et `card-logos`).
 
-Le fichier `docker-compose.yml` monte automatiquement le volume `qr_assets`
-dans `/usr/src/app/storage`.
+Les images QR et les cartes PDF ne sont pas enregistrées sur disque : elles sont
+générées en mémoire à chaque téléchargement via `/qr/image/:id`,
+`/qr/card/:id/download` ou `/qr/event/:event_id/cards.pdf`.
+
+```env
+STORAGE_DRIVER=local
+FILE_STORAGE_ROOT=/srv/accessq/storage
+```
+#### Render gratuit avec Cloudflare R2
+
+Le disque de Render gratuit étant éphémère, créez un bucket R2 et renseignez
+ces variables depuis **Render > Environment** ; aucun accès Shell n’est requis :
+
+```env
+STORAGE_DRIVER=r2
+R2_ACCOUNT_ID=...
+R2_ACCESS_KEY_ID=...
+R2_SECRET_ACCESS_KEY=...
+R2_BUCKET=accessq-assets
+R2_PUBLIC_URL=https://pub-xxxxxxxx.r2.dev
+```
+
+Activez l’accès public du bucket R2 (domaine `r2.dev` ou domaine personnalisé)
+et utilisez cette origine comme `R2_PUBLIC_URL`. Le backend envoie, lit et
+supprime les fonds via l’API S3 de R2. Les QR et PDF restent générés en mémoire
+et ne consomment pas le stockage R2.
+
 
 ## Auteur
 Lionel TSHITENGE KALEU

@@ -166,17 +166,18 @@ const toApiTemplate = (template) => ({
     updatedAt: template.updated_at
 });
 
-exports.previewPayload = (payload) => {
+exports.previewPayload = async (payload) => {
     const normalized = normalizePayload(payload, null, { allowUnavailable: String(payload.templateId || "").startsWith("custom:") });
+    const customization = await cardTemplateService.materializeCustomizationAssets({
+        primaryColor: normalized.primary_color, secondaryColor: normalized.secondary_color,
+        title: normalized.title, cardMessageDefault: normalized.card_message_default,
+        logoUrl: normalized.logo_url, backgroundImageUrl: normalized.background_image_url,
+        qrPosition: normalized.qr_position, visibleFields: normalized.visible_fields,
+        layoutConfig: normalized.layout_config, canvasScene: normalized.canvas_scene, layout: normalized.layout
+    });
     return cardTemplateService.renderPreview({
         templateId: normalized.base_template_id,
-        customization: {
-            primaryColor: normalized.primary_color, secondaryColor: normalized.secondary_color,
-            title: normalized.title, cardMessageDefault: normalized.card_message_default,
-            logoUrl: normalized.logo_url, backgroundImageUrl: normalized.background_image_url,
-            qrPosition: normalized.qr_position, visibleFields: normalized.visible_fields,
-            layoutConfig: normalized.layout_config, canvasScene: normalized.canvas_scene, layout: normalized.layout
-        }
+        customization
     });
 };
 
