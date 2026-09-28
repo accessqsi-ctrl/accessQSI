@@ -19,7 +19,6 @@ if (trustProxyValue) {
 }
 
 
-const fs = require("fs");
 const cookieParser = require("cookie-parser");
 const storageService = require("./services/storage.service");
 
@@ -108,27 +107,13 @@ app.use(requestLogger);
 
 
 // ===== Fichiers statiques =====
-app.get("/cards/:filename/download", (req, res) => {
-    const filename = String(req.params.filename || "");
-    if (!/^card_[a-zA-Z0-9_.-]+\.(svg|pdf)$/.test(filename)) {
-        return res.status(400).json({ success: false, message: "Nom de fichier invalide" });
-    }
-
-    const cardPath = storageService.findPublicAsset("cards", filename);
-    if (!cardPath || !fs.existsSync(cardPath)) {
-        return res.status(404).json({ success: false, message: "Carte introuvable" });
-    }
-
-    return res.download(cardPath, filename);
-});
-
+// Seules les ressources des modèles sont persistées. Les QR et cartes sont générés via /qr à la demande.
 app.use(express.static(storageService.storageRoot));
 if (storageService.storageRoot !== storageService.bundledStaticsRoot) {
     app.use(express.static(storageService.bundledStaticsRoot));
 }
 
-// Le limiteur concerne uniquement les API. Les images, QR, SVG et PDF statiques
-// ne doivent pas consommer le quota de navigation d'un utilisateur.
+// Le limiteur concerne uniquement les API, après les ressources statiques des modèles.
 app.use(generalLimiter);
 
 // Importer les différentes routes depuis le dossier src/routes/

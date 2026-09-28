@@ -244,10 +244,6 @@ test("event service soft-deletes an event and revokes its QR codes together", as
                 }
             },
             qrCode: {
-                findMany: async (args) => {
-                    calls.push(["qrCode.findMany", args]);
-                    return [{ unique_token: "token-1" }];
-                },
                 updateMany: async (args) => {
                     calls.push(["qrCode.updateMany", args]);
                 }
@@ -258,11 +254,10 @@ test("event service soft-deletes an event and revokes its QR codes together", as
     const deleted = await eventService.deleteEvent(5);
 
     assert.equal(deleted.event_id, 5);
-    assert.deepEqual(calls.map(([name]) => name), ["qrCode.findMany", "event.update", "qrCode.updateMany"]);
-    assert.deepEqual(calls[2][1].where, { event_id: 5, deleted_at: null });
-    assert.equal(calls[2][1].data.status, "revoked");
-    assert.ok(calls[2][1].data.deleted_at instanceof Date);
-    assert.deepEqual(deleted.qr_tokens, ["token-1"]);
+    assert.deepEqual(calls.map(([name]) => name), ["event.update", "qrCode.updateMany"]);
+    assert.deepEqual(calls[1][1].where, { event_id: 5, deleted_at: null });
+    assert.equal(calls[1][1].data.status, "revoked");
+    assert.ok(calls[1][1].data.deleted_at instanceof Date);
 });
 
 test("QR verification locks, evaluates, logs and consumes a scan in one transaction", async () => {

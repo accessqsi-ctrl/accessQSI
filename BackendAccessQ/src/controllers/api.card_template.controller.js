@@ -28,7 +28,7 @@ exports.previewTemplate = async (req, res) => {
     try {
         const orgId = requireOrg(req, res);
         if (!orgId) return;
-        const svg = customCardTemplateService.previewPayload(req.body);
+        const svg = await customCardTemplateService.previewPayload(req.body);
         res.type("image/svg+xml").status(200).send(svg);
     } catch (error) {
         res.status(error.statusCode || 400).json({ success: false, message: error.message || "Aperçu impossible." });
@@ -169,11 +169,13 @@ exports.uploadLogo = async (req, res) => {
 
         const extension = path.extname(req.file.originalname || "").toLowerCase() || ".png";
         const filename = `logo_${orgId}_${crypto.randomUUID()}${extension}`;
-        const targetDir = storageService.storagePath("card-logos");
-        const targetPath = path.join(targetDir, filename);
-
-        await storageService.moveFile(req.file.path, targetPath);
-        res.status(201).json({ success: true, logoUrl: `/card-logos/${filename}` });
+        const logoUrl = await storageService.saveUploadedAsset({
+            directory: "card-logos", filename,
+            contentType: req.file.mimetype,
+            buffer: req.file.buffer,
+            sourcePath: req.file.path
+        });
+        res.status(201).json({ success: true, logoUrl });
     } catch (error) {
         if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
         res.status(500).json({ success: false, message: "Erreur lors de l'envoi du logo." });
@@ -191,10 +193,13 @@ exports.uploadBackground = async (req, res) => {
 
         const extension = path.extname(req.file.originalname || "").toLowerCase() || ".png";
         const filename = `background_${orgId}_${crypto.randomUUID()}${extension}`;
-        const targetDir = storageService.storagePath("card-backgrounds");
-        const targetPath = path.join(targetDir, filename);
-        await storageService.moveFile(req.file.path, targetPath);
-        res.status(201).json({ success: true, backgroundImageUrl: `/card-backgrounds/${filename}` });
+        const backgroundImageUrl = await storageService.saveUploadedAsset({
+            directory: "card-backgrounds", filename,
+            contentType: req.file.mimetype,
+            buffer: req.file.buffer,
+            sourcePath: req.file.path
+        });
+        res.status(201).json({ success: true, backgroundImageUrl });
     } catch (error) {
         if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
         res.status(500).json({ success: false, message: "Erreur lors de l'envoi de l'image de fond." });

@@ -614,6 +614,31 @@ const localImagePathForHref = (href) => {
     const normalizedHref = cleanHref.startsWith("/") ? cleanHref.slice(1) : cleanHref;
     return storageService.findPublicAsset(...normalizedHref.split("/")) || cleanHref;
 };
+const materializeCustomizationAssets = async (customization) => {
+    if (!customization || typeof customization !== "object") return customization;
+    if (customization.baseTemplateId && customization.customization) {
+        return { ...customization, customization: await materializeCustomizationAssets(customization.customization) };
+    }
+
+    const renderable = { ...customization };
+    const [backgroundImageUrl, logoUrl] = await Promise.all([
+        storageService.materializeManagedAsset(customization.backgroundImageUrl),
+        storageService.materializeManagedAsset(customization.logoUrl)
+    ]);
+    renderable.backgroundImageUrl = backgroundImageUrl;
+    renderable.logoUrl = logoUrl;
+
+    if (customization.canvasScene?.objects) {
+        const objects = await Promise.all(customization.canvasScene.objects.map(async (object) => (
+            object?.src
+                ? { ...object, src: await storageService.materializeManagedAsset(object.src) }
+                : object
+        )));
+        renderable.canvasScene = { ...customization.canvasScene, objects };
+    }
+
+    return renderable;
+};
 
 const normalizeCardRenderInput = ({ templateId, customization, ...payload }) => {
     const baseTemplateId = customization?.baseTemplateId || templateId;
@@ -658,6 +683,12 @@ exports.streamCardsPdf = async ({ cards, output }) => {
     if (!output || typeof output.write !== "function") {
         throw new Error("Flux de sortie PDF invalide.");
     }
+    const renderableCards = await Promise.all(cards.map(async (card) => ({
+        ...card,
+        customization: await materializeCustomizationAssets(card.customization)
+    })));
+
+
 
     await new Promise((resolve, reject) => {
         const doc = new PDFDocument({ autoFirstPage: false, margin: 0 });
@@ -675,7 +706,7 @@ exports.streamCardsPdf = async ({ cards, output }) => {
         doc.pipe(output);
 
         try {
-            renderCardsIntoPdfDocument(doc, cards);
+            renderCardsIntoPdfDocument(doc, renderableCards);
             doc.end();
         } catch (error) {
             doc.destroy(error);
@@ -694,6 +725,7 @@ exports.generateCardsPdfBuffer = async (cards) => {
 
 exports.hasTemplate = hasTemplate;
 exports.isTemplateAvailable = isTemplateAvailable;
+exports.materializeCustomizationAssets = materializeCustomizationAssets;
 exports.getTemplate = getTemplate;
 exports.extractCustomTemplateId = extractCustomTemplateId;
 exports.standardTemplates = templates;

@@ -1,6 +1,5 @@
 const eventService = require('../services/event.service');
 const logger = require('../utils/logger');
-const storageService = require("../services/storage.service");
 const { withEventCreationQuota } = require("../services/organization_quota.service");
 
 // Récupérer tous les événements de l'organisation courante
@@ -237,10 +236,7 @@ exports.deleteEvent = async (req, res) => {
             return res.status(404).json({ success: false, message: "Événement introuvable" });
         }
 
-        const deletedEvent = await eventService.deleteEvent(eventId);
-        await Promise.allSettled(
-            (deletedEvent.qr_tokens || []).map(token => storageService.removeQrAssets(token))
-        );
+        await eventService.deleteEvent(eventId);
         logger.info("event.deleted", {
             request_id: req.requestId,
             user_id: req.user.user_id,
