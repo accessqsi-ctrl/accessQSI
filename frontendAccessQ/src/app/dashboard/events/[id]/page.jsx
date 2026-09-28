@@ -73,6 +73,8 @@ export default function EventDetailPage() {
 
     // Filters and Actions State
     const [searchQuery, setSearchQuery] = useState("");
+    const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+    const [qrListLoading, setQrListLoading] = useState(false);
     const [statusFilter, setStatusFilter] = useState("Tous les statuts");
     const [qrPage, setQrPage] = useState(1);
     const [qrPagination, setQrPagination] = useState({ page: 1, pageSize: 25, total: 0, totalPages: 1 });
@@ -137,7 +139,7 @@ export default function EventDetailPage() {
     }, []);
 
     const fetchAll = useCallback(async () => {
-        setLoading(true);
+        setQrListLoading(true);
         setError("");
         setQrListError("");
         try {
@@ -145,7 +147,7 @@ export default function EventDetailPage() {
                 page: String(qrPage),
                 pageSize: "25"
             });
-            if (searchQuery.trim()) params.set("search", searchQuery.trim());
+            if (debouncedSearchQuery) params.set("search", debouncedSearchQuery);
             if (statusFilter !== "Tous les statuts") params.set("status", statusFilter);
             const [eventRes, qrRes] = await Promise.all([
                 apiFetch(`/events/${eventId}`),
@@ -181,14 +183,20 @@ export default function EventDetailPage() {
             setError("Erreur de connexion au serveur.");
         } finally {
             setLoading(false);
+            setQrListLoading(false);
         }
-    }, [eventId, qrPage, searchQuery, statusFilter]);
+    }, [eventId, qrPage, debouncedSearchQuery, statusFilter]);
 
     useEffect(() => {
-        if (eventId) {
-            const timer = setTimeout(fetchAll, 250);
-            return () => clearTimeout(timer);
-        }
+        const timer = setTimeout(() => {
+            setDebouncedSearchQuery(searchQuery.trim());
+            setQrPage(1);
+        }, 650);
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
+
+    useEffect(() => {
+        if (eventId) fetchAll();
     }, [eventId, fetchAll]);
 
     useEffect(() => {
@@ -801,13 +809,23 @@ export default function EventDetailPage() {
                         <input
                             type="text"
                             value={searchQuery}
-                            onChange={(e) => {
-                                setSearchQuery(e.target.value);
-                                setQrPage(1);
+                            onChange={(event) => setSearchQuery(event.target.value)}
+                            onKeyDown={(event) => {
+                                if (event.key === "Enter") {
+                                    setDebouncedSearchQuery(searchQuery.trim());
+                                    setQrPage(1);
+                                }
                             }}
                             placeholder="Rechercher par ID, Nom..."
-                            className="block w-full pl-10 pr-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl leading-5 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 sm:text-sm transition-colors shadow-sm"
+                            title="La recherche démarre après une courte pause ou en appuyant sur Entrée."
+                            className="block w-full pl-10 pr-10 py-2 border border-slate-200 dark:border-slate-700 rounded-xl leading-5 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 sm:text-sm transition-colors shadow-sm"
                         />
+                        {qrListLoading && (
+                            <Loader2
+                                className="absolute right-3 top-2.5 h-4 w-4 animate-spin text-blue-600"
+                                aria-label="Recherche en cours"
+                            />
+                        )}
                     </div>
 
                     <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
