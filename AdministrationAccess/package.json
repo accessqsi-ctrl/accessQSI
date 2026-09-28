@@ -11,7 +11,7 @@
     "seed:admin": "node scripts/style-css-access.js",
     "prisma:generate": "prisma generate",
     "test": "node --test",
-    "check": "prisma validate && node --check server.js && node --check scripts/style-css-access.js && node --check src/controllers/auth.controller.js && node --check src/controllers/organization.controller.js && node --check src/controllers/user.controller.js && node --check src/services/agent-access.service.js && node --check src/services/audit.service.js"
+    "check": "prisma validate && node --check server.js && node --check scripts/style-css-access.js && node --check src/public/js/admin.js && node --check src/controllers/auth.controller.js && node --check src/controllers/organization.controller.js && node --check src/controllers/user.controller.js && node --check src/services/agent-access.service.js && node --check src/services/audit.service.js"
   },
   "keywords": [],
   "author": "",

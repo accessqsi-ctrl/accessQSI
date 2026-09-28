@@ -3,8 +3,15 @@ const ACCESS_TYPES = new Set(["single", "multi", "unlimited"]);
 
 const toOptionalDate = (value) => value ? new Date(value) : null;
 
+// Keep the complete holder name while normalizing whitespace pasted from
+// spreadsheets, phones or rich-text sources (including non-breaking spaces).
+const normalizeHolderName = (value) => String(value ?? "")
+    .replace(/\s+/gu, " ")
+    .trim();
+
 const validateQrPayload = (input = {}, { line = null } = {}) => {
-    const fullName = String(input.fullName || input.name || input.nom || "").trim();
+    const rawFullName = input.fullName ?? input.holderName ?? input.holder_name ?? input.name ?? input.nom ?? "";
+    const fullName = normalizeHolderName(rawFullName);
     const email = String(input.email || "").trim().toLowerCase() || null;
     const phone = String(input.phone || input.telephone || "").trim() || null;
     const accessType = String(input.accessType || "single").trim().toLowerCase();
@@ -61,4 +68,4 @@ const validateQrPayload = (input = {}, { line = null } = {}) => {
     };
 };
 
-module.exports = { validateQrPayload };
+module.exports = { normalizeHolderName, validateQrPayload };

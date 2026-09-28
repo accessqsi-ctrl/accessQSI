@@ -1,3 +1,14 @@
         </main>
     </section>
 </div>
+<dialog class="confirmation-dialog password-dialog" data-password-dialog aria-labelledby="password-dialog-title">
+    <form method="dialog" data-password-dialog-form>
+        <div class="dialog-heading"><div><span class="eyebrow">Confirmation requise</span><h3 id="password-dialog-title" data-password-dialog-title>Confirmer l’action</h3></div><button type="button" class="dialog-close" data-close-password-dialog aria-label="Fermer">×</button></div>
+        <div class="dialog-body">
+            <p class="dialog-copy" data-password-dialog-message></p>
+            <label class="field-label">Mot de passe du super-admin<input type="password" name="confirmationPassword" class="field-input" autocomplete="current-password" required data-password-input></label>
+            <p class="field-error" data-password-error hidden>Veuillez saisir votre mot de passe.</p>
+        </div>
+        <div class="dialog-actions"><button type="button" class="action-button" data-close-password-dialog>Annuler</button><button type="submit" class="primary-button">Confirmer</button></div>
+    </form>
+</dialog>

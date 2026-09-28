@@ -48,6 +48,10 @@
             <div><dt>Référence Entreprise</dt><dd><%= organization.enterprise_contract_reference || '—' %></dd></div>
             <div><dt>Paiements</dt><dd><%= organization._count.payments %></dd></div>
         </dl>
+        <div class="subscription-admin">
+            <button type="button" class="primary-button" data-open-subscription-dialog>Changer l’abonnement</button>
+            <p>Les plans payants sont activés immédiatement pour une nouvelle période. Le passage au plan Discovery applique ses quotas sans supprimer les données.</p>
+        </div>
     </article>
 
     <article class="panel detail-panel">
@@ -63,6 +67,36 @@
         </div>
     </article>
 </section>
+
+<dialog class="confirmation-dialog" data-subscription-dialog aria-labelledby="subscription-dialog-title">
+    <form action="/organizations/<%= organization.org_id %>/subscription" method="POST" data-password-confirm data-confirm-title="Confirmer le changement d’abonnement" data-confirm-message="Saisissez votre mot de passe de super-admin pour appliquer ce changement.">
+        <input type="hidden" name="_csrf" value="<%= user.csrf %>">
+        <div class="dialog-heading">
+            <div><span class="eyebrow">Action sensible</span><h3 id="subscription-dialog-title">Changer l’abonnement</h3></div>
+            <button type="button" class="dialog-close" data-close-subscription-dialog aria-label="Fermer">×</button>
+        </div>
+        <div class="dialog-body">
+            <label class="field-label">Nouveau plan
+                <select name="targetPlan" class="field-input" data-plan-select required>
+                    <option value="DISCOVERY" <%= (organization.plan?.title || 'DISCOVERY') === 'DISCOVERY' ? 'selected' : '' %>>Discovery</option>
+                    <option value="ESSENTIAL" <%= organization.plan?.title === 'ESSENTIAL' ? 'selected' : '' %>>Essential</option>
+                    <option value="PRO" <%= organization.plan?.title === 'PRO' ? 'selected' : '' %>>Pro</option>
+                </select>
+            </label>
+            <label class="field-label" data-interval-field>Période de facturation
+                <select name="billingInterval" class="field-input">
+                    <option value="MONTHLY" <%= organization.subscription_interval !== 'ANNUAL' ? 'selected' : '' %>>Mensuelle — 30 jours</option>
+                    <option value="ANNUAL" <%= organization.subscription_interval === 'ANNUAL' ? 'selected' : '' %>>Annuelle — 360 jours</option>
+                </select>
+            </label>
+            <div class="dialog-notice">Le changement prend effet immédiatement et est inscrit dans l’historique d’audit.</div>
+        </div>
+        <div class="dialog-actions">
+            <button type="button" class="action-button" data-close-subscription-dialog>Annuler</button>
+            <button type="submit" class="primary-button">Continuer</button>
+        </div>
+    </form>
+</dialog>
 
 <section class="panel">
     <div class="panel-header"><div><h3>Agents et opérateurs</h3><p>Les actions ci-dessous modifient uniquement le compte sélectionné. Une organisation désactivée bloque tous ses accès.</p></div><span class="badge badge-slate"><%= agents.length %> compte(s)</span></div>
