@@ -1,6 +1,7 @@
 require("dotenv").config();
 const app = require("./src/app");
 const logger = require("./src/utils/logger");
+const storageService = require("./src/services/storage.service");
 const { startSubscriptionLifecycleWorker } = require("./src/workers/subscription.worker");
 
 
@@ -8,6 +9,8 @@ const { startSubscriptionLifecycleWorker } = require("./src/workers/subscription
 
 // ===== Lancer le serveur =====
 const PORT = process.env.PORT || 5000;
+
+storageService.assertPersistentStorageConfigured();
 
 const server = app.listen(PORT, () => {
   logger.info("server.started", {

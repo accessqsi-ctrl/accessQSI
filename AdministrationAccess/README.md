@@ -10,7 +10,7 @@ Console réservée aux utilisateurs `SUPER_ADMIN`. Elle partage la base PostgreS
 
 La console écoute sur `http://localhost:4000` par défaut.
 
-Au premier démarrage, un compte `SUPER_ADMIN` est créé s'il n'existe pas encore. Ses identifiants viennent de `DEFAULT_ADMIN_EMAIL` et `DEFAULT_ADMIN_PASSWORD`. Les valeurs de démonstration présentes dans `.env.example` doivent être remplacées en production.
+Aucun compte privilégié n'est créé au démarrage. Pour initialiser explicitement un compte `SUPER_ADMIN`, définissez `DEFAULT_ADMIN_EMAIL` et `DEFAULT_ADMIN_PASSWORD`, puis exécutez une seule fois `npm run seed:admin`. Le script refuse de s'exécuter si une valeur manque.
 
 ## Gestion par organisation
 

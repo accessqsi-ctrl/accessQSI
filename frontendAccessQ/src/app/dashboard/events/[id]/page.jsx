@@ -3,118 +3,20 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Loader2, Calendar, MapPin, QrCode, Edit2, Trash2, ArrowLeft, Plus, Download, X, CheckCircle2, FileSpreadsheet, FileText, Mail, Phone, IdCard, Ticket } from "lucide-react";
+import { Loader2, Calendar, MapPin, QrCode, Edit2, Trash2, ArrowLeft, Plus, Download, X, CheckCircle2, FileSpreadsheet, FileText, Mail, Phone } from "lucide-react";
 import { apiFetch, apiUrl, refreshSession } from "../../../lib/api";
 import LoadingBar from "../../../components/LoadingBar";
 import { useUserPlan } from "../../../lib/useUserPlan";
 import PlanQuotaStatus from "../../../components/PlanQuotaStatus";
+import CardTemplatePreview from "../../../components/CardTemplatePreview";
+import { formatInternationalPhone, normalizePhone, selectTemplateForExistingQr, validateQrContact } from "../../../lib/eventQr.mjs";
 
-const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-
-const normalizePhone = (phone) => phone.replace(/[^\d+]/g, "");
-
-const formatInternationalPhone = (value) => {
-    let cleaned = value.replace(/[^\d+]/g, "");
-
-    if (cleaned.startsWith("00")) {
-        cleaned = `+${cleaned.slice(2)}`;
-    }
-
-    cleaned = `${cleaned.startsWith("+") ? "+" : ""}${cleaned.replace(/\+/g, "")}`;
-
-    if (cleaned && !cleaned.startsWith("+")) {
-        cleaned = `+${cleaned}`;
-    }
-
-    const digits = cleaned.replace(/\D/g, "").slice(0, 15);
-    if (!digits) return cleaned.startsWith("+") ? "+" : "";
-
-    const groups = digits.match(/.{1,3}/g) || [];
-    return `+${groups.join(" ")}`;
-};
-
-const validateQrContact = ({ email, phone }) => {
-    const normalizedEmail = email.trim().toLowerCase();
-    const normalizedPhone = normalizePhone(phone);
-    const phoneDigits = normalizedPhone.replace(/\D/g, "");
-    const errors = {};
-
-    if (normalizedEmail && !emailPattern.test(normalizedEmail)) {
-        errors.email = "Entrez une adresse email valide, par exemple nom@domaine.com.";
-    }
-
-    if (normalizedPhone && (!normalizedPhone.startsWith("+") || phoneDigits.length < 8 || phoneDigits.length > 15)) {
-        errors.phone = "Entrez le numéro au format international, par exemple +243 812 345 678.";
-    }
-
-    return errors;
-};
 
 const getCardDownloadUrl = (cardUrl) => {
     if (!cardUrl) return "";
     return apiUrl(cardUrl);
 };
 
-const templateIconMap = {
-    "event-ticket": Ticket,
-    "compact-ticket": Ticket,
-    "staff-card": IdCard,
-    "wedding-invite": Mail,
-};
-
-const templateAccentClasses = {
-    blue: "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900/60 dark:bg-blue-950/25 dark:text-blue-200",
-    amber: "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/25 dark:text-amber-200",
-    emerald: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/25 dark:text-emerald-200",
-    teal: "border-teal-200 bg-teal-50 text-teal-700 dark:border-teal-900/60 dark:bg-teal-950/25 dark:text-teal-200",
-    rose: "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/25 dark:text-rose-200",
-    navy: "border-blue-200 bg-blue-50 text-[#080d5f] dark:border-blue-900/60 dark:bg-blue-950/25 dark:text-blue-200",
-    violet: "border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-900/60 dark:bg-violet-950/25 dark:text-violet-200",
-    slate: "border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-};
-
-function CardTemplatePreview({ template }) {
-    const isQrOnly = !template;
-    const isWide = template?.layout === "wide" || template?.layout === "compact";
-    const accentClass = template ? templateAccentClasses[template.accent] || templateAccentClasses.slate : "border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200";
-    const customStyle = template?.accent === "custom" ? { borderColor: template.primaryColor, backgroundColor: template.secondaryColor, color: template.primaryColor } : undefined;
-
-    return (
-        <div className={`relative overflow-hidden rounded-xl border ${accentClass} ${isWide ? "aspect-[16/6]" : "aspect-[9/13]"}`} style={customStyle}>
-            {isQrOnly ? (
-                <div className="flex h-full items-center justify-center">
-                    <div className="grid h-16 w-16 grid-cols-3 gap-1 rounded-lg bg-white p-2 shadow-sm dark:bg-slate-950">
-                        {Array.from({ length: 9 }).map((_, index) => (
-                            <span key={index} className={`rounded-sm ${index % 2 === 0 ? "bg-slate-900 dark:bg-slate-100" : "bg-slate-300 dark:bg-slate-600"}`} />
-                        ))}
-                    </div>
-                </div>
-            ) : (
-                <>
-                    <div className={`absolute left-0 top-0 ${isWide ? "h-full w-[30%]" : "h-[28%] w-full"} bg-current opacity-90`} />
-                    <div className="absolute inset-3 flex flex-col justify-between">
-                        <div className={isWide ? "ml-[34%]" : "mt-[34%]"}>
-                            <div className="h-2.5 w-24 rounded-full bg-slate-900/80 dark:bg-white/80" />
-                            <div className="mt-2 h-2 w-16 rounded-full bg-slate-500/40" />
-                            <div className="mt-2 h-2 w-20 rounded-full bg-slate-500/25" />
-                        </div>
-                        <div className="flex items-end justify-between gap-3">
-                            <div className="space-y-1.5">
-                                <div className="h-2 w-14 rounded-full bg-slate-500/30" />
-                                <div className="h-2 w-10 rounded-full bg-slate-500/20" />
-                            </div>
-                            <div className="grid h-12 w-12 grid-cols-3 gap-0.5 rounded-md bg-white p-1.5 shadow-sm dark:bg-slate-950">
-                                {Array.from({ length: 9 }).map((_, index) => (
-                                    <span key={index} className={`rounded-[2px] ${index % 2 === 0 ? "bg-slate-900 dark:bg-slate-100" : "bg-slate-300 dark:bg-slate-600"}`} />
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                </>
-            )}
-        </div>
-    );
-}
 
 export default function EventDetailPage() {
     const params = useParams();
@@ -183,6 +85,9 @@ export default function EventDetailPage() {
     const [rechargingId, setRechargingId] = useState(null);
     const [generatedAsset, setGeneratedAsset] = useState(null);
     const [cardGeneratingId, setCardGeneratingId] = useState(null);
+    const [qrForCardTemplate, setQrForCardTemplate] = useState(null);
+    const [replacementCardTemplateId, setReplacementCardTemplateId] = useState("");
+    const [cardTemplateError, setCardTemplateError] = useState("");
     const [exportingFormat, setExportingFormat] = useState("");
     const [downloadingCards, setDownloadingCards] = useState(false);
     const [downloadingTemplate, setDownloadingTemplate] = useState(false);
@@ -208,6 +113,10 @@ export default function EventDetailPage() {
     const selectedCardTemplate = useMemo(
         () => cardTemplates.find(template => template.templateId === selectedCardTemplateId) || null,
         [cardTemplates, selectedCardTemplateId]
+    );
+    const replacementCardTemplate = useMemo(
+        () => cardTemplates.find(template => template.templateId === replacementCardTemplateId) || null,
+        [cardTemplates, replacementCardTemplateId]
     );
 
     const fetchAreas = useCallback(async () => {
@@ -529,8 +438,55 @@ export default function EventDetailPage() {
         }
     };
 
-    const handleGenerateCardForQr = async (qr) => {
-        showToast("Les anciens modèles de cartes sont suspendus. Utilisez le module Modèles pour générer un PDF.");
+    const openCardTemplateModal = (qr) => {
+        if (cardTemplates.length === 0) {
+            showToast("Publiez d’abord un modèle dans le module Modèles.");
+            return;
+        }
+
+        setQrForCardTemplate(qr);
+        setReplacementCardTemplateId(
+            selectTemplateForExistingQr(qr, cardTemplates, selectedCardTemplateId)
+        );
+        setCardTemplateError("");
+    };
+
+    const handleGenerateCardForQr = async (event) => {
+        event.preventDefault();
+        if (!qrForCardTemplate || !replacementCardTemplateId) {
+            setCardTemplateError("Sélectionnez un modèle de carte.");
+            return;
+        }
+
+        setCardGeneratingId(qrForCardTemplate.id);
+        setCardTemplateError("");
+        try {
+            const res = await apiFetch(`/qr/card/${qrForCardTemplate.id}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ cardTemplateId: replacementCardTemplateId })
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data.success) {
+                setCardTemplateError(data.message || "Impossible de changer le modèle de cette carte.");
+                return;
+            }
+
+            setQrCodes(current => current.map(qr => qr.id === qrForCardTemplate.id
+                ? {
+                    ...qr,
+                    cardTemplateId: replacementCardTemplateId,
+                    cardUrl: data.cardUrl || null,
+                    cardPdfUrl: data.cardPdfUrl || qr.cardPdfUrl
+                }
+                : qr));
+            setQrForCardTemplate(null);
+            showToast("Le modèle de la carte a été mis à jour.");
+        } catch {
+            setCardTemplateError("Erreur de connexion au serveur.");
+        } finally {
+            setCardGeneratingId(null);
+        }
     };
 
     const handleExport = async (format) => {
@@ -948,7 +904,7 @@ export default function EventDetailPage() {
                                                 >
                                                     <Download className="w-5 h-5" />
                                                 </a>
-                                                    {(qr.cardPdfUrl || qr.cardUrl) ? (
+                                                {(qr.cardPdfUrl || qr.cardUrl) && (
                                                     <a
                                                         href={getCardDownloadUrl(qr.cardPdfUrl || qr.cardUrl)}
                                                         download
@@ -957,16 +913,17 @@ export default function EventDetailPage() {
                                                     >
                                                         {qr.cardPdfUrl ? <FileText className="w-5 h-5" /> : <FileSpreadsheet className="w-5 h-5" />}
                                                     </a>
-                                                ) : canManageEvent ? (
+                                                )}
+                                                {canManageEvent && (
                                                     <button
-                                                        onClick={() => handleGenerateCardForQr(qr)}
+                                                        onClick={() => openCardTemplateModal(qr)}
                                                         disabled={cardGeneratingId === qr.id}
                                                         className="p-1.5 text-violet-600 dark:text-violet-300 bg-white dark:bg-slate-900 border border-violet-100 dark:border-violet-900/50 hover:bg-violet-50 dark:hover:bg-violet-950/40 rounded-lg transition-colors disabled:opacity-50"
-                                                        title="Générer une carte"
+                                                        title={qr.cardTemplateId ? "Changer le modèle de carte" : "Générer une carte"}
                                                     >
-                                                        {cardGeneratingId === qr.id ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileSpreadsheet className="w-5 h-5" />}
+                                                        {cardGeneratingId === qr.id ? <Loader2 className="w-5 h-5 animate-spin" /> : <Edit2 className="w-5 h-5" />}
                                                     </button>
-                                                ) : null}
+                                                )}
                                                 {canManageEvent && qr.usage_limit > 0 && qr.status !== 'expired' && qr.status !== 'revoked' ? (
                                                     <button
                                                         onClick={() => openRechargeModal(qr)}
@@ -1442,6 +1399,94 @@ export default function EventDetailPage() {
                             </button>
                         </div>
                     </div>
+                </div>
+            )}
+
+            {qrForCardTemplate && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
+                    <form onSubmit={handleGenerateCardForQr} className="w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-slate-950">
+                        <div className="flex items-start justify-between border-b border-slate-100 px-6 py-4 dark:border-slate-800">
+                            <div>
+                                <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                                    {qrForCardTemplate.cardTemplateId ? "Changer le modèle de carte" : "Générer une carte"}
+                                </h2>
+                                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                                    QR de {qrForCardTemplate.holder}
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setQrForCardTemplate(null)}
+                                disabled={cardGeneratingId === qrForCardTemplate.id}
+                                className="rounded-lg p-1.5 hover:bg-slate-100 disabled:opacity-50 dark:hover:bg-slate-900"
+                                aria-label="Fermer"
+                            >
+                                <X className="h-5 w-5 text-slate-600 dark:text-slate-300" />
+                            </button>
+                        </div>
+
+                        <div className="grid gap-6 p-6 md:grid-cols-2">
+                            <div className="space-y-4">
+                                {cardTemplateError && (
+                                    <div className="rounded-xl border border-red-100 bg-red-50 p-3 text-sm text-red-600 dark:border-red-900/50 dark:bg-red-950/20 dark:text-red-300">
+                                        {cardTemplateError}
+                                    </div>
+                                )}
+                                <div className="space-y-2">
+                                    <label htmlFor="replacement-card-template" className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                                        Nouveau modèle
+                                    </label>
+                                    <select
+                                        id="replacement-card-template"
+                                        required
+                                        value={replacementCardTemplateId}
+                                        onChange={(event) => {
+                                            setReplacementCardTemplateId(event.target.value);
+                                            setCardTemplateError("");
+                                        }}
+                                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-violet-500/20 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
+                                    >
+                                        <option value="">Sélectionner un modèle</option>
+                                        {cardTemplates.map(template => (
+                                            <option key={template.templateId} value={template.templateId}>
+                                                {template.name}{template.isDefault ? " — par défaut" : ""}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-relaxed text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-200">
+                                    Le nouvel instantané sera utilisé pour les prochains téléchargements. Les cartes déjà imprimées ne sont pas modifiées.
+                                </p>
+                            </div>
+
+                            <div className="rounded-2xl bg-slate-100 p-5 dark:bg-slate-900">
+                                <p className="mb-4 text-center text-xs font-black uppercase tracking-widest text-slate-400">Aperçu du modèle</p>
+                                <CardTemplatePreview template={replacementCardTemplate} />
+                                <p className="mt-3 text-center text-sm font-bold text-slate-700 dark:text-slate-200">
+                                    {replacementCardTemplate?.name || "Sélectionnez un modèle"}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end gap-3 border-t border-slate-100 px-6 py-4 dark:border-slate-800">
+                            <button
+                                type="button"
+                                onClick={() => setQrForCardTemplate(null)}
+                                disabled={cardGeneratingId === qrForCardTemplate.id}
+                                className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-900"
+                            >
+                                Annuler
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={!replacementCardTemplateId || cardGeneratingId === qrForCardTemplate.id}
+                                className="inline-flex items-center gap-2 rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-black text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                {cardGeneratingId === qrForCardTemplate.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                                {cardGeneratingId === qrForCardTemplate.id ? "Mise à jour..." : "Confirmer le modèle"}
+                            </button>
+                        </div>
+                    </form>
                 </div>
             )}
 

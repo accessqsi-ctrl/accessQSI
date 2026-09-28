@@ -17,7 +17,7 @@ function redirectToLogin() {
     if (window.location.pathname === "/login") return;
 
     const next = `${window.location.pathname}${window.location.search}`;
-    window.location.href = `/login?next=${encodeURIComponent(next)}`;
+    window.location.assign(new URL(`/login?next=${encodeURIComponent(next)}`, window.location.origin).toString());
 }
 
 async function isBusinessForbidden(response) {

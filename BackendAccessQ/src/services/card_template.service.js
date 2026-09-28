@@ -229,8 +229,9 @@ const fieldText = (template, field, value) => isFieldVisible(template, field) ? 
 
 const renderLogo = (template, x, y, size = 62) => {
     if (!template.logoUrl) return "";
+    const logoHref = imageHrefForSvg(template.logoUrl);
     return `<rect x="${x}" y="${y}" width="${size}" height="${size}" rx="14" fill="#ffffff" opacity="0.96"/>
-<image href="${escapeXml(template.logoUrl)}" x="${x + 7}" y="${y + 7}" width="${size - 14}" height="${size - 14}" preserveAspectRatio="xMidYMid meet"/>`;
+<image href="${escapeXml(logoHref)}" x="${x + 7}" y="${y + 7}" width="${size - 14}" height="${size - 14}" preserveAspectRatio="xMidYMid meet"/>`;
 };
 
 const renderTextElement = (element, value) => {
@@ -311,7 +312,7 @@ const renderCanvasScene = ({ template, qrUrl, event, qrRecord, cardMessage }) =>
             if (object.type === "image" || object.type === "logo") {
                 const src = object.src || (object.type === "logo" ? template.logoUrl : "");
                 if (!src) return "";
-                return `<image href="${escapeXml(src)}" x="${object.x}" y="${object.y}" width="${object.width}" height="${object.height}" preserveAspectRatio="xMidYMid meet" ${common}/>`;
+                return `<image href="${escapeXml(imageHrefForSvg(src))}" x="${object.x}" y="${object.y}" width="${object.width}" height="${object.height}" preserveAspectRatio="xMidYMid meet" ${common}/>`;
             }
 
             if (object.type === "qr") {

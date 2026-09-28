@@ -6,12 +6,18 @@ require('dotenv').config();
 
 const prisma = new PrismaClient();
 
-const DEFAULT_EMAIL = 'admin@tinkli.com';
-const DEFAULT_PASSWORD = 'Tinkli.Soft243*';
+const requiredEnvironmentValue = (name) => {
+    const value = String(process.env[name] || '').trim();
+    if (!value) throw new Error(`${name} doit être défini explicitement.`);
+    return value;
+};
 
 async function seedDefaultAdmin() {
-    const email = String(process.env.DEFAULT_ADMIN_EMAIL || DEFAULT_EMAIL).trim().toLowerCase();
-    const password = String(process.env.DEFAULT_ADMIN_PASSWORD || DEFAULT_PASSWORD);
+    const email = requiredEnvironmentValue('DEFAULT_ADMIN_EMAIL').toLowerCase();
+    const password = requiredEnvironmentValue('DEFAULT_ADMIN_PASSWORD');
+    if (password.length < 12) {
+        throw new Error('DEFAULT_ADMIN_PASSWORD doit contenir au moins 12 caractères.');
+    }
     const existingAdmin = await prisma.userQ.findUnique({ where: { email } });
 
     if (existingAdmin) {
@@ -24,7 +30,7 @@ async function seedDefaultAdmin() {
     await prisma.userQ.create({
         data: {
             clef: crypto.randomUUID(),
-            full_name: 'Administrateur Tinkli',
+            full_name: 'Administrateur AccessQ',
             email,
             password_hash: passwordHash,
             role: 'SUPER_ADMIN',

@@ -173,7 +173,7 @@ export default function SettingsPage() {
             const data = await res.json();
             if (data.success) {
                 // Redirect to login page upon success
-                window.location.href = "/login";
+                window.location.assign(new URL("/login", window.location.origin).toString());
             } else {
                 setDeleteStatus(data.message || "Erreur lors de la suppression.");
                 setDeleteLoading(false);

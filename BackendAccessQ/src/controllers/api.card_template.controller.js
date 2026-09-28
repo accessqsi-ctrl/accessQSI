@@ -169,9 +169,8 @@ exports.uploadLogo = async (req, res) => {
 
         const extension = path.extname(req.file.originalname || "").toLowerCase() || ".png";
         const filename = `logo_${orgId}_${crypto.randomUUID()}${extension}`;
-        const targetDir = path.join(__dirname, "../statics/card-logos");
+        const targetDir = storageService.storagePath("card-logos");
         const targetPath = path.join(targetDir, filename);
-        if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
 
         await storageService.moveFile(req.file.path, targetPath);
         res.status(201).json({ success: true, logoUrl: `/card-logos/${filename}` });
@@ -194,9 +193,7 @@ exports.uploadBackground = async (req, res) => {
         const filename = `background_${orgId}_${crypto.randomUUID()}${extension}`;
         const targetDir = storageService.storagePath("card-backgrounds");
         const targetPath = path.join(targetDir, filename);
-        await storageService.ensureDirectory(targetDir);
-
-        await fs.promises.rename(req.file.path, targetPath);
+        await storageService.moveFile(req.file.path, targetPath);
         res.status(201).json({ success: true, backgroundImageUrl: `/card-backgrounds/${filename}` });
     } catch (error) {
         if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);

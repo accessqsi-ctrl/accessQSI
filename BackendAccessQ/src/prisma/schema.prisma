@@ -23,6 +23,7 @@ model UserQ {
   password_reset_token_hash     String?       @unique
   password_reset_expires_at     DateTime?
   password_reset_email_sent_at  DateTime?
+  session_version               Int           @default(0)
   deleted_at                    DateTime?
   created_at                    DateTime      @default(now())
   last_login                    DateTime?
@@ -180,6 +181,9 @@ model ScanLog {
   @@index([scanned_by_id])
   @@index([area_id])
   @@index([scanned_at])
+  @@index([scanned_at, id])
+  @@index([area_id, scanned_at])
+  @@index([status, scanned_at])
   @@map("scan_logs")
 }
 

@@ -6,7 +6,7 @@ const { evaluateAccess, findUserAccessState } = require("../services/account_acc
 const OPERATOR_ALLOWED_REQUESTS = new Set([
   "GET /user/profile",
   "PUT /user/password",
-  "GET /user/logout",
+  "POST /user/logout",
   "GET /areas",
   "GET /events",
   "POST /qr/verify"
@@ -82,6 +82,7 @@ function authenticateToken(req, res, next) {
         user_id: currentUser.user_id,
         email: currentUser.email,
         role: currentUser.role,
+        session_version: currentUser.session_version,
         org_id: currentUser.org_id,
         token_type: "access"
       };

@@ -37,7 +37,7 @@ router.put("/org", authMiddleware, adminOnly, userController.updateOrganization)
 router.delete("/org", authMiddleware, adminOnly, userController.deleteOrganization);
 
 // Page log out
-router.get("/logout", authMiddleware, userController.logout);
+router.post("/logout", authMiddleware, userController.logout);
 
 router.get('/ip', (req, res) => {
     res.json({

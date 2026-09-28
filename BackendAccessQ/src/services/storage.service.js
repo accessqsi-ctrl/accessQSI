@@ -6,6 +6,15 @@ const storageRoot = process.env.FILE_STORAGE_ROOT
     ? path.resolve(process.env.FILE_STORAGE_ROOT)
     : bundledStaticsRoot;
 
+const assertPersistentStorageConfigured = () => {
+    if (process.env.NODE_ENV === "production" && !process.env.FILE_STORAGE_ROOT) {
+        throw new Error("FILE_STORAGE_ROOT doit pointer vers un volume persistant en production.");
+    }
+
+    fs.mkdirSync(storageRoot, { recursive: true });
+    fs.accessSync(storageRoot, fs.constants.R_OK | fs.constants.W_OK);
+};
+
 const resolveInside = (root, segments) => {
     const candidate = path.resolve(root, ...segments);
     if (candidate !== root && !candidate.startsWith(`${root}${path.sep}`)) {
@@ -43,6 +52,18 @@ const removeFile = async (filePath) => {
     }
 };
 
+const removeManagedPublicAsset = async (publicUrl, directory) => {
+    const normalizedUrl = String(publicUrl || "").split("?")[0].trim();
+    const prefix = `/${directory}/`;
+    if (!normalizedUrl.startsWith(prefix)) return false;
+
+    const filename = normalizedUrl.slice(prefix.length);
+    if (!filename || filename.includes("/") || filename.includes("\\")) return false;
+
+    await removeFile(storagePath(directory, filename));
+    return true;
+};
+
 const removeQrAssets = async (token) => {
     await Promise.all([
         removeFile(storagePath("qrcodes", `qr_${token}.png`)),
@@ -77,10 +98,12 @@ const moveFile = async (sourcePath, targetPath) => {
 module.exports = {
     bundledStaticsRoot,
     storageRoot,
+    assertPersistentStorageConfigured,
     storagePath,
     ensureDirectory,
     findPublicAsset,
     removeFile,
+    removeManagedPublicAsset,
     removeQrAssets,
     writeFileAtomically,
     moveFile

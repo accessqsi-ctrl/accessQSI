@@ -1,15 +1,28 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { CalendarPlus, CheckCircle2, Download, Loader2, MapPinned, Palette, Pencil, QrCode, TrendingUp, UserPlus, Users, X } from "lucide-react";
+import { CalendarPlus, CheckCircle2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Download, Filter, Loader2, MapPinned, Palette, Pencil, QrCode, RefreshCw, Search, TrendingUp, UserPlus, Users, X } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { apiFetch, apiUrl, refreshSession } from "../lib/api";
 import LoadingBar from "../components/LoadingBar";
 import DismissiblePlanPromotion from "../components/DismissiblePlanPromotion";
 import { useUserPlan } from "../lib/useUserPlan";
+import { buildScanLogQuery, scanStatusLabel } from "../lib/dashboardScans.mjs";
 
 const ONBOARDING_STORAGE_KEY = "qrAccessDashboardOnboardingV2Dismissed";
+
+const initialScanFilters = {
+    eventId: "",
+    areaId: "",
+    status: "",
+    dateFrom: "",
+    dateTo: "",
+    timeFrom: "",
+    timeTo: "",
+    search: "",
+    sortOrder: "desc"
+};
 
 const onboardingSteps = [
     {
@@ -67,6 +80,17 @@ export default function Dashboard() {
     const [toast, setToast] = useState({ show: false, message: "" });
     const [showOnboarding, setShowOnboarding] = useState(false);
     const [exportingFormat, setExportingFormat] = useState("");
+    const [scanHistory, setScanHistory] = useState({
+        scans: [],
+        pagination: { page: 1, pageSize: 25, total: 0, totalPages: 1, hasPrevious: false, hasNext: false },
+        options: { events: [], areas: [] }
+    });
+    const [scanFilters, setScanFilters] = useState(initialScanFilters);
+    const [scanPage, setScanPage] = useState(1);
+    const [scanPageSize, setScanPageSize] = useState(25);
+    const [scanLoading, setScanLoading] = useState(true);
+    const [scanError, setScanError] = useState("");
+
     const { userProfile, hasCapability, planName } = useUserPlan();
     const isAgent = userProfile?.role === "ORG_AGENT";
     const canExportScans = hasCapability("scan_exports");
@@ -90,6 +114,48 @@ export default function Dashboard() {
 
 
     
+    const loadScanLogs = useCallback(async () => {
+        setScanLoading(true);
+        setScanError("");
+        try {
+            const query = buildScanLogQuery({
+                filters: scanFilters,
+                page: scanPage,
+                pageSize: scanPageSize
+            });
+            const response = await apiFetch(`/dashboard/scans?${query}`);
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok || !data.success) {
+                setScanError(data.message || "Impossible de charger l’historique des scans.");
+                return;
+            }
+            setScanHistory({
+                scans: data.scans || [],
+                pagination: data.pagination || { page: 1, pageSize: scanPageSize, total: 0, totalPages: 1 },
+                options: data.options || { events: [], areas: [] }
+            });
+        } catch {
+            setScanError("Erreur de connexion lors du chargement des scans.");
+        } finally {
+            setScanLoading(false);
+        }
+    }, [scanFilters, scanPage, scanPageSize]);
+
+    useEffect(() => {
+        const timer = setTimeout(loadScanLogs, 250);
+        return () => clearTimeout(timer);
+    }, [loadScanLogs]);
+
+    const updateScanFilter = (name, value) => {
+        setScanFilters(current => ({ ...current, [name]: value }));
+        setScanPage(1);
+    };
+
+    const resetScanFilters = () => {
+        setScanFilters(initialScanFilters);
+        setScanPage(1);
+    };
+
     useEffect(() => {
         setShowOnboarding(localStorage.getItem(ONBOARDING_STORAGE_KEY) !== "true");
 
@@ -223,7 +289,7 @@ export default function Dashboard() {
                             <CheckCircle2 className="h-5 w-5" />
                             Guide de démarrage
                         </div>
-                        <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Bienvenue sur AccessQ</h3>
+                        <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Bienvenue sur accessQ</h3>
                         <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
                             Voici les premières actions utiles pour configurer votre organisation et commencer les contrôles.
                         </p>
@@ -449,54 +515,151 @@ export default function Dashboard() {
             )}
 
             {/* **************************************** */}
-            {/* Tableau des derniers scans */}
+            {/* Historique complet et filtrable des scans */}
             {/* **************************************** */}
-            <div className="aq-panel">
-                <div className="px-8 py-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">Derniers scans</h3>
+            <section className="aq-panel overflow-hidden">
+                <div className="border-b border-slate-100 px-5 py-5 dark:border-slate-800 sm:px-8">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <Filter className="h-5 w-5 text-blue-600" />
+                                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Historique des scans</h3>
+                            </div>
+                            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                                {scanHistory.pagination.total} contrôle{scanHistory.pagination.total > 1 ? "s" : ""} retrouvé{scanHistory.pagination.total > 1 ? "s" : ""}. Triez du plus ancien au plus récent pour remonter au premier scan.
+                            </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <button type="button" onClick={resetScanFilters} className="aq-button-secondary">
+                                Réinitialiser
+                            </button>
+                            <button type="button" onClick={loadScanLogs} disabled={scanLoading} className="aq-button-secondary" title="Actualiser les logs">
+                                <RefreshCw className={`h-4 w-4 ${scanLoading ? "animate-spin" : ""}`} />
+                                Actualiser
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                        <label className="relative sm:col-span-2">
+                            <span className="sr-only">Rechercher dans les scans</span>
+                            <Search className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
+                            <input
+                                type="search"
+                                value={scanFilters.search}
+                                onChange={(event) => updateScanFilter("search", event.target.value)}
+                                placeholder="Code, titulaire, événement, agent ou zone"
+                                className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-3 text-sm outline-none focus:border-blue-400 focus:bg-white dark:border-slate-800 dark:bg-slate-900"
+                            />
+                        </label>
+                        <select value={scanFilters.eventId} onChange={(event) => updateScanFilter("eventId", event.target.value)} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm dark:border-slate-800 dark:bg-slate-900">
+                            <option value="">Tous les événements</option>
+                            {scanHistory.options.events.map(event => <option key={event.id} value={event.id}>{event.name}</option>)}
+                        </select>
+                        <select value={scanFilters.areaId} onChange={(event) => updateScanFilter("areaId", event.target.value)} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm dark:border-slate-800 dark:bg-slate-900">
+                            <option value="">Toutes les zones</option>
+                            {scanHistory.options.areas.map(area => <option key={area.id} value={area.id}>{area.name}</option>)}
+                        </select>
+                        <select value={scanFilters.status} onChange={(event) => updateScanFilter("status", event.target.value)} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm dark:border-slate-800 dark:bg-slate-900">
+                            <option value="">Tous les statuts</option>
+                            <option value="authorized">Autorisés</option>
+                            <option value="denied">Tous les refus</option>
+                            <option value="denied_expired">QR expirés</option>
+                            <option value="denied_revoked">QR révoqués</option>
+                            <option value="denied_limit_reached">Limite atteinte</option>
+                            <option value="denied_event_inactive">Événement inactif</option>
+                            <option value="denied_event_not_selected">Mauvais événement</option>
+                            <option value="denied_area_not_allowed">Zone non autorisée</option>
+                            <option value="denied_insufficient_level">Niveau insuffisant</option>
+                        </select>
+                        <select value={scanFilters.sortOrder} onChange={(event) => updateScanFilter("sortOrder", event.target.value)} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm dark:border-slate-800 dark:bg-slate-900">
+                            <option value="desc">Plus récents d’abord</option>
+                            <option value="asc">Plus anciens d’abord</option>
+                        </select>
+                        <label className="space-y-1">
+                            <span className="text-xs font-semibold text-slate-500">Date de début</span>
+                            <input type="date" value={scanFilters.dateFrom} onChange={(event) => updateScanFilter("dateFrom", event.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm dark:border-slate-800 dark:bg-slate-900" />
+                        </label>
+                        <label className="space-y-1">
+                            <span className="text-xs font-semibold text-slate-500">Heure de début</span>
+                            <input type="time" disabled={!scanFilters.dateFrom} value={scanFilters.timeFrom} onChange={(event) => updateScanFilter("timeFrom", event.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm disabled:opacity-50 dark:border-slate-800 dark:bg-slate-900" />
+                        </label>
+                        <label className="space-y-1">
+                            <span className="text-xs font-semibold text-slate-500">Date de fin</span>
+                            <input type="date" value={scanFilters.dateTo} onChange={(event) => updateScanFilter("dateTo", event.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm dark:border-slate-800 dark:bg-slate-900" />
+                        </label>
+                        <label className="space-y-1">
+                            <span className="text-xs font-semibold text-slate-500">Heure de fin</span>
+                            <input type="time" disabled={!scanFilters.dateTo} value={scanFilters.timeTo} onChange={(event) => updateScanFilter("timeTo", event.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm disabled:opacity-50 dark:border-slate-800 dark:bg-slate-900" />
+                        </label>
+                    </div>
+                    {scanError && <p className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-600 dark:border-red-900/50 dark:bg-red-950/20 dark:text-red-300">{scanError}</p>}
                 </div>
+
                 <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
+                    <table className="w-full min-w-[900px] border-collapse text-left">
                         <thead>
-                            <tr className="bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-300 text-sm border-b border-slate-200 dark:border-slate-800">
-                                <th className="px-8 py-4 font-semibold uppercase tracking-wider">Code</th>
-                                <th className="px-8 py-4 font-semibold uppercase tracking-wider">Événement / zone</th>
-                                <th className="px-8 py-4 font-semibold uppercase tracking-wider">Agent</th>
-                                <th className="px-8 py-4 font-semibold uppercase tracking-wider">Heure</th>
-                                <th className="px-8 py-4 font-semibold uppercase tracking-wider">Statut</th>
+                            <tr className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wider text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+                                <th className="px-6 py-4 font-semibold">Code / titulaire</th>
+                                <th className="px-6 py-4 font-semibold">Événement / zone</th>
+                                <th className="px-6 py-4 font-semibold">Agent</th>
+                                <th className="px-6 py-4 font-semibold">Date et heure</th>
+                                <th className="px-6 py-4 font-semibold">Résultat</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-200 text-sm">
-                            {stats.recentScans && stats.recentScans.length > 0 ? (
-                                stats.recentScans.map((scan) => (
+                        <tbody className="divide-y divide-slate-100 text-sm text-slate-700 dark:divide-slate-800 dark:text-slate-200">
+                            {scanLoading ? (
+                                <tr><td colSpan="5" className="px-6 py-12 text-center"><Loader2 className="mx-auto h-7 w-7 animate-spin text-blue-600" /><span className="mt-2 block text-slate-500">Chargement des scans…</span></td></tr>
+                            ) : scanHistory.scans.length > 0 ? (
+                                scanHistory.scans.map(scan => (
                                     <tr key={scan.id} className="table-row-hover">
-                                        <td className="px-8 py-4 font-medium text-slate-900 dark:text-white tracking-tight font-mono">{scan.code}</td>
-                                        <td className="px-8 py-4">{scan.event}</td>
-                                        <td className="px-8 py-4">{scan.agent}</td>
-                                        <td className="px-8 py-4 text-slate-500 dark:text-slate-400">
-                                            {new Date(scan.time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                                        <td className="px-6 py-4"><span className="block font-mono font-bold text-slate-900 dark:text-white">{scan.code}</span><span className="mt-1 block text-xs text-slate-500">{scan.holder}</span></td>
+                                        <td className="px-6 py-4"><span className="block font-semibold">{scan.event}</span><span className="mt-1 block text-xs text-slate-500">{scan.area}</span></td>
+                                        <td className="px-6 py-4">{scan.agent}</td>
+                                        <td className="whitespace-nowrap px-6 py-4 text-slate-500 dark:text-slate-400">
+                                            <span className="block">{new Date(scan.time).toLocaleDateString("fr-FR")}</span>
+                                            <span className="mt-1 block text-xs">{new Date(scan.time).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span>
                                         </td>
-                                        <td className="px-8 py-4">
-                                            <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${scan.status === 'authorized'
-                                                ? 'bg-emerald-100 text-emerald-700'
-                                                : 'bg-red-100 text-red-700'
-                                                }`}>
-                                                {scan.status === 'authorized' ? 'Autorisé' : 'Refusé'}
+                                        <td className="px-6 py-4">
+                                            <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${scan.status === "authorized" ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}>
+                                                {scanStatusLabel(scan.status)}
                                             </span>
                                         </td>
                                     </tr>
                                 ))
                             ) : (
-                                <tr>
-                                    <td colSpan="5" className="px-8 py-8 text-center text-slate-500 dark:text-slate-400 border-none">
-                                        Aucun scan récent enregistré.
-                                    </td>
-                                </tr>
+                                <tr><td colSpan="5" className="px-6 py-12 text-center text-slate-500">Aucun scan ne correspond à ces filtres.</td></tr>
                             )}
                         </tbody>
                     </table>
                 </div>
-            </div>
+
+                <div className="flex flex-col gap-4 border-t border-slate-100 px-5 py-4 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between sm:px-8">
+                    <div className="flex items-center gap-3 text-sm text-slate-500">
+                        <span>Page {scanHistory.pagination.page} sur {scanHistory.pagination.totalPages}</span>
+                        <select
+                            value={scanPageSize}
+                            onChange={(event) => {
+                                setScanPageSize(Number(event.target.value));
+                                setScanPage(1);
+                            }}
+                            className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-900"
+                            aria-label="Résultats par page"
+                        >
+                            <option value="10">10 / page</option>
+                            <option value="25">25 / page</option>
+                            <option value="50">50 / page</option>
+                            <option value="100">100 / page</option>
+                        </select>
+                    </div>
+                    <div className="flex items-center gap-1">
+                        <button type="button" onClick={() => setScanPage(1)} disabled={!scanHistory.pagination.hasPrevious || scanLoading} className="rounded-lg border border-slate-200 p-2 disabled:opacity-35 dark:border-slate-700" title="Première page"><ChevronsLeft className="h-4 w-4" /></button>
+                        <button type="button" onClick={() => setScanPage(page => Math.max(1, page - 1))} disabled={!scanHistory.pagination.hasPrevious || scanLoading} className="rounded-lg border border-slate-200 p-2 disabled:opacity-35 dark:border-slate-700" title="Page précédente"><ChevronLeft className="h-4 w-4" /></button>
+                        <button type="button" onClick={() => setScanPage(page => Math.min(scanHistory.pagination.totalPages, page + 1))} disabled={!scanHistory.pagination.hasNext || scanLoading} className="rounded-lg border border-slate-200 p-2 disabled:opacity-35 dark:border-slate-700" title="Page suivante"><ChevronRight className="h-4 w-4" /></button>
+                        <button type="button" onClick={() => setScanPage(scanHistory.pagination.totalPages)} disabled={!scanHistory.pagination.hasNext || scanLoading} className="rounded-lg border border-slate-200 p-2 disabled:opacity-35 dark:border-slate-700" title="Dernière page"><ChevronsRight className="h-4 w-4" /></button>
+                    </div>
+                </div>
+            </section>
 
             {/* **************************************** */}
             {/* Notification des actions utilisateur */}

@@ -431,6 +431,7 @@ exports.getAllQrs = async (req, res) => {
                 token: qr.unique_token,
                 qrUrl: qrDownloadUrlForId(qr.qr_id),
                 cardUrl: null,
+                cardTemplateId: qr.card_template_id || "",
                 cardPdfUrl: qr.card_template_id ? cardDownloadUrlForId(qr.qr_id) : null,
                 createdAt: new Date(qr.created_at).toLocaleDateString()
             };
@@ -482,6 +483,7 @@ exports.getQrsByEvent = async (req, res) => {
                 token: qr.unique_token,
                 qrUrl: qrDownloadUrlForId(qr.qr_id),
                 cardUrl: null,
+                cardTemplateId: qr.card_template_id || "",
                 cardPdfUrl: qr.card_template_id ? cardDownloadUrlForId(qr.qr_id) : null,
                 createdAt: new Date(qr.created_at).toLocaleDateString()
             };

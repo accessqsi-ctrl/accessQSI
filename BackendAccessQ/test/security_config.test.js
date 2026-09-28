@@ -25,13 +25,13 @@ test("security config builds allowed origins from frontend, admin and extra CORS
     assert.equal(isOriginAllowed(undefined, origins), true);
 });
 
-test("session cookies default to HTTPS SameSite=None in production", () => {
+test("session cookies default to HTTPS SameSite=Lax in production", () => {
     const options = getSessionCookieOptions({ NODE_ENV: "production" });
 
     assert.deepEqual(options, {
         httpOnly: true,
         secure: true,
-        sameSite: "none"
+        sameSite: "lax"
     });
 });
 

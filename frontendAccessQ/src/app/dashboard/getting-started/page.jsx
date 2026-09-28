@@ -13,7 +13,7 @@ const steps = [
         details: [
             "Chaque zone possède un niveau d’accréditation requis. Par exemple : niveau 1 pour l’accès général, niveau 2 pour un espace réservé et niveau 3 pour une zone sensible.",
             "La règle est simple : le niveau du QR doit être supérieur ou égal au niveau demandé par la zone. Un QR de niveau 3 peut donc ouvrir une zone de niveau 1, mais pas l’inverse.",
-            "Lors du scan, AccessQ vérifie aussi que la zone appartient bien à l’événement et qu’elle est ouverte à l’heure du contrôle."
+            "Lors du scan, accessQ vérifie aussi que la zone appartient bien à l’événement et qu’elle est ouverte à l’heure du contrôle."
         ],
         outcome: "Vous obtenez une circulation organisée, des responsabilités claires et moins de décisions improvisées à l’entrée.",
         href: "/dashboard/areas",
@@ -40,8 +40,8 @@ const steps = [
         description: "Créez un accès unique pour chaque invité, collaborateur ou prestataire, avec les règles adaptées à son profil.",
         details: [
             "Renseignez le titulaire, son niveau d’accès, sa période de validité et son nombre de passages autorisés — unique, limité ou illimité selon le besoin.",
-            "AccessQ utilise quatre statuts lisibles : Actif peut être scanné, Épuisé a consommé tous ses passages, Expiré a dépassé sa date de validité et Révoqué a été désactivé manuellement.",
-            "Vous pouvez commencer avec les modèles standards AccessQ. La personnalisation avancée du support intervient à l’étape 5."
+            "accessQ utilise quatre statuts lisibles : Actif peut être scanné, Épuisé a consommé tous ses passages, Expiré a dépassé sa date de validité et Révoqué a été désactivé manuellement.",
+            "Vous pouvez commencer avec les modèles standards accessQ. La personnalisation avancée du support intervient à l’étape 5."
         ],
         outcome: "Chaque accès devient traçable, contrôlable et révocable sans refaire vos listes ni réimprimer toute votre organisation.",
         href: "/dashboard/events",
@@ -116,7 +116,7 @@ export default function GettingStartedPage() {
                     <ul className="mt-4 space-y-2.5">
                         {step.details.map(detail => <li key={detail} className="flex gap-3 text-sm leading-6 text-slate-600 dark:text-slate-400"><span className="mt-2.5 h-1.5 w-1.5 flex-none rounded-full bg-slate-900 dark:bg-slate-300" /><span>{detail}</span></li>)}
                     </ul>
-                    <p className="mt-4 border-t border-slate-200 pt-4 text-sm leading-6 text-slate-700 dark:border-slate-800 dark:text-slate-300"><strong className="font-black text-slate-900 dark:text-white">Le bénéfice AccessQ : </strong>{step.outcome}</p>
+                    <p className="mt-4 border-t border-slate-200 pt-4 text-sm leading-6 text-slate-700 dark:border-slate-800 dark:text-slate-300"><strong className="font-black text-slate-900 dark:text-white">Le bénéfice accessQ : </strong>{step.outcome}</p>
                 </div>
                 <Link href={step.href} className="inline-flex flex-none items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 transition-colors hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-blue-700 dark:hover:bg-blue-950/60 dark:hover:text-blue-200 dark:focus-visible:ring-offset-slate-950">{done ? "Revoir cette étape" : step.action}<ArrowRight className="h-4 w-4" /></Link>
             </div>

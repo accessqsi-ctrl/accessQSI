@@ -334,3 +334,83 @@ test("GET /export/pdf streams a PDF response for authenticated users", async () 
     assert.equal(whereClause.qr_code.event.org_id, 42);
     assert.equal(res.body, "PDF");
 });
+
+test("GET /dashboard/scans paginates and filters the complete organization history", async () => {
+    let countWhere = null;
+    let findArgs = null;
+    const prisma = {
+        scanLog: {
+            count: async ({ where }) => {
+                countWhere = where;
+                return 51;
+            },
+            findMany: async (args) => {
+                findArgs = args;
+                return [{
+                    id: 88,
+                    scanned_at: new Date("2026-09-20T08:30:00.000Z"),
+                    status: "denied_area_not_allowed",
+                    qr_code: {
+                        unique_token: "abcdefgh1234",
+                        holder_name: "Jean Test",
+                        event: { event_id: 5, title: "Concert" }
+                    },
+                    scanned_by: { full_name: "Alice" },
+                    area: { area_id: 7, area_name: "Entrée VIP" }
+                }];
+            }
+        },
+        event: {
+            findMany: async ({ where }) => {
+                assert.equal(where.org_id, 42);
+                return [{ event_id: 5, title: "Concert" }];
+            }
+        },
+        area: {
+            findMany: async ({ where }) => {
+                assert.equal(where.org_id, 42);
+                return [{ area_id: 7, area_name: "Entrée VIP" }];
+            }
+        }
+    };
+    const app = loadDashboardApp({
+        user: { user_id: 7, role: "ORG_ADMIN", org_id: 42 },
+        prisma
+    });
+
+    const res = await request(
+        app,
+        "GET",
+        "/dashboard/scans?page=3&pageSize=25&eventId=5&areaId=7&status=denied&sortOrder=asc&from=2026-09-01T00%3A00%3A00.000Z&to=2026-09-30T23%3A59%3A59.000Z"
+    );
+
+    assert.equal(res.status, 200);
+    assert.equal(countWhere.qr_code.event.org_id, 42);
+    assert.equal(countWhere.qr_code.event.event_id, 5);
+    assert.equal(countWhere.area_id, 7);
+    assert.deepEqual(countWhere.status, { not: "authorized" });
+    assert.equal(findArgs.skip, 50);
+    assert.equal(findArgs.take, 25);
+    assert.deepEqual(findArgs.orderBy, [{ scanned_at: "asc" }, { id: "asc" }]);
+    assert.equal(res.body.scans[0].holder, "Jean Test");
+    assert.equal(res.body.scans[0].area, "Entrée VIP");
+    assert.equal(res.body.pagination.total, 51);
+    assert.equal(res.body.pagination.totalPages, 3);
+    assert.deepEqual(res.body.options.events, [{ id: 5, name: "Concert" }]);
+});
+
+test("GET /dashboard/scans rejects an inverted date range", async () => {
+    const app = loadDashboardApp({
+        user: { user_id: 7, role: "ORG_ADMIN", org_id: 42 },
+        prisma: {}
+    });
+
+    const res = await request(
+        app,
+        "GET",
+        "/dashboard/scans?from=2026-09-30T00%3A00%3A00.000Z&to=2026-09-01T00%3A00%3A00.000Z"
+    );
+
+    assert.equal(res.status, 400);
+    assert.match(res.body.message, /début doit précéder/);
+});
