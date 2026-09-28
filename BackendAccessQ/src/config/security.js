@@ -24,7 +24,7 @@ const getSameSite = (env = process.env) => {
 
     if (allowed.includes(configured)) return configured;
 
-    return env.NODE_ENV === "production" ? "none" : "lax";
+    return "lax";
 };
 
 const getSecureCookie = (env = process.env, sameSite = getSameSite(env)) => {

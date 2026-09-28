@@ -1,5 +1,6 @@
 const prisma = require("../prisma/client");
 const cardTemplateService = require("./card_template.service");
+const storageService = require("./storage.service");
 
 const colorPattern = /^#[0-9a-fA-F]{6}$/;
 const qrPositions = new Set(["right", "left", "center"]);
@@ -238,13 +239,32 @@ exports.deleteForOrg = async (orgId, id) => {
     const existing = await exports.findByIdForOrg(orgId, id);
     if (!existing) return null;
 
-    return prisma.$transaction(async (tx) => {
+    const customTemplateId = `custom:${existing.id}`;
+    const backgroundImageUrl = existing.background_image_url;
+    const [otherTemplateReferences, activeQrReferences] = backgroundImageUrl
+        ? await Promise.all([
+            prisma.cardTemplateCustom.count({
+                where: {
+                    background_image_url: backgroundImageUrl,
+                    deleted_at: null,
+                    NOT: { id: existing.id }
+                }
+            }),
+            prisma.qrCode.count({
+                where: {
+                    card_template_id: customTemplateId,
+                    deleted_at: null
+                }
+            })
+        ])
+        : [0, 0];
+
+    const deleted = await prisma.$transaction(async (tx) => {
         await tx.cardTemplateCustom.update({
             where: { id: existing.id },
             data: { deleted_at: new Date(), is_default: false }
         });
 
-        const customTemplateId = `custom:${existing.id}`;
         await tx.organization.updateMany({
             where: { org_id: orgId, default_card_template_id: customTemplateId },
             data: { default_card_template_id: null }
@@ -252,6 +272,12 @@ exports.deleteForOrg = async (orgId, id) => {
 
         return existing;
     });
+
+    if (backgroundImageUrl && otherTemplateReferences === 0 && activeQrReferences === 0) {
+        await storageService.removeManagedPublicAsset(backgroundImageUrl, "card-backgrounds");
+    }
+
+    return deleted;
 };
 
 exports.duplicateForOrg = async (orgId, id) => {

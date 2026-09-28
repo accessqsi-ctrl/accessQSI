@@ -101,7 +101,7 @@ test("authMiddleware allows operators to use scanner and password routes", async
     for (const [method, originalUrl] of [
         ["GET", "/user/profile"],
         ["PUT", "/user/password"],
-        ["GET", "/user/logout"],
+        ["POST", "/user/logout"],
         ["GET", "/areas?active=true"],
         ["GET", "/events"],
         ["POST", "/qr/verify"]

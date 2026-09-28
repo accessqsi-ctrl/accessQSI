@@ -223,6 +223,7 @@ test("POST /user/login returns a token for verified active users", async () => {
         user_id: 7,
         email: "admin@example.com",
         role: "ORG_ADMIN",
+        session_version: 0,
         org_id: 42,
         token_type: "access"
     });
@@ -230,6 +231,7 @@ test("POST /user/login returns a token for verified active users", async () => {
         user_id: 7,
         email: "admin@example.com",
         role: "ORG_ADMIN",
+        session_version: 0,
         org_id: 42,
         token_type: "refresh"
     });
@@ -285,7 +287,8 @@ test("POST /user/login rejects users of a disabled organization", async () => {
 
 test("POST /user/login returns the Essential welcome offer only on the first login", async () => {
     let lastLoginUpdate = null;
-    const expiry = new Date("2026-09-26T10:00:00Z");
+    const trialStart = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
     const app = loadUserApp({
         userService: {
             findByEmail: async () => ({
@@ -305,9 +308,9 @@ test("POST /user/login returns the Essential welcome offer only on the first log
                 findUnique: async () => ({
                     org_id: 42,
                     plan: { title: "ESSENTIAL" },
-                    subscription_started_at: new Date("2026-08-26T10:00:00Z"),
+                    subscription_started_at: trialStart,
                     subscription_expires_at: expiry,
-                    trial_started_at: new Date("2026-08-26T10:00:00Z"),
+                    trial_started_at: trialStart,
                     trial_expires_at: expiry
                 })
             },
@@ -797,7 +800,7 @@ test("PUT /user/password validates current password and saves a new hash", async
     assert.equal(res.body.success, true);
     assert.deepEqual(updated, {
         userId: 12,
-        data: { password_hash: "new-hash:NewStrong!123" }
+        data: { password_hash: "new-hash:NewStrong!123", session_version: { increment: 1 } }
     });
 });
 
@@ -840,10 +843,10 @@ test("PUT /user/org allows admins to update their organization", async () => {
     assert.deepEqual(receivedData, { name: "New Org" });
 });
 
-test("GET /user/logout clears access and refresh cookies", async () => {
+test("POST /user/logout revokes the session and clears access and refresh cookies", async () => {
     const app = loadUserApp();
 
-    const res = await request(app, "GET", "/user/logout");
+    const res = await request(app, "POST", "/user/logout");
     const cookies = Array.isArray(res.headers["set-cookie"])
         ? res.headers["set-cookie"]
         : [res.headers["set-cookie"]];

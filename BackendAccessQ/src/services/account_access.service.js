@@ -21,6 +21,7 @@ const evaluateAccess = (user, tokenClaims = null) => {
         Number(tokenClaims.user_id) !== Number(user.user_id)
         || tokenClaims.role !== user.role
         || Number(tokenClaims.org_id ?? 0) !== Number(user.org_id ?? 0)
+        || Number(tokenClaims.session_version ?? 0) !== Number(user.session_version ?? 0)
     )) {
         return { allowed: false, code: ACCESS_DENIAL.TOKEN_STATE_STALE };
     }
@@ -34,6 +35,7 @@ const findUserAccessState = (userId, dbClient = prisma) => dbClient.userQ.findUn
         email: true,
         role: true,
         org_id: true,
+        session_version: true,
         is_active: true,
         deleted_at: true,
         organization: {

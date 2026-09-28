@@ -99,6 +99,7 @@ const buildTokenPayload = (user, tokenType) => ({
     user_id: user.user_id,
     email: user.email,
     role: user.role,
+    session_version: Number(user.session_version || 0),
     org_id: user.org_id,
     token_type: tokenType
 });
@@ -562,7 +563,8 @@ exports.resetPassword = async (req, res) => {
                 password_hash: passwordHash,
                 password_reset_token_hash: null,
                 password_reset_expires_at: null,
-                password_reset_email_sent_at: null
+                password_reset_email_sent_at: null,
+                session_version: { increment: 1 }
             }
         });
         if (updated.count !== 1) {
@@ -671,6 +673,10 @@ exports.viewprofile = async (req, res) => {
 };
 
 exports.logout = async (req, res) => {
+    await prisma.userQ.update({
+        where: { user_id: req.user.user_id },
+        data: { session_version: { increment: 1 } }
+    });
     // Supprimer le cookie sécurisé pour détruire complètement le contexte de session côté client
     res.clearCookie("token", { ...cookieOptions, maxAge: 0 });
     res.clearCookie("refreshToken", { ...cookieOptions, maxAge: 0 });
@@ -759,7 +765,8 @@ exports.updatePassword = async (req, res) => {
         }
 
         const hashed = await bcrypt.hash(newPassword.trim(), BCRYPT_SALT_ROUNDS);
-        await userService.updateUser(userId, { password_hash: hashed });
+        await userService.updateUser(userId, { password_hash: hashed, session_version: { increment: 1 } });
+        clearSessionCookies(res);
 
         return res.status(200).json({ success: true, message: "Mot de passe modifié avec succès." });
     } catch (error) {

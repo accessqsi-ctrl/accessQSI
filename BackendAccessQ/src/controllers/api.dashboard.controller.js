@@ -1,6 +1,7 @@
 const prisma = require("../prisma/client");
 const { getPlanContextForUser } = require("../utils/planAccess");
 const { PLAN_CAPABILITIES, hasPlanCapability } = require("../config/subscription");
+const scanLogService = require("../services/scan_log.service");
 
 const getOnboardingProgress = async (orgId) => {
     const [areas, models, events, qrs, agents] = await Promise.all([
@@ -21,6 +22,23 @@ exports.getOnboardingProgress = async (req, res) => {
         return res.json({ success: true, data: await getOnboardingProgress(req.user.org_id) });
     } catch (error) {
         return res.status(500).json({ success: false, message: "Impossible de charger la progression." });
+    }
+};
+
+exports.getScanLogs = async (req, res) => {
+    try {
+        if (!req.user?.org_id) {
+            return res.status(401).json({ success: false, message: "Non autorisé" });
+        }
+
+        const result = await scanLogService.listForOrg(req.user.org_id, req.query);
+        return res.status(200).json({ success: true, ...result });
+    } catch (error) {
+        if (error.code === "INVALID_SCAN_FILTERS") {
+            return res.status(400).json({ success: false, message: error.message });
+        }
+        console.error("Erreur lors de la récupération des scans :", error);
+        return res.status(500).json({ success: false, message: "Impossible de charger l’historique des scans." });
     }
 };
 

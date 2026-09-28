@@ -111,3 +111,81 @@ test("setStatusForOrg republishes an archived template", async () => {
     });
     assert.equal(republished.status, "PUBLISHED");
 });
+
+test("deleteForOrg removes an unreferenced managed background image", async () => {
+    clearSrcModules();
+
+    const existing = {
+        id: 12,
+        org_id: 42,
+        background_image_url: "/card-backgrounds/background_42_unique.png",
+        deleted_at: null
+    };
+    let removedAsset = null;
+
+    mockModule("src/prisma/client", {
+        cardTemplateCustom: {
+            findFirst: async () => existing,
+            count: async () => 0
+        },
+        qrCode: {
+            count: async () => 0
+        },
+        $transaction: async callback => callback({
+            cardTemplateCustom: { update: async () => existing },
+            organization: { updateMany: async () => ({ count: 1 }) }
+        })
+    });
+    mockModule("src/services/card_template.service", {});
+    mockModule("src/services/storage.service", {
+        removeManagedPublicAsset: async (url, directory) => {
+            removedAsset = { url, directory };
+            return true;
+        }
+    });
+
+    const service = require("../src/services/custom_card_template.service");
+    await service.deleteForOrg(42, 12);
+
+    assert.deepEqual(removedAsset, {
+        url: "/card-backgrounds/background_42_unique.png",
+        directory: "card-backgrounds"
+    });
+});
+
+test("deleteForOrg keeps a background image still referenced by another template", async () => {
+    clearSrcModules();
+
+    const existing = {
+        id: 13,
+        org_id: 42,
+        background_image_url: "/card-backgrounds/background_42_shared.png",
+        deleted_at: null
+    };
+    let removeCalled = false;
+
+    mockModule("src/prisma/client", {
+        cardTemplateCustom: {
+            findFirst: async () => existing,
+            count: async () => 1
+        },
+        qrCode: {
+            count: async () => 0
+        },
+        $transaction: async callback => callback({
+            cardTemplateCustom: { update: async () => existing },
+            organization: { updateMany: async () => ({ count: 1 }) }
+        })
+    });
+    mockModule("src/services/card_template.service", {});
+    mockModule("src/services/storage.service", {
+        removeManagedPublicAsset: async () => {
+            removeCalled = true;
+        }
+    });
+
+    const service = require("../src/services/custom_card_template.service");
+    await service.deleteForOrg(42, 13);
+
+    assert.equal(removeCalled, false);
+});

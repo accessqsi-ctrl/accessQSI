@@ -25,6 +25,7 @@ const storageService = require("./services/storage.service");
 
 const { generalLimiter } = require('./middleware/limMiddleware');
 const requestLogger = require('./middleware/requestLogger');
+const csrfProtection = require('./middleware/csrfMiddleware');
 
 const cors = require('cors');
 const helmet = require('helmet');
@@ -101,6 +102,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Configuration des cookies sécurisée si en HTTPS
 app.use(cookieParser(process.env.JWT_SECRET));
+app.use(csrfProtection);
 app.use(requestLogger);
 
 

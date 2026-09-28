@@ -130,6 +130,7 @@ test("GET /qr/event/:event_id lets an organization agent read existing QR codes"
                         scans_count: 0,
                         usage_limit: 1,
                         unique_token: "token-9",
+                        card_template_id: "event-ticket",
                         created_at: new Date("2026-01-01T10:00:00Z")
                     }],
                     pagination: { page: 1, pageSize: 25, total: 1, totalPages: 1 }
@@ -145,6 +146,8 @@ test("GET /qr/event/:event_id lets an organization agent read existing QR codes"
     assert.deepEqual(qrLookup, { orgId: 42, eventId: 5 });
     assert.equal(res.body.qrs.length, 1);
     assert.equal(res.body.qrs[0].holder, "Jane Holder");
+    assert.equal(res.body.qrs[0].cardTemplateId, "event-ticket");
+    assert.equal(res.body.qrs[0].cardPdfUrl, "/qr/card/9/download");
     assert.equal(res.body.pagination.total, 1);
 });
 
@@ -991,4 +994,48 @@ test("CSV import returns an explicit report when some lines fail after others we
         ["created", "failed", "failed"]
     );
     assert.equal(fs.existsSync(csvPath), false);
+});
+
+test("POST /qr/card/:id explicitly replaces the template snapshot", async () => {
+    let update = null;
+    const app = loadQrManagementApp({
+        user: { user_id: 7, role: "ORG_ADMIN", org_id: 42 },
+        eventService: {
+            findById: async (orgId, eventId) => orgId === 42 && eventId === 5
+                ? { event_id: 5, title: "Concert" }
+                : null
+        },
+        qrService: {
+            getQrById: async () => ({
+                qr_id: 9,
+                event_id: 5,
+                card_template_id: "old-template",
+                card_template_snapshot: null,
+                card_data: {},
+                deleted_at: null
+            }),
+            updateQr: async (id, data) => {
+                update = { id, data };
+                return { qr_id: id, ...data };
+            }
+        },
+        cardTemplateService: {
+            isTemplateAvailable: templateId => templateId === "event-ticket"
+        }
+    });
+
+    const res = await request(app, "POST", "/qr/card/9", {
+        cardTemplateId: "event-ticket"
+    });
+
+    assert.equal(res.status, 201);
+    assert.equal(update.id, 9);
+    assert.equal(update.data.card_template_id, "event-ticket");
+    assert.deepEqual(update.data.card_template_snapshot, {
+        schemaVersion: 1,
+        sourceTemplateId: "event-ticket",
+        baseTemplateId: "event-ticket",
+        customization: null
+    });
+    assert.equal(res.body.cardPdfUrl, "/qr/card/9/download");
 });

@@ -7,11 +7,12 @@
     "dev:turbo": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "node --test test/*.test.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.577.0",
-    "next": "16.1.6",
+    "next": "^16.3.6",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "recharts": "^3.8.1"
@@ -19,7 +20,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "eslint": "^9",
-    "eslint-config-next": "16.1.6",
+    "eslint-config-next": "^16.3.6",
     "tailwindcss": "^4"
   }
 }
