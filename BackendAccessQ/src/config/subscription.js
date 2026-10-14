@@ -28,6 +28,7 @@ const getTrialDurationDays = () => {
 const PLAN_CAPABILITIES = Object.freeze({
     BULK_QR_IMPORT: "bulk_qr_import",
     CUSTOM_CARD_TEMPLATES: "custom_card_templates",
+    MULTIPLE_REGISTRATION_OFFERS: "multiple_registration_offers",
     SCAN_EXPORTS: "scan_exports",
     ADVANCED_ANALYTICS: "advanced_analytics"
 });
@@ -79,9 +80,10 @@ const PLAN_DETAILS = Object.freeze({
         maxAreas: 6,
         capabilities: Object.freeze([
             PLAN_CAPABILITIES.BULK_QR_IMPORT,
+            PLAN_CAPABILITIES.MULTIPLE_REGISTRATION_OFFERS,
             PLAN_CAPABILITIES.SCAN_EXPORTS
         ]),
-        features: ["5 événements par mois", "200 QR par événement", "5 agents actifs", "6 zones actives", "Dashboard fonctionnel"]
+        features: ["5 événements par mois", "200 QR par événement", "Formulaires multi-offres", "5 agents actifs", "6 zones actives", "Dashboard fonctionnel"]
     }),
     PRO: Object.freeze({
         key: PLAN_KEYS.PRO,

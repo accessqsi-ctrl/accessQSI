@@ -57,4 +57,20 @@ const passwordResetLimiter = rateLimit({
     legacyHeaders: false,
 });
 
-module.exports = { generalLimiter, loginLimiter, signinLimiter, refreshLimiter, verificationEmailLimiter, passwordResetLimiter };
+const publicRegistrationLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 30,
+    message: { success: false, message: "Trop de tentatives. Veuillez réessayer plus tard." },
+    standardHeaders: "draft-7",
+    legacyHeaders: false
+});
+
+const registrationRecoveryLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 5,
+    message: { success: true, message: "Si des pass correspondent, de nouveaux liens seront envoyés." },
+    standardHeaders: "draft-7",
+    legacyHeaders: false
+});
+
+module.exports = { generalLimiter, loginLimiter, signinLimiter, refreshLimiter, verificationEmailLimiter, passwordResetLimiter, publicRegistrationLimiter, registrationRecoveryLimiter };

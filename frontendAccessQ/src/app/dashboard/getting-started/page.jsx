@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, CalendarPlus, Check, Loader2, MapPinned, Palette, Pencil, QrCode, UserPlus } from "lucide-react";
+import { ArrowRight, CalendarPlus, Check, ClipboardList, Loader2, MapPinned, Palette, QrCode, UserPlus } from "lucide-react";
 import { apiFetch } from "../../lib/api";
 
 const steps = [
@@ -33,6 +33,20 @@ const steps = [
         href: "/dashboard/events/new",
         action: "Créer l’événement",
         icon: CalendarPlus
+    },
+    {
+        key: "registrations",
+        title: "Publier un formulaire d’inscription",
+        description: "Permettez aux participants de renseigner eux-mêmes leurs informations et de recevoir automatiquement leur pass.",
+        details: [
+            "Reliez le formulaire à un événement, choisissez les informations demandées et configurez les offres autorisées.",
+            "Votre abonnement détermine les options disponibles : une offre en Découverte, plusieurs offres dès Essential et des modèles personnalisés avec Pro.",
+            "Publiez ensuite le lien public. Les droits, la capacité et le modèle sont toujours vérifiés par le serveur."
+        ],
+        outcome: "Vous réduisez la saisie manuelle tout en conservant les mêmes contrôles d’accès et quotas AccessQ.",
+        href: "/dashboard/registration-forms/new",
+        action: "Créer un formulaire",
+        icon: ClipboardList
     },
     {
         key: "qrs",
@@ -95,7 +109,7 @@ export default function GettingStartedPage() {
         {/* **************************************** */}
         {/* En-tête du parcours de démarrage */}
         {/* **************************************** */}
-        <header className="aq-page-header"><div><p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-blue-700 dark:text-blue-300">Configuration de l’organisation</p><h1 className="aq-page-title">Lancez votre premier contrôle avec confiance</h1><p className="aq-page-subtitle">Cinq étapes guidées pour structurer vos lieux, préparer votre événement, sécuriser chaque QR et mobiliser une équipe parfaitement informée.</p></div></header>
+        <header className="aq-page-header"><div><p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-blue-700 dark:text-blue-300">Configuration de l’organisation</p><h1 className="aq-page-title">Lancez votre premier contrôle avec confiance</h1><p className="aq-page-subtitle">Un parcours guidé adapté à votre abonnement pour préparer l’événement, publier les inscriptions, sécuriser les accès et mobiliser votre équipe.</p></div></header>
         {/* **************************************** */}
         {/* Liste des étapes de configuration */}
         {/* **************************************** */}
@@ -103,7 +117,7 @@ export default function GettingStartedPage() {
             <div className="flex items-center justify-between"><strong className="text-slate-900 dark:text-white">{progress.completed} étape{progress.completed > 1 ? "s" : ""} sur {progress.total}</strong><span className="text-sm font-black text-blue-600">{progress.percentage}%</span></div>
             <div className="mt-3 h-3 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"><div className="h-full rounded-full bg-blue-600 transition-all dark:bg-gradient-to-r dark:from-blue-600 dark:to-emerald-500" style={{ width: `${progress.percentage}%` }} /></div>
         </section>
-        <div className="space-y-4">{steps.map((step, index) => { const Icon = step.icon; const done = progress.steps[step.key]; return <article key={step.key} className={`rounded-2xl border p-5 sm:p-6 ${done ? "border-emerald-200 bg-emerald-50/60 dark:border-emerald-900/50 dark:bg-emerald-950/15" : "border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950"}`}>
+        <div className="space-y-4">{steps.filter(step => progress.available?.[step.key] !== false).map((step, index) => { const Icon = step.icon; const done = progress.steps[step.key]; return <article key={step.key} className={`rounded-2xl border p-5 sm:p-6 ${done ? "border-emerald-200 bg-emerald-50/60 dark:border-emerald-900/50 dark:bg-emerald-950/15" : "border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950"}`}>
             <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
                 <div className={`flex h-11 w-11 flex-none items-center justify-center rounded-xl ${done ? "bg-emerald-600 text-white" : "bg-blue-50 text-blue-700 dark:bg-blue-950"}`}>{done ? <Check className="h-5 w-5" /> : <Icon className="h-5 w-5" />}</div>
                 <div className="min-w-0 flex-1">

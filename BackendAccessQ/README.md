@@ -38,6 +38,38 @@ https://votre-api.example.com/billing/callbacks/pawapay
 Le backend vérifie chaque dépôt directement auprès de pawaPay avant d'activer
 le plan Pro. Un callback reçu ne peut donc pas activer seul un abonnement.
 
+## Formulaires d'inscription gratuits
+
+Le serveur HTTP accepte les inscriptions et écrit atomiquement un job en base.
+Le worker persistant doit fonctionner dans un processus séparé :
+
+```bash
+npm run worker:registrations
+```
+
+Configuration utilisée :
+
+```env
+DATABASE_URL=postgresql://...
+FRONTEND_URL=https://app.example.com
+BREVO_API_KEY=...
+BREVO_SENDER_NAME=AccessQ
+BREVO_SENDER_EMAIL=no-reply@example.com
+REGISTRATION_WORKER_POLL_MS=2000
+REGISTRATION_JOB_LEASE_MS=60000
+```
+
+Les deux dernières variables sont facultatives. Plusieurs workers peuvent être
+lancés : les jobs sont pris avec `FOR UPDATE SKIP LOCKED` et un bail expirant.
+Un email au statut `ACCEPTED` a seulement été accepté par Brevo ; aucune
+notification de livraison finale n'est intégrée. Une panne après l'appel Brevo
+mais avant l'enregistrement du résultat peut provoquer un second email lors de
+la reprise. Elle ne crée jamais un second pass.
+
+Les liens publics utilisent des jetons aléatoires expirants dont seule
+l'empreinte SHA-256 est stockée. Le jeton QR de contrôle d'accès n'est jamais
+utilisé comme jeton de téléchargement.
+
 ## Essai Pro
 
 Un administrateur d'organisation peut activer une seule fois un essai Pro depuis

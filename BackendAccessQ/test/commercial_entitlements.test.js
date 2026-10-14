@@ -103,6 +103,92 @@ test("le quota QR est propre à l'événement et une suppression ne le restitue 
     assert.deepEqual(qrWhere, { event_id: 7 });
 });
 
+test("une reprise idempotente retrouve le QR avant de réévaluer un quota désormais plein", async () => {
+    let counted = false;
+    let created = false;
+    const existingQr = { qr_id: 91, event_id: 7 };
+    const tx = {
+        $queryRaw: async () => [],
+        organization: { findUnique: async () => ({ plan: { title: "DISCOVERY" } }) },
+        event: {
+            findFirst: async () => ({
+                event_id: 7,
+                org_id: 42,
+                entitlement_type: "SUBSCRIPTION",
+                qr_limit: 50,
+                deleted_at: null
+            })
+        },
+        qrCode: {
+            count: async () => { counted = true; return 50; }
+        }
+    };
+    const { withEventQrQuota } = loadQuotaService(tx);
+    const result = await withEventQrQuota({
+        organizationId: 42,
+        eventId: 7,
+        resolveExisting: async client => {
+            assert.equal(client, tx);
+            return existingQr;
+        },
+        create: async () => { created = true; }
+    });
+
+    assert.equal(result, existingQr);
+    assert.equal(counted, false);
+    assert.equal(created, false);
+});
+
+test("deux émissions concurrentes ne consomment pas la même dernière place du quota QR", async () => {
+    clearSrcModules();
+    let activeQrs = 49;
+    let nextQrId = 1;
+    let transactionQueue = Promise.resolve();
+    mockModule("src/prisma/client", {
+        $transaction: async callback => {
+            const previous = transactionQueue;
+            let release;
+            transactionQueue = new Promise(resolve => { release = resolve; });
+            await previous;
+            const tx = {
+                $queryRaw: async () => [],
+                organization: { findUnique: async () => ({ plan: { title: "DISCOVERY" } }) },
+                event: {
+                    findFirst: async () => ({
+                        event_id: 7,
+                        org_id: 42,
+                        entitlement_type: "SUBSCRIPTION",
+                        qr_limit: 50,
+                        deleted_at: null
+                    })
+                },
+                qrCode: { count: async () => activeQrs }
+            };
+            try {
+                return await callback(tx);
+            } finally {
+                release();
+            }
+        }
+    });
+    const { withEventQrQuota } = require("../src/services/organization_quota.service");
+    const issue = () => withEventQrQuota({
+        organizationId: 42,
+        eventId: 7,
+        create: async () => {
+            activeQrs += 1;
+            return { qr_id: nextQrId++ };
+        }
+    });
+
+    const results = await Promise.allSettled([issue(), issue()]);
+
+    assert.equal(results.filter(result => result.status === "fulfilled").length, 1);
+    assert.equal(results.filter(result => result.status === "rejected").length, 1);
+    assert.equal(results.find(result => result.status === "rejected").reason.code, "PLAN_QUOTA_EXCEEDED");
+    assert.equal(activeQrs, 50);
+});
+
 test("un Pass expiré conserve les données mais bloque les nouveaux QR", async () => {
     const tx = {
         $queryRaw: async () => [],

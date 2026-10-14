@@ -16,7 +16,8 @@ const requestLogger = (req, res, next) => {
             duration_ms: Math.round(durationMs),
             ip: req.ip,
             user_id: req.user?.user_id,
-            org_id: req.user?.org_id
+            org_id: req.user?.org_id,
+            ...(res.locals?.logContext || {})
         };
 
         if (res.statusCode >= 500) {

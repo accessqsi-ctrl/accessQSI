@@ -4,8 +4,8 @@ const { writeAudit } = require('../services/audit.service');
 
 const STANDARD_PLAN_CONFIG = Object.freeze({
     DISCOVERY: Object.freeze({ interval: null, months: null, status: 'CANCELED', maxAgents: 2, maxAreas: 2, maxEventsPerCycle: 1, maxQrCodesPerEvent: 50, capabilities: [] }),
-    ESSENTIAL: Object.freeze({ months: { MONTHLY: 1, ANNUAL: 12 }, status: 'ACTIVE', maxAgents: 5, maxAreas: 6, maxEventsPerCycle: 5, maxQrCodesPerEvent: 200, capabilities: ['bulk_qr_import', 'scan_exports'] }),
-    PRO: Object.freeze({ months: { MONTHLY: 1, ANNUAL: 12 }, status: 'ACTIVE', maxAgents: 10, maxAreas: 15, maxEventsPerCycle: 7, maxQrCodesPerEvent: 350, capabilities: ['bulk_qr_import', 'custom_card_templates', 'scan_exports', 'advanced_analytics'] })
+    ESSENTIAL: Object.freeze({ months: { MONTHLY: 1, ANNUAL: 12 }, status: 'ACTIVE', maxAgents: 5, maxAreas: 6, maxEventsPerCycle: 5, maxQrCodesPerEvent: 200, capabilities: ['bulk_qr_import', 'multiple_registration_offers', 'scan_exports'] }),
+    PRO: Object.freeze({ months: { MONTHLY: 1, ANNUAL: 12 }, status: 'ACTIVE', maxAgents: 10, maxAreas: 15, maxEventsPerCycle: 7, maxQrCodesPerEvent: 350, capabilities: ['bulk_qr_import', 'custom_card_templates', 'multiple_registration_offers', 'scan_exports', 'advanced_analytics'] })
 });
 
 // A subscription change reconciles quotas and writes several audit records.
@@ -194,7 +194,7 @@ exports.activateEnterprise = async (req, res) => {
         maxQrCodesPerEvent: parseLimit(req.body.maxQrCodesPerEvent),
         maxAgents: parseLimit(req.body.maxAgents),
         maxAreas: parseLimit(req.body.maxAreas),
-        capabilities: ["bulk_qr_import", "custom_card_templates", "scan_exports", "advanced_analytics"]
+        capabilities: ["bulk_qr_import", "custom_card_templates", "multiple_registration_offers", "scan_exports", "advanced_analytics"]
     };
     if (!orgId || !reference || Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime()) || endsAt <= startsAt) {
         return res.redirect('/organizations?error=Référence et dates de contrat invalides.');

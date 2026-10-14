@@ -11,6 +11,10 @@ const {
 
 const withDefaultPlan = (prisma = {}) => ({
     ...prisma,
+    registrationForm: {
+        count: async () => 0,
+        ...(prisma.registrationForm || {})
+    },
     organization: {
         findUnique: async () => ({ plan: { title: "PRO" } }),
         ...(prisma.organization || {})
@@ -58,6 +62,12 @@ test("GET /dashboard/stats returns overview stats scoped to the authenticated or
             count: async ({ where }) => {
                 calls.push(["event.count", where.org_id]);
                 return 2;
+            }
+        },
+        registrationForm: {
+            count: async ({ where }) => {
+                calls.push(["registrationForm.count", where.org_id]);
+                return 1;
             }
         },
         eventSchedule: {
@@ -114,6 +124,8 @@ test("GET /dashboard/stats returns overview stats scoped to the authenticated or
     assert.equal(res.body.data.nextEventTitle, "Next Event");
     assert.equal(res.body.data.scansByDay.length, 7);
     assert.equal(res.body.data.topAgents[0].name, "Agent 7");
+    assert.equal(res.body.data.onboarding.steps.registrations, true);
+    assert.equal(res.body.data.onboarding.total, 6);
     assert.ok(calls.every(([, orgId]) => orgId === 42));
 });
 

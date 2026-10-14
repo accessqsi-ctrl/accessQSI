@@ -142,6 +142,22 @@ exports.createQr = async (data, dbClient = prisma) => {
     });
 };
 
+exports.findPassIssuanceRequest = async (
+    orgId,
+    scope,
+    idempotencyKeyHash,
+    dbClient = prisma
+) => dbClient.passIssuanceRequest.findUnique({
+    where: {
+        org_id_scope_idempotency_key_hash: {
+            org_id: orgId,
+            scope,
+            idempotency_key_hash: idempotencyKeyHash
+        }
+    },
+    include: { qr_code: true }
+});
+
 // Mettre à jour un QR Code existant
 exports.updateQr = async (id, data) => {
     return await prisma.qrCode.update({

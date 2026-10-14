@@ -111,6 +111,7 @@ export default function EventDetailPage() {
     const qrQuotaReached = Boolean(qrQuota?.reached);
     const canImportQr = hasCapability("bulk_qr_import");
     const canExportScans = hasCapability("scan_exports");
+    const canUseCustomTemplates = hasCapability("custom_card_templates");
 
     const selectedCardTemplate = useMemo(
         () => cardTemplates.find(template => template.templateId === selectedCardTemplateId) || null,
@@ -205,6 +206,11 @@ export default function EventDetailPage() {
 
     useEffect(() => {
         const fetchCreationTemplates = async () => {
+            if (!canUseCustomTemplates) {
+                setCardTemplates([]);
+                setSelectedCardTemplateId("");
+                return;
+            }
             try {
                 const cardRes = await apiFetch("/card-templates/custom");
                 const cardData = await cardRes.json();
@@ -224,7 +230,7 @@ export default function EventDetailPage() {
         };
 
         fetchCreationTemplates();
-    }, []);
+    }, [canUseCustomTemplates]);
 
     const openQrGenerationModal = () => {
         if (qrQuotaReached) {
