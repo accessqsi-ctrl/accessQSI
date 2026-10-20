@@ -14,7 +14,9 @@ const getOnboardingProgress = async (orgId, planContext) => {
     ]);
     const customModelsAvailable = hasPlanCapability(planContext, PLAN_CAPABILITIES.CUSTOM_CARD_TEMPLATES);
     const steps = { areas: areas > 0, events: events > 0, registrations: registrationForms > 0, qrs: qrs > 0, agents: agents > 0, models: models > 0 };
-    const available = { areas: true, events: true, registrations: true, qrs: true, agents: true, models: customModelsAvailable };
+    // Les formulaires d’inscription publics restent masqués tant que REGISTRATION_FORMS_ENABLED n’est pas à true.
+    const registrationFormsEnabled = process.env.REGISTRATION_FORMS_ENABLED === "true";
+    const available = { areas: true, events: true, registrations: registrationFormsEnabled, qrs: true, agents: true, models: customModelsAvailable };
     const eligibleKeys = Object.keys(steps).filter(key => available[key]);
     const completed = eligibleKeys.filter(key => steps[key]).length;
     const total = eligibleKeys.length;

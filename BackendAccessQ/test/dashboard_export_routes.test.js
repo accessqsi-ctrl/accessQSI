@@ -125,7 +125,8 @@ test("GET /dashboard/stats returns overview stats scoped to the authenticated or
     assert.equal(res.body.data.scansByDay.length, 7);
     assert.equal(res.body.data.topAgents[0].name, "Agent 7");
     assert.equal(res.body.data.onboarding.steps.registrations, true);
-    assert.equal(res.body.data.onboarding.total, 6);
+    assert.equal(res.body.data.onboarding.available.registrations, false);
+    assert.equal(res.body.data.onboarding.total, 5);
     assert.ok(calls.every(([, orgId]) => orgId === 42));
 });
 

@@ -8,6 +8,8 @@ import { useState, useEffect, useMemo } from "react";
 import { apiFetch } from "../lib/api";
 import { useUserPlan } from "../lib/useUserPlan";
 
+const REGISTRATION_FORMS_ENABLED = process.env.NEXT_PUBLIC_REGISTRATION_FORMS_ENABLED === "true";
+
 export default function DashboardLayout({ children }) {
     const pathname = usePathname();
     const router = useRouter();
@@ -92,6 +94,9 @@ export default function DashboardLayout({ children }) {
                 iconComponent: Mail
             },
         ];
+        if (!REGISTRATION_FORMS_ENABLED) {
+            items.splice(items.findIndex(item => item.href === "/dashboard/registration-forms"), 1);
+        }
         if (userProfile?.role === "OPERATOR") {
             return items.filter(item => (
                 item.href === "/scan"
