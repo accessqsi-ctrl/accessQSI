@@ -1,8 +1,7 @@
-const fs = require("fs");
-const path = require("path");
 const crypto = require("crypto");
 const customCardTemplateService = require("../services/custom_card_template.service");
 const storageService = require("../services/storage.service");
+const { IMAGE_EXTENSIONS, detectImageType } = require("../utils/imageType");
 
 const requireOrg = (req, res) => {
     if (!req.user || !req.user.org_id) {
@@ -158,50 +157,43 @@ exports.clearDefaultCustomTemplate = async (req, res) => {
     }
 };
 
-exports.uploadLogo = async (req, res) => {
+// Enregistre une image de modèle après vérification de son type réel. L'extension et le
+// Content-Type stockés sont déduits des octets : un fichier HTML, JS ou SVG est refusé.
+const saveTemplateImage = async (req, res, { directory, prefix, responseKey, missingMessage, errorMessage }) => {
     try {
         const orgId = requireOrg(req, res);
         if (!orgId) return;
 
-        if (!req.file) {
-            return res.status(400).json({ success: false, message: "Logo requis." });
+        const buffer = req.file?.buffer;
+        if (!buffer?.length) {
+            return res.status(400).json({ success: false, message: missingMessage });
+        }
+        const contentType = detectImageType(buffer);
+        if (!contentType) {
+            return res.status(415).json({ success: false, message: "Format non supporté. Utilisez une image JPEG, PNG ou WebP." });
         }
 
-        const extension = path.extname(req.file.originalname || "").toLowerCase() || ".png";
-        const filename = `logo_${orgId}_${crypto.randomUUID()}${extension}`;
-        const logoUrl = await storageService.saveUploadedAsset({
-            directory: "card-logos", filename,
-            contentType: req.file.mimetype,
-            buffer: req.file.buffer,
-            sourcePath: req.file.path
-        });
-        res.status(201).json({ success: true, logoUrl });
+        const filename = `${prefix}_${orgId}_${crypto.randomUUID()}${IMAGE_EXTENSIONS[contentType]}`;
+        const url = await storageService.saveUploadedAsset({ directory, filename, contentType, buffer });
+        res.status(201).json({ success: true, [responseKey]: url });
     } catch (error) {
-        if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-        res.status(500).json({ success: false, message: "Erreur lors de l'envoi du logo." });
+        res.status(500).json({ success: false, message: errorMessage });
     }
 };
 
-exports.uploadBackground = async (req, res) => {
-    try {
-        const orgId = requireOrg(req, res);
-        if (!orgId) return;
+exports.uploadLogo = (req, res) => saveTemplateImage(req, res, {
+    directory: "card-logos",
+    prefix: "logo",
+    responseKey: "logoUrl",
+    missingMessage: "Logo requis.",
+    errorMessage: "Erreur lors de l'envoi du logo."
+});
 
-        if (!req.file) {
-            return res.status(400).json({ success: false, message: "Image de fond requise." });
-        }
+exports.uploadBackground = (req, res) => saveTemplateImage(req, res, {
+    directory: "card-backgrounds",
+    prefix: "background",
+    responseKey: "backgroundImageUrl",
+    missingMessage: "Image de fond requise.",
+    errorMessage: "Erreur lors de l'envoi de l'image de fond."
+});
 
-        const extension = path.extname(req.file.originalname || "").toLowerCase() || ".png";
-        const filename = `background_${orgId}_${crypto.randomUUID()}${extension}`;
-        const backgroundImageUrl = await storageService.saveUploadedAsset({
-            directory: "card-backgrounds", filename,
-            contentType: req.file.mimetype,
-            buffer: req.file.buffer,
-            sourcePath: req.file.path
-        });
-        res.status(201).json({ success: true, backgroundImageUrl });
-    } catch (error) {
-        if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-        res.status(500).json({ success: false, message: "Erreur lors de l'envoi de l'image de fond." });
-    }
-};

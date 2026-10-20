@@ -247,3 +247,82 @@ test("POST /card-templates/custom/:id/duplicate duplicates a custom template", a
     assert.deepEqual(args, { orgId: 42, id: "9" });
     assert.equal(res.body.template.templateId, "custom:12");
 });
+
+test("PUT /card-templates/custom/:id/default and default/clear are reserved to administrators", async () => {
+    let called = false;
+    const app = loadCardTemplateApp({
+        user: { user_id: 2, role: "ORG_AGENT", org_id: 42 },
+        service: {
+            setDefaultForOrg: async () => { called = true; },
+            clearDefaultForOrg: async () => { called = true; }
+        }
+    });
+
+    const setDefault = await request(app, "PUT", "/card-templates/custom/9/default");
+    const clearDefault = await request(app, "PUT", "/card-templates/custom/default/clear");
+
+    assert.equal(setDefault.status, 403);
+    assert.equal(clearDefault.status, 403);
+    assert.equal(called, false);
+});
+
+const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0x0d]);
+
+const loadUploadController = () => {
+    clearSrcModules();
+    const saved = [];
+    mockModule("src/services/custom_card_template.service", {});
+    mockModule("src/services/storage.service", {
+        saveUploadedAsset: async (asset) => {
+            saved.push(asset);
+            return `/${asset.directory}/${asset.filename}`;
+        }
+    });
+    return { controller: require("../src/controllers/api.card_template.controller"), saved };
+};
+
+const invokeUpload = async (handler, file) => {
+    const res = {
+        statusCode: 200,
+        body: null,
+        status(code) { this.statusCode = code; return this; },
+        json(body) { this.body = body; return this; }
+    };
+    await handler({ file, user: { user_id: 1, org_id: 42 } }, res);
+    return res;
+};
+
+test("template image uploads reject HTML, JS or SVG files whatever their declared type", async () => {
+    const { controller, saved } = loadUploadController();
+    for (const [name, content] of [
+        ["logo.png", "<html><script>alert(1)</script></html>"],
+        ["logo.js", "fetch('/api/user/profile')"],
+        ["logo.svg", "<svg xmlns='http://www.w3.org/2000/svg' onload='alert(1)'/>"]
+    ]) {
+        const res = await invokeUpload(controller.uploadLogo, {
+            originalname: name,
+            mimetype: "image/png",
+            buffer: Buffer.from(content)
+        });
+        assert.equal(res.statusCode, 415, name);
+    }
+    assert.deepEqual(saved, []);
+});
+
+test("template image uploads store real images with an extension derived from their content", async () => {
+    const { controller, saved } = loadUploadController();
+    const res = await invokeUpload(controller.uploadBackground, {
+        originalname: "fond.html",
+        mimetype: "text/html",
+        buffer: PNG
+    });
+
+    assert.equal(res.statusCode, 201);
+    assert.equal(saved.length, 1);
+    assert.equal(saved[0].directory, "card-backgrounds");
+    assert.equal(saved[0].contentType, "image/png");
+    assert.match(saved[0].filename, /^background_42_[0-9a-f-]{36}\.png$/);
+    assert.equal(saved[0].sourcePath, undefined);
+    assert.match(res.body.backgroundImageUrl, /\.png$/);
+});
+

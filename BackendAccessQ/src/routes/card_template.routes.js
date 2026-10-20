@@ -19,17 +19,21 @@ const requireCustomTemplatesWhenSelected = (req, res, next) => {
     }
     return next();
 };
-const upload = multer({
-    dest: "tmp/uploads/",
-    limits: { fileSize: 2 * 1024 * 1024 },
-    fileFilter: (req, file, cb) => {
-        if (["image/png", "image/jpeg", "image/webp", "image/svg+xml"].includes(file.mimetype)) {
-            cb(null, true);
-        } else {
-            cb(new Error("Format de logo non supporté."), false);
-        }
-    }
-});
+// Le fichier reste en mémoire : son type réel est vérifié sur les octets avant tout enregistrement.
+const imageUpload = (field) => {
+    const middleware = multer({
+        storage: multer.memoryStorage(),
+        limits: { fileSize: 2 * 1024 * 1024, files: 1 }
+    }).single(field);
+    return (req, res, next) => middleware(req, res, (error) => {
+        if (!error) return next();
+        const tooLarge = error.code === "LIMIT_FILE_SIZE";
+        return res.status(tooLarge ? 413 : 400).json({
+            success: false,
+            message: tooLarge ? "L'image ne doit pas dépasser 2 Mo." : "Envoi de l'image invalide."
+        });
+    });
+};
 
 router.use(authMiddleware);
 
@@ -39,13 +43,14 @@ router.put("/custom/:id/status", canManageCustomTemplates, requireCustomTemplate
 router.post("/custom", canManageCustomTemplates, requireCustomTemplates, cardTemplateController.createCustomTemplate);
 router.get("/default", cardTemplateController.getDefaultTemplate);
 router.put("/default", adminOnly, requireCustomTemplatesWhenSelected, cardTemplateController.setDefaultTemplate);
-router.put("/custom/default/clear", canManageCustomTemplates, requireCustomTemplates, cardTemplateController.clearDefaultCustomTemplate);
+// Le modèle par défaut est un réglage de l'organisation : réservé aux administrateurs.
+router.put("/custom/default/clear", adminOnly, requireCustomTemplates, cardTemplateController.clearDefaultCustomTemplate);
 router.delete("/default", adminOnly, cardTemplateController.clearDefaultCustomTemplate);
 router.post("/custom/:id/duplicate", canManageCustomTemplates, requireCustomTemplates, cardTemplateController.duplicateCustomTemplate);
-router.post("/logo", canManageCustomTemplates, requireCustomTemplates, upload.single("logo"), cardTemplateController.uploadLogo);
-router.post("/background", canManageCustomTemplates, requireCustomTemplates, upload.single("background"), cardTemplateController.uploadBackground);
+router.post("/logo", canManageCustomTemplates, requireCustomTemplates, imageUpload("logo"), cardTemplateController.uploadLogo);
+router.post("/background", canManageCustomTemplates, requireCustomTemplates, imageUpload("background"), cardTemplateController.uploadBackground);
 router.put("/custom/:id", canManageCustomTemplates, requireCustomTemplates, cardTemplateController.updateCustomTemplate);
 router.delete("/custom/:id", canManageCustomTemplates, requireCustomTemplates, cardTemplateController.deleteCustomTemplate);
-router.put("/custom/:id/default", canManageCustomTemplates, requireCustomTemplates, cardTemplateController.setDefaultCustomTemplate);
+router.put("/custom/:id/default", adminOnly, requireCustomTemplates, cardTemplateController.setDefaultCustomTemplate);
 
 module.exports = router;

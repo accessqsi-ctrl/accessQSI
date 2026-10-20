@@ -82,6 +82,7 @@ export default function CardTemplatesPage() {
     const [templateToDelete, setTemplateToDelete] = useState(null);
     const [uploadingPrimaryImage, setUploadingPrimaryImage] = useState(false);
     const { userProfile, hasCapability, planName, profileLoading } = useUserPlan();
+    const canSetDefault = userProfile?.role === "ORG_ADMIN" || userProfile?.role === "SUPER_ADMIN";
     const customTemplatesLocked = !hasCapability("custom_card_templates");
 
     useEffect(() => {
@@ -228,7 +229,7 @@ export default function CardTemplatesPage() {
                                 <button title="Modifier" disabled={!!busy || customTemplatesLocked} onClick={() => openEdit(template)} className="rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-35"><Pencil className="mx-auto h-4 w-4" /></button>
                                 <button title="Dupliquer" disabled={!!busy || customTemplatesLocked} onClick={() => action(`copy-${template.id}`, `/card-templates/custom/${template.id}/duplicate`, "POST", "Modèle dupliqué.")} className="rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-35"><Copy className="mx-auto h-4 w-4" /></button>
                                 <button title={template.status === "PUBLISHED" ? "Archiver" : template.status === "ARCHIVED" ? "Republier" : "Publier"} disabled={!!busy || customTemplatesLocked} onClick={() => action(`status-${template.id}`, `/card-templates/custom/${template.id}/status`, "PUT", template.status === "PUBLISHED" ? "Modèle archivé." : "Modèle publié.", { status: template.status === "PUBLISHED" ? "ARCHIVED" : "PUBLISHED" })} className="rounded-lg border border-slate-200 p-2 text-emerald-600 hover:bg-emerald-50 disabled:opacity-35">{template.status === "PUBLISHED" ? <X className="mx-auto h-4 w-4" /> : <Check className="mx-auto h-4 w-4" />}</button>
-                                <button title="Définir par défaut" disabled={!!busy || defaultId === template.templateId || template.status !== "PUBLISHED" || customTemplatesLocked} onClick={() => action(`default-${template.id}`, `/card-templates/custom/${template.id}/default`, "PUT", "Modèle défini par défaut.")} className="rounded-lg border border-slate-200 p-2 text-amber-600 hover:bg-amber-50 disabled:opacity-40"><Star className="mx-auto h-4 w-4" /></button>
+                                <button title={canSetDefault ? "Définir par défaut" : "Réservé aux administrateurs"} disabled={!!busy || !canSetDefault || defaultId === template.templateId || template.status !== "PUBLISHED" || customTemplatesLocked} onClick={() => action(`default-${template.id}`, `/card-templates/custom/${template.id}/default`, "PUT", "Modèle défini par défaut.")} className="rounded-lg border border-slate-200 p-2 text-amber-600 hover:bg-amber-50 disabled:opacity-40"><Star className="mx-auto h-4 w-4" /></button>
                                 <button title="Supprimer" disabled={!!busy || customTemplatesLocked} onClick={() => setTemplateToDelete(template)} className="rounded-lg border border-red-100 p-2 text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-35"><Trash2 className="mx-auto h-4 w-4" /></button>
                             </div>
                         </div>
