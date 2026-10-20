@@ -131,6 +131,9 @@ test("deleteForOrg removes an unreferenced managed background image", async () =
         qrCode: {
             count: async () => 0
         },
+        organizationAsset: {
+            count: async () => 0
+        },
         $transaction: async callback => callback({
             cardTemplateCustom: { update: async () => existing },
             organization: { updateMany: async () => ({ count: 1 }) }
@@ -172,6 +175,9 @@ test("deleteForOrg keeps a background image still referenced by another template
         qrCode: {
             count: async () => 0
         },
+        organizationAsset: {
+            count: async () => 0
+        },
         $transaction: async callback => callback({
             cardTemplateCustom: { update: async () => existing },
             organization: { updateMany: async () => ({ count: 1 }) }
@@ -187,5 +193,50 @@ test("deleteForOrg keeps a background image still referenced by another template
     const service = require("../src/services/custom_card_template.service");
     await service.deleteForOrg(42, 13);
 
+    assert.equal(removeCalled, false);
+});
+
+test("deleteForOrg keeps a background image saved in the organization library", async () => {
+    clearSrcModules();
+
+    const existing = {
+        id: 14,
+        org_id: 42,
+        background_image_url: "/card-backgrounds/background_42_library.png",
+        deleted_at: null
+    };
+    let removeCalled = false;
+    let libraryQuery = null;
+
+    mockModule("src/prisma/client", {
+        cardTemplateCustom: {
+            findFirst: async () => existing,
+            count: async () => 0
+        },
+        qrCode: {
+            count: async () => 0
+        },
+        organizationAsset: {
+            count: async ({ where }) => {
+                libraryQuery = where;
+                return 1;
+            }
+        },
+        $transaction: async callback => callback({
+            cardTemplateCustom: { update: async () => existing },
+            organization: { updateMany: async () => ({ count: 1 }) }
+        })
+    });
+    mockModule("src/services/card_template.service", {});
+    mockModule("src/services/storage.service", {
+        removeManagedPublicAsset: async () => {
+            removeCalled = true;
+        }
+    });
+
+    const service = require("../src/services/custom_card_template.service");
+    await service.deleteForOrg(42, 14);
+
+    assert.deepEqual(libraryQuery, { org_id: 42, url: "/card-backgrounds/background_42_library.png" });
     assert.equal(removeCalled, false);
 });

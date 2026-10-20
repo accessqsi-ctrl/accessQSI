@@ -1,4 +1,5 @@
 const express = require('express');
+const path = require('path');
 const app = express();
 
 // Configuration dynamique du trust proxy (1 par défaut pour Render)
@@ -108,9 +109,27 @@ app.use(requestLogger);
 
 // ===== Fichiers statiques =====
 // Seules les ressources des modèles sont persistées. Les QR et cartes sont générés via /qr à la demande.
-app.use(express.static(storageService.storageRoot));
+// Seules les images sont servies : un fichier HTML ou JS déposé avant la vérification des uploads
+// ne doit jamais s'exécuter sur l'origine de l'application (servie via le proxy /api du frontend).
+const STATIC_IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg"]);
+const staticOptions = {
+    index: false,
+    setHeaders: (res, filePath) => {
+        // Un SVG peut contenir du script : il est affiché comme image mais jamais exécuté.
+        if (path.extname(filePath).toLowerCase() === ".svg") {
+            res.setHeader("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; sandbox");
+        }
+    }
+};
+const serveStaticImages = (root) => {
+    const serve = express.static(root, staticOptions);
+    return (req, res, next) => (
+        STATIC_IMAGE_EXTENSIONS.has(path.extname(req.path).toLowerCase()) ? serve(req, res, next) : next()
+    );
+};
+app.use(serveStaticImages(storageService.storageRoot));
 if (storageService.storageRoot !== storageService.bundledStaticsRoot) {
-    app.use(express.static(storageService.bundledStaticsRoot));
+    app.use(serveStaticImages(storageService.bundledStaticsRoot));
 }
 
 // Le limiteur concerne uniquement les API, après les ressources statiques des modèles.
@@ -125,7 +144,6 @@ const areaRoutes = require("./routes/area.routes");
 const agentRoutes = require("./routes/agent.routes");
 const exportRoutes = require("./routes/export.routes");
 const cardTemplateRoutes = require("./routes/card_template.routes");
-const pdfTemplateRoutes = require("./routes/pdf_template.routes");
 const paymentRoutes = require("./routes/payment.routes");
 const registrationRoutes = require("./routes/registration.routes");
 
@@ -141,7 +159,6 @@ app.use("/areas", areaRoutes);
 app.use("/agents", agentRoutes);
 app.use("/export", exportRoutes);
 app.use("/card-templates", cardTemplateRoutes);
-app.use("/pdf-templates", pdfTemplateRoutes);
 app.use("/billing", paymentRoutes);
 app.use("/registration-forms", registrationRoutes.privateRouter);
 app.use("/public/registrations", registrationRoutes.publicRouter);

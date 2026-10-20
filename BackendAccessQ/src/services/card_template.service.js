@@ -2,6 +2,8 @@ const fs = require("fs");
 const path = require("path");
 const PDFDocument = require("pdfkit");
 const SVGtoPDF = require("svg-to-pdfkit");
+const { CARD_FONTS, fontFilePath, isBoldWeight, normalizeFontId, svgFontFamily } = require("../config/cardFonts");
+const { layoutText, measureWithFont } = require("./card_text_layout.service");
 const { PassThrough } = require("stream");
 const storageService = require("./storage.service");
 
@@ -190,8 +192,11 @@ const getCardMessage = (message, fallback = "Présentez ce QR à l'entrée") => 
 };
 
 const hasTemplate = (templateId) => Boolean(templates[templateId]);
+// « Mariage bleu et beige » reste masqué : il affiche les prénoms des mariés, qui ne sont pas
+// encore saisissables dans l'interface.
 const availableTemplateIds = new Set([
-    "event-ticket", "staff-card", "wedding-invite", "compact-ticket"
+    "event-ticket", "access-pass", "vip-pass", "staff-badge-horizontal", "compact-ticket",
+    "staff-card", "wedding-invite", "vip-invitation", "simple-invitation"
 ]);
 const isTemplateAvailable = (templateId) => availableTemplateIds.has(String(templateId || ""));
 
@@ -219,11 +224,16 @@ const buildTemplate = (templateId, customization = null) => {
         visibleFields: customization.visibleFields || {},
         layoutConfig: customization.layoutConfig || null,
         canvasScene: customization.canvasScene || null,
-        cardMessageDefault: customization.cardMessageDefault || ""
+        cardMessageDefault: customization.cardMessageDefault || "",
+        // Les modèles personnalisés n'affichent la mention AccessQ que si l'organisation l'a choisi.
+        showBrand: customization.visibleFields?.brand === true
     };
 };
 
 const isFieldVisible = (template, field) => template.visibleFields?.[field] !== false;
+
+// Les modèles standards gardent la mention AccessQ ; showBrand vaut false par défaut sur un modèle personnalisé.
+const brandText = (template, svg) => (template.showBrand === false ? "" : svg);
 
 const fieldText = (template, field, value) => isFieldVisible(template, field) ? value : "";
 
@@ -280,11 +290,23 @@ const transformForObject = (object) => {
     return ` transform="rotate(${rotation} ${cx} ${cy})"`;
 };
 
+// Le texte est découpé en lignes et réduit pour tenir dans le cadre de l'objet (largeur × hauteur).
 const renderCanvasText = ({ object, template, event, qrRecord, cardMessage }) => {
     const anchor = object.align === "center" ? "middle" : object.align === "right" ? "end" : "start";
     const x = object.align === "center" ? object.x + object.width / 2 : object.align === "right" ? object.x + object.width : object.x;
-    const y = object.y + object.fontSize;
-    return `<text x="${x}" y="${y}" text-anchor="${anchor}" font-family="${escapeXml(object.fontFamily || "Arial")}, sans-serif" font-size="${object.fontSize}" font-weight="${escapeXml(object.fontWeight || "700")}" fill="${escapeXml(object.fill || template.ink)}">${escapeXml(getCanvasValue({ object, template, event, qrRecord, cardMessage }))}</text>`;
+    const fontId = normalizeFontId(object.fontFamily);
+    const bold = isBoldWeight(object.fontWeight || "700");
+    const layout = layoutText({
+        text: getCanvasValue({ object, template, event, qrRecord, cardMessage }),
+        width: object.width,
+        height: Math.abs(object.height),
+        fontSize: object.fontSize,
+        measure: measureWithFont(fontId, bold ? "bold" : "normal")
+    });
+    const lines = layout.lines
+        .map((line, index) => `<tspan x="${x}" y="${object.y + layout.fontSize + index * layout.lineHeight}">${escapeXml(line)}</tspan>`)
+        .join("");
+    return `<text text-anchor="${anchor}" font-family="${svgFontFamily(fontId)}" font-size="${layout.fontSize}" font-weight="${bold ? "bold" : "normal"}" fill="${escapeXml(object.fill || template.ink)}">${lines}</text>`;
 };
 
 const renderCanvasScene = ({ template, qrUrl, event, qrRecord, cardMessage }) => {
@@ -439,7 +461,7 @@ const renderHorizontalTicket = ({ template, qrUrl, event, qrRecord, cardMessage 
 ${primaryPanel}
 <circle cx="134" cy="134" r="72" fill="#ffffff" opacity="0.14"/>
 <circle cx="400" cy="${template.height - 118}" r="118" fill="#ffffff" opacity="0.10"/>
-<text x="92" y="182" font-family="Arial, sans-serif" font-size="25" font-weight="700" fill="#ffffff" opacity="0.82">AccessQ</text>
+${brandText(template, `<text x="92" y="182" font-family="Arial, sans-serif" font-size="25" font-weight="700" fill="#ffffff" opacity="0.82">AccessQ</text>`)}
 ${renderLogo(template, 92, 74, 64)}
 <text x="92" y="276" font-family="Arial, sans-serif" font-size="50" font-weight="800" fill="#ffffff">${template.label}</text>
 <text x="92" y="326" font-family="Arial, sans-serif" font-size="22" fill="#ffffff" opacity="0.82">Support numérique sécurisé</text>
@@ -480,7 +502,7 @@ const renderVerticalCard = ({ template, qrUrl, event, qrRecord, cardMessage }) =
 <rect width="${template.width}" height="${template.height}" rx="64" fill="${template.surface}"/>
 <rect x="54" y="54" width="${template.width - 108}" height="${template.height - 108}" rx="52" fill="#ffffff" stroke="#dbe3ea" stroke-width="4"/>
 ${primaryPanel}
-<text x="450" y="154" text-anchor="middle" font-family="Arial, sans-serif" font-size="32" font-weight="800" fill="#ffffff">AccessQ</text>
+${brandText(template, `<text x="450" y="154" text-anchor="middle" font-family="Arial, sans-serif" font-size="32" font-weight="800" fill="#ffffff">AccessQ</text>`)}
 ${renderLogo(template, 78, 78, 70)}
 <text x="450" y="218" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" fill="#ffffff" opacity="0.84">${template.label}</text>
 <circle cx="450" cy="390" r="144" fill="#ffffff"/>
@@ -582,7 +604,7 @@ const renderCompactTicket = ({ template, qrUrl, event, qrRecord, cardMessage }) 
 <rect x="36" y="36" width="${template.width - 72}" height="${template.height - 72}" rx="26" fill="#ffffff" stroke="#dbe3ea" stroke-width="3"/>
 ${primaryPanel}
 <text x="82" y="152" font-family="Arial, sans-serif" font-size="34" font-weight="900" fill="#ffffff">${template.label}</text>
-<text x="82" y="202" font-family="Arial, sans-serif" font-size="19" fill="#ffffff" opacity="0.82">AccessQ</text>
+${brandText(template, `<text x="82" y="202" font-family="Arial, sans-serif" font-size="19" fill="#ffffff" opacity="0.82">AccessQ</text>`)}
 ${renderLogo(template, 82, 250, 58)}
 <text x="370" y="132" font-family="Arial, sans-serif" font-size="40" font-weight="900" fill="${template.ink}">${fieldText(template, "event", title)}</text>
 <text x="370" y="198" font-family="Arial, sans-serif" font-size="28" font-weight="700" fill="#334155">${fieldText(template, "holder", holder)}</text>
@@ -629,12 +651,17 @@ const materializeCustomizationAssets = async (customization) => {
     renderable.logoUrl = logoUrl;
 
     if (customization.canvasScene?.objects) {
-        const objects = await Promise.all(customization.canvasScene.objects.map(async (object) => (
+        const materializeObjects = (objects = []) => Promise.all(objects.map(async (object) => (
             object?.src
                 ? { ...object, src: await storageService.materializeManagedAsset(object.src) }
                 : object
         )));
-        renderable.canvasScene = { ...customization.canvasScene, objects };
+        const back = customization.canvasScene.back;
+        renderable.canvasScene = {
+            ...customization.canvasScene,
+            objects: await materializeObjects(customization.canvasScene.objects),
+            back: back ? { ...back, objects: await materializeObjects(back.objects) } : null
+        };
     }
 
     return renderable;
@@ -658,21 +685,46 @@ const normalizeCardRenderInput = ({ templateId, customization, ...payload }) => 
         customization: renderCustomization
     });
 
-    return { svg, width, height };
+    // Verso : même format, rendu sur la page suivante pour l'impression recto-verso.
+    const back = template.canvasScene?.back;
+    const backSvg = back?.objects?.length
+        ? renderCanvasScene({
+            ...payload,
+            template: {
+                ...template,
+                canvasScene: {
+                    canvas: { ...template.canvasScene.canvas, backgroundColor: back.backgroundColor || "#ffffff" },
+                    objects: back.objects
+                }
+            }
+        })
+        : null;
+
+    return { svg, backSvg, width, height };
+};
+
+const registerCardFonts = (doc) => {
+    for (const fontId of Object.keys(CARD_FONTS)) {
+        doc.registerFont(svgFontFamily(fontId), fontFilePath(fontId, false));
+        doc.registerFont(`${svgFontFamily(fontId)}-Bold`, fontFilePath(fontId, true));
+    }
 };
 
 const renderCardsIntoPdfDocument = (doc, cards) => {
+    registerCardFonts(doc);
     for (const card of cards) {
-        const { svg, width, height } = normalizeCardRenderInput(card);
-        doc.addPage({ size: [width, height], margin: 0 });
-        SVGtoPDF(doc, svg, 0, 0, {
-            width,
-            height,
-            assumePt: true,
-            preserveAspectRatio: "xMidYMid meet",
-            imageCallback: localImagePathForHref,
-            warningCallback: () => {}
-        });
+        const { svg, backSvg, width, height } = normalizeCardRenderInput(card);
+        for (const pageSvg of [svg, backSvg].filter(Boolean)) {
+            doc.addPage({ size: [width, height], margin: 0 });
+            SVGtoPDF(doc, pageSvg, 0, 0, {
+                width,
+                height,
+                assumePt: true,
+                preserveAspectRatio: "xMidYMid meet",
+                imageCallback: localImagePathForHref,
+                warningCallback: () => {}
+            });
+        }
     }
 };
 

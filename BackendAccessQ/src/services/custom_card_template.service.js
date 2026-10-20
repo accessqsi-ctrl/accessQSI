@@ -1,13 +1,17 @@
 const prisma = require("../prisma/client");
 const cardTemplateService = require("./card_template.service");
 const storageService = require("./storage.service");
+const { normalizeFontId } = require("../config/cardFonts");
 
 const colorPattern = /^#[0-9a-fA-F]{6}$/;
 const qrPositions = new Set(["right", "left", "center"]);
-const visibleFieldKeys = ["holder", "event", "date", "location", "level", "message", "qr"];
+const visibleFieldKeys = ["holder", "event", "date", "location", "level", "message", "qr", "brand"];
+// Champs masqués tant que l'organisation ne les active pas explicitement.
+const optInFieldKeys = new Set(["brand"]);
 const layoutElementTypes = new Set(["logo", "title", "event", "holder", "date", "location", "level", "message", "qr", "cardId"]);
 const canvasObjectTypes = new Set(["text", "qr", "logo", "image", "background", "rect", "line"]);
 const alignments = new Set(["left", "center", "right"]);
+const fontWeightPattern = /^(normal|bold|[1-9]00)$/;
 
 const boundedNumber = (value, fallback, min, max) => {
     const number = Number(value);
@@ -18,7 +22,7 @@ const boundedNumber = (value, fallback, min, max) => {
 const normalizeVisibleFields = (value = {}) => {
     const source = typeof value === "object" && value !== null ? value : {};
     return visibleFieldKeys.reduce((fields, key) => {
-        fields[key] = source[key] !== false;
+        fields[key] = optInFieldKeys.has(key) ? source[key] === true : source[key] !== false;
         return fields;
     }, {});
 };
@@ -52,47 +56,59 @@ const normalizeLayoutConfig = (value = null) => {
     };
 };
 
+const normalizeSceneObjects = (objects) => (Array.isArray(objects) ? objects : [])
+    .filter(object => object && canvasObjectTypes.has(object.type))
+    .slice(0, 80)
+    .map((object, index) => ({
+        id: String(object.id || `${object.type}-${index + 1}`).slice(0, 80),
+        type: object.type,
+        label: String(object.label || object.type).slice(0, 80),
+        field: String(object.field || "").slice(0, 40) || null,
+        text: String(object.text || "").slice(0, 240),
+        // Seules les images déposées sur la plateforme peuvent être placées sur une carte.
+        src: storageService.isManagedAssetUrl(String(object.src || "").trim().slice(0, 500))
+            ? String(object.src).trim().slice(0, 500)
+            : null,
+        x: boundedNumber(object.x, 80, -2400, 2400),
+        y: boundedNumber(object.y, 80, -2600, 2600),
+        width: boundedNumber(object.width, object.type === "line" ? 260 : 220, 1, 2400),
+        height: boundedNumber(object.height, object.type === "line" ? 0 : 80, -2600, 2600),
+        rotation: boundedNumber(object.rotation, 0, -360, 360),
+        opacity: boundedNumber(object.opacity, 1, 0, 1),
+        zIndex: boundedNumber(object.zIndex, index + 1, 0, 1000),
+        locked: object.locked === true,
+        visible: object.visible !== false,
+        fill: colorPattern.test(String(object.fill || "")) ? object.fill : "#0f172a",
+        stroke: colorPattern.test(String(object.stroke || "")) ? object.stroke : "#cbd5e1",
+        strokeWidth: boundedNumber(object.strokeWidth, object.type === "line" ? 4 : 0, 0, 40),
+        fontSize: boundedNumber(object.fontSize, 32, 6, 220),
+        fontFamily: normalizeFontId(object.fontFamily),
+        fontWeight: fontWeightPattern.test(String(object.fontWeight || "")) ? String(object.fontWeight) : "700",
+        align: alignments.has(object.align) ? object.align : "left",
+        cornerRadius: boundedNumber(object.cornerRadius, 0, 0, 160)
+    }));
+
 const normalizeCanvasScene = (value = null, baseTemplate = null, existing = null) => {
     const source = value && typeof value === "object" ? value : existing;
     if (!source || typeof source !== "object") return null;
 
     const canvas = source.canvas && typeof source.canvas === "object" ? source.canvas : {};
-    const objects = Array.isArray(source.objects) ? source.objects : [];
     const width = boundedNumber(canvas.width, baseTemplate?.width || 1200, 240, 2400);
     const height = boundedNumber(canvas.height, baseTemplate?.height || 800, 240, 2600);
     const backgroundColor = colorPattern.test(String(canvas.backgroundColor || "")) ? canvas.backgroundColor : "#ffffff";
+    // Verso facultatif, même format que le recto : règlement, plan d'accès, partenaires…
+    const back = source.back && typeof source.back === "object"
+        ? {
+            backgroundColor: colorPattern.test(String(source.back.backgroundColor || "")) ? source.back.backgroundColor : "#ffffff",
+            objects: normalizeSceneObjects(source.back.objects)
+        }
+        : null;
 
     return {
         version: 3,
         canvas: { width, height, backgroundColor },
-        objects: objects
-            .filter(object => object && canvasObjectTypes.has(object.type))
-            .slice(0, 80)
-            .map((object, index) => ({
-                id: String(object.id || `${object.type}-${index + 1}`).slice(0, 80),
-                type: object.type,
-                label: String(object.label || object.type).slice(0, 80),
-                field: String(object.field || "").slice(0, 40) || null,
-                text: String(object.text || "").slice(0, 240),
-                src: String(object.src || "").trim().slice(0, 500) || null,
-                x: boundedNumber(object.x, 80, -2400, 2400),
-                y: boundedNumber(object.y, 80, -2600, 2600),
-                width: boundedNumber(object.width, object.type === "line" ? 260 : 220, 1, 2400),
-                height: boundedNumber(object.height, object.type === "line" ? 0 : 80, -2600, 2600),
-                rotation: boundedNumber(object.rotation, 0, -360, 360),
-                opacity: boundedNumber(object.opacity, 1, 0, 1),
-                zIndex: boundedNumber(object.zIndex, index + 1, 0, 1000),
-                locked: object.locked === true,
-                visible: object.visible !== false,
-                fill: colorPattern.test(String(object.fill || "")) ? object.fill : "#0f172a",
-                stroke: colorPattern.test(String(object.stroke || "")) ? object.stroke : "#cbd5e1",
-                strokeWidth: boundedNumber(object.strokeWidth, object.type === "line" ? 4 : 0, 0, 40),
-                fontSize: boundedNumber(object.fontSize, 32, 6, 220),
-                fontFamily: String(object.fontFamily || "Arial").slice(0, 60),
-                fontWeight: String(object.fontWeight || "700").slice(0, 12),
-                align: alignments.has(object.align) ? object.align : "left",
-                cornerRadius: boundedNumber(object.cornerRadius, 0, 0, 160)
-            }))
+        objects: normalizeSceneObjects(source.objects),
+        back
     };
 };
 
@@ -139,7 +155,10 @@ const normalizePayload = (payload = {}, existing = null, options = {}) => {
         qr_position: qrPosition,
         visible_fields: normalizeVisibleFields(payload.visibleFields || existing?.visible_fields),
         layout_config: normalizeLayoutConfig(payload.layoutConfig ?? existing?.layout_config),
-        canvas_scene: normalizeCanvasScene(payload.canvasScene ?? existing?.canvas_scene, baseTemplate, existing?.canvas_scene),
+        // canvasScene: false repasse le modèle en mode simple (formulaire) en supprimant la scène libre.
+        canvas_scene: payload.canvasScene === false
+            ? null
+            : normalizeCanvasScene(payload.canvasScene ?? existing?.canvas_scene, baseTemplate, existing?.canvas_scene),
         layout: String(payload.layout || existing?.layout || baseTemplate.layout || "wide").trim().slice(0, 32)
     };
 };
@@ -242,7 +261,7 @@ exports.deleteForOrg = async (orgId, id) => {
 
     const customTemplateId = `custom:${existing.id}`;
     const backgroundImageUrl = existing.background_image_url;
-    const [otherTemplateReferences, activeQrReferences] = backgroundImageUrl
+    const [otherTemplateReferences, activeQrReferences, libraryReferences] = backgroundImageUrl
         ? await Promise.all([
             prisma.cardTemplateCustom.count({
                 where: {
@@ -256,9 +275,11 @@ exports.deleteForOrg = async (orgId, id) => {
                     card_template_id: customTemplateId,
                     deleted_at: null
                 }
-            })
+            }),
+            // Une image rangée dans la bibliothèque y reste disponible après la suppression du modèle.
+            prisma.organizationAsset.count({ where: { org_id: orgId, url: backgroundImageUrl } })
         ])
-        : [0, 0];
+        : [0, 0, 0];
 
     const deleted = await prisma.$transaction(async (tx) => {
         await tx.cardTemplateCustom.update({
@@ -274,7 +295,7 @@ exports.deleteForOrg = async (orgId, id) => {
         return existing;
     });
 
-    if (backgroundImageUrl && otherTemplateReferences === 0 && activeQrReferences === 0) {
+    if (backgroundImageUrl && otherTemplateReferences === 0 && activeQrReferences === 0 && libraryReferences === 0) {
         await storageService.removeManagedPublicAsset(backgroundImageUrl, "card-backgrounds");
     }
 

@@ -1,5 +1,15 @@
 @import "tailwindcss";
 
+/* Polices de l'éditeur de cartes : mêmes fichiers que le PDF généré côté serveur. */
+@font-face { font-family: "aq-sans"; src: url("/fonts/LiberationSans-Regular.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "aq-sans"; src: url("/fonts/LiberationSans-Bold.ttf") format("truetype"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "aq-serif"; src: url("/fonts/LiberationSerif-Regular.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "aq-serif"; src: url("/fonts/LiberationSerif-Bold.ttf") format("truetype"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "aq-rounded"; src: url("/fonts/Quicksand-Regular.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "aq-rounded"; src: url("/fonts/Quicksand-Bold.ttf") format("truetype"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "aq-elegant"; src: url("/fonts/Yrsa-Regular.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "aq-elegant"; src: url("/fonts/Yrsa-Bold.ttf") format("truetype"); font-weight: 700; font-style: normal; font-display: swap; }
+
 :root {
   --background: #ffffff;
   --foreground: #171717;

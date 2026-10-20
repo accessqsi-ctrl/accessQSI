@@ -10,12 +10,28 @@ export const cardTemplates = [
     },
     {
         id: "compact-ticket", name: "Ticket compact", category: "Événement", format: "1200 x 520 px", accent: "blue", layout: "compact", description: "Ticket horizontal compact.", fields: ["Titulaire", "Événement", "Date", "QR"]
+    },
+    {
+        id: "access-pass", name: "Pass accès", category: "Événement", format: "1600 x 600 px", accent: "amber", layout: "wide", description: "Pass horizontal orange.", fields: ["Titulaire", "Événement", "Date", "Lieu", "QR"]
+    },
+    {
+        id: "vip-pass", name: "Pass VIP", category: "Événement", format: "1600 x 600 px", accent: "violet", layout: "wide", description: "Pass horizontal violet.", fields: ["Titulaire", "Événement", "Date", "Lieu", "QR"]
+    },
+    {
+        id: "staff-badge-horizontal", name: "Badge staff horizontal", category: "Équipe", format: "1600 x 600 px", accent: "teal", layout: "wide", description: "Badge horizontal pour le personnel.", fields: ["Titulaire", "Événement", "Niveau", "QR"]
+    },
+    {
+        id: "vip-invitation", name: "Invitation VIP", category: "Cérémonie", format: "1200 x 1800 px", accent: "violet", layout: "invite", description: "Invitation verticale violette.", fields: ["Invité", "Événement", "Date", "Lieu", "QR"]
+    },
+    {
+        id: "simple-invitation", name: "Invitation sobre", category: "Cérémonie", format: "1200 x 1800 px", accent: "slate", layout: "invite", description: "Invitation verticale neutre.", fields: ["Invité", "Événement", "Date", "Lieu", "QR"]
     }
 ];
 
 export const CARD_TEMPLATE_STORAGE_KEY = "qrAccessCardTemplateId";
 
 export const defaultVisibleFields = {
+    brand: false,
     holder: true,
     event: true,
     date: true,
@@ -96,21 +112,24 @@ const createCanvasObject = (object) => ({
     visible: true,
     stroke: "#cbd5e1",
     strokeWidth: 0,
-    fontFamily: "Arial",
+    fontFamily: "sans",
     fontWeight: "700",
     align: "left",
     cornerRadius: 0,
     ...object
 });
 
-export const createDefaultCanvasScene = (baseTemplateId = "event-ticket") => {
+// colors permet de partir directement des couleurs du modèle (couleur principale et secondaire).
+export const createDefaultCanvasScene = (baseTemplateId = "event-ticket", colors = {}) => {
     const base = getBaseCardTemplate(baseTemplateId);
     const wide = base.layout === "wide" || base.layout === "compact";
     const badge = base.layout === "badge";
     const width = wide ? (base.layout === "compact" ? 1200 : 1600) : badge ? 900 : 1200;
     const height = wide ? (base.layout === "compact" ? 520 : 600) : badge ? 1400 : 1800;
-    const accent = base.accent === "amber" ? "#d97706" : base.accent === "emerald" ? "#059669" : base.accent === "rose" ? "#e11d48" : base.accent === "violet" ? "#7c3aed" : base.accent === "teal" ? "#0f766e" : base.accent === "slate" ? "#334155" : "#2563eb";
-    const soft = base.accent === "amber" ? "#fef3c7" : base.accent === "emerald" ? "#d1fae5" : base.accent === "rose" ? "#ffe4e6" : base.accent === "violet" ? "#ede9fe" : base.accent === "teal" ? "#ccfbf1" : base.accent === "slate" ? "#e2e8f0" : "#dbeafe";
+    const baseAccent = base.accent === "amber" ? "#d97706" : base.accent === "emerald" ? "#059669" : base.accent === "rose" ? "#e11d48" : base.accent === "violet" ? "#7c3aed" : base.accent === "teal" ? "#0f766e" : base.accent === "slate" ? "#334155" : "#2563eb";
+    const baseSoft = base.accent === "amber" ? "#fef3c7" : base.accent === "emerald" ? "#d1fae5" : base.accent === "rose" ? "#ffe4e6" : base.accent === "violet" ? "#ede9fe" : base.accent === "teal" ? "#ccfbf1" : base.accent === "slate" ? "#e2e8f0" : "#dbeafe";
+    const accent = colors.accent || baseAccent;
+    const soft = colors.soft || baseSoft;
 
     if (wide) {
         return {
@@ -119,7 +138,6 @@ export const createDefaultCanvasScene = (baseTemplateId = "event-ticket") => {
             objects: [
                 createCanvasObject({ id: "panel-accent", type: "rect", label: "Bande couleur", x: 40, y: 40, width: 420, height: height - 80, fill: accent, cornerRadius: 28, zIndex: 1 }),
                 createCanvasObject({ id: "panel-main", type: "rect", label: "Fond contenu", x: 460, y: 40, width: width - 500, height: height - 80, fill: "#ffffff", stroke: soft, strokeWidth: 4, cornerRadius: 28, zIndex: 2 }),
-                createCanvasObject({ id: "brand", type: "text", label: "Marque", text: "AccessQ", x: 92, y: 118, width: 280, height: 34, fontSize: 25, fill: "#ffffff", opacity: 0.82, zIndex: 3 }),
                 createCanvasObject({ id: "title", type: "text", label: "Titre", field: "title", text: "{{title}}", x: 92, y: 220, width: 310, height: 70, fontSize: 50, fontWeight: "900", fill: "#ffffff", zIndex: 4 }),
                 createCanvasObject({ id: "event", type: "text", label: "Événement", field: "event", text: "{{event}}", x: 540, y: 130, width: 610, height: 70, fontSize: 54, fontWeight: "900", fill: "#0f172a", zIndex: 5 }),
                 createCanvasObject({ id: "holder", type: "text", label: "Titulaire", field: "holder", text: "{{holder}}", x: 540, y: 242, width: 520, height: 48, fontSize: 34, fill: "#334155", zIndex: 6 }),
