@@ -1,3 +1,8 @@
+x-backend-env: &backend-env
+  FILE_STORAGE_ROOT: /usr/src/app/storage
+  # Les clés JWT ne sont jamais copiées dans l'image : elles sont montées en secrets.
+  PRIVATE_KEY_PATH: /run/secrets/jwt_private_key
+  PUBLIC_KEY_PATH: /run/secrets/jwt_public_key
 
 services:
   back-accessqsi:
@@ -7,8 +12,10 @@ services:
     image: accessqsi/back-accessq
     env_file:
       .env
-    environment:
-      FILE_STORAGE_ROOT: /usr/src/app/storage
+    environment: *backend-env
+    secrets:
+      - jwt_private_key
+      - jwt_public_key
     volumes:
       - qr_assets:/usr/src/app/storage
     container_name: backend-accessq
@@ -16,6 +23,31 @@ services:
       # Expose le port 5000 du conteneur vers le port 5000 de votre machine
       - "5000:5000"
     restart: unless-stopped
+
+  # Worker persistant des formulaires d'inscription (émission des pass et envoi des emails).
+  # Il peut être répliqué : les jobs sont pris avec FOR UPDATE SKIP LOCKED.
+  registration-worker:
+    image: accessqsi/back-accessq
+    command: ["node", "src/workers/registration.worker.js"]
+    env_file:
+      .env
+    environment: *backend-env
+    secrets:
+      - jwt_private_key
+      - jwt_public_key
+    volumes:
+      - qr_assets:/usr/src/app/storage
+    depends_on:
+      back-accessqsi:
+        # Le serveur applique les migrations au démarrage
+        condition: service_started
+    restart: unless-stopped
+
+secrets:
+  jwt_private_key:
+    file: ./private.pem
+  jwt_public_key:
+    file: ./public.pem
 
 volumes:
   qr_assets:

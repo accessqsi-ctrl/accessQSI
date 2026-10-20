@@ -70,6 +70,15 @@ Les liens publics utilisent des jetons aléatoires expirants dont seule
 l'empreinte SHA-256 est stockée. Le jeton QR de contrôle d'accès n'est jamais
 utilisé comme jeton de téléchargement.
 
+## Déploiement Docker
+
+`docker compose up -d --build` lance deux conteneurs à partir de la même image :
+
+- `back-accessqsi` applique les migrations Prisma en attente (`prisma migrate deploy`) puis démarre l'API ;
+- `registration-worker` traite les jobs des formulaires d'inscription.
+
+Les clés JWT ne sont jamais copiées dans l'image (`*.pem` est exclu par `.dockerignore`). Elles sont montées en secrets Docker depuis `private.pem` et `public.pem`, ou peuvent être fournies via `PRIVATE_KEY` / `PUBLIC_KEY` dans `.env`.
+
 ## Essai Pro
 
 Un administrateur d'organisation peut activer une seule fois un essai Pro depuis
