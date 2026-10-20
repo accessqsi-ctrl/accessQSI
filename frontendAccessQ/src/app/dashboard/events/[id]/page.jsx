@@ -3,19 +3,23 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Loader2, Calendar, MapPin, QrCode, Edit2, Trash2, ArrowLeft, Plus, Download, X, CheckCircle2, FileSpreadsheet, FileText, Mail, Phone } from "lucide-react";
+import { Loader2, Calendar, MapPin, QrCode, Edit2, Trash2, ArrowLeft, Plus, Download, X, CheckCircle2, FileSpreadsheet, FileText } from "lucide-react";
 import { apiFetch, apiUrl, refreshSession } from "../../../lib/api";
 import LoadingBar from "../../../components/LoadingBar";
 import { useUserPlan } from "../../../lib/useUserPlan";
 import PlanQuotaStatus from "../../../components/PlanQuotaStatus";
-import CardTemplatePreview from "../../../components/CardTemplatePreview";
-import { formatInternationalPhone, normalizePhone, selectTemplateForExistingQr, validateQrContact } from "../../../lib/eventQr.mjs";
+import QrGenerationModal from "./_components/QrGenerationModal";
+import QrPreviewModal from "./_components/QrPreviewModal";
+import RechargeQrModal from "./_components/RechargeQrModal";
+import RevokeQrModal from "./_components/RevokeQrModal";
+import CardTemplateModal from "./_components/CardTemplateModal";
+import EditEventModal from "./_components/EditEventModal";
+import DeleteEventModal from "./_components/DeleteEventModal";
+import ImportQrModal from "./_components/ImportQrModal";
+import { getCardDownloadUrl } from "./_components/cardDownload";
+import { normalizePhone, selectTemplateForExistingQr, validateQrContact } from "../../../lib/eventQr.mjs";
 
 
-const getCardDownloadUrl = (cardUrl) => {
-    if (!cardUrl) return "";
-    return apiUrl(cardUrl);
-};
 
 
 export default function EventDetailPage() {
@@ -1008,744 +1012,116 @@ export default function EventDetailPage() {
 
             {/* Formulaire de génération d'un code QR */}
             {showQrModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm overflow-y-auto">
-                    <div className="bg-white dark:bg-slate-950 w-full max-w-3xl rounded-3xl shadow-2xl relative my-8 overflow-hidden text-slate-900 dark:text-slate-100">
-                        <button
-                            onClick={() => {
-                                setShowQrModal(false);
-                                setQrError("");
-                                setQrSubmitAttempted(false);
-                            }}
-                            className="absolute top-5 right-5 z-10 p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900 rounded-xl transition-colors"
-                        >
-                            <X className="w-5 h-5" />
-                        </button>
-
-                        <div className="border-b border-slate-100 dark:border-slate-800 px-6 py-5 sm:px-8">
-                            <div className="flex items-start gap-4 pr-10">
-                                <div className="flex h-11 w-11 flex-none items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300">
-                                    <QrCode className="h-5 w-5" />
-                                </div>
-                                <div className="min-w-0">
-                                    <h2 className="text-xl font-bold text-slate-900 dark:text-white">Générer un QR Code</h2>
-                                    <p className="mt-1 truncate text-sm text-slate-600 dark:text-slate-300">
-                                        Événement : <span className="font-semibold text-slate-900 dark:text-white">{event.title}</span>
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <form onSubmit={handleGenerateQr}>
-                            <div className="max-h-[72vh] overflow-y-auto px-6 py-6 sm:px-8">
-                                {generatingQr && (
-                                    <LoadingBar label="Génération du QR" className="mb-5" />
-                                )}
-                                {qrError && (
-                                    <div className="mb-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700 animate-in fade-in zoom-in duration-300 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200">{qrError}</div>
-                                )}
-
-                                {generatedAsset && (
-                                    <div className="mb-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900/60 dark:bg-emerald-950/25">
-                                        <div className="flex items-start gap-3">
-                                            <div className="flex h-10 w-10 flex-none items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-200">
-                                                <CheckCircle2 className="h-5 w-5" />
-                                            </div>
-                                            <div className="min-w-0 flex-1">
-                                                <h3 className="text-sm font-bold text-emerald-900 dark:text-emerald-100">Support généré</h3>
-                                                <p className="mt-1 text-xs text-emerald-800 dark:text-emerald-200">
-                                                    {generatedAsset.holder} - {generatedAsset.templateName}
-                                                </p>
-                                                <div className="mt-3 flex flex-wrap gap-2">
-                                                    <a
-                                                        href={`${apiUrl(generatedAsset.qrUrl)}?download=1`}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-2 text-xs font-bold text-slate-700 shadow-sm ring-1 ring-emerald-200 transition-colors hover:bg-emerald-100 dark:bg-slate-950 dark:text-slate-100 dark:ring-emerald-900/60 dark:hover:bg-emerald-950/40"
-                                                    >
-                                                        <Download className="h-3.5 w-3.5" />
-                                                        Télécharger QR
-                                                    </a>
-                                                    {(generatedAsset.cardPdfUrl || generatedAsset.cardUrl) && (
-                                                        <a
-                                                            href={getCardDownloadUrl(generatedAsset.cardPdfUrl || generatedAsset.cardUrl)}
-                                                            download
-                                                            className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 px-3 py-2 text-xs font-bold text-white shadow-sm transition-colors hover:bg-emerald-800"
-                                                        >
-                                                            <FileText className="h-3.5 w-3.5" />
-                                                            Télécharger PDF
-                                                        </a>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-
-                                <div className="space-y-5">
-                                    {/* Identité et coordonnées du détenteur */}
-                                    <section className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
-                                        <div className="mb-4 flex items-center justify-between gap-4">
-                                            <div>
-                                                <h3 className="text-sm font-bold text-slate-900 dark:text-white">Titulaire</h3>
-                                                <p className="text-xs text-slate-600 dark:text-slate-300">Identité et contact du détenteur </p>
-                                            </div>
-                                        </div>
-
-                                        <div className="space-y-4">
-                                            <div className="space-y-2">
-                                                <label className="text-sm font-semibold text-slate-800 dark:text-slate-100">Nom complet *</label>
-                                                <input
-                                                    required
-                                                    type="text"
-                                                    name="fullName"
-                                                    autoComplete="name"
-                                                    maxLength={120}
-                                                    placeholder="Ex. Jane Smith"
-                                                    value={qrForm.fullName}
-                                                    onChange={(e) => setQrForm({ ...qrForm, fullName: e.target.value })}
-                                                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all"
-                                                />
-                                            </div>
-
-                                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                                                <div className="space-y-2">
-                                                    <label className="text-sm font-semibold text-slate-800 dark:text-slate-100">Email</label>
-                                            <div className="relative">
-                                                        <Mail className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${showEmailError ? "text-red-500" : "text-slate-500 dark:text-slate-400"}`} />
-                                                <input
-                                                    type="email"
-                                                    inputMode="email"
-                                                    autoComplete="email"
-                                                    placeholder="nom@domaine.com"
-                                                    value={qrForm.email}
-                                                    aria-invalid={showEmailError}
-                                                    onBlur={() => setQrContactTouched({ ...qrContactTouched, email: true })}
-                                                    onChange={(e) => {
-                                                        setQrError("");
-                                                        setQrForm({ ...qrForm, email: e.target.value });
-                                                    }}
-                                                            className={`w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-900 border rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:bg-white dark:focus:bg-slate-950 transition-all ${showEmailError ? "border-red-300 focus:ring-red-500/20" : "border-slate-200 dark:border-slate-800 focus:ring-blue-500/20"}`}
-                                                />
-                                            </div>
-                                                    <p className={`text-xs leading-relaxed ${showEmailError ? "text-red-600 dark:text-red-300" : "text-slate-600 dark:text-slate-300"}`}>
-                                                {showEmailError ? qrContactErrors.email : "Optionnel."}
-                                            </p>
-                                                </div>
-
-                                                <div className="space-y-2">
-                                                    <label className="text-sm font-semibold text-slate-800 dark:text-slate-100">Numéro de téléphone</label>
-                                            <div className="relative">
-                                                        <Phone className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${showPhoneError ? "text-red-500" : "text-slate-500 dark:text-slate-400"}`} />
-                                                <input
-                                                    type="tel"
-                                                    inputMode="tel"
-                                                    autoComplete="tel"
-                                                    placeholder="+243 812 345 678"
-                                                    value={qrForm.phone}
-                                                    aria-invalid={showPhoneError}
-                                                    onBlur={() => setQrContactTouched({ ...qrContactTouched, phone: true })}
-                                                    onChange={(e) => {
-                                                        setQrError("");
-                                                        setQrForm({ ...qrForm, phone: formatInternationalPhone(e.target.value) });
-                                                    }}
-                                                            className={`w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-900 border rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:bg-white dark:focus:bg-slate-950 transition-all ${showPhoneError ? "border-red-300 focus:ring-red-500/20" : "border-slate-200 dark:border-slate-800 focus:ring-blue-500/20"}`}
-                                                />
-                                            </div>
-                                                    <p className={`text-xs leading-relaxed ${showPhoneError ? "text-red-600 dark:text-red-300" : "text-slate-600 dark:text-slate-300"}`}>
-                                                {showPhoneError ? qrContactErrors.phone : "Optionnel."}
-                                            </p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </section>
-
-                                    {/* Choix et personnalisation du modèle de carte */}
-                                    <section className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
-                                        <div className="mb-4">
-                                            <h3 className="text-sm font-bold text-slate-900 dark:text-white">Accès</h3>
-                                            <p className="text-xs text-slate-600 dark:text-slate-300">Définissez le niveau, le nombre d'utilisations et le support généré.</p>
-                                        </div>
-
-                                        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[180px_minmax(0,1fr)]">
-                                            <div className="space-y-2">
-                                                <label className="text-sm font-semibold text-slate-800 dark:text-slate-100">Niveau</label>
-                                    <input
-                                        type="number"
-                                        min="1"
-                                        value={qrForm.level}
-                                        onChange={(e) => setQrForm({ ...qrForm, level: e.target.value })}
-                                                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all"
-                                    />
-                                            </div>
-
-                                            <div className="space-y-2">
-                                                <label className="text-sm font-semibold text-slate-800 dark:text-slate-100">Type d'accès</label>
-                                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                                        {[
-                                            { value: 'single', label: 'Simple', desc: '1 scan' },
-                                            { value: 'multi', label: 'Multiple', desc: 'N scans' },
-                                            { value: 'unlimited', label: 'Illimité', desc: '∞ scans' }
-                                        ].map(({ value, label, desc }) => (
-                                            <button
-                                                key={value}
-                                                type="button"
-                                                onClick={() => setQrForm({ ...qrForm, accessType: value, limit: value === 'single' ? "1" : value === 'unlimited' ? "0" : (qrForm.limit == "1" ? "2" : qrForm.limit) })}
-                                                            className={`px-3 py-3 rounded-xl border text-left transition-all ${qrForm.accessType === value ? 'bg-blue-50 border-blue-200 text-blue-700 shadow-sm dark:bg-blue-950/35 dark:border-blue-800 dark:text-blue-200' : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 hover:border-[#7A90A4] dark:hover:border-[#7A90A4]'}`}
-                                            >
-                                                <div className="text-sm font-bold">{label}</div>
-                                                            <div className="text-[10px] opacity-80 font-medium">{desc}</div>
-                                            </button>
-                                        ))}
-                                                </div>
-                                    </div>
-                                </div>
-
-                                        <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-                                            {qrForm.accessType === 'multi' && (
-                                                <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                                                    <label className="text-sm font-semibold text-slate-800 dark:text-slate-100">Nombre de scans</label>
-                                                    <input
-                                                        type="number"
-                                                        min="2"
-                                                        value={qrForm.limit}
-                                                        onChange={(e) => setQrForm({ ...qrForm, limit: e.target.value })}
-                                                        className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all"
-                                                    />
-                                                </div>
-                                            )}
-
-                                            <div className="space-y-2">
-                                                <label className="text-sm font-semibold text-slate-800 dark:text-slate-100">Modèle de carte</label>
-                                                <select
-                                                    value={selectedCardTemplateId}
-                                                    onChange={(e) => setSelectedCardTemplateId(e.target.value)}
-                                                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all"
-                                                >
-                                                    <option value="">QR seul, sans carte</option>
-                                                    {cardTemplates.map(template => (
-                                                        <option key={template.templateId} value={template.templateId}>
-                                                            {template.name}{template.isDefault ? " — par défaut" : ""}
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                                <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-300">
-                                                    {cardTemplates.length > 0
-                                                        ? "La carte personnalisée sera générée avec le QR et les informations du titulaire."
-                                                        : "Aucun modèle personnalisé disponible. Créez-en un dans le module Modèles."}
-                                                </p>
-                                            </div>
-
-                                        </div>
-
-                                    
-
-                                        <div className="mt-4 flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs leading-relaxed text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
-                                            <FileSpreadsheet className="mt-0.5 h-4 w-4 flex-none text-[#7A90A4]" />
-                                            <p>Choisissez un modèle de carte. Le modèle défini par défaut est présélectionné automatiquement.</p>
-                                        </div>
-                                    </section>
-
-                                    {/* Limites d'utilisation et niveau d'accréditation */}
-                                    <section className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
-                                        <div className="mb-4">
-                                            <h3 className="text-sm font-bold text-slate-900 dark:text-white">Validité</h3>
-                                            <p className="text-xs text-slate-600 dark:text-slate-300">Les dates sont préremplies depuis l'événement</p>
-                                        </div>
-                                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                                            <div className="space-y-2">
-                                                <label className="text-sm font-semibold text-slate-800 dark:text-slate-100">Valide du</label>
-                                        <input
-                                            type="datetime-local"
-                                            value={qrForm.validFrom}
-                                            onChange={(e) => setQrForm({ ...qrForm, validFrom: e.target.value })}
-                                                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                                <label className="text-sm font-semibold text-slate-800 dark:text-slate-100">Valide jusqu'au</label>
-                                        <input
-                                            type="datetime-local"
-                                            value={qrForm.validUntil}
-                                            onChange={(e) => setQrForm({ ...qrForm, validUntil: e.target.value })}
-                                                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all"
-                                        />
-                                            </div>
-                                        </div>
-                                    </section>
-                                    </div>
-                                </div>
-
-                            <div className="border-t border-slate-100 bg-slate-50 px-6 py-4 dark:border-slate-800 dark:bg-slate-900/60 sm:px-8">
-                                <button
-                                    type="submit"
-                                    disabled={generatingQr || qrQuotaReached}
-                                    className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl shadow-sm active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-60"
-                                >
-                                    {generatingQr ? <Loader2 className="w-5 h-5 animate-spin" /> : <QrCode className="w-5 h-5" />}
-                                    {generatingQr ? "Génération en cours..." : "Générer & Sauvegarder"}
-                                </button>
-                            </div>
-                            </form>
-                    </div>
-                </div>
+                <QrGenerationModal
+                    cardTemplates={cardTemplates}
+                    event={event}
+                    generatedAsset={generatedAsset}
+                    generatingQr={generatingQr}
+                    handleGenerateQr={handleGenerateQr}
+                    qrContactErrors={qrContactErrors}
+                    qrContactTouched={qrContactTouched}
+                    qrError={qrError}
+                    qrForm={qrForm}
+                    qrQuotaReached={qrQuotaReached}
+                    selectedCardTemplateId={selectedCardTemplateId}
+                    setQrContactTouched={setQrContactTouched}
+                    setQrError={setQrError}
+                    setQrForm={setQrForm}
+                    setQrSubmitAttempted={setQrSubmitAttempted}
+                    setSelectedCardTemplateId={setSelectedCardTemplateId}
+                    setShowQrModal={setShowQrModal}
+                    showEmailError={showEmailError}
+                    showPhoneError={showPhoneError}
+                />
             )}
 
             {/* Aperçu et téléchargement du support généré */}
             {selectedQr && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-slate-950 w-full max-w-sm rounded-3xl shadow-2xl p-6 relative overflow-hidden text-center animate-in zoom-in duration-300">
-                        <button onClick={() => setSelectedQr(null)} className="absolute top-4 right-4 p-2 hover:bg-slate-100 dark:hover:bg-slate-900 rounded-xl transition-colors">
-                            <X className="w-5 h-5 text-slate-600 dark:text-slate-300" />
-                        </button>
-                        <h3 className="text-sm font-bold text-slate-600 dark:text-slate-300 uppercase tracking-widest mb-6">Détails du Ticket</h3>
-
-                        <div className="w-full flex flex-col items-center">
-                            <img src={apiUrl(selectedQr.qrUrl || `/qr/image/${selectedQr.id}`)} alt="QR Code" className="w-48 h-48 rounded-2xl border border-slate-100 dark:border-slate-800 p-2 shadow-inner bg-slate-50 dark:bg-slate-900 mb-6 object-contain" />
-
-                            <div className="w-full space-y-4 text-left bg-slate-50 dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
-                                <div>
-                                    <p className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-tighter">Titulaire</p>
-                                    <p className="text-sm font-black text-slate-900 dark:text-white truncate">{selectedQr.holder}</p>
-                                </div>
-                                <div>
-                                    <p className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-tighter">Événement</p>
-                                    <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{event.title}</p>
-                                </div>
-                                <div>
-                                    <p className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-tighter">Niveau d’accréditation</p>
-                                    <p className="text-sm font-bold text-slate-700 dark:text-slate-200">Niveau {selectedQr.level ?? 1}</p>
-                                </div>
-                                <div className="flex justify-between items-end">
-                                    <div>
-                                        <p className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-tighter">Statut</p>
-                                        <p className={`text-xs font-bold capitalize ${selectedQr.status === 'active' ? 'text-emerald-600' : selectedQr.status === 'revoked' ? 'text-red-600' : 'text-slate-600 dark:text-slate-300'}`}>
-                                            {selectedQr.status}
-                                        </p>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-tighter">Scans</p>
-                                        <p className="text-xs font-bold text-slate-700 dark:text-slate-200">{selectedQr.scans}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <QrPreviewModal
+                    event={event}
+                    selectedQr={selectedQr}
+                    setSelectedQr={setSelectedQr}
+                />
             )}
 
             {/* Recharge d'un QR limité */}
             {qrToRecharge && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-                    <form onSubmit={handleRecharge} className="bg-white dark:bg-slate-950 w-full max-w-md rounded-2xl shadow-2xl p-6 animate-in zoom-in duration-300">
-                        {rechargingId === qrToRecharge.id && (
-                            <LoadingBar label="Recharge en cours" className="mb-5" />
-                        )}
-                        <div className="w-12 h-12 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-300 rounded-2xl flex items-center justify-center mb-4">
-                            <Plus className="w-6 h-6" />
-                        </div>
-                        <h3 className="text-lg font-bold text-slate-900 dark:text-white">Recharger ce QR code</h3>
-                        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-                            Ajoutez des passages au QR de <span className="font-semibold text-slate-700 dark:text-slate-200">{qrToRecharge.holder}</span>. Les {qrToRecharge.scans_count} passages déjà consommés et leur historique seront conservés.
-                        </p>
-
-                        <label className="block mt-5">
-                            <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">Passages à ajouter</span>
-                            <input
-                                type="number"
-                                min="1"
-                                max="1000000"
-                                step="1"
-                                required
-                                autoFocus
-                                value={rechargeAmount}
-                                onChange={(event) => setRechargeAmount(event.target.value)}
-                                disabled={rechargingId === qrToRecharge.id}
-                                className="mt-2 w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 disabled:opacity-60"
-                            />
-                        </label>
-
-                        <div className="mt-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-4 flex items-center justify-between">
-                            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Utilisations actuelles</span>
-                            <span className="font-semibold text-slate-900 dark:text-white">{qrToRecharge.scans}</span>
-                        </div>
-
-                        {rechargeError && (
-                            <p className="mt-3 text-sm font-medium text-red-600 dark:text-red-300">{rechargeError}</p>
-                        )}
-
-                        <div className="mt-6 flex gap-3">
-                            <button
-                                type="button"
-                                onClick={() => setQrToRecharge(null)}
-                                disabled={rechargingId === qrToRecharge.id}
-                                className="flex-1 py-2.5 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-200 rounded-xl font-medium text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-60"
-                            >
-                                Annuler
-                            </button>
-                            <button
-                                type="submit"
-                                disabled={rechargingId === qrToRecharge.id}
-                                className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium text-sm transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
-                            >
-                                {rechargingId === qrToRecharge.id && <Loader2 className="w-4 h-4 animate-spin" />}
-                                Recharger
-                            </button>
-                        </div>
-                    </form>
-                </div>
+                <RechargeQrModal
+                    handleRecharge={handleRecharge}
+                    qrToRecharge={qrToRecharge}
+                    rechargeAmount={rechargeAmount}
+                    rechargeError={rechargeError}
+                    rechargingId={rechargingId}
+                    setQrToRecharge={setQrToRecharge}
+                    setRechargeAmount={setRechargeAmount}
+                />
             )}
 
             {/* Confirmation de révocation d'un code QR */}
             {qrToRevoke && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-slate-950 w-full max-w-md rounded-2xl shadow-2xl p-6 animate-in zoom-in duration-300">
-                        {revokingId === qrToRevoke.id && (
-                            <LoadingBar label="Révocation en cours" className="mb-5" />
-                        )}
-                        <div className="w-12 h-12 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center mb-4">
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>
-                        </div>
-                        <h3 className="text-lg font-bold text-slate-900 dark:text-white">Révoquer ce QR code ?</h3>
-                        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-                            Le QR code de <span className="font-semibold text-slate-700 dark:text-slate-200">{qrToRevoke.holder}</span> ne pourra plus être utilisé pour accéder à <span className="font-semibold text-slate-700 dark:text-slate-200">"{event.title}"</span>.
-                        </p>
-                        <div className="mt-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-4">
-                            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">QR ID</p>
-                            <p className="font-semibold text-slate-900 dark:text-white">#{qrToRevoke.id}</p>
-                        </div>
-                        <div className="mt-6 flex gap-3">
-                            <button
-                                type="button"
-                                onClick={() => setQrToRevoke(null)}
-                                disabled={revokingId === qrToRevoke.id}
-                                className="flex-1 py-2.5 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-200 rounded-xl font-medium text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-60"
-                            >
-                                Annuler
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => handleRevoke(qrToRevoke.id)}
-                                disabled={revokingId === qrToRevoke.id}
-                                className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-medium text-sm transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
-                            >
-                                {revokingId === qrToRevoke.id && <Loader2 className="w-4 h-4 animate-spin" />}
-                                Révoquer
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                <RevokeQrModal
+                    handleRevoke={handleRevoke}
+                    qrToRevoke={qrToRevoke}
+                    revokingId={revokingId}
+                    setQrToRevoke={setQrToRevoke}
+                />
             )}
 
             {qrForCardTemplate && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
-                    <form onSubmit={handleGenerateCardForQr} className="w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-slate-950">
-                        <div className="flex items-start justify-between border-b border-slate-100 px-6 py-4 dark:border-slate-800">
-                            <div>
-                                <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-                                    {qrForCardTemplate.cardTemplateId ? "Changer le modèle de carte" : "Générer une carte"}
-                                </h2>
-                                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                                    QR de {qrForCardTemplate.holder}
-                                </p>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => setQrForCardTemplate(null)}
-                                disabled={cardGeneratingId === qrForCardTemplate.id}
-                                className="rounded-lg p-1.5 hover:bg-slate-100 disabled:opacity-50 dark:hover:bg-slate-900"
-                                aria-label="Fermer"
-                            >
-                                <X className="h-5 w-5 text-slate-600 dark:text-slate-300" />
-                            </button>
-                        </div>
-
-                        <div className="grid gap-6 p-6 md:grid-cols-2">
-                            <div className="space-y-4">
-                                {cardTemplateError && (
-                                    <div className="rounded-xl border border-red-100 bg-red-50 p-3 text-sm text-red-600 dark:border-red-900/50 dark:bg-red-950/20 dark:text-red-300">
-                                        {cardTemplateError}
-                                    </div>
-                                )}
-                                <div className="space-y-2">
-                                    <label htmlFor="replacement-card-template" className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-                                        Nouveau modèle
-                                    </label>
-                                    <select
-                                        id="replacement-card-template"
-                                        required
-                                        value={replacementCardTemplateId}
-                                        onChange={(event) => {
-                                            setReplacementCardTemplateId(event.target.value);
-                                            setCardTemplateError("");
-                                        }}
-                                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-violet-500/20 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
-                                    >
-                                        <option value="">Sélectionner un modèle</option>
-                                        {cardTemplates.map(template => (
-                                            <option key={template.templateId} value={template.templateId}>
-                                                {template.name}{template.isDefault ? " — par défaut" : ""}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-relaxed text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-200">
-                                    Le nouvel instantané sera utilisé pour les prochains téléchargements. Les cartes déjà imprimées ne sont pas modifiées.
-                                </p>
-                            </div>
-
-                            <div className="rounded-2xl bg-slate-100 p-5 dark:bg-slate-900">
-                                <p className="mb-4 text-center text-xs font-black uppercase tracking-widest text-slate-400">Aperçu du modèle</p>
-                                <CardTemplatePreview template={replacementCardTemplate} />
-                                <p className="mt-3 text-center text-sm font-bold text-slate-700 dark:text-slate-200">
-                                    {replacementCardTemplate?.name || "Sélectionnez un modèle"}
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="flex justify-end gap-3 border-t border-slate-100 px-6 py-4 dark:border-slate-800">
-                            <button
-                                type="button"
-                                onClick={() => setQrForCardTemplate(null)}
-                                disabled={cardGeneratingId === qrForCardTemplate.id}
-                                className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-900"
-                            >
-                                Annuler
-                            </button>
-                            <button
-                                type="submit"
-                                disabled={!replacementCardTemplateId || cardGeneratingId === qrForCardTemplate.id}
-                                className="inline-flex items-center gap-2 rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-black text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                                {cardGeneratingId === qrForCardTemplate.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                                {cardGeneratingId === qrForCardTemplate.id ? "Mise à jour..." : "Confirmer le modèle"}
-                            </button>
-                        </div>
-                    </form>
-                </div>
+                <CardTemplateModal
+                    cardGeneratingId={cardGeneratingId}
+                    cardTemplateError={cardTemplateError}
+                    cardTemplates={cardTemplates}
+                    handleGenerateCardForQr={handleGenerateCardForQr}
+                    qrForCardTemplate={qrForCardTemplate}
+                    replacementCardTemplate={replacementCardTemplate}
+                    replacementCardTemplateId={replacementCardTemplateId}
+                    setCardTemplateError={setCardTemplateError}
+                    setQrForCardTemplate={setQrForCardTemplate}
+                    setReplacementCardTemplateId={setReplacementCardTemplateId}
+                />
             )}
 
             {/* Formulaire de modification de l'événement */}
             {showEditModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-slate-950 w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden">
-                        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
-                            <h2 className="text-lg font-bold text-slate-900 dark:text-white">Modifier l'événement</h2>
-                            <button onClick={() => setShowEditModal(false)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-900 rounded-lg transition-colors">
-                                <X className="w-5 h-5 text-slate-600 dark:text-slate-300" />
-                            </button>
-                        </div>
-                        <form onSubmit={handleUpdateEvent} className="p-6 space-y-4">
-                            {updatingEvent && (
-                                <LoadingBar label="Mise à jour de l'événement" />
-                            )}
-                            {editError && (
-                                <div className="p-3 bg-red-50 text-red-600 rounded-xl text-sm border border-red-100">{editError}</div>
-                            )}
-                            <div className="space-y-1.5">
-                                <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Titre *</label>
-                                <input
-                                    required
-                                    type="text"
-                                    value={editForm.title}
-                                    onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
-                                    className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all"
-                                />
-                            </div>
-                            <div className="space-y-3">
-                                <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Zones / Areas *</label>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto p-1">
-                                    {loadingAreas ? (
-                                        <p className="text-xs text-slate-500 dark:text-slate-400 italic">Chargement...</p>
-                                    ) : areas.length === 0 ? (
-                                        <p className="text-xs text-red-500">Aucune zone disponible</p>
-                                    ) : (
-                                        areas.map(area => (
-                                            <label key={area.area_id} className={`flex items-center gap-2 p-2 rounded-lg border transition-all cursor-pointer ${editForm.areaIds.includes(area.area_id) ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-slate-50 dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-600 dark:text-slate-300'}`}>
-                                                <input
-                                                    type="checkbox"
-                                                    checked={editForm.areaIds.includes(area.area_id)}
-                                                    onChange={() => handleAreaChange(area.area_id)}
-                                                    className="w-3.5 h-3.5 text-blue-600 rounded border-slate-300 dark:border-slate-700"
-                                                />
-                                                <span className="text-xs font-medium truncate">{area.area_name}</span>
-                                            </label>
-                                        ))
-                                    )}
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1.5">
-                                    <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Date de début</label>
-                                    <input
-                                        type="datetime-local"
-                                        value={editForm.startDate}
-                                        onChange={(e) => setEditForm({ ...editForm, startDate: e.target.value })}
-                                        className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all text-slate-600 dark:text-slate-300"
-                                    />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Date de fin</label>
-                                    <input
-                                        type="datetime-local"
-                                        value={editForm.endDate}
-                                        onChange={(e) => setEditForm({ ...editForm, endDate: e.target.value })}
-                                        className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all text-slate-600 dark:text-slate-300"
-                                    />
-                                </div>
-                            </div>
-                            <div className="space-y-1.5">
-                                <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Description</label>
-                                <textarea
-                                    rows="3"
-                                    value={editForm.description}
-                                    onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-                                    className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all resize-none"
-                                />
-                            </div>
-                            <button
-                                type="submit"
-                                disabled={updatingEvent}
-                                className="w-full py-3 bg-slate-900 text-white hover:bg-black dark:bg-[#BED3C3] dark:text-slate-900 dark:hover:bg-[#AEC5B3] font-semibold rounded-xl shadow-sm active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-60"
-                            >
-                                {updatingEvent ? <Loader2 className="w-5 h-5 animate-spin" /> : <Edit2 className="w-5 h-5" />}
-                                {updatingEvent ? "Mise à jour..." : "Enregistrer les modifications"}
-                            </button>
-                        </form>
-                    </div>
-                </div>
+                <EditEventModal
+                    areas={areas}
+                    editError={editError}
+                    editForm={editForm}
+                    handleAreaChange={handleAreaChange}
+                    handleUpdateEvent={handleUpdateEvent}
+                    loadingAreas={loadingAreas}
+                    setEditForm={setEditForm}
+                    setShowEditModal={setShowEditModal}
+                    updatingEvent={updatingEvent}
+                />
             )}
 
             {/* Confirmation de suppression de l'événement */}
             {showDeleteConfirm && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-slate-950 w-full max-w-sm rounded-2xl shadow-2xl p-6 text-center">
-                        {isDeleting && (
-                            <LoadingBar label="Suppression en cours" className="mb-5 text-left" />
-                        )}
-                        <div className="w-14 h-14 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                            <Trash2 className="w-7 h-7" />
-                        </div>
-                        <h2 className="text-lg font-bold text-slate-900 dark:text-white">Supprimer l'événement ?</h2>
-                        <p className="text-slate-500 dark:text-slate-400 text-sm mt-2 mb-6">
-                            Cette action supprimera définitivement <span className="font-semibold text-slate-700 dark:text-slate-200">"{event.title}"</span> et tous ses codes QR associés.
-                        </p>
-                        <div className="text-left mb-6 space-y-2">
-                            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                                Phrase de confirmation
-                            </label>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">
-                                Écrivez exactement <span className="font-semibold text-slate-700 dark:text-slate-200">"{expectedDeleteConfirmation}"</span>
-                            </p>
-                            <input
-                                type="text"
-                                value={deleteConfirmationText}
-                                onChange={(e) => setDeleteConfirmationText(e.target.value)}
-                                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all"
-                                autoComplete="off"
-                            />
-                        </div>
-                        <div className="flex gap-3">
-                            <button
-                                onClick={() => {
-                                    setShowDeleteConfirm(false);
-                                    setDeleteConfirmationText("");
-                                }}
-                                className="flex-1 py-2.5 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-200 rounded-xl font-medium text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-                            >
-                                Annuler
-                            </button>
-                            <button
-                                onClick={handleDeleteEvent}
-                                disabled={isDeleting || !canDeleteEvent}
-                                className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-medium text-sm transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
-                            >
-                                {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                                {isDeleting ? "Suppression..." : "Confirmer"}
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                <DeleteEventModal
+                    canDeleteEvent={canDeleteEvent}
+                    deleteConfirmationText={deleteConfirmationText}
+                    expectedDeleteConfirmation={expectedDeleteConfirmation}
+                    handleDeleteEvent={handleDeleteEvent}
+                    isDeleting={isDeleting}
+                    setDeleteConfirmationText={setDeleteConfirmationText}
+                    setShowDeleteConfirm={setShowDeleteConfirm}
+                />
             )}
             {/* Formulaire d'import des codes QR par CSV */}
             {showImportModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-slate-950 w-full max-w-md rounded-2xl shadow-2xl p-6 relative">
-                        <button onClick={() => setShowImportModal(false)} className="absolute top-4 right-4 p-2 hover:bg-slate-100 dark:hover:bg-slate-900 rounded-xl transition-colors">
-                            <X className="w-5 h-5 text-slate-600 dark:text-slate-300" />
-                        </button>
-                        <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Importer des QR Codes</h2>
-                        <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">Téléchargez un fichier CSV pour générer des codes QR en masse.</p>
-
-                        <form onSubmit={handleImportCSV} className="space-y-4">
-                            {importing && (
-                                <LoadingBar label="Import CSV et génération des QR" />
-                            )}
-                            {importError && (
-                                <div className="p-3 bg-red-50 text-red-600 rounded-xl text-sm border border-red-100">{importError}</div>
-                            )}
-                            {importSuccess && (
-                                <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl text-sm border border-emerald-100 flex items-center gap-2">
-                                    <CheckCircle2 className="w-4 h-4" /> {importSuccess}
-                                </div>
-                            )}
-                            {importReport?.errors?.length > 0 && (
-                                <div className="max-h-44 overflow-y-auto rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-                                    <p className="mb-2 font-bold">
-                                        Détail des lignes non terminées ({importReport.errors.length})
-                                    </p>
-                                    <ul className="space-y-1">
-                                        {importReport.errors.map((error, index) => (
-                                            <li key={`${error.line}-${error.stage}-${index}`}>
-                                                Ligne {error.line} · {error.field || error.stage} : {error.message}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            )}
-
-                            <div className="border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl p-8 text-center hover:border-blue-400 transition-colors cursor-pointer relative">
-                                <input
-                                    type="file"
-                                    accept=".csv"
-                                    onChange={(e) => setImportFile(e.target.files[0])}
-                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                />
-                                <div className="space-y-2">
-                                    <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center mx-auto">
-                                        <Download className="w-6 h-6 rotate-180" />
-                                    </div>
-                                    <p className="text-sm font-medium text-slate-900 dark:text-white">{importFile ? importFile.name : "Cliquez ou glissez votre fichier CSV ici"}</p>
-                                    <p className="text-xs text-slate-600 dark:text-slate-300">Format .csv uniquement</p>
-                                </div>
-                            </div>
-
-                            <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
-                                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Instructions</p>
-                                <ul className="text-xs text-slate-600 dark:text-slate-300 space-y-1 list-disc pl-4">
-                                    <li>Utilisez le modèle CSV fourni ci-dessous.</li>
-                                    <li>Les colonnes obligatoires sont : <code className="bg-slate-200 dark:bg-slate-700 px-1 rounded">fullName</code>.</li>
-                                    <li>Les types d'accès valides : <code className="bg-slate-200 dark:bg-slate-700 px-1 rounded">single</code>, <code className="bg-slate-200 dark:bg-slate-700 px-1 rounded">multi</code>, <code className="bg-slate-200 dark:bg-slate-700 px-1 rounded">unlimited</code>.</li>
-                                </ul>
-                                <button
-                                    type="button"
-                                    onClick={handleDownloadTemplate}
-                                    className="mt-3 inline-flex items-center gap-1.5 text-blue-600 hover:text-blue-700 font-bold text-xs"
-                                >
-                                    <FileSpreadsheet className="w-3 h-3" /> Télécharger le modèle CSV
-                                </button>
-                            </div>
-
-                            <button
-                                type="submit"
-                                disabled={importing || !importFile}
-                                className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-sm active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                            >
-                                {importing ? <Loader2 className="w-5 h-5 animate-spin" /> : <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>}
-                                {importing ? "Importation..." : "Importer maintenant"}
-                            </button>
-                        </form>
-                    </div>
-                </div>
+                <ImportQrModal
+                    handleDownloadTemplate={handleDownloadTemplate}
+                    handleImportCSV={handleImportCSV}
+                    importError={importError}
+                    importFile={importFile}
+                    importReport={importReport}
+                    importSuccess={importSuccess}
+                    importing={importing}
+                    setImportFile={setImportFile}
+                    setShowImportModal={setShowImportModal}
+                />
             )}
             {/* Notification des actions utilisateur */}
             {toast.show && (
