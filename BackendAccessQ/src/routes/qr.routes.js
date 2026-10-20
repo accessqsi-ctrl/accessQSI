@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const qrController = require("../controllers/api.qr.controller");
 const qrVerifyController = require("../controllers/api.qr_verify.controller");
+const qrPhotoController = require("../controllers/api.qr_photo.controller");
+const { MAX_PHOTO_BYTES } = require("../services/qr_photo.service");
 const authMiddleware = require('../middleware/authMiddleware');
 const roleMiddleware = require('../middleware/roleMiddleware');
 const { requirePlanCapability } = require('../middleware/planAccessMiddleware');
@@ -18,6 +20,19 @@ const upload = multer({
             cb(new Error('Format de fichier non supporté. Veuillez envoyer un CSV.'), false);
         }
     }
+});
+// Photo du titulaire : gardée en mémoire puis enregistrée en base, jamais écrite sur disque.
+const photoUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: MAX_PHOTO_BYTES, files: 1 }
+}).single("photo");
+const handlePhotoUpload = (req, res, next) => photoUpload(req, res, (error) => {
+    if (!error) return next();
+    const tooLarge = error.code === "LIMIT_FILE_SIZE";
+    return res.status(tooLarge ? 413 : 400).json({
+        success: false,
+        message: tooLarge ? "La photo ne doit pas dépasser 1 Mo." : "Envoi de la photo invalide."
+    });
 });
 router.use(authMiddleware);
 const canScan = roleMiddleware(["ORG_ADMIN", "SUPER_ADMIN", "ORG_AGENT", "OPERATOR"]);
@@ -62,6 +77,11 @@ router.put("/restore/:id", adminOnly, qrController.restoreQr);
 
 // Ajouter des passages à un QR limité encore valide
 router.put("/recharge/:id", adminOnly, qrController.rechargeQr);
+
+// Photo d'identification du titulaire
+router.get("/:id/photo", canReadQr, qrPhotoController.getHolderPhoto);
+router.put("/:id/photo", canCreateQr, handlePhotoUpload, qrPhotoController.uploadHolderPhoto);
+router.delete("/:id/photo", canCreateQr, qrPhotoController.deleteHolderPhoto);
 
 
 // Note: Toutes les anciennes routes (/ajoutP, /updateP, /mytransactions) 

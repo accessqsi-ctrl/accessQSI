@@ -19,6 +19,7 @@ const loadQrManagementApp = ({
     qrcode = {},
     cardTemplateService = {},
     customCardTemplateService = {},
+    passIssuanceService = null,
     planContext = { isPro: true, plan: "PRO", planName: "Pro", limits: {}, features: [] }
 }) => {
     clearSrcModules();
@@ -51,6 +52,9 @@ const loadQrManagementApp = ({
     mockModule("src/services/organization_quota.service", {
         withEventQrQuota: async ({ create }) => create({})
     });
+    if (passIssuanceService) {
+        mockModule("src/services/pass_issuance.service", passIssuanceService);
+    }
     mockPackage("qrcode", {
         toBuffer: async () => Buffer.from("png"),
         ...qrcode
@@ -327,6 +331,39 @@ test("POST /qr/generate/:event_id lets an organization agent create QR data", as
     assert.equal(createdData.event_id, 5);
     assert.equal(res.body.qrUrl, "/qr/image/9");
     assert.equal(qrFileArgs, null);
+});
+
+test("POST /qr/generate/:event_id forwards an optional idempotency key and returns a replay", async () => {
+    let command = null;
+    class PassIssuanceError extends Error {}
+    const app = loadQrManagementApp({
+        user: { user_id: 7, role: "ORG_ADMIN", org_id: 42 },
+        eventService: {},
+        qrService: {},
+        passIssuanceService: {
+            PassIssuanceError,
+            issuePass: async input => {
+                command = input;
+                return {
+                    qrRecord: { qr_id: 9, card_template_id: null },
+                    event: { event_id: 5, title: "Concert" },
+                    replayed: true
+                };
+            }
+        }
+    });
+
+    const res = await request(app, "POST", "/qr/generate/5", {
+        fullName: "Jane Holder",
+        accessType: "single"
+    }, { headers: { "idempotency-key": "manual-123" } });
+
+    assert.equal(res.status, 201);
+    assert.equal(res.body.qrCode.qr_id, 9);
+    assert.deepEqual(command.idempotency, {
+        scope: "manual:event:5",
+        key: "manual-123"
+    });
 });
 
 test("POST /qr/generate/:event_id stores unlimited access with usage_limit zero", async () => {
@@ -904,7 +941,7 @@ test("GET /qr/template/:event_id downloads a CSV import template for an event in
     assert.deepEqual(eventLookup, { orgId: 42, eventId: 5 });
     assert.match(res.headers["content-type"], /text\/csv/);
     assert.equal(res.headers["content-disposition"], 'attachment; filename="modele_import_qr_evenement_5.csv"');
-    assert.equal(res.body, "fullName,email,phone,accessType,limit,validFrom,validUntil,level,cardTemplateId,cardMessage\n");
+    assert.equal(res.body, "fullName,email,phone,accessType,limit,validFrom,validUntil,level,cardTemplateId,cardMessage,periodLimit,periodUnit\n");
 });
 
 test("CSV import returns an explicit report when some lines fail after others were created", async () => {
@@ -932,6 +969,18 @@ test("CSV import returns an explicit report when some lines fail after others we
     });
     mockModule("src/services/organization_quota.service", {
         withEventQrQuota: async ({ create }) => create({})
+    });
+    mockModule("src/utils/planAccess", {
+        getPlanContextForUser: async () => ({
+            plan: "PRO",
+            planName: "Pro",
+            capabilities: ["custom_card_templates"]
+        }),
+        getOrganizationPlanContext: async () => ({
+            plan: "PRO",
+            planName: "Pro",
+            capabilities: ["custom_card_templates"]
+        })
     });
     mockPackage("qrcode", { toBuffer: async () => Buffer.from("png") });
 

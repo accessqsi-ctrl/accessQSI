@@ -3,23 +3,31 @@ const { getPlanContextForUser } = require("../utils/planAccess");
 const { PLAN_CAPABILITIES, hasPlanCapability } = require("../config/subscription");
 const scanLogService = require("../services/scan_log.service");
 
-const getOnboardingProgress = async (orgId) => {
-    const [areas, models, events, qrs, agents] = await Promise.all([
+const getOnboardingProgress = async (orgId, planContext) => {
+    const [areas, models, events, qrs, agents, registrationForms] = await Promise.all([
         prisma.area.count({ where: { org_id: orgId, deleted_at: null, suspended_by_plan: false } }),
         prisma.cardTemplateCustom.count({ where: { org_id: orgId, deleted_at: null, status: "PUBLISHED" } }),
         prisma.event.count({ where: { org_id: orgId, deleted_at: null } }),
         prisma.qrCode.count({ where: { event: { org_id: orgId }, deleted_at: null } }),
-        prisma.userQ.count({ where: { org_id: orgId, role: { in: ["ORG_AGENT", "OPERATOR"] }, deleted_at: null, is_active: true } })
+        prisma.userQ.count({ where: { org_id: orgId, role: { in: ["ORG_AGENT", "OPERATOR"] }, deleted_at: null, is_active: true } }),
+        prisma.registrationForm.count({ where: { org_id: orgId, status: { in: ["PUBLISHED", "CLOSED"] } } })
     ]);
-    const steps = { areas: areas > 0, models: models > 0, events: events > 0, qrs: qrs > 0, agents: agents > 0 };
-    const completed = Object.values(steps).filter(Boolean).length;
-    return { steps, completed, total: 5, percentage: completed * 20, complete: completed === 5 };
+    const customModelsAvailable = hasPlanCapability(planContext, PLAN_CAPABILITIES.CUSTOM_CARD_TEMPLATES);
+    const steps = { areas: areas > 0, events: events > 0, registrations: registrationForms > 0, qrs: qrs > 0, agents: agents > 0, models: models > 0 };
+    // Les formulaires d’inscription publics restent masqués tant que REGISTRATION_FORMS_ENABLED n’est pas à true.
+    const registrationFormsEnabled = process.env.REGISTRATION_FORMS_ENABLED === "true";
+    const available = { areas: true, events: true, registrations: registrationFormsEnabled, qrs: true, agents: true, models: customModelsAvailable };
+    const eligibleKeys = Object.keys(steps).filter(key => available[key]);
+    const completed = eligibleKeys.filter(key => steps[key]).length;
+    const total = eligibleKeys.length;
+    return { steps, available, completed, total, percentage: total ? Math.round(completed * 100 / total) : 100, complete: completed === total };
 };
 
 exports.getOnboardingProgress = async (req, res) => {
     try {
         if (!req.user?.org_id) return res.status(401).json({ success: false, message: "Non autorisé" });
-        return res.json({ success: true, data: await getOnboardingProgress(req.user.org_id) });
+        const planContext = await getPlanContextForUser(req);
+        return res.json({ success: true, data: await getOnboardingProgress(req.user.org_id, planContext) });
     } catch (error) {
         return res.status(500).json({ success: false, message: "Impossible de charger la progression." });
     }
@@ -204,7 +212,7 @@ exports.getOverviewStats = async (req, res) => {
             time: scan.scanned_at,
             status: scan.status
         }));
-        const onboarding = await getOnboardingProgress(orgId);
+        const onboarding = await getOnboardingProgress(orgId, planContext);
 
         return res.status(200).json({
             success: true,

@@ -63,6 +63,9 @@ model Organization {
   subscription_changes          SubscriptionChange[]
   subscription_periods          SubscriptionPeriod[]
   subscription_audit_logs       SubscriptionAuditLog[]
+  pass_issuance_requests        PassIssuanceRequest[]
+  registration_forms            RegistrationForm[]
+  registrations                 Registration[]
   usersQ                        UserQ[]
 
   @@index([deleted_at])
@@ -111,6 +114,8 @@ model Event {
   organization           Organization         @relation(fields: [org_id], references: [org_id])
   qr_codes               QrCode[]
   event_pass             EventPass?
+  registration_forms     RegistrationForm[]
+  registrations          Registration[]
 
   @@index([org_id, deleted_at])
   @@map("events")
@@ -134,12 +139,12 @@ model EventPass {
 }
 
 model QrCode {
-  qr_id                  Int       @id @default(autoincrement())
+  qr_id                  Int                  @id @default(autoincrement())
   event_id               Int
-  unique_token           String    @unique
+  unique_token           String               @unique
   status                 QrStatus
-  usage_limit            Int       @default(1)
-  scans_count            Int       @default(0)
+  usage_limit            Int                  @default(1)
+  scans_count            Int                  @default(0)
   valid_from             DateTime?
   valid_until            DateTime?
   deleted_at             DateTime?
@@ -154,14 +159,190 @@ model QrCode {
   card_message           String?
   card_generation_status String?
   card_generation_error  String?
-  created_at             DateTime  @default(now())
-  updated_at             DateTime  @updatedAt
-  event                  Event     @relation(fields: [event_id], references: [event_id])
+  period_limit           Int?
+  period_unit            QrPeriodUnit?
+  period_timezone        String?              @db.VarChar(64)
+  created_at             DateTime             @default(now())
+  updated_at             DateTime             @updatedAt
+  event                  Event                @relation(fields: [event_id], references: [event_id])
   scan_logs              ScanLog[]
+  issuance_request       PassIssuanceRequest?
+  registration           Registration?
+  holder_photo           QrHolderPhoto?
 
   @@index([event_id, status, deleted_at])
   @@index([card_template_id])
   @@map("qr_codes")
+}
+
+// Photo d'identification du titulaire, stockée en base pour ne jamais être exposée publiquement.
+model QrHolderPhoto {
+  qr_id      Int      @id
+  mime_type  String   @db.VarChar(20)
+  data       Bytes
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  qr_code    QrCode   @relation(fields: [qr_id], references: [qr_id], onDelete: Cascade)
+
+  @@map("qr_holder_photos")
+}
+
+model PassIssuanceRequest {
+  pass_issuance_request_id Int          @id @default(autoincrement())
+  org_id                   Int
+  scope                    String       @db.VarChar(120)
+  idempotency_key_hash     String       @db.Char(64)
+  request_hash             String       @db.Char(64)
+  qr_id                    Int          @unique
+  created_at               DateTime     @default(now())
+  organization             Organization @relation(fields: [org_id], references: [org_id])
+  qr_code                  QrCode       @relation(fields: [qr_id], references: [qr_id])
+
+  @@unique([org_id, scope, idempotency_key_hash])
+  @@index([org_id, created_at])
+  @@map("pass_issuance_requests")
+}
+
+model RegistrationForm {
+  registration_form_id String                 @id @default(uuid()) @db.Uuid
+  org_id               Int
+  event_id             Int
+  public_slug          String                 @unique @db.VarChar(80)
+  title                String                 @db.VarChar(160)
+  description          String?
+  status               RegistrationFormStatus @default(DRAFT)
+  opens_at             DateTime?
+  closes_at            DateTime?
+  ask_phone            Boolean                @default(false)
+  phone_required       Boolean                @default(false)
+  published_at         DateTime?
+  closed_at            DateTime?
+  created_at           DateTime               @default(now())
+  updated_at           DateTime               @updatedAt
+  organization         Organization           @relation(fields: [org_id], references: [org_id])
+  event                Event                  @relation(fields: [event_id], references: [event_id])
+  offers               RegistrationOffer[]
+  registrations        Registration[]
+
+  @@index([org_id, created_at])
+  @@index([event_id])
+  @@map("registration_forms")
+}
+
+model RegistrationOffer {
+  registration_offer_id String           @id @default(uuid()) @db.Uuid
+  registration_form_id  String           @db.Uuid
+  name                  String           @db.VarChar(120)
+  description           String?
+  position              Int              @default(0)
+  is_active             Boolean          @default(true)
+  capacity              Int?
+  access_type           String           @default("single") @db.VarChar(20)
+  usage_limit           Int              @default(1)
+  level                 Int              @default(1)
+  valid_from            DateTime?
+  valid_until           DateTime?
+  card_template_id      String?          @db.VarChar(160)
+  card_message          String?          @db.VarChar(240)
+  created_at            DateTime         @default(now())
+  updated_at            DateTime         @updatedAt
+  form                  RegistrationForm @relation(fields: [registration_form_id], references: [registration_form_id], onDelete: Cascade)
+  registrations         Registration[]
+
+  @@index([registration_form_id, position])
+  @@map("registration_offers")
+}
+
+model Registration {
+  registration_id       String                      @id @default(uuid()) @db.Uuid
+  org_id                Int
+  event_id              Int
+  registration_form_id  String                      @db.Uuid
+  registration_offer_id String                      @db.Uuid
+  submission_key_hash   String                      @db.Char(64)
+  request_hash          String                      @db.Char(64)
+  holder_name           String                      @db.VarChar(160)
+  holder_email          String                      @db.VarChar(320)
+  holder_phone          String?                     @db.VarChar(40)
+  offer_snapshot        Json
+  status                RegistrationStatus          @default(PROCESSING)
+  issuance_status       RegistrationIssuanceStatus  @default(PENDING)
+  email_status          RegistrationEmailStatus     @default(PENDING)
+  qr_id                 Int?                        @unique
+  capacity_held         Boolean                     @default(true)
+  capacity_released_at  DateTime?
+  failure_code          String?                     @db.VarChar(80)
+  failure_message       String?                     @db.VarChar(500)
+  completed_at          DateTime?
+  created_at            DateTime                    @default(now())
+  updated_at            DateTime                    @updatedAt
+  organization          Organization                @relation(fields: [org_id], references: [org_id])
+  event                 Event                       @relation(fields: [event_id], references: [event_id])
+  form                  RegistrationForm            @relation(fields: [registration_form_id], references: [registration_form_id])
+  offer                 RegistrationOffer           @relation(fields: [registration_offer_id], references: [registration_offer_id])
+  qr_code               QrCode?                     @relation(fields: [qr_id], references: [qr_id])
+  access_tokens         RegistrationAccessToken[]
+  email_deliveries      RegistrationEmailDelivery[]
+  jobs                  RegistrationJob[]
+
+  @@unique([registration_form_id, submission_key_hash])
+  @@index([org_id, created_at])
+  @@index([registration_form_id, status, created_at])
+  @@index([registration_offer_id, capacity_held])
+  @@index([holder_email])
+  @@map("registrations")
+}
+
+model RegistrationAccessToken {
+  registration_access_token_id String                   @id @default(uuid()) @db.Uuid
+  registration_id              String                   @db.Uuid
+  token_hash                   String                   @unique @db.Char(64)
+  purpose                      RegistrationTokenPurpose @default(PASS_ACCESS)
+  expires_at                   DateTime
+  revoked_at                   DateTime?
+  created_at                   DateTime                 @default(now())
+  last_used_at                 DateTime?
+  registration                 Registration             @relation(fields: [registration_id], references: [registration_id], onDelete: Cascade)
+
+  @@index([registration_id, expires_at])
+  @@map("registration_access_tokens")
+}
+
+model RegistrationEmailDelivery {
+  registration_email_delivery_id String                  @id @default(uuid()) @db.Uuid
+  registration_id                String                  @db.Uuid
+  status                         RegistrationEmailStatus @default(PENDING)
+  provider                       String                  @default("BREVO") @db.VarChar(30)
+  provider_message_id            String?                 @db.VarChar(200)
+  failure_message                String?                 @db.VarChar(500)
+  accepted_at                    DateTime?
+  created_at                     DateTime                @default(now())
+  updated_at                     DateTime                @updatedAt
+  registration                   Registration            @relation(fields: [registration_id], references: [registration_id], onDelete: Cascade)
+
+  @@index([registration_id, created_at])
+  @@map("registration_email_deliveries")
+}
+
+model RegistrationJob {
+  registration_job_id String                @id @default(uuid()) @db.Uuid
+  registration_id     String                @db.Uuid
+  type                RegistrationJobType
+  status              RegistrationJobStatus @default(PENDING)
+  attempts            Int                   @default(0)
+  max_attempts        Int                   @default(6)
+  run_after           DateTime              @default(now())
+  lease_until         DateTime?
+  locked_by           String?               @db.VarChar(120)
+  last_error          String?               @db.VarChar(500)
+  created_at          DateTime              @default(now())
+  updated_at          DateTime              @updatedAt
+  completed_at        DateTime?
+  registration        Registration          @relation(fields: [registration_id], references: [registration_id], onDelete: Cascade)
+
+  @@index([status, run_after, lease_until])
+  @@index([registration_id, type, created_at])
+  @@map("registration_jobs")
 }
 
 model ScanLog {
@@ -178,6 +359,7 @@ model ScanLog {
   area          Area?      @relation(fields: [area_id], references: [area_id])
 
   @@index([qr_code_id])
+  @@index([qr_code_id, status, scanned_at])
   @@index([scanned_by_id])
   @@index([area_id])
   @@index([scanned_at])
@@ -400,6 +582,13 @@ enum ScanStatus {
   denied_event_not_selected
   denied_area_not_allowed
   denied_insufficient_level
+  denied_period_limit
+}
+
+enum QrPeriodUnit {
+  day
+  week
+  month
 }
 
 enum PaymentStatus {
@@ -463,4 +652,46 @@ enum EventPassStatus {
   AVAILABLE
   ASSIGNED
   EXPIRED
+}
+
+enum RegistrationFormStatus {
+  DRAFT
+  PUBLISHED
+  CLOSED
+}
+
+enum RegistrationStatus {
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum RegistrationIssuanceStatus {
+  PENDING
+  PROCESSING
+  SUCCEEDED
+  BLOCKED_QUOTA
+  FAILED
+}
+
+enum RegistrationEmailStatus {
+  PENDING
+  ACCEPTED
+  FAILED
+}
+
+enum RegistrationTokenPurpose {
+  PASS_ACCESS
+}
+
+enum RegistrationJobType {
+  ISSUE_PASS
+  SEND_PASS_EMAIL
+}
+
+enum RegistrationJobStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
 }

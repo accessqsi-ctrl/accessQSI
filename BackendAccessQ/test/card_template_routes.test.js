@@ -66,6 +66,8 @@ test("GET /card-templates/custom rejects Free organizations", async () => {
     const res = await request(app, "GET", "/card-templates/custom");
 
     assert.equal(res.status, 403);
+    assert.equal(res.body.code, "PLAN_CAPABILITY_REQUIRED");
+    assert.equal(res.body.requiredCapability, "custom_card_templates");
     assert.equal(res.body.upgradeRequired, true);
     assert.equal(listCalled, false);
 });

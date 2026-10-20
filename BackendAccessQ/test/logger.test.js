@@ -18,6 +18,11 @@ test("logger redacts sensitive fields in JSON output", async () => {
             user_id: 7,
             token: "secret-token",
             password: "secret-password",
+            contact: {
+                email: "person@example.com",
+                phone: "+243000000000",
+                nested: { authorization: "Bearer hidden" }
+            },
             nested: "visible"
         });
     } finally {
@@ -35,6 +40,9 @@ test("logger redacts sensitive fields in JSON output", async () => {
     assert.equal(entry.user_id, 7);
     assert.equal(entry.token, "[redacted]");
     assert.equal(entry.password, "[redacted]");
+    assert.equal(entry.contact.email, "[redacted]");
+    assert.equal(entry.contact.phone, "[redacted]");
+    assert.equal(entry.contact.nested.authorization, "[redacted]");
     assert.equal(entry.nested, "visible");
 });
 

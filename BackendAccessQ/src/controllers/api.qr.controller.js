@@ -6,18 +6,17 @@ const eventService = require('../services/event.service');
 const qrService = require('../services/qr.service');
 const cardTemplateService = require('../services/card_template.service');
 const customCardTemplateService = require('../services/custom_card_template.service');
-const { validateQrPayload } = require("../services/qr_validation.service");
+const passIssuanceService = require('../services/pass_issuance.service');
 const {
     getEffectiveQrStatus,
-    usageLimitFromAccessType,
     formatUsageLimit
 } = require("../services/qr_status.service");
+const { describePeriodLimit } = require("../services/qr_period.service");
 const { getPlanContextForUser } = require("../utils/planAccess");
 const {
     PLAN_CAPABILITIES,
     hasPlanCapability
 } = require("../config/subscription");
-const { withEventQrQuota } = require("../services/organization_quota.service");
 
 const buildQrPayload = (uniqueToken, eventId) => JSON.stringify({ t: uniqueToken, e: eventId });
 
@@ -272,8 +271,6 @@ exports.downloadEventCardsPdf = async (req, res) => {
 
 // Générer un QR Code
 exports.generateQrForEvent = async (req, res) => {
-    let qrRecord = null;
-    let uniqueToken = null;
     try {
         if (!req.user || !req.user.org_id) {
             return res.status(401).json({ success: false, message: "Non autorisé" });
@@ -282,83 +279,22 @@ exports.generateQrForEvent = async (req, res) => {
         const orgId = req.user.org_id;
         const eventId = Number(req.params.event_id);
         const planContext = req.planContext || await getPlanContextForUser(req);
-        const validation = validateQrPayload(req.body);
-        if (validation.errors.length > 0) {
-            return res.status(422).json({
-                success: false,
-                message: "Données QR invalides.",
-                errors: validation.errors
-            });
-        }
-        const {
-            fullName, email, phone, accessType, limit,
-            validFrom, validUntil, level, cardMessage
-        } = validation.values;
-
-        const hasRequestedTemplate = Object.prototype.hasOwnProperty.call(req.body, "cardTemplateId");
-        let cardTemplateId = hasRequestedTemplate
-            ? validation.values.cardTemplateId
-            : await customCardTemplateService.getDefaultForOrg(orgId);
-        if (!hasRequestedTemplate && isCustomTemplateId(cardTemplateId)) {
-            const canUseCustomTemplates = hasPlanCapability(
-                planContext,
-                PLAN_CAPABILITIES.CUSTOM_CARD_TEMPLATES
-            );
-            if (!canUseCustomTemplates) cardTemplateId = "";
-        }
-        const cardData = normalizeCardData(req.body.cardData);
-
-        const resolvedCardTemplate = cardTemplateId
-            ? await resolveCardTemplate(orgId, cardTemplateId, planContext)
-            : null;
-        if (cardTemplateId && !resolvedCardTemplate) {
-            return res.status(400).json({ success: false, message: "Modèle de carte invalide." });
-        }
-
-        // Vérifier que l'événement appartient à l'organisation de l'utilisateur
-        const event = await eventService.findById(orgId, eventId);
-        if (!event) {
-            return res.status(404).json({ success: false, message: 'Événement non trouvé ou accès refusé' });
-        }
-
-        // Générer un jeton sécurisé par cryptographie
-        uniqueToken = crypto.randomUUID();
-        const usageLimit = usageLimitFromAccessType(accessType, limit);
-
-        const qrData = {
-            unique_token: uniqueToken,
-            status: "active",
-            usage_limit: usageLimit,
-            valid_from: validFrom,
-            valid_until: validUntil,
-            level,
-            holder_name: fullName,
-            holder_email: email || null,
-            holder_phone: phone || null,
-            card_data: cardTemplateId ? cardData : undefined,
-            card_template_id: cardTemplateId || null,
-            card_template_snapshot: createTemplateSnapshot(resolvedCardTemplate),
-            card_message: cardTemplateId ? cardMessage || null : null,
-            card_generation_status: cardTemplateId ? "PENDING" : null,
-            event_id: event.event_id
-        };
-        qrRecord = await withEventQrQuota({
+        const idempotencyKey = String(req.get?.("Idempotency-Key") || "").trim();
+        const { qrRecord, event } = await passIssuanceService.issuePass({
             organizationId: orgId,
             eventId,
-            create: (tx) => qrService.createQr(qrData, tx)
+            input: req.body,
+            planContext,
+            useOrganizationDefaultTemplate: true,
+            idempotency: idempotencyKey ? {
+                scope: `manual:event:${eventId}`,
+                key: idempotencyKey
+            } : null
         });
 
         const qrUrl = qrDownloadUrlForId(qrRecord.qr_id);
         const cardUrl = null;
-        const cardPdfUrl = cardTemplateId ? cardDownloadUrlForId(qrRecord.qr_id) : null;
-
-        if (cardTemplateId) {
-            await qrService.updateQr(qrRecord.qr_id, {
-                card_generated_at: null,
-                card_generation_status: "ON_DEMAND",
-                card_generation_error: null
-            });
-        }
+        const cardPdfUrl = qrRecord.card_template_id ? cardDownloadUrlForId(qrRecord.qr_id) : null;
 
         return res.status(201).json({
             success: true,
@@ -371,6 +307,15 @@ exports.generateQrForEvent = async (req, res) => {
         });
 
     } catch (error) {
+        if (error instanceof passIssuanceService.PassIssuanceError) {
+            return res.status(error.statusCode).json({
+                success: false,
+                code: error.code,
+                message: error.message,
+                ...(error.errors ? { errors: error.errors } : {}),
+                ...(error.plan ? { plan: error.plan, planName: error.planName, upgradeRequired: true } : {})
+            });
+        }
         if (error.code === "PLAN_QUOTA_EXCEEDED") {
             return res.status(403).json({
                 success: false,
@@ -383,19 +328,7 @@ exports.generateQrForEvent = async (req, res) => {
         if (error.code === "EVENT_PASS_EXPIRED") {
             return res.status(403).json({ success: false, code: error.code, message: error.message });
         }
-        if (error.code === "PLAN_CAPABILITY_REQUIRED") {
-            return res.status(403).json({
-                success: false,
-                message: error.message,
-                plan: error.plan,
-                planName: error.planName,
-                upgradeRequired: true
-            });
-        }
         console.error('Erreur lors de la génération du QR:', error);
-        if (qrRecord) {
-            await Promise.allSettled([qrService.deleteQrPermanently?.(qrRecord.qr_id)]);
-        }
         return res.status(500).json({ success: false, message: 'Erreur serveur interne' });
     }
 };
@@ -477,6 +410,11 @@ exports.getQrsByEvent = async (req, res) => {
                 scans: `${qr.scans_count} / ${formatUsageLimit(qr.usage_limit)}`,
                 scans_count: qr.scans_count,
                 usage_limit: qr.usage_limit,
+                periodLimit: qr.period_limit ?? null,
+                periodUnit: qr.period_unit ?? null,
+                periodLabel: describePeriodLimit(qr.period_limit, qr.period_unit),
+                hasPhoto: Boolean(qr.holder_photo),
+                photoVersion: qr.holder_photo?.updated_at ? new Date(qr.holder_photo.updated_at).getTime() : null,
                 token: qr.unique_token,
                 qrUrl: qrDownloadUrlForId(qr.qr_id),
                 cardUrl: null,
@@ -658,7 +596,9 @@ exports.downloadQrImportTemplate = async (req, res) => {
             "validUntil",
             "level",
             "cardTemplateId",
-            "cardMessage"
+            "cardMessage",
+            "periodLimit",
+            "periodUnit"
         ];
 
         const filename = `modele_import_qr_evenement_${eventId}.csv`;
@@ -701,7 +641,6 @@ exports.importQrsFromCSV = async (req, res) => {
         });
 
         const rows = await processStream;
-        const resolvedTemplates = new Map();
         const resultsByLine = [];
         const errors = [];
         let createdCount = 0;
@@ -709,78 +648,15 @@ exports.importQrsFromCSV = async (req, res) => {
 
         for (const [index, row] of rows.entries()) {
             const line = index + 2;
-            const validation = validateQrPayload(row, { line });
-            const { values } = validation;
-            let resolvedCardTemplate = null;
-
-            if (values.cardTemplateId) {
-                try {
-                    if (!resolvedTemplates.has(values.cardTemplateId)) {
-                        resolvedTemplates.set(
-                            values.cardTemplateId,
-                            await resolveCardTemplate(orgId, values.cardTemplateId, planContext)
-                        );
-                    }
-                    resolvedCardTemplate = resolvedTemplates.get(values.cardTemplateId);
-                    if (!resolvedCardTemplate) {
-                        validation.errors.push({
-                            line,
-                            field: "cardTemplateId",
-                            message: "Modèle introuvable ou non autorisé."
-                        });
-                    }
-                } catch (error) {
-                    validation.errors.push({
-                        line,
-                        field: "cardTemplateId",
-                        message: importErrorMessage(error)
-                    });
-                }
-            }
-
-            if (validation.errors.length > 0) {
-                errors.push(...validation.errors.map(error => ({ ...error, stage: "validation" })));
-                resultsByLine.push({
-                    line,
-                    status: "failed",
-                    holder: values.fullName || null,
-                    errors: validation.errors
-                });
-                continue;
-            }
-
-            let qrRecord = null;
             try {
-                const uniqueToken = crypto.randomUUID();
-                const usageLimit = usageLimitFromAccessType(values.accessType, values.limit);
-
-                qrRecord = await withEventQrQuota({
+                const { qrRecord } = await passIssuanceService.issuePass({
                     organizationId: orgId,
                     eventId,
-                    create: (tx) => qrService.createQr({
-                    unique_token: uniqueToken,
-                    status: "active",
-                    usage_limit: usageLimit,
-                    valid_from: values.validFrom,
-                    valid_until: values.validUntil,
-                    level: values.level,
-                    holder_name: values.fullName,
-                    holder_email: values.email,
-                    holder_phone: values.phone,
-                    card_template_id: values.cardTemplateId || null,
-                    card_template_snapshot: createTemplateSnapshot(resolvedCardTemplate),
-                    card_message: values.cardTemplateId ? values.cardMessage || null : null,
-                    card_generation_status: values.cardTemplateId ? "PENDING" : null,
-                    event_id: eventId
-                    }, tx)
+                    // Le fuseau du navigateur de l'administrateur sert de référence aux limites par période.
+                    input: { periodTimezone: req.body?.periodTimezone, ...row },
+                    planContext,
+                    useOrganizationDefaultTemplate: false
                 });
-                if (values.cardTemplateId) {
-                    await qrService.updateQr(qrRecord.qr_id, {
-                        card_generated_at: null,
-                        card_generation_status: "ON_DEMAND",
-                        card_generation_error: null
-                    });
-                }
 
                 createdCount += 1;
                 completedCount += 1;
@@ -788,38 +664,35 @@ exports.importQrsFromCSV = async (req, res) => {
                     line,
                     status: "created",
                     qrId: qrRecord.qr_id,
-                    holder: values.fullName
+                    holder: qrRecord.holder_name
                 });
             } catch (error) {
+                const validationErrors = error instanceof passIssuanceService.PassIssuanceError
+                    && ["PASS_VALIDATION_FAILED", "INVALID_CARD_TEMPLATE", "PLAN_CAPABILITY_REQUIRED"].includes(error.code)
+                    ? (error.errors || [{ field: "cardTemplateId", message: error.message }])
+                        .map(item => ({ ...item, line }))
+                    : null;
+                if (validationErrors) {
+                    errors.push(...validationErrors.map(item => ({ ...item, stage: "validation" })));
+                    resultsByLine.push({
+                        line,
+                        status: "failed",
+                        holder: error.values?.fullName || String(row.fullName || row.holderName || "").trim() || null,
+                        errors: validationErrors
+                    });
+                    continue;
+                }
                 const detail = {
                     line,
-                    stage: qrRecord ? "database_update" : "database",
-                    message: importErrorMessage(error),
-                    ...(qrRecord ? { qrId: qrRecord.qr_id } : {})
+                    stage: "database",
+                    message: importErrorMessage(error)
                 };
-                let rollbackFailed = false;
-                if (qrRecord) {
-                    const rollbackResults = await Promise.allSettled([
-                        qrService.deleteQrPermanently(qrRecord.qr_id)
-                    ]);
-                    rollbackFailed = rollbackResults.some(result => result.status === "rejected");
-                    for (const result of rollbackResults) {
-                        if (result.status !== "rejected") continue;
-                        errors.push({
-                            line,
-                            stage: "rollback",
-                            qrId: qrRecord.qr_id,
-                            message: importErrorMessage(result.reason)
-                        });
-                    }
-                }
                 errors.push(detail);
 
                 resultsByLine.push({
                     line,
-                    status: rollbackFailed ? "created_with_errors" : "failed",
-                    ...(rollbackFailed && qrRecord ? { qrId: qrRecord.qr_id } : {}),
-                    holder: values.fullName,
+                    status: "failed",
+                    holder: String(row.fullName || row.holderName || "").trim() || null,
                     errors: [detail]
                 });
             }

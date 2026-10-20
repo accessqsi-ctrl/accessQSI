@@ -35,28 +35,32 @@ const serializeError = (error) => {
     };
 };
 
-const redact = (value) => {
+const sensitiveKey = key => {
+    const lowerKey = String(key).toLowerCase();
+    return lowerKey.includes("password") ||
+        lowerKey.includes("token") ||
+        lowerKey.includes("secret") ||
+        lowerKey.includes("authorization") ||
+        lowerKey.includes("cookie") ||
+        lowerKey.includes("private_key") ||
+        lowerKey.includes("public_key") ||
+        lowerKey.includes("email") ||
+        lowerKey.includes("phone") ||
+        lowerKey.includes("full_name") ||
+        lowerKey.includes("holder_name");
+};
+
+const redact = (value, seen = new WeakSet()) => {
     if (!value || typeof value !== "object") return value;
     if (value instanceof Error) return serializeError(value);
+    if (value instanceof Date) return value.toISOString();
+    if (seen.has(value)) return "[circular]";
+    seen.add(value);
 
-    return Object.fromEntries(
-        Object.entries(value).map(([key, item]) => {
-            const lowerKey = key.toLowerCase();
-            if (
-                lowerKey.includes("password") ||
-                lowerKey.includes("token") ||
-                lowerKey.includes("secret") ||
-                lowerKey.includes("authorization") ||
-                lowerKey.includes("cookie") ||
-                lowerKey.includes("private_key") ||
-                lowerKey.includes("public_key")
-            ) {
-                return [key, "[redacted]"];
-            }
-
-            return [key, item instanceof Error ? serializeError(item) : item];
-        })
-    );
+    if (Array.isArray(value)) return value.map(item => redact(item, seen));
+    return Object.fromEntries(Object.entries(value).map(([key, item]) => (
+        sensitiveKey(key) ? [key, "[redacted]"] : [key, redact(item, seen)]
+    )));
 };
 
 const log = (level, event, meta = {}) => {

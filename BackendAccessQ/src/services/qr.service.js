@@ -58,7 +58,10 @@ exports.getQrsByEventId = async (orgId, eventId, options = {}) => {
     const [items, total] = await prisma.$transaction([
         prisma.qrCode.findMany({
             where,
-            include: { event: { select: { title: true } } },
+            include: {
+                event: { select: { title: true } },
+                holder_photo: { select: { updated_at: true } }
+            },
             orderBy: { qr_id: "desc" },
             skip: (page - 1) * pageSize,
             take: pageSize
@@ -141,6 +144,22 @@ exports.createQr = async (data, dbClient = prisma) => {
         data,
     });
 };
+
+exports.findPassIssuanceRequest = async (
+    orgId,
+    scope,
+    idempotencyKeyHash,
+    dbClient = prisma
+) => dbClient.passIssuanceRequest.findUnique({
+    where: {
+        org_id_scope_idempotency_key_hash: {
+            org_id: orgId,
+            scope,
+            idempotency_key_hash: idempotencyKeyHash
+        }
+    },
+    include: { qr_code: true }
+});
 
 // Mettre à jour un QR Code existant
 exports.updateQr = async (id, data) => {

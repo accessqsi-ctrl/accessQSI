@@ -306,6 +306,12 @@ test("QR verification locks, evaluates, logs and consumes a scan in one transact
                     calls.push(["scan", data]);
                     return { id: 1, ...data };
                 }
+            },
+            qrHolderPhoto: {
+                findUnique: async () => {
+                    calls.push(["photo"]);
+                    return { mime_type: "image/jpeg", data: Buffer.from([0xff, 0xd8, 0xff]) };
+                }
             }
         })
     });
@@ -321,10 +327,95 @@ test("QR verification locks, evaluates, logs and consumes a scan in one transact
     });
 
     assert.equal(result.decision.success, true);
-    assert.deepEqual(calls.map(([name]) => name), ["lock", "find", "scan", "update"]);
+    assert.deepEqual(calls.map(([name]) => name), ["lock", "find", "scan", "update", "photo"]);
     assert.equal(calls[2][1].area_id, 4);
     assert.equal(calls[2][1].location_lat, -11.66);
     assert.deepEqual(calls[3][1], { scans_count: 1, status: "used_up" });
+    assert.equal(result.holderPhoto, "data:image/jpeg;base64,/9j/");
+});
+
+const periodLimitedScan = async ({ authorizedInPeriod }) => {
+    const calls = [];
+    const qr = {
+        qr_id: 9,
+        event_id: 5,
+        unique_token: "token-9",
+        status: "active",
+        usage_limit: 0,
+        scans_count: 12,
+        valid_from: null,
+        valid_until: null,
+        deleted_at: null,
+        level: 1,
+        period_limit: 1,
+        period_unit: "day",
+        period_timezone: "Africa/Kinshasa",
+        event: {
+            org_id: 42,
+            deleted_at: null,
+            organization: { deleted_at: null, is_active: true },
+            EventSchedules: []
+        }
+    };
+    const qrVerifyService = loadService("../src/services/qr_verify.service", {
+        $transaction: async (callback) => callback({
+            $queryRawUnsafe: async () => [{ qr_id: 9 }],
+            qrCode: {
+                findUnique: async () => qr,
+                update: async ({ data }) => {
+                    calls.push(["update", data]);
+                    return {};
+                }
+            },
+            scanLog: {
+                count: async ({ where }) => {
+                    calls.push(["count", where]);
+                    return authorizedInPeriod;
+                },
+                create: async ({ data }) => {
+                    calls.push(["scan", data]);
+                    return { id: 2, ...data };
+                }
+            },
+            qrHolderPhoto: { findUnique: async () => null }
+        })
+    });
+    const result = await qrVerifyService.verifyAndRecordScan({
+        token: "token-9",
+        scannerId: 12,
+        scannerOrgId: 42,
+        eventId: 5,
+        areaId: 4,
+        // 23h30 UTC le 20 octobre correspond déjà au 21 octobre à Kinshasa (UTC+1).
+        now: new Date("2026-10-20T23:30:00Z")
+    });
+    return { calls, result };
+};
+
+test("QR verification counts authorized scans of the current local period under the lock", async () => {
+    const { calls, result } = await periodLimitedScan({ authorizedInPeriod: 0 });
+
+    assert.equal(result.decision.success, true);
+    assert.equal(result.decision.periodRemaining, 0);
+    assert.equal(result.decision.periodLabel, "jour");
+    const countWhere = calls.find(([name]) => name === "count")[1];
+    assert.equal(countWhere.qr_code_id, 9);
+    assert.equal(countWhere.status, "authorized");
+    assert.equal(countWhere.scanned_at.gte.toISOString(), "2026-10-20T23:00:00.000Z");
+    assert.equal(countWhere.scanned_at.lt.toISOString(), "2026-10-21T23:00:00.000Z");
+    assert.deepEqual(calls.find(([name]) => name === "update")[1], { scans_count: 13, status: "active" });
+});
+
+test("QR verification denies a scan once the period limit is reached without consuming a use", async () => {
+    const { calls, result } = await periodLimitedScan({ authorizedInPeriod: 1 });
+
+    assert.equal(result.decision.success, false);
+    assert.equal(result.decision.scanStatus, "denied_period_limit");
+    assert.match(result.decision.reason, /1 passage par jour/);
+    assert.match(result.decision.reason, /22\/10\/2026 00:00/);
+    assert.equal(calls.find(([name]) => name === "scan")[1].status, "denied_period_limit");
+    assert.equal(calls.some(([name]) => name === "update"), false);
+    assert.equal(result.holderPhoto, null);
 });
 
 test("QR service paginates organization results and applies server-side filters", async () => {

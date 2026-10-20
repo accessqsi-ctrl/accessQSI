@@ -45,3 +45,27 @@ export const selectTemplateForExistingQr = (qr, templates = [], fallbackTemplate
     if (fallbackTemplateId && availableIds.has(fallbackTemplateId)) return fallbackTemplateId;
     return templates[0]?.templateId || "";
 };
+
+export const PERIOD_UNIT_OPTIONS = [
+    { value: "", label: "Aucune limite par période" },
+    { value: "day", label: "Par jour" },
+    { value: "week", label: "Par semaine" },
+    { value: "month", label: "Par mois" }
+];
+
+const periodLabels = { day: "jour", week: "semaine", month: "mois" };
+
+export const describePeriodLimit = (limit, unit) => {
+    const value = Number(limit);
+    if (!periodLabels[unit] || !Number.isInteger(value) || value < 1) return "";
+    return `${value} par ${periodLabels[unit]}`;
+};
+
+// Fuseau horaire du navigateur : les limites par période se réinitialisent à minuit local.
+export const browserTimeZone = () => {
+    try {
+        return Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+    } catch {
+        return "";
+    }
+};

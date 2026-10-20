@@ -1,4 +1,5 @@
 const { getEffectiveQrStatus, QR_STATUS } = require("./qr_status.service");
+const { PERIOD_LABELS, formatPeriodBoundary } = require("./qr_period.service");
 
 const deniedDecision = (scanStatus, reason, areaId = null) => ({
     httpStatus: 200,
@@ -118,5 +119,27 @@ exports.evaluateQrScan = (qr, scannerOrgId, now = new Date(), requestedAreaId = 
         shouldMarkUsedUp: qr.usage_limit > 0 && (qr.scans_count + 1) >= qr.usage_limit,
         remaining: qr.usage_limit > 0 ? Math.max(0, qr.usage_limit - (qr.scans_count + 1)) : "Illimité",
         areaId
+    };
+};
+
+// Applique la limite par période à une décision autorisée, à partir du nombre de passages
+// déjà autorisés depuis le début de la période en cours.
+exports.applyPeriodLimit = (decision, qr, usedInPeriod, bounds) => {
+    if (!decision?.success || !qr?.period_limit || !qr.period_unit || !bounds) return decision;
+
+    const limit = Number(qr.period_limit);
+    const label = PERIOD_LABELS[qr.period_unit];
+    if (usedInPeriod >= limit) {
+        return deniedDecision(
+            "denied_period_limit",
+            `Limite atteinte : ${limit} passage${limit > 1 ? "s" : ""} par ${label}. Prochain accès possible le ${formatPeriodBoundary(bounds.next, bounds.timeZone)}.`,
+            decision.areaId
+        );
+    }
+
+    return {
+        ...decision,
+        periodRemaining: limit - usedInPeriod - 1,
+        periodLabel: label
     };
 };

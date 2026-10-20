@@ -42,6 +42,7 @@ test("Essential applique 5 événements, 200 QR, 5 agents et 6 zones", () => {
     maxPdfPagesPerFile: 200
   });
   assert.equal(hasPlanCapability(summary, PLAN_CAPABILITIES.SCAN_EXPORTS), true);
+  assert.equal(hasPlanCapability(summary, PLAN_CAPABILITIES.MULTIPLE_REGISTRATION_OFFERS), true);
   assert.equal(hasPlanCapability(summary, PLAN_CAPABILITIES.CUSTOM_CARD_TEMPLATES), false);
 });
 

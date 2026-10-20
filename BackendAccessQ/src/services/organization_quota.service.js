@@ -154,7 +154,7 @@ const withEventCreationQuota = async ({ organizationId, eventPassId = null, crea
     });
 };
 
-const withEventQrQuota = async ({ organizationId, eventId, create }) => {
+const withEventQrQuota = async ({ organizationId, eventId, resolveExisting = null, create }) => {
     return runSerializable(async (tx) => {
         const organization = await lockOrganizationWithPlan(tx, organizationId);
         await tx.$queryRaw(Prisma.sql`SELECT event_id FROM events WHERE event_id = ${eventId} FOR UPDATE`);
@@ -165,6 +165,13 @@ const withEventQrQuota = async ({ organizationId, eventId, create }) => {
             const error = new Error("Événement introuvable.");
             error.code = "EVENT_NOT_FOUND";
             throw error;
+        }
+
+        // Idempotent replays must succeed even if the quota was filled or the
+        // commercial entitlement expired after the original issuance.
+        if (typeof resolveExisting === "function") {
+            const existing = await resolveExisting(tx, { event, organization });
+            if (existing) return existing;
         }
 
         const now = new Date();

@@ -33,7 +33,7 @@ exports.verifyScan = async (req, res) => {
             scanLocation.longitude = longitude;
         }
 
-        const { qr, decision } = await qrVerifyService.verifyAndRecordScan({
+        const { qr, decision, holderPhoto = null } = await qrVerifyService.verifyAndRecordScan({
             token,
             scannerId,
             scannerOrgId,
@@ -72,9 +72,13 @@ exports.verifyScan = async (req, res) => {
                 holder: {
                     name: qr.holder_name || "Invité Anonyme",
                     email: qr.holder_email,
-                    level: qr.level
+                    level: qr.level,
+                    photo: holderPhoto
                 },
-                remaining: decision.remaining
+                remaining: decision.remaining,
+                ...(decision.periodLabel ? {
+                    period: { remaining: decision.periodRemaining, label: decision.periodLabel }
+                } : {})
             });
         } else {
             logger.warn("qr.scan_denied", {

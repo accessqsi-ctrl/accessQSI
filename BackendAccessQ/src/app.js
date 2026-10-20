@@ -127,6 +127,7 @@ const exportRoutes = require("./routes/export.routes");
 const cardTemplateRoutes = require("./routes/card_template.routes");
 const pdfTemplateRoutes = require("./routes/pdf_template.routes");
 const paymentRoutes = require("./routes/payment.routes");
+const registrationRoutes = require("./routes/registration.routes");
 
 // ===== Utilisation des routes =====
 // On préfixe toutes les routes utilisateurs par /user (/user/login, /user/signup, etc.)
@@ -142,6 +143,8 @@ app.use("/export", exportRoutes);
 app.use("/card-templates", cardTemplateRoutes);
 app.use("/pdf-templates", pdfTemplateRoutes);
 app.use("/billing", paymentRoutes);
+app.use("/registration-forms", registrationRoutes.privateRouter);
+app.use("/public/registrations", registrationRoutes.publicRouter);
 
 app.use((err, req, res, next) => {
     logger.error("request.unhandled_error", {

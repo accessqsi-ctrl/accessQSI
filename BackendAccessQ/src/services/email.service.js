@@ -1,7 +1,15 @@
 const axios = require("axios");
+const logger = require("../utils/logger");
 
 const BREVO_API_URL = "https://api.brevo.com/v3/smtp/email";
 const escapeHtml = (value) => String(value || "").replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#039;" }[character]));
+const providerErrorMeta = (operation, error) => ({
+    operation,
+    provider: "brevo",
+    provider_status: error?.response?.status,
+    provider_code: error?.response?.data?.code,
+    error
+});
 
 // Expéditeur par défaut chargé depuis les variables d'environnement
 const defaultSender = {
@@ -33,6 +41,27 @@ const sendEmail = async ({ to, subject, textContent, htmlContent }) => {
     return response.data;
 };
 
+exports.sendPassAccessEmail = async ({ toEmail, fullName, eventTitle, offerName, accessUrl }) => {
+    const safeName = escapeHtml(fullName);
+    const safeEvent = escapeHtml(eventTitle);
+    const safeOffer = escapeHtml(offerName);
+    const safeUrl = escapeHtml(accessUrl);
+    return sendEmail({
+        to: [{ email: toEmail, name: fullName }],
+        subject: `Votre pass pour ${eventTitle} - AccessQ`,
+        textContent: `Bonjour ${fullName},\n\nVotre pass ${offerName} pour ${eventTitle} est disponible :\n${accessUrl}\n\nCe lien personnel expire. Ne le transférez pas.`,
+        htmlContent: `
+            <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;color:#0f172a">
+                <h2 style="color:#1d4ed8">Votre pass est prêt</h2>
+                <p>Bonjour <strong>${safeName}</strong>,</p>
+                <p>Votre pass <strong>${safeOffer}</strong> pour <strong>${safeEvent}</strong> est disponible.</p>
+                <a href="${safeUrl}" style="display:inline-block;padding:12px 20px;background:#1d4ed8;color:#fff;text-decoration:none;border-radius:8px">Afficher et télécharger mon pass</a>
+                <p style="margin-top:24px;font-size:12px;color:#64748b">Ce lien est personnel et expirant. Ne le transférez pas.</p>
+            </div>
+        `
+    });
+};
+
 exports.sendVerificationEmail = async (toEmail, fullName, token) => {
     try {
         const baseUrl = process.env.FRONTEND_URL || "http://localhost:3000";
@@ -56,15 +85,11 @@ exports.sendVerificationEmail = async (toEmail, fullName, token) => {
             `,
         });
 
-        console.log("=========================================");
-        console.log("📨 EMAIL ENVOYÉ POUR VÉRIFICATION (API Brevo)");
-        console.log(`Destinataire : ${toEmail}`);
-        if (data.messageId) console.log("ID du message : %s", data.messageId);
-        console.log("=========================================");
+        logger.info("email.accepted", { operation: "verification", provider: "brevo", provider_message_id: data.messageId });
 
         return true;
     } catch (error) {
-        console.error("Erreur lors de l'envoi de l'e-mail de vérification :", error?.response?.data || error.message);
+        logger.error("email.delivery_failed", providerErrorMeta("verification", error));
         return false;
     }
 };
@@ -92,7 +117,7 @@ exports.sendPasswordResetEmail = async (toEmail, fullName, token) => {
         });
         return true;
     } catch (error) {
-        console.error("Erreur lors de l'envoi de l'e-mail de réinitialisation :", error?.response?.data || error.message);
+        logger.error("email.delivery_failed", providerErrorMeta("password_reset", error));
         return false;
     }
 };
@@ -121,15 +146,11 @@ exports.sendAgentInvitation = async (toEmail, fullName, rawPassword) => {
             `,
         });
 
-        console.log("=========================================");
-        console.log("📨 EMAIL D'INVITATION ENVOYÉ (API Brevo)");
-        console.log(`Destinataire : ${toEmail}`);
-        if (data.messageId) console.log("ID du message : %s", data.messageId);
-        console.log("=========================================");
+        logger.info("email.accepted", { operation: "agent_invitation", provider: "brevo", provider_message_id: data.messageId });
 
         return true;
     } catch (error) {
-        console.error("Erreur lors de l'envoi de l'e-mail d'invitation :", error?.response?.data || error.message);
+        logger.error("email.delivery_failed", providerErrorMeta("agent_invitation", error));
         return false;
     }
 };

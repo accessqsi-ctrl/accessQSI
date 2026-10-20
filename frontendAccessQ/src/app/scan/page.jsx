@@ -6,6 +6,8 @@ import Link from "next/link";
 import { apiFetch } from "../lib/api";
 import { useUserPlan } from "../lib/useUserPlan";
 
+const PERIOD_PHRASES = { jour: "aujourd’hui", semaine: "cette semaine", mois: "ce mois-ci" };
+
 export default function ScanPage() {
     const { userProfile } = useUserPlan();
     const isOperator = userProfile?.role === "OPERATOR";
@@ -163,12 +165,15 @@ export default function ScanPage() {
             
             if (data.success) {
                 setFlash('success');
-                // Auto-clear success flash and restart scanner after 2s
-                setTimeout(() => {
-                    setFlash(null);
-                    setScanResult(null);
-                    startScanner();
-                }, 2500);
+                // Sans photo, l'écran se libère seul. Avec photo, l'agent compare le visage
+                // puis passe au suivant manuellement.
+                if (!data.holder?.photo) {
+                    setTimeout(() => {
+                        setFlash(null);
+                        setScanResult(null);
+                        startScanner();
+                    }, 2500);
+                }
                 
                 // Track history locally for the session
                 setLastScans(prev => [{
@@ -215,15 +220,41 @@ export default function ScanPage() {
                     <div className="absolute inset-0 z-50 flex flex-col items-center justify-center text-white px-6 text-center animate-in fade-in duration-300">
                         {flash === 'success' ? (
                             <>
-                                <div className="w-32 h-32 bg-white/20 dark:bg-slate-950/20 rounded-full flex items-center justify-center mb-6 animate-pulse">
-                                    <ShieldCheck className="w-20 h-20" />
-                                </div>
+                                {scanResult?.holder?.photo ? (
+                                    <img
+                                        src={scanResult.holder.photo}
+                                        alt={`Photo de ${scanResult.holder.name}`}
+                                        className="w-48 h-48 sm:w-56 sm:h-56 rounded-3xl object-cover border-4 border-white shadow-2xl mb-6"
+                                    />
+                                ) : (
+                                    <div className="w-32 h-32 bg-white/20 dark:bg-slate-950/20 rounded-full flex items-center justify-center mb-6 animate-pulse">
+                                        <ShieldCheck className="w-20 h-20" />
+                                    </div>
+                                )}
                                 <h2 className="text-4xl font-black mb-2">AUTORISÉ</h2>
                                 <p className="text-xl font-medium opacity-90">{scanResult?.holder?.name}</p>
                                 {scanResult?.holder?.level && (
                                     <span className="mt-4 px-4 py-1.5 bg-white/20 dark:bg-slate-950/20 rounded-full text-sm font-bold uppercase tracking-widest leading-none">
                                         Niveau {scanResult?.holder?.level}
                                     </span>
+                                )}
+                                {scanResult?.period && (
+                                    <p className="mt-3 text-sm font-semibold opacity-90">
+                                        {scanResult.period.remaining > 0
+                                            ? `Encore ${scanResult.period.remaining} passage${scanResult.period.remaining > 1 ? "s" : ""} ${PERIOD_PHRASES[scanResult.period.label] || ""}`
+                                            : `Dernier passage autorisé ${PERIOD_PHRASES[scanResult.period.label] || ""}`}
+                                    </p>
+                                )}
+                                {scanResult?.holder?.photo && (
+                                    <>
+                                        <p className="mt-4 text-sm font-semibold opacity-90">Vérifiez que la personne correspond à la photo.</p>
+                                        <button
+                                            onClick={() => { setFlash(null); setScanResult(null); startScanner(); }}
+                                            className="mt-6 px-8 py-3 bg-white dark:bg-slate-950 text-emerald-700 font-bold rounded-full shadow-xl active:scale-95 transition-transform"
+                                        >
+                                            SUIVANT
+                                        </button>
+                                    </>
                                 )}
                             </>
                         ) : (
