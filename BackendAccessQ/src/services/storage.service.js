@@ -193,6 +193,18 @@ const saveUploadedAsset = async ({ directory, filename, contentType, buffer, sou
     return publicUrlForKey(key);
 };
 
+// Vrai si l'URL désigne une image déposée sur la plateforme (logo ou fond de carte).
+const isManagedAssetUrl = (publicUrl) => {
+    for (const directory of managedAssetDirectories) {
+        try {
+            if (managedKeyFromPublicUrl(publicUrl, directory)) return true;
+        } catch {
+            return false;
+        }
+    }
+    return false;
+};
+
 const materializeManagedAsset = async (publicUrl) => {
     const cleanUrl = String(publicUrl || "").trim();
     if (!cleanUrl || cleanUrl.startsWith("data:")) return cleanUrl;
@@ -253,6 +265,7 @@ module.exports = {
     removeManagedPublicAsset,
     saveUploadedAsset,
     materializeManagedAsset,
+    isManagedAssetUrl,
     writeFileAtomically,
     moveFile
 };

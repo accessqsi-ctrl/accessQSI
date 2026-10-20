@@ -77,3 +77,64 @@ test("generateCardsPdfBuffer creates one PDF page per QR without writing files",
 
     assert.equal(pdf.getPageCount(), 2);
 });
+
+const sampleEvent = {
+    title: "Rentrée 2026",
+    EventSchedules: [{ start_date: "2026-09-01T07:00:00.000Z", area: { area_name: "Cantine" } }]
+};
+const pixel = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
+const freeLayout = (back) => ({
+    baseTemplateId: "event-ticket",
+    customization: {
+        canvasScene: {
+            version: 3,
+            canvas: { width: 1012, height: 638, backgroundColor: "#ffffff" },
+            objects: [
+                { id: "holder", type: "text", text: "{{holder}}", x: 40, y: 40, width: 500, height: 60, fontSize: 40, fontFamily: "sans", fontWeight: "700", fill: "#0f172a", visible: true, zIndex: 1 },
+                { id: "qr", type: "qr", x: 700, y: 200, width: 260, height: 260, visible: true, zIndex: 2 }
+            ],
+            back
+        }
+    }
+});
+
+test("a free layout with a back side renders front then back for each QR", async () => {
+    const back = {
+        backgroundColor: "#f8fafc",
+        objects: [{ id: "rules", type: "text", text: "Carte strictement personnelle", x: 40, y: 40, width: 900, height: 80, fontSize: 36, fontFamily: "serif", fontWeight: "400", fill: "#0f172a", visible: true, zIndex: 1 }]
+    };
+    const cards = [1, 2].map(id => ({
+        templateId: "event-ticket",
+        customization: freeLayout(back),
+        event: sampleEvent,
+        qrRecord: { qr_id: id, holder_name: `Élève ${id}`, level: 1 },
+        qrUrl: pixel,
+        cardMessage: ""
+    }));
+
+    const pdf = await PDFDocument.load(await cardTemplateService.generateCardsPdfBuffer(cards));
+    assert.equal(pdf.getPageCount(), 4);
+    const [width, height] = [pdf.getPage(1).getWidth(), pdf.getPage(1).getHeight()];
+    assert.deepEqual([Math.round(width), Math.round(height)], [1012, 638]);
+});
+
+test("a free layout without back objects keeps a single page per QR", async () => {
+    const pdf = await PDFDocument.load(await cardTemplateService.generateCardsPdfBuffer([{
+        templateId: "event-ticket",
+        customization: freeLayout({ backgroundColor: "#ffffff", objects: [] }),
+        event: sampleEvent,
+        qrRecord: { qr_id: 3, holder_name: "Élève 3", level: 1 },
+        qrUrl: pixel,
+        cardMessage: ""
+    }]));
+    assert.equal(pdf.getPageCount(), 1);
+});
+
+test("the AccessQ mention stays on standard templates and is opt-in on custom ones", () => {
+    const payload = { event: sampleEvent, qrRecord: { qr_id: 4, holder_name: "Awa", level: 1 }, qrUrl: pixel, cardMessage: "" };
+    const render = (customization) => cardTemplateService.renderPreview({ templateId: "event-ticket", customization, ...payload });
+
+    assert.match(render(null), />AccessQ</);
+    assert.doesNotMatch(render({ primaryColor: "#7c3aed", secondaryColor: "#ede9fe", visibleFields: { holder: true } }), />AccessQ</);
+    assert.match(render({ primaryColor: "#7c3aed", secondaryColor: "#ede9fe", visibleFields: { brand: true } }), />AccessQ</);
+});

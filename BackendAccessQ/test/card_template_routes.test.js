@@ -268,27 +268,38 @@ test("PUT /card-templates/custom/:id/default and default/clear are reserved to a
 
 const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0x0d]);
 
-const loadUploadController = () => {
+const loadUploadController = ({ capacityMessage = null } = {}) => {
     clearSrcModules();
     const saved = [];
+    const registered = [];
     mockModule("src/services/custom_card_template.service", {});
+    const { AssetError } = require("../src/services/organization_asset.service");
+    mockModule("src/services/organization_asset.service", {
+        AssetError,
+        ASSET_KINDS: ["logo", "background", "signature", "image"],
+        assertCapacity: async () => { if (capacityMessage) throw new AssetError(capacityMessage, 409); },
+        registerForOrg: async (orgId, asset) => {
+            registered.push({ orgId, ...asset });
+            return { id: 1, ...asset };
+        }
+    });
     mockModule("src/services/storage.service", {
         saveUploadedAsset: async (asset) => {
             saved.push(asset);
             return `/${asset.directory}/${asset.filename}`;
         }
     });
-    return { controller: require("../src/controllers/api.card_template.controller"), saved };
+    return { controller: require("../src/controllers/api.card_template.controller"), saved, registered };
 };
 
-const invokeUpload = async (handler, file) => {
+const invokeUpload = async (handler, file, body = {}) => {
     const res = {
         statusCode: 200,
         body: null,
         status(code) { this.statusCode = code; return this; },
         json(body) { this.body = body; return this; }
     };
-    await handler({ file, user: { user_id: 1, org_id: 42 } }, res);
+    await handler({ file, body, user: { user_id: 1, org_id: 42 } }, res);
     return res;
 };
 
@@ -326,3 +337,25 @@ test("template image uploads store real images with an extension derived from th
     assert.match(res.body.backgroundImageUrl, /\.png$/);
 });
 
+test("uploaded template images are added to the organization library", async () => {
+    const { controller, registered } = loadUploadController();
+    const res = await invokeUpload(controller.uploadAsset, { originalname: "Signature directeur.png", buffer: PNG }, { kind: "signature" });
+
+    assert.equal(res.statusCode, 201);
+    assert.equal(registered.length, 1);
+    assert.equal(registered[0].orgId, 42);
+    assert.equal(registered[0].kind, "signature");
+    assert.equal(registered[0].name, "Signature directeur");
+    assert.equal(registered[0].mimeType, "image/png");
+    assert.match(registered[0].url, /^\/card-backgrounds\/background_42_/);
+    assert.equal(res.body.asset.kind, "signature");
+});
+
+test("uploads are refused once the organization library is full", async () => {
+    const { controller, saved } = loadUploadController({ capacityMessage: "La bibliothèque est limitée à 200 images." });
+    const res = await invokeUpload(controller.uploadLogo, { originalname: "logo.png", buffer: PNG });
+
+    assert.equal(res.statusCode, 409);
+    assert.match(res.body.message, /200 images/);
+    assert.deepEqual(saved, []);
+});

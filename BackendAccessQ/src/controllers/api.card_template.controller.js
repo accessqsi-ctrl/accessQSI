@@ -1,6 +1,7 @@
 const crypto = require("crypto");
 const customCardTemplateService = require("../services/custom_card_template.service");
 const storageService = require("../services/storage.service");
+const organizationAssetService = require("../services/organization_asset.service");
 const { IMAGE_EXTENSIONS, detectImageType } = require("../utils/imageType");
 
 const requireOrg = (req, res) => {
@@ -157,9 +158,16 @@ exports.clearDefaultCustomTemplate = async (req, res) => {
     }
 };
 
-// Enregistre une image de modèle après vérification de son type réel. L'extension et le
-// Content-Type stockés sont déduits des octets : un fichier HTML, JS ou SVG est refusé.
-const saveTemplateImage = async (req, res, { directory, prefix, responseKey, missingMessage, errorMessage }) => {
+const assetErrorResponse = (res, error, fallbackMessage) => (
+    error instanceof organizationAssetService.AssetError
+        ? res.status(error.statusCode).json({ success: false, message: error.message })
+        : res.status(500).json({ success: false, message: fallbackMessage })
+);
+
+// Enregistre une image de modèle après vérification de son type réel, puis l'ajoute à la
+// bibliothèque de l'organisation. L'extension et le Content-Type stockés sont déduits des
+// octets : un fichier HTML, JS ou SVG est refusé.
+const saveTemplateImage = async (req, res, { directory, prefix, kind, responseKey, missingMessage, errorMessage }) => {
     try {
         const orgId = requireOrg(req, res);
         if (!orgId) return;
@@ -172,18 +180,27 @@ const saveTemplateImage = async (req, res, { directory, prefix, responseKey, mis
         if (!contentType) {
             return res.status(415).json({ success: false, message: "Format non supporté. Utilisez une image JPEG, PNG ou WebP." });
         }
+        await organizationAssetService.assertCapacity(orgId);
 
         const filename = `${prefix}_${orgId}_${crypto.randomUUID()}${IMAGE_EXTENSIONS[contentType]}`;
         const url = await storageService.saveUploadedAsset({ directory, filename, contentType, buffer });
-        res.status(201).json({ success: true, [responseKey]: url });
+        const asset = await organizationAssetService.registerForOrg(orgId, {
+            url,
+            name: req.body?.name || String(req.file.originalname || "").replace(/\.[^.]+$/, ""),
+            kind,
+            mimeType: contentType,
+            sizeBytes: buffer.length
+        });
+        res.status(201).json({ success: true, [responseKey]: url, asset });
     } catch (error) {
-        res.status(500).json({ success: false, message: errorMessage });
+        assetErrorResponse(res, error, errorMessage);
     }
 };
 
 exports.uploadLogo = (req, res) => saveTemplateImage(req, res, {
     directory: "card-logos",
     prefix: "logo",
+    kind: "logo",
     responseKey: "logoUrl",
     missingMessage: "Logo requis.",
     errorMessage: "Erreur lors de l'envoi du logo."
@@ -192,8 +209,60 @@ exports.uploadLogo = (req, res) => saveTemplateImage(req, res, {
 exports.uploadBackground = (req, res) => saveTemplateImage(req, res, {
     directory: "card-backgrounds",
     prefix: "background",
+    kind: "background",
     responseKey: "backgroundImageUrl",
     missingMessage: "Image de fond requise.",
     errorMessage: "Erreur lors de l'envoi de l'image de fond."
 });
 
+// ===== Bibliothèque d'images de l'organisation =====
+exports.listAssets = async (req, res) => {
+    try {
+        const orgId = requireOrg(req, res);
+        if (!orgId) return;
+        res.json({
+            success: true,
+            assets: await organizationAssetService.listForOrg(orgId),
+            maxAssets: organizationAssetService.MAX_ASSETS_PER_ORG
+        });
+    } catch (error) {
+        assetErrorResponse(res, error, "Impossible de charger la bibliothèque.");
+    }
+};
+
+exports.uploadAsset = (req, res) => {
+    const kind = organizationAssetService.ASSET_KINDS.includes(req.body?.kind) ? req.body.kind : "image";
+    return saveTemplateImage(req, res, {
+        directory: kind === "logo" ? "card-logos" : "card-backgrounds",
+        prefix: kind === "logo" ? "logo" : "background",
+        kind,
+        responseKey: "url",
+        missingMessage: "Image requise.",
+        errorMessage: "Erreur lors de l'envoi de l'image."
+    });
+};
+
+exports.updateAsset = async (req, res) => {
+    try {
+        const orgId = requireOrg(req, res);
+        if (!orgId) return;
+        const asset = await organizationAssetService.updateForOrg(orgId, req.params.id, {
+            name: req.body?.name,
+            kind: req.body?.kind
+        });
+        res.json({ success: true, asset });
+    } catch (error) {
+        assetErrorResponse(res, error, "Impossible de modifier l'image.");
+    }
+};
+
+exports.deleteAsset = async (req, res) => {
+    try {
+        const orgId = requireOrg(req, res);
+        if (!orgId) return;
+        await organizationAssetService.deleteForOrg(orgId, req.params.id);
+        res.json({ success: true });
+    } catch (error) {
+        assetErrorResponse(res, error, "Impossible de supprimer l'image.");
+    }
+};

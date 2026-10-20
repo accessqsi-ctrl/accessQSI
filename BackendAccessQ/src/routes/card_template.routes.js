@@ -49,6 +49,10 @@ router.delete("/default", adminOnly, cardTemplateController.clearDefaultCustomTe
 router.post("/custom/:id/duplicate", canManageCustomTemplates, requireCustomTemplates, cardTemplateController.duplicateCustomTemplate);
 router.post("/logo", canManageCustomTemplates, requireCustomTemplates, imageUpload("logo"), cardTemplateController.uploadLogo);
 router.post("/background", canManageCustomTemplates, requireCustomTemplates, imageUpload("background"), cardTemplateController.uploadBackground);
+router.get("/assets", canManageCustomTemplates, requireCustomTemplates, cardTemplateController.listAssets);
+router.post("/assets", canManageCustomTemplates, requireCustomTemplates, imageUpload("file"), cardTemplateController.uploadAsset);
+router.patch("/assets/:id", canManageCustomTemplates, requireCustomTemplates, cardTemplateController.updateAsset);
+router.delete("/assets/:id", canManageCustomTemplates, requireCustomTemplates, cardTemplateController.deleteAsset);
 router.put("/custom/:id", canManageCustomTemplates, requireCustomTemplates, cardTemplateController.updateCustomTemplate);
 router.delete("/custom/:id", canManageCustomTemplates, requireCustomTemplates, cardTemplateController.deleteCustomTemplate);
 router.put("/custom/:id/default", adminOnly, requireCustomTemplates, cardTemplateController.setDefaultCustomTemplate);

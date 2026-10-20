@@ -1,29 +1,42 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Check, Copy, ImagePlus, Loader2, Pencil, Plus, Save, Star, Trash2, X } from "lucide-react";
+import { Check, Copy, Images, ImagePlus, LayoutTemplate, Loader2, Pencil, Plus, Save, SlidersHorizontal, Star, Trash2, X } from "lucide-react";
 import { apiFetch, apiUrl } from "../../lib/api";
 import { useUserPlan } from "../../lib/useUserPlan";
+import { createDefaultCanvasScene } from "../../lib/cardTemplates";
+import { sampleValues } from "../../lib/cardScene.mjs";
 import DismissiblePlanPromotion from "../../components/DismissiblePlanPromotion";
+import CardCanvasEditor from "../../components/card-editor/CardCanvasEditor";
+import CardSceneRenderer from "../../components/card-editor/CardSceneRenderer";
+import AssetLibrary from "../../components/card-editor/AssetLibrary";
 
 const BASE_TEMPLATES = [
     { id: "event-ticket", name: "Billet événement", format: "Horizontal", accent: "#2563eb", soft: "#dbeafe" },
+    { id: "access-pass", name: "Pass accès", format: "Horizontal", accent: "#d97706", soft: "#fef3c7" },
+    { id: "vip-pass", name: "Pass VIP", format: "Horizontal", accent: "#9333ea", soft: "#f3e8ff" },
+    { id: "staff-badge-horizontal", name: "Badge staff horizontal", format: "Horizontal", accent: "#0f766e", soft: "#ccfbf1" },
+    { id: "compact-ticket", name: "Ticket compact", format: "Horizontal", accent: "#1d4ed8", soft: "#dbeafe" },
     { id: "staff-card", name: "Carte staff", format: "Vertical", accent: "#059669", soft: "#d1fae5" },
     { id: "wedding-invite", name: "Invitation mariage", format: "Vertical", accent: "#e11d48", soft: "#ffe4e6" },
-    { id: "compact-ticket", name: "Ticket compact", format: "Horizontal", accent: "#1d4ed8", soft: "#dbeafe" }
+    { id: "vip-invitation", name: "Invitation VIP", format: "Vertical", accent: "#7c3aed", soft: "#ede9fe" },
+    { id: "simple-invitation", name: "Invitation sobre", format: "Vertical", accent: "#334155", soft: "#e2e8f0" }
 ];
+// Les invitations n'ont pas de zone de couleur principale où placer une image.
+const INVITATION_BASES = new Set(["wedding-invite", "vip-invitation", "simple-invitation"]);
 
 const initialForm = {
     name: "", baseTemplateId: "event-ticket", title: "INVITATION",
     primaryColor: "#2563eb", secondaryColor: "#dbeafe", cardMessageDefault: "Présentez ce QR à l’entrée",
     primaryFillMode: "color", backgroundImageUrl: "",
-    qrPosition: "right", visibleFields: { holder: true, event: true, date: true, location: true, level: true, message: true, qr: true }
+    qrPosition: "right", visibleFields: { brand: false, holder: true, event: true, date: true, location: true, level: true, message: true, qr: true }
 };
 
 const fields = [
     ["holder", "Titulaire"], ["event", "Événement"], ["date", "Date"], ["location", "Lieu"],
-    ["level", "Niveau"], ["message", "Message"], ["qr", "Code QR"]
+    ["level", "Niveau"], ["message", "Message"], ["qr", "Code QR"], ["brand", "Mention AccessQ"]
 ];
+const hasFreeLayout = (template) => Boolean(template?.canvasScene && typeof template.canvasScene === "object");
 const MODEL_WORKFLOW_ONBOARDING_KEY = "qrAccessModelWorkflowOnboardingDismissed";
 
 async function jsonRequest(path, options) {
@@ -35,13 +48,26 @@ async function jsonRequest(path, options) {
 
 function templatePayload(form) {
     const { primaryFillMode, ...payload } = form;
-    if (form.baseTemplateId !== "wedding-invite") {
+    if (!INVITATION_BASES.has(form.baseTemplateId)) {
         payload.backgroundImageUrl = primaryFillMode === "image" ? form.backgroundImageUrl : "";
     }
     return payload;
 }
 
 function TemplatePreview({ template }) {
+    // Mise en page libre : rendu dans le navigateur avec les mêmes polices et règles que le PDF.
+    if (hasFreeLayout(template)) {
+        const { width, height } = template.canvasScene.canvas;
+        return (
+            <div className="mx-auto w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-slate-200" style={{ aspectRatio: `${width} / ${height}`, maxHeight: "22rem" }}>
+                <CardSceneRenderer scene={template.canvasScene} template={template} values={sampleValues(template)} className="h-full w-full" title={`Aperçu de ${template.name || "la carte"}`} />
+            </div>
+        );
+    }
+    return <ServerTemplatePreview template={template} />;
+}
+
+function ServerTemplatePreview({ template }) {
     const vertical = BASE_TEMPLATES.find(item => item.id === template.baseTemplateId)?.format === "Vertical";
     const [previewUrl, setPreviewUrl] = useState("");
     const [previewError, setPreviewError] = useState(false);
@@ -81,6 +107,10 @@ export default function CardTemplatesPage() {
     const [showWorkflowGuide, setShowWorkflowGuide] = useState(false);
     const [templateToDelete, setTemplateToDelete] = useState(null);
     const [uploadingPrimaryImage, setUploadingPrimaryImage] = useState(false);
+    const [editorKey, setEditorKey] = useState(0);
+    const [confirmSimpleLayout, setConfirmSimpleLayout] = useState(false);
+    // { mode: "pick" | "manage", kind, resolve } quand la bibliothèque d'images est ouverte.
+    const [library, setLibrary] = useState(null);
     const { userProfile, hasCapability, planName, profileLoading } = useUserPlan();
     const canSetDefault = userProfile?.role === "ORG_ADMIN" || userProfile?.role === "SUPER_ADMIN";
     const customTemplatesLocked = !hasCapability("custom_card_templates");
@@ -134,12 +164,36 @@ export default function CardTemplatesPage() {
         setForm({
             ...initialForm,
             ...template,
-            primaryFillMode: template.baseTemplateId !== "wedding-invite" && template.backgroundImageUrl ? "image" : "color"
+            primaryFillMode: !INVITATION_BASES.has(template.baseTemplateId) && template.backgroundImageUrl ? "image" : "color"
         });
         setShowEditor(true);
         setNotice(null);
     };
-    const closeEditor = () => { setShowEditor(false); setEditingId(null); };
+    const closeEditor = () => { setShowEditor(false); setEditingId(null); setConfirmSimpleLayout(false); };
+    const freeLayout = hasFreeLayout(form);
+
+    // Passe en mise en page libre à partir du format de base, aux couleurs du modèle.
+    const enableFreeLayout = () => {
+        const scene = createDefaultCanvasScene(form.baseTemplateId, { accent: form.primaryColor, soft: form.secondaryColor });
+        setForm(current => ({ ...current, canvasScene: scene }));
+        setEditorKey(key => key + 1);
+    };
+    // false demande au serveur de supprimer la scène libre d'un modèle existant.
+    const disableFreeLayout = () => {
+        setForm(current => ({ ...current, canvasScene: editingId ? false : null }));
+        setConfirmSimpleLayout(false);
+    };
+    const updateScene = useCallback((scene) => setForm(current => ({ ...current, canvasScene: scene })), []);
+    // Ouvre la bibliothèque en mode sélection ; la promesse renvoie l'image choisie ou null.
+    const pickImage = useCallback((kind = "") => new Promise(resolve => setLibrary({ mode: "pick", kind, resolve })), []);
+    const closeLibrary = (asset = null) => {
+        library?.resolve?.(asset);
+        setLibrary(null);
+    };
+    const pickPrimaryImage = async () => {
+        const asset = await pickImage("background");
+        if (asset?.url) setForm(current => ({ ...current, primaryFillMode: "image", backgroundImageUrl: asset.url }));
+    };
 
     const uploadPrimaryImage = async (event) => {
         const file = event.target.files?.[0];
@@ -189,7 +243,10 @@ export default function CardTemplatesPage() {
             {/* **************************************** */}
             <div className="aq-page-header">
                 <div><p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-blue-700 dark:text-blue-300">Identité des accès</p><h1 className="aq-page-title">Modèles de cartes</h1><p className="aq-page-subtitle">Créez une identité visuelle pour vos billets, badges et invitations.</p><p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Pour des modèles avancés, contactez-nous : notre équipe est là pour vous aider.</p></div>
-                <button onClick={openNew} disabled={customTemplatesLocked} className="aq-button-primary"><Plus className="h-4 w-4" /> Nouveau modèle</button>
+                <div className="flex flex-wrap gap-2">
+                    <button type="button" onClick={() => setLibrary({ mode: "manage", kind: "" })} disabled={customTemplatesLocked} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"><Images className="h-4 w-4" /> Bibliothèque d’images</button>
+                    <button onClick={openNew} disabled={customTemplatesLocked} className="aq-button-primary"><Plus className="h-4 w-4" /> Nouveau modèle</button>
+                </div>
             </div>
 
             {/* **************************************** */}
@@ -219,11 +276,11 @@ export default function CardTemplatesPage() {
             {/* Grille des modèles enregistrés */}
             {/* **************************************** */}
             {templates.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center dark:border-slate-700 dark:bg-slate-950"><div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600"><Plus /></div><h2 className="font-black text-slate-900 dark:text-white">Aucun modèle personnalisé</h2><p className="mt-2 text-sm text-slate-500">Créez votre premier modèle à partir de l’un des 4 formats disponibles.</p><button onClick={openNew} disabled={customTemplatesLocked} title={customTemplatesLocked ? "Disponible avec le plan Pro" : "Créer un modèle"} className="mt-5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50">Créer un modèle</button></div>
+                <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center dark:border-slate-700 dark:bg-slate-950"><div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600"><Plus /></div><h2 className="font-black text-slate-900 dark:text-white">Aucun modèle personnalisé</h2><p className="mt-2 text-sm text-slate-500">Créez votre premier modèle à partir de l’un des formats disponibles.</p><button onClick={openNew} disabled={customTemplatesLocked} title={customTemplatesLocked ? "Disponible avec le plan Pro" : "Créer un modèle"} className="mt-5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50">Créer un modèle</button></div>
             ) : (
                 <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">{templates.map(template => (
                     <article key={template.id} className="aq-panel">
-                        <div className="bg-slate-100 p-5 dark:bg-slate-900"><TemplatePreview template={template} /></div>
+                        <div className="relative bg-slate-100 p-5 dark:bg-slate-900"><TemplatePreview template={template} />{hasFreeLayout(template) && template.canvasScene.back?.objects?.length > 0 && <span className="absolute right-3 top-3 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-black text-slate-700 shadow-sm">RECTO-VERSO</span>}</div>
                         <div className="p-5"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><h2 className="truncate font-black text-slate-900 dark:text-white">{template.name}</h2><p className="mt-1 text-xs text-slate-500">{BASE_TEMPLATES.find(item => item.id === template.baseTemplateId)?.name} · {template.status === "DRAFT" ? "Brouillon" : template.status === "ARCHIVED" ? "Archivé" : "Publié"}</p></div>{defaultId === template.templateId && <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-1 text-[10px] font-black text-amber-700"><Star className="h-3 w-3 fill-current" /> PAR DÉFAUT</span>}</div>
                             <div className="mt-5 grid grid-cols-5 gap-2">
                                 <button title="Modifier" disabled={!!busy || customTemplatesLocked} onClick={() => openEdit(template)} className="rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-35"><Pencil className="mx-auto h-4 w-4" /></button>
@@ -257,12 +314,28 @@ export default function CardTemplatesPage() {
             {/* **************************************** */}
             {/* Formulaire de création ou de modification avec aperçu */}
             {/* **************************************** */}
-            {showEditor && <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/55 p-0 backdrop-blur-sm sm:items-center sm:p-5"><div role="dialog" aria-modal="true" className="max-h-[95vh] w-full max-w-5xl overflow-y-auto rounded-t-3xl bg-white shadow-2xl dark:bg-slate-950 sm:rounded-3xl"><div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white/95 px-6 py-4 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95"><div><h2 className="text-lg font-black dark:text-white">{editingId ? "Modifier le modèle" : "Nouveau modèle"}</h2><p className="text-xs text-slate-500">Les modifications apparaissent immédiatement dans l’aperçu.</p></div><button onClick={closeEditor} aria-label="Fermer" className="rounded-xl p-2 text-slate-500 hover:bg-slate-100"><X /></button></div>
-                <form onSubmit={save} className="grid gap-8 p-6 lg:grid-cols-[1fr_1.1fr]"><div className="space-y-5">
+            {showEditor && <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/55 p-0 backdrop-blur-sm sm:items-center sm:p-5"><div role="dialog" aria-modal="true" className={`max-h-[95vh] w-full ${freeLayout ? "max-w-7xl" : "max-w-5xl"} overflow-y-auto rounded-t-3xl bg-white shadow-2xl dark:bg-slate-950 sm:rounded-3xl`}><div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white/95 px-6 py-4 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95"><div><h2 className="text-lg font-black dark:text-white">{editingId ? "Modifier le modèle" : "Nouveau modèle"}</h2><p className="text-xs text-slate-500">Les modifications apparaissent immédiatement dans l’aperçu.</p></div><button onClick={closeEditor} aria-label="Fermer" className="rounded-xl p-2 text-slate-500 hover:bg-slate-100"><X /></button></div>
+                <form onSubmit={save} className={`grid gap-8 p-6 ${freeLayout ? "" : "lg:grid-cols-[1fr_1.1fr]"}`}><div className={freeLayout ? "grid items-start gap-5 md:grid-cols-2 xl:grid-cols-4" : "space-y-5"}>
                     <label className="block text-sm font-bold text-slate-700 dark:text-slate-200">Nom du modèle<input required maxLength={80} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Ex. Pass VIP entreprise" className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-900" /></label>
-                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-200">Format de base<select value={form.baseTemplateId} onChange={e => changeBase(e.target.value)} className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-700 dark:bg-slate-900">{BASE_TEMPLATES.map(item => <option key={item.id} value={item.id}>{item.name} · {item.format}</option>)}</select></label>
+                    <fieldset className={freeLayout ? "md:col-span-2 xl:col-span-3" : ""}>
+                        <legend className="text-sm font-bold text-slate-700 dark:text-slate-200">Mise en page</legend>
+                        <div className="mt-2 grid grid-cols-2 gap-2">
+                            <button type="button" aria-pressed={!freeLayout} onClick={() => freeLayout && setConfirmSimpleLayout(true)} className={`flex items-center justify-center gap-2 rounded-xl border px-3 py-3 text-sm font-bold ${!freeLayout ? "border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-950/30" : "border-slate-200 text-slate-600 dark:border-slate-700 dark:text-slate-300"}`}><SlidersHorizontal className="h-4 w-4" /> Simple</button>
+                            <button type="button" aria-pressed={freeLayout} onClick={() => !freeLayout && enableFreeLayout()} className={`flex items-center justify-center gap-2 rounded-xl border px-3 py-3 text-sm font-bold ${freeLayout ? "border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-950/30" : "border-slate-200 text-slate-600 dark:border-slate-700 dark:text-slate-300"}`}><LayoutTemplate className="h-4 w-4" /> Mise en page libre</button>
+                        </div>
+                        {confirmSimpleLayout && (
+                            <div role="alert" className="mt-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
+                                Revenir au mode simple supprimera votre mise en page libre à l’enregistrement.
+                                <div className="mt-2 flex gap-2">
+                                    <button type="button" onClick={disableFreeLayout} className="rounded-lg bg-amber-600 px-3 py-1.5 font-bold text-white">Revenir au mode simple</button>
+                                    <button type="button" onClick={() => setConfirmSimpleLayout(false)} className="rounded-lg border border-amber-300 px-3 py-1.5 font-bold">Garder la mise en page libre</button>
+                                </div>
+                            </div>
+                        )}
+                    </fieldset>
+                    {!freeLayout && <label className="block text-sm font-bold text-slate-700 dark:text-slate-200">Format de base<select value={form.baseTemplateId} onChange={e => changeBase(e.target.value)} className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-700 dark:bg-slate-900">{BASE_TEMPLATES.map(item => <option key={item.id} value={item.id}>{item.name} · {item.format}</option>)}</select></label>}
                     <label className="block text-sm font-bold text-slate-700 dark:text-slate-200">Titre<input value={form.title} maxLength={80} onChange={e => setForm({ ...form, title: e.target.value })} className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-700 dark:bg-slate-900" /></label>
-                    {form.baseTemplateId === "wedding-invite" ? (
+                    {INVITATION_BASES.has(form.baseTemplateId) ? (
                         <div className="grid grid-cols-2 gap-4">{[["primaryColor", "Couleur principale"], ["secondaryColor", "Couleur secondaire"]].map(([key, label]) => <label key={key} className="text-sm font-bold text-slate-700 dark:text-slate-200">{label}<span className="mt-2 flex rounded-xl border border-slate-200 bg-slate-50 p-2"><input type="color" value={form[key]} onChange={e => setForm({ ...form, [key]: e.target.value })} className="h-8 w-10 cursor-pointer border-0 bg-transparent" /><input value={form[key]} onChange={e => setForm({ ...form, [key]: e.target.value })} pattern="#[0-9a-fA-F]{6}" className="min-w-0 flex-1 bg-transparent px-2 font-mono text-xs outline-none" /></span></label>)}</div>
                     ) : (
                         <div className="space-y-4">
@@ -289,18 +362,32 @@ export default function CardTemplatesPage() {
                                         {uploadingPrimaryImage ? "Import en cours..." : form.backgroundImageUrl ? "Changer l’image" : "Uploader une image"}
                                         <input type="file" accept="image/png,image/jpeg,image/webp" disabled={uploadingPrimaryImage} onChange={uploadPrimaryImage} className="hidden" />
                                     </label>
+                                    <button type="button" onClick={pickPrimaryImage} className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-bold text-blue-700 hover:bg-blue-50 dark:text-blue-300 dark:hover:bg-blue-950/40"><Images className="h-4 w-4" /> Choisir dans la bibliothèque</button>
                                     {form.backgroundImageUrl && <div className="mt-3 flex items-center gap-3"><img src={apiUrl(form.backgroundImageUrl)} alt="Remplissage principal" className="h-20 w-28 rounded-lg object-cover ring-1 ring-slate-200 dark:ring-slate-700" /><button type="button" onClick={() => setForm(current => ({ ...current, backgroundImageUrl: "" }))} className="inline-flex items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50"><Trash2 className="h-3.5 w-3.5" />Retirer</button></div>}
                                 </div>
                             )}
                             <label className="block text-sm font-bold text-slate-700 dark:text-slate-200">Couleur secondaire<span className="mt-2 flex rounded-xl border border-slate-200 bg-slate-50 p-2"><input type="color" value={form.secondaryColor} onChange={e => setForm({ ...form, secondaryColor: e.target.value })} className="h-8 w-10 cursor-pointer border-0 bg-transparent" /><input value={form.secondaryColor} onChange={e => setForm({ ...form, secondaryColor: e.target.value })} pattern="#[0-9a-fA-F]{6}" className="min-w-0 flex-1 bg-transparent px-2 font-mono text-xs outline-none" /></span></label>
                         </div>
                     )}
-                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-200">Position du QR<select value={form.qrPosition} onChange={e => setForm({ ...form, qrPosition: e.target.value })} className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-700 dark:bg-slate-900"><option value="right">À droite</option><option value="left">À gauche</option><option value="center">Au centre</option></select></label>
+                    {!freeLayout && <label className="block text-sm font-bold text-slate-700 dark:text-slate-200">Position du QR<select value={form.qrPosition} onChange={e => setForm({ ...form, qrPosition: e.target.value })} className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-700 dark:bg-slate-900"><option value="right">À droite</option><option value="left">À gauche</option><option value="center">Au centre</option></select></label>}
                     <label className="block text-sm font-bold text-slate-700 dark:text-slate-200">Message par défaut<textarea rows="2" maxLength={160} value={form.cardMessageDefault} onChange={e => setForm({ ...form, cardMessageDefault: e.target.value })} className="mt-2 w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-700 dark:bg-slate-900" /></label>
-                    <fieldset><legend className="text-sm font-bold text-slate-700 dark:text-slate-200">Informations affichées</legend><div className="mt-2 grid grid-cols-2 gap-2">{fields.map(([key, label]) => <label key={key} className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold dark:border-slate-700"><input type="checkbox" checked={form.visibleFields[key]} onChange={e => setForm({ ...form, visibleFields: { ...form.visibleFields, [key]: e.target.checked } })} className="accent-blue-600" />{label}</label>)}</div></fieldset>
-                </div><div className="flex min-h-96 flex-col justify-center rounded-2xl bg-slate-100 p-6 dark:bg-slate-900"><span className="mb-5 text-center text-xs font-black uppercase tracking-widest text-slate-400">Aperçu</span><TemplatePreview template={preview} /></div>
+                    {!freeLayout && <fieldset><legend className="text-sm font-bold text-slate-700 dark:text-slate-200">Informations affichées</legend><div className="mt-2 grid grid-cols-2 gap-2">{fields.map(([key, label]) => <label key={key} className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold dark:border-slate-700"><input type="checkbox" checked={form.visibleFields[key]} onChange={e => setForm({ ...form, visibleFields: { ...form.visibleFields, [key]: e.target.checked } })} className="accent-blue-600" />{label}</label>)}</div></fieldset>}
+                </div>{freeLayout ? (
+                    <div className="min-w-0">
+                        <CardCanvasEditor key={editorKey} initialScene={form.canvasScene} template={preview} onChange={updateScene} onPickImage={() => pickImage("")} />
+                    </div>
+                ) : <div className="flex min-h-96 flex-col justify-center rounded-2xl bg-slate-100 p-6 dark:bg-slate-900"><span className="mb-5 text-center text-xs font-black uppercase tracking-widest text-slate-400">Aperçu</span><TemplatePreview template={preview} /></div>}
                 <div className="flex justify-end gap-3 border-t border-slate-200 pt-5 lg:col-span-2 dark:border-slate-800"><button type="button" onClick={closeEditor} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-600">Annuler</button><button disabled={busy === "save"} className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-black text-white disabled:opacity-60">{busy === "save" ? <Loader2 className="h-4 w-4 animate-spin" /> : editingId ? <Save className="h-4 w-4" /> : <Check className="h-4 w-4" />}{editingId ? "Enregistrer" : "Créer le modèle"}</button></div>
                 </form></div></div>}
+
+            {library && (
+                <AssetLibrary
+                    mode={library.mode}
+                    initialKind={library.kind}
+                    onSelect={(asset) => closeLibrary(asset)}
+                    onClose={() => closeLibrary(null)}
+                />
+            )}
         </div>
     );
 }
