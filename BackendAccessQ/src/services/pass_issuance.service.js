@@ -249,6 +249,9 @@ const issuePass = async ({
         card_message: cardTemplateId ? values.cardMessage || null : null,
         card_generation_status: cardTemplateId ? "ON_DEMAND" : null,
         card_generation_error: null,
+        period_limit: values.periodUnit ? values.periodLimit : null,
+        period_unit: values.periodUnit,
+        period_timezone: values.periodTimezone,
         event_id: event.event_id
     };
     let replayed = false;

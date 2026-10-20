@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Loader2, Calendar, MapPin, QrCode, Edit2, Trash2, ArrowLeft, Plus, Download, X, CheckCircle2, FileSpreadsheet, FileText } from "lucide-react";
+import { Loader2, Calendar, MapPin, QrCode, Edit2, Trash2, ArrowLeft, Plus, Download, X, CheckCircle2, FileSpreadsheet, FileText, Camera } from "lucide-react";
 import { apiFetch, apiUrl, refreshSession } from "../../../lib/api";
 import LoadingBar from "../../../components/LoadingBar";
 import { useUserPlan } from "../../../lib/useUserPlan";
@@ -16,8 +16,10 @@ import CardTemplateModal from "./_components/CardTemplateModal";
 import EditEventModal from "./_components/EditEventModal";
 import DeleteEventModal from "./_components/DeleteEventModal";
 import ImportQrModal from "./_components/ImportQrModal";
+import HolderPhotoModal from "./_components/HolderPhotoModal";
+import { preparePhotoForUpload, uploadHolderPhoto } from "../../../lib/holderPhoto";
 import { getCardDownloadUrl } from "./_components/cardDownload";
-import { normalizePhone, selectTemplateForExistingQr, validateQrContact } from "../../../lib/eventQr.mjs";
+import { browserTimeZone, normalizePhone, selectTemplateForExistingQr, validateQrContact } from "../../../lib/eventQr.mjs";
 
 
 
@@ -61,8 +63,10 @@ export default function EventDetailPage() {
         fullName: "", email: "", phone: "",
         accessType: 'single', limit: "1",
         validFrom: "", validUntil: "", level: "1",
-        cardMessage: ""
+        cardMessage: "", periodUnit: "", periodLimit: "1"
     });
+    const [qrPhoto, setQrPhoto] = useState(null);
+    const [photoQr, setPhotoQr] = useState(null);
     const [generatingQr, setGeneratingQr] = useState(false);
     const [qrError, setQrError] = useState("");
     const [qrContactTouched, setQrContactTouched] = useState({ email: false, phone: false });
@@ -322,6 +326,24 @@ export default function EventDetailPage() {
         }
     };
 
+    const handleQrPhotoChange = async (file) => {
+        setQrPhoto(current => {
+            if (current?.previewUrl) URL.revokeObjectURL(current.previewUrl);
+            return null;
+        });
+        if (!file) return;
+        try {
+            setQrPhoto(await preparePhotoForUpload(file));
+        } catch (reason) {
+            setQrError(reason.message);
+        }
+    };
+
+    const handleHolderPhotoChanged = (qrId, photo) => {
+        setQrCodes(current => current.map(qr => qr.id === qrId ? { ...qr, ...photo } : qr));
+        setPhotoQr(current => current?.id === qrId ? { ...current, ...photo } : current);
+    };
+
     const handleGenerateQr = async (e) => {
         e.preventDefault();
         setQrError("");
@@ -344,7 +366,8 @@ export default function EventDetailPage() {
             fullName: holderName,
             email: qrForm.email.trim().toLowerCase(),
             phone: normalizePhone(qrForm.phone),
-            cardTemplateId: selectedCardTemplateId
+            cardTemplateId: selectedCardTemplateId,
+            periodTimezone: browserTimeZone()
         };
         try {
             const res = await apiFetch(`/qr/generate/${eventId}`, {
@@ -354,6 +377,15 @@ export default function EventDetailPage() {
             });
             const data = await res.json();
             if (data.success) {
+                // Le QR est créé : un échec d'envoi de la photo ne doit pas le faire disparaître.
+                if (qrPhoto && data.qrCode?.qr_id) {
+                    try {
+                        await uploadHolderPhoto(data.qrCode.qr_id, qrPhoto.blob);
+                    } catch (photoError) {
+                        showToast(`QR créé, mais la photo n'a pas été enregistrée : ${photoError.message}`);
+                    }
+                    handleQrPhotoChange(null);
+                }
                 setGeneratedAsset({
                     qrUrl: data.qrUrl,
                     cardUrl: data.cardUrl || null,
@@ -594,6 +626,7 @@ export default function EventDetailPage() {
 
         const formData = new FormData();
         formData.append("file", importFile);
+        formData.append("periodTimezone", browserTimeZone());
 
         try {
             const res = await apiFetch(`/qr/import/${eventId}`, {
@@ -905,15 +938,28 @@ export default function EventDetailPage() {
                                         <td className="px-6 py-4 font-medium text-slate-900 dark:text-white">{qr.id}</td>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setPhotoQr(qr)}
+                                                    title={qr.hasPhoto ? "Voir la photo du titulaire" : "Ajouter une photo"}
+                                                    className="relative w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs hover:ring-2 hover:ring-blue-200 transition-shadow"
+                                                >
                                                     {qr.holder?.charAt(0)?.toUpperCase() || '?'}
-                                                </div>
+                                                    {qr.hasPhoto && (
+                                                        <span className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 text-white ring-2 ring-white dark:ring-slate-950">
+                                                            <Camera className="h-2.5 w-2.5" />
+                                                        </span>
+                                                    )}
+                                                </button>
                                                 <span className="font-medium text-slate-900 dark:text-white">{qr.holder}</span>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-slate-500 dark:text-slate-400">{qr.email}</td>
                                         <td className="px-6 py-4">
                                             <span className="font-medium text-slate-700 dark:text-slate-200">{qr.scans}</span>
+                                            {qr.periodLabel && (
+                                                <span className="block text-xs text-slate-500 dark:text-slate-400">max {qr.periodLabel}</span>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${getStatusStyle(qr.status)}`}>
@@ -1018,10 +1064,12 @@ export default function EventDetailPage() {
                     generatedAsset={generatedAsset}
                     generatingQr={generatingQr}
                     handleGenerateQr={handleGenerateQr}
+                    handleQrPhotoChange={handleQrPhotoChange}
                     qrContactErrors={qrContactErrors}
                     qrContactTouched={qrContactTouched}
                     qrError={qrError}
                     qrForm={qrForm}
+                    qrPhoto={qrPhoto}
                     qrQuotaReached={qrQuotaReached}
                     selectedCardTemplateId={selectedCardTemplateId}
                     setQrContactTouched={setQrContactTouched}
@@ -1032,6 +1080,16 @@ export default function EventDetailPage() {
                     setShowQrModal={setShowQrModal}
                     showEmailError={showEmailError}
                     showPhoneError={showPhoneError}
+                />
+            )}
+
+            {/* Photo d'identification du titulaire */}
+            {photoQr && (
+                <HolderPhotoModal
+                    qr={photoQr}
+                    canEdit={canCreateQr}
+                    onClose={() => setPhotoQr(null)}
+                    onChanged={handleHolderPhotoChanged}
                 />
             )}
 

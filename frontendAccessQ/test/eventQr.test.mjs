@@ -39,3 +39,13 @@ test("selectTemplateForExistingQr falls back to the default then the first templ
     assert.equal(selectTemplateForExistingQr({}, templates, ""), "custom:1");
     assert.equal(selectTemplateForExistingQr({}, [], "custom:2"), "");
 });
+
+test("describePeriodLimit summarizes per-period limits and ignores incomplete settings", async () => {
+    const { describePeriodLimit, PERIOD_UNIT_OPTIONS } = await import("../src/app/lib/eventQr.mjs");
+    assert.equal(describePeriodLimit("1", "day"), "1 par jour");
+    assert.equal(describePeriodLimit(3, "week"), "3 par semaine");
+    assert.equal(describePeriodLimit(20, "month"), "20 par mois");
+    assert.equal(describePeriodLimit(0, "day"), "");
+    assert.equal(describePeriodLimit(2, ""), "");
+    assert.deepEqual(PERIOD_UNIT_OPTIONS.map(option => option.value), ["", "day", "week", "month"]);
+});

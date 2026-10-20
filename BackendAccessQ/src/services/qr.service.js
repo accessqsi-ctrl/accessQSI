@@ -58,7 +58,10 @@ exports.getQrsByEventId = async (orgId, eventId, options = {}) => {
     const [items, total] = await prisma.$transaction([
         prisma.qrCode.findMany({
             where,
-            include: { event: { select: { title: true } } },
+            include: {
+                event: { select: { title: true } },
+                holder_photo: { select: { updated_at: true } }
+            },
             orderBy: { qr_id: "desc" },
             skip: (page - 1) * pageSize,
             take: pageSize

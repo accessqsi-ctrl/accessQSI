@@ -1,3 +1,5 @@
+const { PERIOD_UNITS, resolveTimeZone } = require("./qr_period.service");
+
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const ACCESS_TYPES = new Set(["single", "multi", "unlimited"]);
 
@@ -21,6 +23,12 @@ const validateQrPayload = (input = {}, { line = null } = {}) => {
     const validUntil = toOptionalDate(input.validUntil);
     const cardTemplateId = String(input.cardTemplateId || input.card_template_id || input.templateId || "").trim();
     const cardMessage = String(input.cardMessage || input.card_message || "").trim().slice(0, 160);
+    const periodUnit = String(input.periodUnit ?? input.period_unit ?? "").trim().toLowerCase() || null;
+    const rawPeriodLimit = input.periodLimit ?? input.period_limit;
+    const periodLimit = periodUnit
+        ? (rawPeriodLimit === undefined || rawPeriodLimit === "" ? 1 : Number(rawPeriodLimit))
+        : null;
+    const periodTimezone = periodUnit ? resolveTimeZone(String(input.periodTimezone || "").trim()) : null;
     const errors = [];
 
     const addError = (field, message) => errors.push({
@@ -37,6 +45,12 @@ const validateQrPayload = (input = {}, { line = null } = {}) => {
     }
     if (!Number.isInteger(level) || level < 1 || level > 100) {
         addError("level", "Le niveau doit être un entier compris entre 1 et 100.");
+    }
+    if (periodUnit && !PERIOD_UNITS.includes(periodUnit)) {
+        addError("periodUnit", "La période doit être day, week ou month.");
+    }
+    if (periodUnit && (!Number.isInteger(periodLimit) || periodLimit < 1 || periodLimit > 1000)) {
+        addError("periodLimit", "La limite par période doit être un entier compris entre 1 et 1 000.");
     }
     if (email && !EMAIL_PATTERN.test(email)) addError("email", "Adresse email invalide.");
     if (phone && phone.length > 30) addError("phone", "Le numéro de téléphone ne peut pas dépasser 30 caractères.");
@@ -63,7 +77,10 @@ const validateQrPayload = (input = {}, { line = null } = {}) => {
             validFrom,
             validUntil,
             cardTemplateId,
-            cardMessage
+            cardMessage,
+            periodLimit,
+            periodUnit,
+            periodTimezone
         }
     };
 };

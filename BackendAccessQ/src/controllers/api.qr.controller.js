@@ -11,6 +11,7 @@ const {
     getEffectiveQrStatus,
     formatUsageLimit
 } = require("../services/qr_status.service");
+const { describePeriodLimit } = require("../services/qr_period.service");
 const { getPlanContextForUser } = require("../utils/planAccess");
 const {
     PLAN_CAPABILITIES,
@@ -409,6 +410,11 @@ exports.getQrsByEvent = async (req, res) => {
                 scans: `${qr.scans_count} / ${formatUsageLimit(qr.usage_limit)}`,
                 scans_count: qr.scans_count,
                 usage_limit: qr.usage_limit,
+                periodLimit: qr.period_limit ?? null,
+                periodUnit: qr.period_unit ?? null,
+                periodLabel: describePeriodLimit(qr.period_limit, qr.period_unit),
+                hasPhoto: Boolean(qr.holder_photo),
+                photoVersion: qr.holder_photo?.updated_at ? new Date(qr.holder_photo.updated_at).getTime() : null,
                 token: qr.unique_token,
                 qrUrl: qrDownloadUrlForId(qr.qr_id),
                 cardUrl: null,
@@ -590,7 +596,9 @@ exports.downloadQrImportTemplate = async (req, res) => {
             "validUntil",
             "level",
             "cardTemplateId",
-            "cardMessage"
+            "cardMessage",
+            "periodLimit",
+            "periodUnit"
         ];
 
         const filename = `modele_import_qr_evenement_${eventId}.csv`;
@@ -644,7 +652,8 @@ exports.importQrsFromCSV = async (req, res) => {
                 const { qrRecord } = await passIssuanceService.issuePass({
                     organizationId: orgId,
                     eventId,
-                    input: row,
+                    // Le fuseau du navigateur de l'administrateur sert de référence aux limites par période.
+                    input: { periodTimezone: req.body?.periodTimezone, ...row },
                     planContext,
                     useOrganizationDefaultTemplate: false
                 });

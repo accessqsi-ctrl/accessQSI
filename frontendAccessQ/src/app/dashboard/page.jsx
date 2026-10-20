@@ -571,6 +571,7 @@ export default function Dashboard() {
                             <option value="denied_event_not_selected">Mauvais événement</option>
                             <option value="denied_area_not_allowed">Zone non autorisée</option>
                             <option value="denied_insufficient_level">Niveau insuffisant</option>
+                            <option value="denied_period_limit">Limite de la période atteinte</option>
                         </select>
                         <select value={scanFilters.sortOrder} onChange={(event) => updateScanFilter("sortOrder", event.target.value)} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm dark:border-slate-800 dark:bg-slate-900">
                             <option value="desc">Plus récents d’abord</option>

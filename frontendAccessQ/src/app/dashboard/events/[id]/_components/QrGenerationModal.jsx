@@ -1,10 +1,10 @@
-import { Loader2, QrCode, Download, X, CheckCircle2, FileSpreadsheet, FileText, Mail, Phone } from "lucide-react";
+import { Loader2, QrCode, Download, X, CheckCircle2, FileSpreadsheet, FileText, Mail, Phone, Camera, Trash2 } from "lucide-react";
 import LoadingBar from "../../../../components/LoadingBar";
 import { apiUrl } from "../../../../lib/api";
-import { formatInternationalPhone } from "../../../../lib/eventQr.mjs";
+import { PERIOD_UNIT_OPTIONS, formatInternationalPhone } from "../../../../lib/eventQr.mjs";
 import { getCardDownloadUrl } from "./cardDownload";
 
-export default function QrGenerationModal({ cardTemplates, event, generatedAsset, generatingQr, handleGenerateQr, qrContactErrors, qrContactTouched, qrError, qrForm, qrQuotaReached, selectedCardTemplateId, setQrContactTouched, setQrError, setQrForm, setQrSubmitAttempted, setSelectedCardTemplateId, setShowQrModal, showEmailError, showPhoneError }) {
+export default function QrGenerationModal({ cardTemplates, event, generatedAsset, generatingQr, handleGenerateQr, handleQrPhotoChange, qrContactErrors, qrContactTouched, qrError, qrForm, qrPhoto, qrQuotaReached, selectedCardTemplateId, setQrContactTouched, setQrError, setQrForm, setQrSubmitAttempted, setSelectedCardTemplateId, setShowQrModal, showEmailError, showPhoneError }) {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm overflow-y-auto">
             <div className="bg-white dark:bg-slate-950 w-full max-w-3xl rounded-3xl shadow-2xl relative my-8 overflow-hidden text-slate-900 dark:text-slate-100">
@@ -154,6 +154,45 @@ export default function QrGenerationModal({ cardTemplates, event, generatedAsset
                                     </p>
                                         </div>
                                     </div>
+
+                                    {/* Photo affichée à l'agent lors du scan */}
+                                    <div className="flex items-center gap-4 rounded-xl border border-dashed border-slate-300 p-3 dark:border-slate-700">
+                                        <div className="flex h-16 w-16 flex-none items-center justify-center overflow-hidden rounded-xl bg-slate-100 dark:bg-slate-900">
+                                            {qrPhoto?.previewUrl ? (
+                                                <img src={qrPhoto.previewUrl} alt="Aperçu de la photo du titulaire" className="h-full w-full object-cover" />
+                                            ) : (
+                                                <Camera className="h-7 w-7 text-slate-400" />
+                                            )}
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">Photo du titulaire</p>
+                                            <p className="text-xs text-slate-600 dark:text-slate-300">Optionnelle. Affichée à l’agent au scan pour vérifier l’identité (cartes d’élève, de cantine, badges).</p>
+                                            <div className="mt-2 flex items-center gap-2">
+                                                <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800">
+                                                    <Camera className="h-3.5 w-3.5" />
+                                                    {qrPhoto ? "Changer" : "Ajouter"}
+                                                    <input
+                                                        type="file"
+                                                        accept="image/jpeg,image/png,image/webp"
+                                                        className="hidden"
+                                                        onChange={(e) => {
+                                                            handleQrPhotoChange(e.target.files?.[0] || null);
+                                                            e.target.value = "";
+                                                        }}
+                                                    />
+                                                </label>
+                                                {qrPhoto && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleQrPhotoChange(null)}
+                                                        className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-bold text-red-600 hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-950/40"
+                                                    >
+                                                        <Trash2 className="h-3.5 w-3.5" /> Retirer
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </section>
 
@@ -211,6 +250,35 @@ export default function QrGenerationModal({ cardTemplates, event, generatedAsset
                                             />
                                         </div>
                                     )}
+
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-semibold text-slate-800 dark:text-slate-100">Limite par période</label>
+                                        <div className="flex gap-2">
+                                            {qrForm.periodUnit && (
+                                                <input
+                                                    type="number"
+                                                    min="1"
+                                                    max="1000"
+                                                    aria-label="Nombre de passages par période"
+                                                    value={qrForm.periodLimit}
+                                                    onChange={(e) => setQrForm({ ...qrForm, periodLimit: e.target.value })}
+                                                    className="w-20 px-3 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all"
+                                                />
+                                            )}
+                                            <select
+                                                value={qrForm.periodUnit}
+                                                onChange={(e) => setQrForm({ ...qrForm, periodUnit: e.target.value, periodLimit: qrForm.periodLimit || "1" })}
+                                                className="min-w-0 flex-1 px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all"
+                                            >
+                                                {PERIOD_UNIT_OPTIONS.map(option => (
+                                                    <option key={option.value} value={option.value}>{option.label}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+                                            Ex. cantine : 1 par jour. Le compteur repart à minuit, le lundi ou le 1er du mois.
+                                        </p>
+                                    </div>
 
                                     <div className="space-y-2">
                                         <label className="text-sm font-semibold text-slate-800 dark:text-slate-100">Modèle de carte</label>

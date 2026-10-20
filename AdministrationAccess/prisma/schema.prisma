@@ -159,16 +159,32 @@ model QrCode {
   card_message           String?
   card_generation_status String?
   card_generation_error  String?
+  period_limit           Int?
+  period_unit            QrPeriodUnit?
+  period_timezone        String?              @db.VarChar(64)
   created_at             DateTime             @default(now())
   updated_at             DateTime             @updatedAt
   event                  Event                @relation(fields: [event_id], references: [event_id])
   scan_logs              ScanLog[]
   issuance_request       PassIssuanceRequest?
   registration           Registration?
+  holder_photo           QrHolderPhoto?
 
   @@index([event_id, status, deleted_at])
   @@index([card_template_id])
   @@map("qr_codes")
+}
+
+// Photo d'identification du titulaire, stockée en base pour ne jamais être exposée publiquement.
+model QrHolderPhoto {
+  qr_id      Int      @id
+  mime_type  String   @db.VarChar(20)
+  data       Bytes
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  qr_code    QrCode   @relation(fields: [qr_id], references: [qr_id], onDelete: Cascade)
+
+  @@map("qr_holder_photos")
 }
 
 model PassIssuanceRequest {
@@ -343,6 +359,7 @@ model ScanLog {
   area          Area?      @relation(fields: [area_id], references: [area_id])
 
   @@index([qr_code_id])
+  @@index([qr_code_id, status, scanned_at])
   @@index([scanned_by_id])
   @@index([area_id])
   @@index([scanned_at])
@@ -565,6 +582,13 @@ enum ScanStatus {
   denied_event_not_selected
   denied_area_not_allowed
   denied_insufficient_level
+  denied_period_limit
+}
+
+enum QrPeriodUnit {
+  day
+  week
+  month
 }
 
 enum PaymentStatus {

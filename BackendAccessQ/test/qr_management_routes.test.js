@@ -941,7 +941,7 @@ test("GET /qr/template/:event_id downloads a CSV import template for an event in
     assert.deepEqual(eventLookup, { orgId: 42, eventId: 5 });
     assert.match(res.headers["content-type"], /text\/csv/);
     assert.equal(res.headers["content-disposition"], 'attachment; filename="modele_import_qr_evenement_5.csv"');
-    assert.equal(res.body, "fullName,email,phone,accessType,limit,validFrom,validUntil,level,cardTemplateId,cardMessage\n");
+    assert.equal(res.body, "fullName,email,phone,accessType,limit,validFrom,validUntil,level,cardTemplateId,cardMessage,periodLimit,periodUnit\n");
 });
 
 test("CSV import returns an explicit report when some lines fail after others were created", async () => {

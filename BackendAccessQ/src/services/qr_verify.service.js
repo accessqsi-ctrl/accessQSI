@@ -1,5 +1,6 @@
 const prisma = require("../prisma/client");
-const { evaluateQrScan } = require("./qr_policy.service");
+const { evaluateQrScan, applyPeriodLimit } = require("./qr_policy.service");
+const { getPeriodBounds } = require("./qr_period.service");
 
 const qrScanInclude = {
     event: {
@@ -55,7 +56,21 @@ exports.verifyAndRecordScan = async ({
             where: { unique_token: token },
             include: qrScanInclude
         });
-        const decision = evaluateQrScan(qr, scannerOrgId, now, areaId, eventId);
+        let decision = evaluateQrScan(qr, scannerOrgId, now, areaId, eventId);
+
+        // Le comptage s'effectue sous le verrou du QR : deux scans simultanés ne peuvent
+        // pas consommer tous les deux le dernier passage de la période.
+        if (decision.success && qr.period_limit && qr.period_unit) {
+            const bounds = getPeriodBounds(qr.period_unit, now, qr.period_timezone);
+            const usedInPeriod = await tx.scanLog.count({
+                where: {
+                    qr_code_id: qr.qr_id,
+                    status: "authorized",
+                    scanned_at: { gte: bounds.start, lt: bounds.next }
+                }
+            });
+            decision = applyPeriodLimit(decision, qr, usedInPeriod, bounds);
+        }
 
         if (!decision.shouldRecord) return { qr, decision, scan: null };
 
@@ -79,6 +94,19 @@ exports.verifyAndRecordScan = async ({
             qr.status = nextStatus;
         }
 
-        return { qr, decision, scan };
+        // La photo n'est transmise qu'après un accès autorisé, pour la vérification visuelle.
+        const photo = decision.success
+            ? await tx.qrHolderPhoto.findUnique({
+                where: { qr_id: qr.qr_id },
+                select: { mime_type: true, data: true }
+            })
+            : null;
+
+        return {
+            qr,
+            decision,
+            scan,
+            holderPhoto: photo ? `data:${photo.mime_type};base64,${Buffer.from(photo.data).toString("base64")}` : null
+        };
     });
 };

@@ -60,6 +60,7 @@ export default function ImportQrModal({ handleDownloadTemplate, handleImportCSV,
                             <li>Utilisez le modèle CSV fourni ci-dessous.</li>
                             <li>Les colonnes obligatoires sont : <code className="bg-slate-200 dark:bg-slate-700 px-1 rounded">fullName</code>.</li>
                             <li>Les types d'accès valides : <code className="bg-slate-200 dark:bg-slate-700 px-1 rounded">single</code>, <code className="bg-slate-200 dark:bg-slate-700 px-1 rounded">multi</code>, <code className="bg-slate-200 dark:bg-slate-700 px-1 rounded">unlimited</code>.</li>
+                            <li>Limite par période (optionnelle) : <code className="bg-slate-200 dark:bg-slate-700 px-1 rounded">periodUnit</code> = <code className="bg-slate-200 dark:bg-slate-700 px-1 rounded">day</code>, <code className="bg-slate-200 dark:bg-slate-700 px-1 rounded">week</code> ou <code className="bg-slate-200 dark:bg-slate-700 px-1 rounded">month</code>, avec <code className="bg-slate-200 dark:bg-slate-700 px-1 rounded">periodLimit</code> (1 par défaut).</li>
                         </ul>
                         <button
                             type="button"
