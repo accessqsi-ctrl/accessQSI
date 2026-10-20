@@ -24,7 +24,7 @@ Le super-admin peut y appliquer immédiatement un plan Discovery, Essential ou P
 - `npm run prisma:generate` régénère le client après une évolution du schéma.
 - `npm run seed:admin` crée manuellement le compte administrateur par défaut s'il est absent.
 
-Le fichier `prisma/schema.prisma` doit rester synchronisé avec `BackendAccessQ/src/prisma/schema.prisma`. Les migrations de la base restent pilotées par `BackendAccessQ`.
+Le fichier `prisma/schema.prisma` est une copie de `BackendAccessQ/src/prisma/schema.prisma`, qui reste la source de vérité. Après toute modification du schéma backend, lancez `npm run prisma:sync` (également exécuté par `npm run dev`). Un test et `npm run check` échouent si les deux fichiers divergent. Les migrations de la base restent pilotées par `BackendAccessQ`.
 
 ## Sécurité des accès
 
