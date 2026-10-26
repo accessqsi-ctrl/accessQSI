@@ -106,17 +106,6 @@ body {
   box-shadow: var(--aq-shadow-sm);
 }
 
-.aq-page-header::before {
-  position: absolute;
-  z-index: -1;
-  top: -7rem;
-  right: -5rem;
-  width: 18rem;
-  height: 18rem;
-  content: "";
-  border-radius: 999px;
-  display: none;
-}
 
 .aq-page-header::after {
   position: absolute;
@@ -302,9 +291,6 @@ body {
     background: linear-gradient(90deg, #2563eb, #10b981);
   }
 
-  .aq-page-header::before {
-    display: block;
-  }
 
   .aq-page-title {
     color: #f8fafc;

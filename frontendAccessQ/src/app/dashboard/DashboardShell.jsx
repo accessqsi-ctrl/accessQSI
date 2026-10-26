@@ -140,7 +140,7 @@ export default function DashboardShell({ children }) {
                         <img
                             src="/logo/access_logo.png"
                             alt="Logo accessQ"
-                            className="w-8 h-8 drop-shadow-sm"
+                            className="w-8 h-8"
                         />
                         <span className="font-bold tracking-tight text-lg bg-gradient-to-r from-blue-700 to-emerald-600 bg-clip-text text-transparent">
                             accessQ
@@ -162,7 +162,7 @@ export default function DashboardShell({ children }) {
                                 className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-semibold text-sm transition-all ${isActive
                                     ? "bg-blue-50 text-blue-800 border border-blue-100 shadow-sm dark:bg-blue-50 dark:text-blue-700 dark:border-blue-100/50"
                                     : item.special
-                                        ? "bg-blue-700 text-white hover:bg-blue-800 shadow-sm dark:bg-blue-600 dark:hover:bg-blue-700 dark:shadow-md dark:shadow-blue-500/20"
+                                        ? "bg-blue-700 text-white hover:bg-blue-800 shadow-sm dark:bg-blue-600 dark:hover:bg-blue-700"
                                         : "text-slate-600 dark:text-slate-300 hover:bg-blue-50/70 dark:hover:bg-slate-800 hover:text-blue-900 dark:hover:text-white"
                                     }`}
                             >
@@ -301,7 +301,7 @@ export default function DashboardShell({ children }) {
                                         className={`flex items-center gap-3 px-3.5 py-3 rounded-xl font-semibold text-sm transition-all ${isActive
                                             ? "bg-blue-50 text-blue-800 border border-blue-100 shadow-sm dark:bg-blue-50 dark:text-blue-700 dark:border-blue-100/50"
                                             : item.special
-                                                ? "bg-blue-700 text-white hover:bg-blue-800 shadow-sm dark:bg-blue-600 dark:hover:bg-blue-700 dark:shadow-md dark:shadow-blue-500/20"
+                                                ? "bg-blue-700 text-white hover:bg-blue-800 shadow-sm dark:bg-blue-600 dark:hover:bg-blue-700"
                                                 : "text-slate-600 dark:text-slate-300 hover:bg-blue-50/70 dark:hover:bg-slate-800 hover:text-blue-900 dark:hover:text-white"
                                             }`}
                                     >
@@ -385,8 +385,6 @@ export default function DashboardShell({ children }) {
                     />
                     <div className="relative w-full max-w-lg overflow-hidden rounded-3xl border border-white/20 bg-white shadow-2xl dark:bg-slate-900">
                         <div className="relative overflow-hidden bg-slate-900 px-6 pb-8 pt-7 text-white sm:px-8 dark:bg-gradient-to-br dark:from-blue-700 dark:via-indigo-600 dark:to-emerald-500">
-                            <div className="absolute -right-12 -top-16 h-44 w-44 rounded-full bg-white/15 blur-2xl" />
-                            <div className="absolute -bottom-20 -left-10 h-40 w-40 rounded-full bg-emerald-200/20 blur-2xl" />
                             <button
                                 type="button"
                                 onClick={() => setWelcomeOffer(null)}
