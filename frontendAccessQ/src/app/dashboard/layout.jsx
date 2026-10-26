@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ArrowRight, CalendarDays, CheckCircle2, Crown, Mail, Menu, Sparkles, X } from "lucide-react";
+import { ArrowRight, CalendarDays, CheckCircle2, Crown, Lightbulb, Mail, Menu, Sparkles, X } from "lucide-react";
 
 import { useState, useEffect, useMemo } from "react";
 import { apiFetch } from "../lib/api";
@@ -80,6 +80,7 @@ export default function DashboardLayout({ children }) {
         const items = [
             { name: "Tableau de bord", href: "/dashboard", icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" },
             { name: "Premiers pas", href: "/dashboard/getting-started", icon: "M12 6V4m0 2a6 6 0 00-6 6v3l-2 3h16l-2-3v-3a6 6 0 00-6-6zm-2 15h4" },
+            { name: "Cas d’utilisation", href: "/dashboard/use-cases", iconComponent: Lightbulb },
             { name: "Événements", href: "/dashboard/events", icon: "M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" },
             { name: "Inscriptions", href: "/dashboard/registration-forms", icon: "M9 12h6m-6 4h6M7 3h10a2 2 0 012 2v14a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2z" },
             { name: "Modèles", href: "/dashboard/card-templates", icon: "M7 3h7l5 5v13a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2z M14 3v6h5 M8 14h8 M8 18h5" },

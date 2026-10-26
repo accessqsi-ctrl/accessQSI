@@ -2,15 +2,14 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { CalendarPlus, CheckCircle2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Download, Filter, Loader2, MapPinned, Palette, Pencil, QrCode, RefreshCw, Search, TrendingUp, UserPlus, Users, X } from "lucide-react";
+import { ArrowRight, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Download, Filter, Loader2, RefreshCw, Search, TrendingUp, Users } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { apiFetch, apiUrl, refreshSession } from "../lib/api";
 import LoadingBar from "../components/LoadingBar";
 import DismissiblePlanPromotion from "../components/DismissiblePlanPromotion";
 import { useUserPlan } from "../lib/useUserPlan";
+import { getNextOnboardingStep } from "../lib/onboardingSteps";
 import { buildScanLogQuery, scanStatusLabel } from "../lib/dashboardScans.mjs";
-
-const ONBOARDING_STORAGE_KEY = "qrAccessDashboardOnboardingV2Dismissed";
 
 const initialScanFilters = {
     eventId: "",
@@ -23,44 +22,6 @@ const initialScanFilters = {
     search: "",
     sortOrder: "desc"
 };
-
-const onboardingSteps = [
-    {
-        title: "Préparer les zones",
-        description: "Définissez les entrées, salles ou espaces autorisés.",
-        href: "/dashboard/areas",
-        action: "Gérer les zones",
-        icon: MapPinned
-    },
-    {
-        title: "Créer un modèle",
-        description: "Préparez votre carte en brouillon, vérifiez son aperçu puis publiez-la.",
-        href: "/dashboard/card-templates",
-        action: "Gérer les modèles",
-        icon: Palette
-    },
-    {
-        title: "Créer un événement",
-        description: "Ajoutez le nom, la date et les accès à contrôler.",
-        href: "/dashboard/events/new",
-        action: "Nouvel événement",
-        icon: CalendarPlus
-    },
-    {
-        title: "Générer des QR codes",
-        description: "Créez les accès pour vos invités ou participants.",
-        href: "/dashboard/events",
-        action: "Voir les événements",
-        icon: QrCode
-    },
-    {
-        title: "Inviter des agents",
-        description: "Donnez accès aux personnes qui scanneront sur place.",
-        href: "/dashboard/agents",
-        action: "Ajouter un agent",
-        icon: UserPlus
-    }
-];
 
 export default function Dashboard() {
     const [stats, setStats] = useState({
@@ -78,7 +39,6 @@ export default function Dashboard() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [toast, setToast] = useState({ show: false, message: "" });
-    const [showOnboarding, setShowOnboarding] = useState(false);
     const [exportingFormat, setExportingFormat] = useState("");
     const [scanHistory, setScanHistory] = useState({
         scans: [],
@@ -94,6 +54,7 @@ export default function Dashboard() {
     const { userProfile, hasCapability, planName } = useUserPlan();
     const isAgent = userProfile?.role === "ORG_AGENT";
     const canExportScans = hasCapability("scan_exports");
+    const nextOnboardingStep = stats.onboarding ? getNextOnboardingStep(stats.onboarding) : null;
 
 
     const handleExport = async (format) => {
@@ -157,8 +118,6 @@ export default function Dashboard() {
     };
 
     useEffect(() => {
-        setShowOnboarding(localStorage.getItem(ONBOARDING_STORAGE_KEY) !== "true");
-
         const fetchDashboardData = async () => {
             try {
                 // Fetch User Profile to get Name
@@ -195,11 +154,6 @@ export default function Dashboard() {
 
         fetchDashboardData();
     }, []);
-
-    const dismissOnboarding = () => {
-        localStorage.setItem(ONBOARDING_STORAGE_KEY, "true");
-        setShowOnboarding(false);
-    };
 
     if (loading) {
         return (
@@ -268,67 +222,10 @@ export default function Dashboard() {
             {/* **************************************** */}
             {stats.onboarding && !stats.onboarding.complete && (
                 <section className="flex flex-col gap-4 rounded-2xl border border-blue-200 bg-blue-50 p-5 dark:border-blue-900/50 dark:bg-blue-950/20 sm:flex-row sm:items-center">
-                    <div className="min-w-0 flex-1"><p className="text-sm font-black text-blue-950 dark:text-blue-100">Configuration de votre organisation · {stats.onboarding.percentage}%</p><div className="mt-2 h-2 overflow-hidden rounded-full bg-blue-100 dark:bg-blue-950"><div className="h-full rounded-full bg-blue-600" style={{ width: `${stats.onboarding.percentage}%` }} /></div><p className="mt-2 text-xs text-blue-700 dark:text-blue-300">{stats.onboarding.completed} étape{stats.onboarding.completed > 1 ? "s" : ""} sur {stats.onboarding.total} terminée{stats.onboarding.completed > 1 ? "s" : ""}.</p></div>
-                    <Link href="/dashboard/getting-started" className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-700">Continuer la configuration</Link>
-                </section>
-            )}
-
-            {false && showOnboarding && (
-                <section className="relative overflow-hidden rounded-2xl border border-blue-100 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
-                    <button
-                        type="button"
-                        onClick={dismissOnboarding}
-                        aria-label="Masquer le guide de démarrage"
-                        className="absolute right-4 top-4 rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-900 dark:hover:text-slate-200"
-                    >
-                        <X className="h-5 w-5" />
-                    </button>
-
-                    <div className="max-w-3xl pr-10">
-                        <div className="mb-3 flex items-center gap-2 text-sm font-bold text-blue-700 dark:text-blue-300">
-                            <CheckCircle2 className="h-5 w-5" />
-                            Guide de démarrage
-                        </div>
-                        <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Bienvenue sur accessQ</h3>
-                        <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
-                            Voici les premières actions utiles pour configurer votre organisation et commencer les contrôles.
-                        </p>
-                    </div>
-
-                    <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-                        {onboardingSteps.map((step) => {
-                            const Icon = step.icon;
-                            return (
-                                <div key={step.title} className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900">
-                                    <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
-                                        <Icon className="h-5 w-5" />
-                                    </div>
-                                    <h4 className="font-bold text-slate-900 dark:text-white">{step.title}</h4>
-                                    <p className="mt-2 min-h-12 text-sm leading-5 text-slate-500 dark:text-slate-400">{step.description}</p>
-                                    <Link
-                                        href={step.href}
-                                        className="mt-4 inline-flex items-center text-sm font-bold text-blue-700 transition-colors hover:text-blue-600 hover:underline dark:text-blue-300 dark:hover:text-blue-200"
-                                    >
-                                        {step.action}
-                                    </Link>
-                                </div>
-                            );
-                        })}
-                    </div>
-
-                    <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-5 dark:border-amber-900/60 dark:bg-amber-950/20">
-                        <div className="flex items-start gap-3">
-                            <Pencil className="mt-0.5 h-5 w-5 flex-none text-amber-700 dark:text-amber-300" />
-                            <div>
-                                <h4 className="font-bold text-amber-950 dark:text-amber-100">Comment modifier un modèle ?</h4>
-                                <div className="mt-3 grid gap-3 text-sm text-amber-900 dark:text-amber-200 md:grid-cols-3">
-                                    <p><strong>1. Création :</strong> créez et personnalisez librement votre modèle.</p>
-                                    <p><strong>2. Publication :</strong> rendez-le disponible lors de la génération des QR.</p>
-                                    <p><strong>3. Évolution :</strong> ouvrez le modèle et modifiez-le directement, sans duplication obligatoire.</p>
-                                </div>
-                                <p className="mt-3 text-xs leading-5 text-amber-800 dark:text-amber-300">Les cartes déjà générées conservent leur apparence ; seuls les prochains supports utilisent les changements enregistrés.</p>
-                            </div>
-                        </div>
+                    <div className="min-w-0 flex-1"><p className="text-sm font-black text-blue-950 dark:text-blue-100">Configuration de votre organisation · {stats.onboarding.percentage}%</p><div className="mt-2 h-2 overflow-hidden rounded-full bg-blue-100 dark:bg-blue-950"><div className="h-full rounded-full bg-blue-600" style={{ width: `${stats.onboarding.percentage}%` }} /></div><p className="mt-2 text-xs text-blue-700 dark:text-blue-300">{stats.onboarding.completed} étape{stats.onboarding.completed > 1 ? "s" : ""} sur {stats.onboarding.total} terminée{stats.onboarding.completed > 1 ? "s" : ""}{nextOnboardingStep ? <> · Prochaine étape : <strong className="font-bold">{nextOnboardingStep.title}</strong></> : null}.</p></div>
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                        <Link href="/dashboard/getting-started" className="inline-flex items-center justify-center rounded-xl border border-blue-200 bg-white px-4 py-2.5 text-sm font-bold text-blue-700 hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-200 dark:hover:bg-blue-900/40">Voir le guide</Link>
+                        {nextOnboardingStep && <Link href={nextOnboardingStep.href} className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-700">{nextOnboardingStep.action}<ArrowRight className="h-4 w-4" /></Link>}
                     </div>
                 </section>
             )}
