@@ -11,6 +11,19 @@ import {
   Landmark,
   ScanLine,
 } from "lucide-react";
+import { SITE_DESCRIPTION, baseOpenGraph } from "./lib/seo";
+
+// La vidéo est hébergée hors du dépôt (les .mp4 sont ignorés par git) ; en local, le fichier de public/ sert de repli.
+const DEMO_VIDEO_URL = process.env.NEXT_PUBLIC_DEMO_VIDEO_URL || "/accessq-demo.mp4";
+
+const HOME_TITLE = "Contrôle d’accès par QR code pour vous faciliter la tâche | AccessQ";
+
+export const metadata = {
+  title: { absolute: HOME_TITLE },
+  description: SITE_DESCRIPTION,
+  alternates: { canonical: "/" },
+  openGraph: { ...baseOpenGraph, title: HOME_TITLE, description: SITE_DESCRIPTION, url: "/" },
+};
 
 const useCases = [
   {
@@ -313,6 +326,34 @@ export default function Home() {
         </div>
 
       </main>
+
+      <section id="demo" className="relative w-full border-t border-slate-200 bg-white py-20 dark:border-slate-700 dark:bg-slate-900">
+        <div className="container mx-auto max-w-6xl px-6">
+          <div className="mx-auto max-w-3xl text-center">
+            <p className="mb-4 text-xs font-black uppercase tracking-[0.2em] text-blue-700 dark:text-blue-300">Démo</p>
+            <h2 className="text-3xl font-black tracking-tight text-slate-950 dark:text-white md:text-5xl">
+              AccessQ en 30 secondes
+            </h2>
+            <p className="mt-5 text-lg leading-8 text-slate-600 dark:text-slate-300">
+              Créez l’événement, générez un pass nominatif avec photo, puis scannez-le à l’entrée avec un simple smartphone.
+            </p>
+          </div>
+          <figure className="mt-12 overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 shadow-2xl shadow-slate-900/15 dark:border-slate-700 dark:bg-slate-800 sm:rounded-3xl">
+            <video
+              className="block aspect-video w-full"
+              src={DEMO_VIDEO_URL}
+              poster="/accessq-demo-poster.webp"
+              autoPlay
+              muted
+              loop
+              playsInline
+              controls
+              preload="metadata"
+              aria-label="Démonstration d’AccessQ : création d’un événement, génération d’un QR code avec photo et scan à l’entrée"
+            />
+          </figure>
+        </div>
+      </section>
 
       <section id="use-cases" className="relative w-full overflow-hidden border-t border-slate-200 bg-gradient-to-b from-white via-slate-50/80 to-white py-24 dark:border-slate-700 dark:from-slate-900 dark:via-slate-950/70 dark:to-slate-900">
         <div aria-hidden="true" className="absolute -right-40 top-20 h-96 w-96 rounded-full bg-blue-200/20 blur-3xl dark:bg-blue-800/10" />

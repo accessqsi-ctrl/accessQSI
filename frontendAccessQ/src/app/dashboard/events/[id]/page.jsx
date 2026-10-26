@@ -20,6 +20,7 @@ import HolderPhotoModal from "./_components/HolderPhotoModal";
 import { preparePhotoForUpload, uploadHolderPhoto } from "../../../lib/holderPhoto";
 import { getCardDownloadUrl } from "./_components/cardDownload";
 import { browserTimeZone, normalizePhone, selectTemplateForExistingQr, validateQrContact } from "../../../lib/eventQr.mjs";
+import { fromDateTimeLocal, toDateTimeLocal } from "../../../lib/dateTimeLocal.mjs";
 
 
 
@@ -174,8 +175,8 @@ export default function EventDetailPage() {
                     title: evt.title,
                     description: evt.description || "",
                     areaIds: schedules.map(s => s.id_area),
-                    startDate: firstSchedule ? new Date(firstSchedule.start_date).toISOString().slice(0, 16) : "",
-                    endDate: firstSchedule ? new Date(firstSchedule.end_date).toISOString().slice(0, 16) : ""
+                    startDate: firstSchedule ? toDateTimeLocal(firstSchedule.start_date) : "",
+                    endDate: firstSchedule ? toDateTimeLocal(firstSchedule.end_date) : ""
                 });
             } else {
                 setError("Événement introuvable.");
@@ -252,8 +253,8 @@ export default function EventDetailPage() {
             const schedules = event.EventSchedules;
             setQrForm(prev => ({
                 ...prev,
-                validFrom: new Date(schedules[0].start_date).toISOString().slice(0, 16),
-                validUntil: new Date(schedules[schedules.length - 1].end_date).toISOString().slice(0, 16)
+                validFrom: toDateTimeLocal(schedules[0].start_date),
+                validUntil: toDateTimeLocal(schedules[schedules.length - 1].end_date)
             }));
         }
     };
@@ -283,7 +284,7 @@ export default function EventDetailPage() {
             const res = await apiFetch(`/events/${eventId}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(editForm)
+                body: JSON.stringify({ ...editForm, startDate: fromDateTimeLocal(editForm.startDate), endDate: fromDateTimeLocal(editForm.endDate) })
             });
             const data = await res.json();
             if (data.success) {
@@ -367,6 +368,8 @@ export default function EventDetailPage() {
             email: qrForm.email.trim().toLowerCase(),
             phone: normalizePhone(qrForm.phone),
             cardTemplateId: selectedCardTemplateId,
+            validFrom: fromDateTimeLocal(qrForm.validFrom),
+            validUntil: fromDateTimeLocal(qrForm.validUntil),
             periodTimezone: browserTimeZone()
         };
         try {

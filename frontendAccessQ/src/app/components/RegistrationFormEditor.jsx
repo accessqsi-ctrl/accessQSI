@@ -4,7 +4,10 @@ import { useEffect, useState } from "react";
 import { Loader2, Plus, Trash2 } from "lucide-react";
 import { apiFetch } from "../lib/api";
 import { useUserPlan } from "../lib/useUserPlan";
+import { fromDateTimeLocal } from "../lib/dateTimeLocal.mjs";
 
+// Les champs datetime-local sont en heure locale : l'API reçoit des instants UTC.
+const toApiDates = form => ({ ...form, opensAt: fromDateTimeLocal(form.opensAt), closesAt: fromDateTimeLocal(form.closesAt), offers: form.offers.map(offer => ({ ...offer, validFrom: fromDateTimeLocal(offer.validFrom), validUntil: fromDateTimeLocal(offer.validUntil) })) });
 const emptyOffer = () => ({ name: "", description: "", capacity: "", accessType: "single", usageLimit: 1, level: 1, validFrom: "", validUntil: "", cardTemplateId: "event-ticket", cardMessage: "" });
 const templates = [
   ["event-ticket", "Billet événement"], ["access-pass", "Pass d’accès"], ["vip-pass", "Pass VIP"], ["staff-badge-horizontal", "Badge horizontal"]
@@ -32,7 +35,7 @@ export default function RegistrationFormEditor({ initial, onSaved }) {
   const submit = async event => {
     event.preventDefault(); setSaving(true); setError("");
     try {
-      const response = await apiFetch(initial?.id ? `/registration-forms/${initial.id}` : "/registration-forms", { method: initial?.id ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(value) });
+      const response = await apiFetch(initial?.id ? `/registration-forms/${initial.id}` : "/registration-forms", { method: initial?.id ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(toApiDates(value)) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || "Enregistrement impossible.");
       onSaved(data.form);

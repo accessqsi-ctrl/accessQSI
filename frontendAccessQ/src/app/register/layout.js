@@ -1,5 +1,5 @@
 export const metadata = {
-  title: "Inscription — AccessQ",
+  title: "Inscription",
   referrer: "no-referrer",
   robots: { index: false, follow: false }
 };
