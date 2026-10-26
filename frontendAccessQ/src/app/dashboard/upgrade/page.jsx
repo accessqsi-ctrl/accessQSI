@@ -18,14 +18,14 @@ import { useUserPlan } from "../../lib/useUserPlan";
 const PAYMENTS_ENABLED = process.env.NEXT_PUBLIC_PRO_PAYMENTS_ENABLED === "true";
 const PURCHASABLE = ["ESSENTIAL", "PRO", "EVENT_PASS"];
 const statusPresentation = {
-    PENDING: { label: "En attente", className: "bg-amber-50 text-amber-700", icon: Clock3 },
-    PROCESSING: { label: "En traitement", className: "bg-blue-50 text-blue-700", icon: LoaderCircle },
-    COMPLETED: { label: "Payé", className: "bg-emerald-50 text-emerald-700", icon: CheckCircle2 },
-    FAILED: { label: "Échoué", className: "bg-red-50 text-red-700", icon: XCircle },
+    PENDING: { label: "En attente", className: "bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300", icon: Clock3 },
+    PROCESSING: { label: "En traitement", className: "bg-blue-50 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300", icon: LoaderCircle },
+    COMPLETED: { label: "Payé", className: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300", icon: CheckCircle2 },
+    FAILED: { label: "Échoué", className: "bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-300", icon: XCircle },
     EXPIRED: { label: "Expiré", className: "bg-slate-100 text-slate-700", icon: XCircle },
-    REFUND_PENDING: { label: "Remboursement", className: "bg-purple-50 text-purple-700", icon: LoaderCircle },
+    REFUND_PENDING: { label: "Remboursement", className: "bg-purple-50 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300", icon: LoaderCircle },
     REFUNDED: { label: "Remboursé", className: "bg-slate-100 text-slate-700", icon: CheckCircle2 },
-    REVIEW_REQUIRED: { label: "À vérifier", className: "bg-orange-50 text-orange-700", icon: ShieldCheck }
+    REVIEW_REQUIRED: { label: "À vérifier", className: "bg-orange-50 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300", icon: ShieldCheck }
 };
 
 const formatMoney = (amount, currency = "USD") => new Intl.NumberFormat("fr-CD", {
@@ -324,10 +324,10 @@ export default function UpgradePage() {
                 </div>
             </section>
 
-            {notice && <div role="status" className={`rounded-2xl border px-4 py-3 text-sm ${notice.type === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : notice.type === "error" ? "border-red-200 bg-red-50 text-red-800" : "border-blue-200 bg-blue-50 text-blue-800"}`}>{notice.text}</div>}
+            {notice && <div role="status" className={`rounded-2xl border px-4 py-3 text-sm ${notice.type === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:bg-emerald-500/15 dark:border-emerald-500/30 dark:text-emerald-300" : notice.type === "error" ? "border-red-200 bg-red-50 text-red-800 dark:bg-red-500/15 dark:border-red-500/30 dark:text-red-300" : "border-blue-200 bg-blue-50 text-blue-800 dark:bg-blue-500/15 dark:border-blue-500/30 dark:text-blue-300"}`}>{notice.text}</div>}
 
             {billing.subscription?.pendingChange ? (
-                <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-950">
+                <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-950 dark:bg-amber-500/15 dark:border-amber-500/30">
                     <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
                       <div>
                         <p className="font-bold">{billing.subscription.pendingChange.type === "CANCEL" ? "Non-renouvellement programmé" : `Changement programmé : ${billing.subscription.pendingChange.toPlan || "Découverte"}`}</p>
@@ -350,7 +350,7 @@ export default function UpgradePage() {
             ) : billing.subscription?.isPaid && billing.subscription?.expiresAt ? (
                 <section className="flex flex-col justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950 md:flex-row md:items-center">
                     <div><p className="font-bold">Gestion de l’abonnement</p><p className="mt-1 text-sm text-slate-500">Une annulation conserve tous les avantages jusqu’à l’échéance.</p></div>
-                    <button type="button" onClick={() => updateSubscription("cancel")} disabled={changingSubscription} className="rounded-xl border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 disabled:opacity-50">Ne pas renouveler</button>
+                    <button type="button" onClick={() => updateSubscription("cancel")} disabled={changingSubscription} className="rounded-xl border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 dark:border-red-500/40 dark:text-red-300 disabled:opacity-50">Ne pas renouveler</button>
                 </section>
             ) : null}
 
@@ -365,7 +365,7 @@ export default function UpgradePage() {
                     return (
                         <article key={item.key} className={`flex flex-col rounded-3xl border bg-white p-5 shadow-sm dark:bg-slate-950 ${selected ? "border-blue-500 ring-2 ring-blue-500/15" : "border-slate-200 dark:border-slate-800"}`}>
                             <div className="flex items-start justify-between gap-3">
-                                <div><h2 className="text-xl font-black text-slate-900 dark:text-white">{item.name}</h2>{current && !isPass && <span className="mt-1 inline-block rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">Actuel</span>}</div>
+                                <div><h2 className="text-xl font-black text-slate-900 dark:text-white">{item.name}</h2>{current && !isPass && <span className="mt-1 inline-block rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">Actuel</span>}</div>
                                 {isPass && <TicketCheck className="h-6 w-6 text-emerald-600" />}
                             </div>
                             <p className="mt-4 text-3xl font-black text-slate-950 dark:text-white">{item.key === "ENTERPRISE" ? "Sur devis" : formatMoney(displayPrice, item.currency)}</p>
@@ -408,10 +408,10 @@ export default function UpgradePage() {
 
                     <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
                         <div className="flex justify-between"><div><h2 className="font-bold text-slate-900 dark:text-white">Historique des paiements</h2><p className="text-sm text-slate-500">20 dernières tentatives.</p></div><button type="button" onClick={() => loadBilling()} className="rounded-xl border p-2"><RefreshCw className="h-4 w-4" /></button></div>
-                        <div className="mt-5 space-y-3">{billing.payments.length === 0 ? <p className="rounded-xl border border-dashed p-8 text-center text-sm text-slate-500">Aucun paiement.</p> : billing.payments.map((payment) => { const presentation = statusPresentation[payment.status] || statusPresentation.PENDING; const StatusIcon = presentation.icon; const pending = ["PENDING", "PROCESSING"].includes(payment.status); return <div key={payment.depositId} className="rounded-2xl border border-slate-100 p-4 dark:border-slate-800"><div className="flex justify-between gap-3"><div><p className="font-bold">{payment.reason || payment.plan} · {formatMoney(payment.amount, payment.currency)}</p><p className="mt-1 text-xs text-slate-500">{payment.billingInterval} · {formatDate(payment.createdAt)}</p></div><div className="flex items-center gap-2"><span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${presentation.className}`}><StatusIcon className={`h-3.5 w-3.5 ${payment.status === "PROCESSING" ? "animate-spin" : ""}`} />{presentation.label}</span>{pending && <button type="button" onClick={() => refreshPayment(payment.depositId)} disabled={refreshingId === payment.depositId} className="rounded-lg border p-1.5"><RefreshCw className={`h-3.5 w-3.5 ${refreshingId === payment.depositId ? "animate-spin" : ""}`} /></button>}</div></div>{payment.failureMessage && <p className="mt-3 rounded-lg bg-red-50 p-2 text-xs text-red-700">{payment.failureMessage}</p>}</div>; })}</div>
+                        <div className="mt-5 space-y-3">{billing.payments.length === 0 ? <p className="rounded-xl border border-dashed p-8 text-center text-sm text-slate-500">Aucun paiement.</p> : billing.payments.map((payment) => { const presentation = statusPresentation[payment.status] || statusPresentation.PENDING; const StatusIcon = presentation.icon; const pending = ["PENDING", "PROCESSING"].includes(payment.status); return <div key={payment.depositId} className="rounded-2xl border border-slate-100 p-4 dark:border-slate-800"><div className="flex justify-between gap-3"><div><p className="font-bold">{payment.reason || payment.plan} · {formatMoney(payment.amount, payment.currency)}</p><p className="mt-1 text-xs text-slate-500">{payment.billingInterval} · {formatDate(payment.createdAt)}</p></div><div className="flex items-center gap-2"><span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${presentation.className}`}><StatusIcon className={`h-3.5 w-3.5 ${payment.status === "PROCESSING" ? "animate-spin" : ""}`} />{presentation.label}</span>{pending && <button type="button" onClick={() => refreshPayment(payment.depositId)} disabled={refreshingId === payment.depositId} className="rounded-lg border p-1.5"><RefreshCw className={`h-3.5 w-3.5 ${refreshingId === payment.depositId ? "animate-spin" : ""}`} /></button>}</div></div>{payment.failureMessage && <p className="mt-3 rounded-lg bg-red-50 p-2 text-xs text-red-700 dark:bg-red-500/15 dark:text-red-300">{payment.failureMessage}</p>}</div>; })}</div>
                     </div>
                 </section>
-            ) : <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">Les tarifs sont configurés. Activez <code>NEXT_PUBLIC_PRO_PAYMENTS_ENABLED=true</code> et la configuration pawaPay pour permettre les achats.</div>}
+            ) : <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:bg-amber-500/15 dark:border-amber-500/30 dark:text-amber-300">Les tarifs sont configurés. Activez <code>NEXT_PUBLIC_PRO_PAYMENTS_ENABLED=true</code> et la configuration pawaPay pour permettre les achats.</div>}
         </div>
     );
 }

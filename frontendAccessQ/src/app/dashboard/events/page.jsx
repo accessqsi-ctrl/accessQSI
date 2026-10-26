@@ -171,7 +171,7 @@ export default function EventsPage() {
                                     <tr key={event.id} className="table-row-hover group">
                                         <td className="px-6 py-4 font-medium text-slate-900 dark:text-white">
                                             <Link href={`/dashboard/events/${event.id}`} className="flex items-center gap-3 hover:text-[#4f6376] dark:hover:text-[#d7e0e8] transition-colors">
-                                                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
+                                                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0 dark:bg-blue-500/15 dark:text-blue-300">
                                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                                                 </div>
                                                 {event.name}
@@ -181,8 +181,8 @@ export default function EventsPage() {
                                         <td className="px-6 py-4 text-slate-600 dark:text-slate-300">{event.location}</td>
                                         <td className="px-6 py-4 font-medium text-slate-900 dark:text-white">{event.qrs}</td>
                                         <td className="px-6 py-4">
-                                            <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${event.status === 'Active' ? 'bg-emerald-100 text-emerald-700' :
-                                                event.status === 'Upcoming' ? 'bg-blue-100 text-blue-700' :
+                                            <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${event.status === 'Active' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300' :
+                                                event.status === 'Upcoming' ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300' :
                                                     'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
                                                 }`}>
                                                 {statusLabel[event.status] || event.status}

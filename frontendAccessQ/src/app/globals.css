@@ -39,6 +39,9 @@
     /* slate-950 */
     --foreground: #f8fafc;
     /* slate-50 */
+    /* Les cartes (bg-slate-950) passent un ton au-dessus du fond de page (#020617)
+       pour retrouver une hiérarchie de profondeur ; les champs restent en slate-900. */
+    --color-slate-950: #0b1120;
     color-scheme: dark;
   }
 }
@@ -270,7 +273,7 @@ body {
   .aq-panel,
   .aq-toolbar {
     border-color: #1e293b;
-    background: rgb(2 6 23 / 0.94);
+    background: var(--color-slate-950);
   }
 
   .aq-sidebar {

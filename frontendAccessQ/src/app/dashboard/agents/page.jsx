@@ -234,7 +234,7 @@ export default function AgentsPage() {
             {/* **************************************** */}
             <div className="aq-panel flex flex-col items-center gap-8 p-6 md:flex-row">
                 <div className="flex-1 flex items-center gap-4 w-full">
-                    <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                    <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center dark:bg-blue-500/15 dark:text-blue-300">
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
                     </div>
                     <div>
@@ -254,8 +254,8 @@ export default function AgentsPage() {
                 </div>
             </div>
 
-            {error && <div className="p-4 bg-red-50 text-red-600 rounded-xl">{error}</div>}
-            {actionMessage && <div className="p-4 bg-red-50 text-red-600 rounded-xl">{actionMessage}</div>}
+            {error && <div className="p-4 bg-red-50 text-red-600 rounded-xl dark:bg-red-500/15 dark:text-red-300">{error}</div>}
+            {actionMessage && <div className="p-4 bg-red-50 text-red-600 rounded-xl dark:bg-red-500/15 dark:text-red-300">{actionMessage}</div>}
 
             {/* **************************************** */}
             {/* Recherche et filtres */}
@@ -316,7 +316,7 @@ export default function AgentsPage() {
                                 filteredAgents.map((agent) => {
                                     const isAdmin = agent.role === 'Admin';
                                     const isOperator = agent.role === 'Opérateur';
-                                    const spanClass = isAdmin ? "px-2.5 py-1 rounded-lg text-xs font-semibold border bg-purple-50 text-purple-700 border-purple-200" : isOperator ? "px-2.5 py-1 rounded-lg text-xs font-semibold border bg-amber-50 text-amber-700 border-amber-200" : "px-2.5 py-1 rounded-lg text-xs font-semibold border bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-800";
+                                    const spanClass = isAdmin ? "px-2.5 py-1 rounded-lg text-xs font-semibold border bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-500/15 dark:text-purple-300 dark:border-purple-500/30" : isOperator ? "px-2.5 py-1 rounded-lg text-xs font-semibold border bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/30" : "px-2.5 py-1 rounded-lg text-xs font-semibold border bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-800";
                                     
                                     const isActive = agent.status === 'Actif';
                                     const statusDotClass = isActive ? "w-2 h-2 rounded-full bg-emerald-500" : "w-2 h-2 rounded-full bg-slate-300";
@@ -403,7 +403,7 @@ export default function AgentsPage() {
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                         </button>
 
-                        <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mb-6">
+                        <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mb-6 dark:bg-blue-500/15 dark:text-blue-300">
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>
                         </div>
 
@@ -414,8 +414,8 @@ export default function AgentsPage() {
                             {adding && (
                                 <LoadingBar label="Création du compte agent" />
                             )}
-                            {addError && <div className="p-3 bg-red-50 text-red-600 rounded-lg text-sm">{addError}</div>}
-                            {addSuccess && <div className="p-3 bg-emerald-50 text-emerald-600 rounded-lg text-sm">{addSuccess}</div>}
+                            {addError && <div className="p-3 bg-red-50 text-red-600 rounded-lg text-sm dark:bg-red-500/15 dark:text-red-300">{addError}</div>}
+                            {addSuccess && <div className="p-3 bg-emerald-50 text-emerald-600 rounded-lg text-sm dark:bg-emerald-500/15 dark:text-emerald-300">{addSuccess}</div>}
 
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Nom complet *</label>
@@ -519,7 +519,7 @@ export default function AgentsPage() {
                         {togglingId === confirmAgent.id && (
                             <LoadingBar label={confirmAction.type === "delete" ? "Suppression de l'agent" : "Mise à jour de l'accès"} className="mb-5" />
                         )}
-                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-4 ${confirmAction.type === "delete" || confirmAgentIsActive ? "bg-red-50 text-red-600" : "bg-emerald-50 text-emerald-600"}`}>
+                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-4 ${confirmAction.type === "delete" || confirmAgentIsActive ? "bg-red-50 text-red-600 dark:bg-red-500/15 dark:text-red-300" : "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300"}`}>
                             {confirmAction.type === "delete" || confirmAgentIsActive ? (
                                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>
                             ) : (

@@ -249,7 +249,7 @@ export default function SettingsPage() {
                     {/* **************************************** */}
                     {!isOperator && <section ref={profileSectionRef} className="scroll-mt-24 bg-white dark:bg-slate-950 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
                         <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center gap-4">
-                            <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                            <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center dark:bg-blue-500/15 dark:text-blue-300">
                                 <User className="w-5 h-5" />
                             </div>
                             <h2 className="font-bold text-slate-900 dark:text-white">Informations Personnelles</h2>
@@ -261,7 +261,7 @@ export default function SettingsPage() {
                                 )}
                                 {profileStatus.message && (
                                     <div className={`p-4 rounded-xl flex items-center gap-3 text-sm ${
-                                        profileStatus.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
+                                        profileStatus.type === 'success' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300' : 'bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-300'
                                     }`}>
                                         {profileStatus.type === 'success' ? <CheckCircle className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
                                         {profileStatus.message}
@@ -325,7 +325,7 @@ export default function SettingsPage() {
                                 )}
                                 {pwdStatus.message && (
                                     <div className={`p-4 rounded-xl flex items-center gap-3 text-sm ${
-                                        pwdStatus.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
+                                        pwdStatus.type === 'success' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300' : 'bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-300'
                                     }`}>
                                         {pwdStatus.type === 'success' ? <CheckCircle className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
                                         {pwdStatus.message}
@@ -379,7 +379,7 @@ export default function SettingsPage() {
                     {isAdmin && (
                         <section ref={orgSectionRef} className="scroll-mt-24 bg-white dark:bg-slate-950 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden border-l-4 border-l-blue-500">
                             <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center gap-4">
-                                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center dark:bg-blue-500/15 dark:text-blue-300">
                                     <Building className="w-5 h-5" />
                                 </div>
                                 <h2 className="font-bold text-slate-900 dark:text-white">Organisation</h2>
@@ -391,7 +391,7 @@ export default function SettingsPage() {
                                     )}
                                     {orgStatus.message && (
                                         <div className={`p-4 rounded-xl flex items-center gap-3 text-sm ${
-                                            orgStatus.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
+                                            orgStatus.type === 'success' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300' : 'bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-300'
                                         }`}>
                                             {orgStatus.type === 'success' ? <CheckCircle className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
                                             {orgStatus.message}
@@ -424,15 +424,15 @@ export default function SettingsPage() {
                     {/* Zone sensible : suppression de l'organisation */}
                     {/* **************************************** */}
                     {isAdmin && (
-                        <section className="bg-red-50 rounded-3xl border border-red-200 shadow-sm overflow-hidden">
+                        <section className="bg-red-50 rounded-3xl border border-red-200 shadow-sm overflow-hidden dark:bg-red-500/15 dark:border-red-500/30">
                             <div className="p-6 border-b border-red-200 flex items-center gap-4">
-                                <div className="w-10 h-10 rounded-xl bg-red-100 text-red-600 flex items-center justify-center">
+                                <div className="w-10 h-10 rounded-xl bg-red-100 text-red-600 flex items-center justify-center dark:bg-red-500/15 dark:text-red-300">
                                     <AlertCircle className="w-5 h-5" />
                                 </div>
-                                <h2 className="font-bold text-red-900">Suppression de l'organisation</h2>
+                                <h2 className="font-bold text-red-900 dark:text-red-200">Suppression de l'organisation</h2>
                             </div>
                             <div className="p-6 space-y-4">
-                                <p className="text-sm text-red-800">
+                                <p className="text-sm text-red-800 dark:text-red-300">
                                     La suppression de votre organisation est irréversible depuis l'interface. 
                                     Cela désactivera immédiatement tous les comptes liés, y compris le vôtre.
                                 </p>
@@ -484,7 +484,7 @@ export default function SettingsPage() {
                                 className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:bg-white dark:focus:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all text-sm"
                             />
                             {deleteStatus && (
-                                <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                                <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:bg-red-500/15 dark:border-red-500/30 dark:text-red-300">
                                     <AlertCircle className="h-4 w-4 shrink-0" />
                                     {deleteStatus}
                                 </div>
