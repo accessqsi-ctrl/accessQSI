@@ -1,6 +1,7 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import PwaRegistration from "./pwa-registration";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_URL, baseOpenGraph } from "./lib/seo";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -17,8 +18,17 @@ export const viewport = {
 };
 
 export const metadata = {
-  title: "AccessQ",
-  description: "Système de Gestion d'Accès par Code QR",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: SITE_NAME,
+    template: `%s | ${SITE_NAME}`,
+  },
+  description: SITE_DESCRIPTION,
+  applicationName: SITE_NAME,
+  openGraph: baseOpenGraph,
+  twitter: {
+    card: "summary_large_image",
+  },
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,

@@ -8,6 +8,7 @@ import { apiFetch } from "../../../lib/api";
 import LoadingBar from "../../../components/LoadingBar";
 import PlanQuotaStatus from "../../../components/PlanQuotaStatus";
 import { useUserPlan } from "../../../lib/useUserPlan";
+import { fromDateTimeLocal } from "../../../lib/dateTimeLocal.mjs";
 
 export default function NewEventPage() {
     const router = useRouter();
@@ -99,7 +100,7 @@ export default function NewEventPage() {
             const res = await apiFetch("/events", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(formData)
+                body: JSON.stringify({ ...formData, startDate: fromDateTimeLocal(formData.startDate), endDate: fromDateTimeLocal(formData.endDate) })
             });
 
             const data = await res.json();

@@ -347,7 +347,7 @@ export default function ScanPage() {
                         <button
                             onClick={startScanner}
                             disabled={!selectedEventId || !selectedAreaId || areas.length === 0}
-                            className="w-full max-w-xs py-4 bg-blue-600 hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 disabled:shadow-none text-white font-bold rounded-2xl shadow-lg shadow-blue-500/25 active:scale-95 transition-all text-lg"
+                            className="w-full max-w-xs py-4 bg-blue-600 hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 disabled:shadow-none text-white font-bold rounded-2xl shadow-lg active:scale-95 transition-all text-lg"
                         >
                             Démarrer la Caméra
                         </button>

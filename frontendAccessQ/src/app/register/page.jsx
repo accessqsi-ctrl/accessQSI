@@ -102,16 +102,13 @@ export default function Register() {
         <div className="min-h-screen w-full flex bg-white dark:bg-slate-950 text-slate-900 dark:text-white overflow-hidden relative">
             {/* Left Side - Branding / Logo (Hidden on small screens) */}
             <div className="hidden lg:flex lg:flex-1 relative bg-slate-50 dark:bg-slate-900 items-center justify-center flex-col overflow-hidden">
-                {/* Decorative Background Elements */}
-                <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-blue-300/40 blur-[120px] pointer-events-none" />
-                <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[60%] rounded-full bg-emerald-300/30 blur-[120px] pointer-events-none" />
 
                 {/* Logo and Tagline */}
                 <div className="relative z-10 flex flex-col items-center">
                     <img
                         src="/logo/access_logo.png"
                         alt="Logo AccessQ"
-                        className="w-64 h-auto drop-shadow-xl mb-8 transform transition-transform hover:scale-105 duration-500"
+                        className="w-64 h-auto mb-8 transform transition-transform hover:scale-105 duration-500"
                     />
                     <h2 className="text-3xl font-semibold bg-gradient-to-r from-blue-700 to-emerald-600 bg-clip-text text-transparent">
                         AccessQ
@@ -292,7 +289,7 @@ export default function Register() {
                         <button
                             type="submit"
                             disabled={loading}
-                            className={`w-full mt-6 py-3.5 px-4 bg-gradient-to-r ${loading ? 'from-slate-400 to-slate-500 cursor-not-allowed' : 'from-blue-600 to-emerald-500 hover:from-blue-700 hover:to-emerald-600'} text-white font-medium rounded-lg transition-all shadow-lg shadow-blue-500/20 active:scale-[0.98]`}
+                            className={`w-full mt-6 py-3.5 px-4 bg-gradient-to-r ${loading ? 'from-slate-400 to-slate-500 cursor-not-allowed' : 'from-blue-600 to-emerald-500 hover:from-blue-700 hover:to-emerald-600'} text-white font-medium rounded-lg transition-all shadow-lg active:scale-[0.98]`}
                         >
                             {loading ? "Création..." : (hasOrganization ? "Créer l'organisation" : "Créer le compte")}
                         </button>

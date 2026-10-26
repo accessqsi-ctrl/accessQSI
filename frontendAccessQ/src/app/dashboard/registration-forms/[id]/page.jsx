@@ -5,8 +5,9 @@ import { useParams } from "next/navigation";
 import { Copy, Loader2, Mail, Play, RefreshCw } from "lucide-react";
 import RegistrationFormEditor from "../../../components/RegistrationFormEditor";
 import { apiFetch } from "../../../lib/api";
+import { toDateTimeLocal } from "../../../lib/dateTimeLocal.mjs";
 
-const dateInput = value => value ? new Date(value).toISOString().slice(0, 16) : "";
+const dateInput = toDateTimeLocal;
 const editorValue = form => ({ ...form, eventId: form.event?.id, opensAt: dateInput(form.opensAt), closesAt: dateInput(form.closesAt), offers: form.offers.map(offer => ({ ...offer, capacity: offer.capacity ?? "", validFrom: dateInput(offer.validFrom), validUntil: dateInput(offer.validUntil), cardTemplateId: offer.cardTemplateId || "event-ticket", cardMessage: offer.cardMessage || "" })) });
 
 export default function RegistrationFormDetailPage() {
