@@ -68,6 +68,11 @@ export default function CardCanvasEditor({ initialScene, template, onChange, onP
         onChange(next);
     }, [onChange]);
 
+    // Une scène modifiée hors de l'éditeur (couleurs du modèle) entre dans l'historique comme une édition.
+    useEffect(() => {
+        if (initialScene && initialScene !== sceneRef.current) commit(initialScene);
+    }, [commit, initialScene]);
+
     // Valide une modification du côté affiché.
     const commitView = useCallback((nextView, previous = sceneRef.current) => {
         commit(withSide(sceneRef.current, side, nextView), previous);

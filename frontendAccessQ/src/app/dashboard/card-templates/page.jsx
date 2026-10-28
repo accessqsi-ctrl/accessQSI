@@ -1,11 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check, Copy, Images, ImagePlus, LayoutTemplate, Loader2, Pencil, Plus, Save, SlidersHorizontal, Star, Trash2, X } from "lucide-react";
 import { apiFetch, apiUrl } from "../../lib/api";
 import { useUserPlan } from "../../lib/useUserPlan";
 import { createDefaultCanvasScene } from "../../lib/cardTemplates";
-import { sampleValues } from "../../lib/cardScene.mjs";
+import { replaceSceneColor, sampleValues } from "../../lib/cardScene.mjs";
 import DismissiblePlanPromotion from "../../components/DismissiblePlanPromotion";
 import CardCanvasEditor from "../../components/card-editor/CardCanvasEditor";
 import CardSceneRenderer from "../../components/card-editor/CardSceneRenderer";
@@ -37,6 +37,7 @@ const fields = [
     ["level", "Niveau"], ["message", "Message"], ["qr", "Code QR"], ["brand", "Mention AccessQ"]
 ];
 const hasFreeLayout = (template) => Boolean(template?.canvasScene && typeof template.canvasScene === "object");
+const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
 const MODEL_WORKFLOW_ONBOARDING_KEY = "qrAccessModelWorkflowOnboardingDismissed";
 
 async function jsonRequest(path, options) {
@@ -111,6 +112,11 @@ export default function CardTemplatesPage() {
     const [confirmSimpleLayout, setConfirmSimpleLayout] = useState(false);
     // { mode: "pick" | "manage", kind, resolve } quand la bibliothèque d'images est ouverte.
     const [library, setLibrary] = useState(null);
+    // Dernières couleurs valides appliquées à la scène libre (la saisie au clavier passe par des codes incomplets).
+    const sceneColors = useRef({});
+    // Couleurs du modèle associées à chaque scène issue d'un changement de couleur : Ctrl+Z / Ctrl+Y
+    // ramènent alors les champs de couleur avec la scène restaurée.
+    const colorsByScene = useRef(new WeakMap());
     const { userProfile, hasCapability, planName, profileLoading } = useUserPlan();
     const canSetDefault = userProfile?.role === "ORG_ADMIN" || userProfile?.role === "SUPER_ADMIN";
     const customTemplatesLocked = !hasCapability("custom_card_templates");
@@ -156,11 +162,13 @@ export default function CardTemplatesPage() {
         }
         setEditingId(null);
         setForm(initialForm);
+        sceneColors.current = {};
         setShowEditor(true);
         setNotice(null);
     };
     const openEdit = (template) => {
         setEditingId(template.id);
+        sceneColors.current = {};
         setForm({
             ...initialForm,
             ...template,
@@ -175,6 +183,7 @@ export default function CardTemplatesPage() {
     // Passe en mise en page libre à partir du format de base, aux couleurs du modèle.
     const enableFreeLayout = () => {
         const scene = createDefaultCanvasScene(form.baseTemplateId, { accent: form.primaryColor, soft: form.secondaryColor });
+        sceneColors.current = { primaryColor: form.primaryColor, secondaryColor: form.secondaryColor };
         setForm(current => ({ ...current, canvasScene: scene }));
         setEditorKey(key => key + 1);
     };
@@ -183,7 +192,25 @@ export default function CardTemplatesPage() {
         setForm(current => ({ ...current, canvasScene: editingId ? false : null }));
         setConfirmSimpleLayout(false);
     };
-    const updateScene = useCallback((scene) => setForm(current => ({ ...current, canvasScene: scene })), []);
+    // En mise en page libre, une couleur du modèle est aussi remplacée dans les éléments de la scène.
+    const setColor = (key, value) => {
+        const next = { ...form, [key]: value };
+        if (HEX_COLOR.test(value)) {
+            const applied = { primaryColor: form.primaryColor, secondaryColor: form.secondaryColor, ...sceneColors.current };
+            sceneColors.current = { ...applied, [key]: value };
+            if (freeLayout) next.canvasScene = replaceSceneColor(form.canvasScene, applied[key], value);
+            if (next.canvasScene !== form.canvasScene) {
+                colorsByScene.current.set(form.canvasScene, applied);
+                colorsByScene.current.set(next.canvasScene, sceneColors.current);
+            }
+        }
+        setForm(next);
+    };
+    const updateScene = useCallback((scene) => {
+        const colors = colorsByScene.current.get(scene);
+        if (colors) sceneColors.current = colors;
+        setForm(current => ({ ...current, canvasScene: scene, ...colors }));
+    }, []);
     // Ouvre la bibliothèque en mode sélection ; la promesse renvoie l'image choisie ou null.
     const pickImage = useCallback((kind = "") => new Promise(resolve => setLibrary({ mode: "pick", kind, resolve })), []);
     const closeLibrary = (asset = null) => {
@@ -336,7 +363,7 @@ export default function CardTemplatesPage() {
                     {!freeLayout && <label className="block text-sm font-bold text-slate-700 dark:text-slate-200">Format de base<select value={form.baseTemplateId} onChange={e => changeBase(e.target.value)} className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-700 dark:bg-slate-900">{BASE_TEMPLATES.map(item => <option key={item.id} value={item.id}>{item.name} · {item.format}</option>)}</select></label>}
                     <label className="block text-sm font-bold text-slate-700 dark:text-slate-200">Titre<input value={form.title} maxLength={80} onChange={e => setForm({ ...form, title: e.target.value })} className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-700 dark:bg-slate-900" /></label>
                     {INVITATION_BASES.has(form.baseTemplateId) ? (
-                        <div className="grid grid-cols-2 gap-4">{[["primaryColor", "Couleur principale"], ["secondaryColor", "Couleur secondaire"]].map(([key, label]) => <label key={key} className="text-sm font-bold text-slate-700 dark:text-slate-200">{label}<span className="mt-2 flex rounded-xl border border-slate-200 bg-slate-50 p-2"><input type="color" value={form[key]} onChange={e => setForm({ ...form, [key]: e.target.value })} className="h-8 w-10 cursor-pointer border-0 bg-transparent" /><input value={form[key]} onChange={e => setForm({ ...form, [key]: e.target.value })} pattern="#[0-9a-fA-F]{6}" className="min-w-0 flex-1 bg-transparent px-2 font-mono text-xs outline-none" /></span></label>)}</div>
+                        <div className="grid grid-cols-2 gap-4">{[["primaryColor", "Couleur principale"], ["secondaryColor", "Couleur secondaire"]].map(([key, label]) => <label key={key} className="text-sm font-bold text-slate-700 dark:text-slate-200">{label}<span className="mt-2 flex rounded-xl border border-slate-200 bg-slate-50 p-2"><input type="color" value={form[key]} onChange={e => setColor(key, e.target.value)} className="h-8 w-10 cursor-pointer border-0 bg-transparent" /><input value={form[key]} onChange={e => setColor(key, e.target.value)} pattern="#[0-9a-fA-F]{6}" className="min-w-0 flex-1 bg-transparent px-2 font-mono text-xs outline-none" /></span></label>)}</div>
                     ) : (
                         <div className="space-y-4">
                             <fieldset>
@@ -353,7 +380,7 @@ export default function CardTemplatesPage() {
                                 </div>
                             </fieldset>
                             {form.primaryFillMode === "color" ? (
-                                <label className="block text-sm font-bold text-slate-700 dark:text-slate-200">Couleur principale<span className="mt-2 flex rounded-xl border border-slate-200 bg-slate-50 p-2"><input type="color" value={form.primaryColor} onChange={e => setForm({ ...form, primaryColor: e.target.value })} className="h-8 w-10 cursor-pointer border-0 bg-transparent" /><input value={form.primaryColor} onChange={e => setForm({ ...form, primaryColor: e.target.value })} pattern="#[0-9a-fA-F]{6}" className="min-w-0 flex-1 bg-transparent px-2 font-mono text-xs outline-none" /></span></label>
+                                <label className="block text-sm font-bold text-slate-700 dark:text-slate-200">Couleur principale<span className="mt-2 flex rounded-xl border border-slate-200 bg-slate-50 p-2"><input type="color" value={form.primaryColor} onChange={e => setColor("primaryColor", e.target.value)} className="h-8 w-10 cursor-pointer border-0 bg-transparent" /><input value={form.primaryColor} onChange={e => setColor("primaryColor", e.target.value)} pattern="#[0-9a-fA-F]{6}" className="min-w-0 flex-1 bg-transparent px-2 font-mono text-xs outline-none" /></span></label>
                             ) : (
                                 <div className="rounded-xl border border-dashed border-blue-200 bg-blue-50/60 p-4 dark:border-blue-900/60 dark:bg-blue-950/15">
                                     <p className="text-xs leading-5 text-slate-500 dark:text-slate-400">L’image sera recadrée et centrée dans les zones de couleur principale, sans déformation.</p>
@@ -366,7 +393,7 @@ export default function CardTemplatesPage() {
                                     {form.backgroundImageUrl && <div className="mt-3 flex items-center gap-3"><img src={apiUrl(form.backgroundImageUrl)} alt="Remplissage principal" className="h-20 w-28 rounded-lg object-cover ring-1 ring-slate-200 dark:ring-slate-700" /><button type="button" onClick={() => setForm(current => ({ ...current, backgroundImageUrl: "" }))} className="inline-flex items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50"><Trash2 className="h-3.5 w-3.5" />Retirer</button></div>}
                                 </div>
                             )}
-                            <label className="block text-sm font-bold text-slate-700 dark:text-slate-200">Couleur secondaire<span className="mt-2 flex rounded-xl border border-slate-200 bg-slate-50 p-2"><input type="color" value={form.secondaryColor} onChange={e => setForm({ ...form, secondaryColor: e.target.value })} className="h-8 w-10 cursor-pointer border-0 bg-transparent" /><input value={form.secondaryColor} onChange={e => setForm({ ...form, secondaryColor: e.target.value })} pattern="#[0-9a-fA-F]{6}" className="min-w-0 flex-1 bg-transparent px-2 font-mono text-xs outline-none" /></span></label>
+                            <label className="block text-sm font-bold text-slate-700 dark:text-slate-200">Couleur secondaire<span className="mt-2 flex rounded-xl border border-slate-200 bg-slate-50 p-2"><input type="color" value={form.secondaryColor} onChange={e => setColor("secondaryColor", e.target.value)} className="h-8 w-10 cursor-pointer border-0 bg-transparent" /><input value={form.secondaryColor} onChange={e => setColor("secondaryColor", e.target.value)} pattern="#[0-9a-fA-F]{6}" className="min-w-0 flex-1 bg-transparent px-2 font-mono text-xs outline-none" /></span></label>
                         </div>
                     )}
                     {!freeLayout && <label className="block text-sm font-bold text-slate-700 dark:text-slate-200">Position du QR<select value={form.qrPosition} onChange={e => setForm({ ...form, qrPosition: e.target.value })} className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-700 dark:bg-slate-900"><option value="right">À droite</option><option value="left">À gauche</option><option value="center">Au centre</option></select></label>}
@@ -377,7 +404,7 @@ export default function CardTemplatesPage() {
                         <CardCanvasEditor key={editorKey} initialScene={form.canvasScene} template={preview} onChange={updateScene} onPickImage={() => pickImage("")} />
                     </div>
                 ) : <div className="flex min-h-96 flex-col justify-center rounded-2xl bg-slate-100 p-6 dark:bg-slate-900"><span className="mb-5 text-center text-xs font-black uppercase tracking-widest text-slate-400">Aperçu</span><TemplatePreview template={preview} /></div>}
-                <div className="flex justify-end gap-3 border-t border-slate-200 pt-5 lg:col-span-2 dark:border-slate-800"><button type="button" onClick={closeEditor} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-600">Annuler</button><button disabled={busy === "save"} className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-black text-white disabled:opacity-60">{busy === "save" ? <Loader2 className="h-4 w-4 animate-spin" /> : editingId ? <Save className="h-4 w-4" /> : <Check className="h-4 w-4" />}{editingId ? "Enregistrer" : "Créer le modèle"}</button></div>
+                <div className={`flex justify-end gap-3 border-t border-slate-200 pt-5 dark:border-slate-800 ${freeLayout ? "" : "lg:col-span-2"}`}><button type="button" onClick={closeEditor} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-600">Annuler</button><button disabled={busy === "save"} className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-black text-white disabled:opacity-60">{busy === "save" ? <Loader2 className="h-4 w-4 animate-spin" /> : editingId ? <Save className="h-4 w-4" /> : <Check className="h-4 w-4" />}{editingId ? "Enregistrer" : "Créer le modèle"}</button></div>
                 </form></div></div>}
 
             {library && (

@@ -26,3 +26,5 @@ yarn-error.log*
 # Livrables binaires lourds (pitch, vidéos) : stockés hors du dépôt
 *.pptx
 *.mp4
+
+marketing/

@@ -24,9 +24,10 @@ const noopQrController = {
     downloadEventCardsPdf: (req, res) => res.send("pdf")
 };
 
-const loadQrApp = ({ user, qrVerifyService }) => {
+const loadQrApp = ({ user, qrVerifyService, planContext }) => {
     clearSrcModules();
     mockModule("src/middleware/authMiddleware", authAs(user));
+    if (planContext) mockModule("src/utils/planAccess", { getPlanContextForUser: async () => planContext });
     mockModule("src/controllers/api.qr.controller", noopQrController);
     const adaptedService = { ...qrVerifyService };
     if (!adaptedService.verifyAndRecordScan) {
@@ -65,6 +66,32 @@ const validQr = (overrides = {}) => ({
     deleted_at: null,
     event: { org_id: 42, deleted_at: null, organization: { deleted_at: null, is_active: true } },
     ...overrides
+});
+
+test("POST /qr/import is refused on Discovery with the Essential upgrade message", async () => {
+    const app = loadQrApp({
+        user: { user_id: 7, role: "ORG_ADMIN", org_id: 42 },
+        qrVerifyService: {},
+        planContext: { plan: "DISCOVERY", planName: "Découverte" }
+    });
+
+    const res = await request(app, "POST", "/qr/import/9", {});
+
+    assert.equal(res.status, 403);
+    assert.equal(res.body.code, "PLAN_CAPABILITY_REQUIRED");
+    assert.equal(res.body.message, "L’import CSV de QR est disponible à partir de l’offre Essential.");
+});
+
+test("POST /qr/import is allowed on Essential", async () => {
+    const app = loadQrApp({
+        user: { user_id: 7, role: "ORG_ADMIN", org_id: 42 },
+        qrVerifyService: {},
+        planContext: { plan: "ESSENTIAL", planName: "Essential" }
+    });
+
+    const res = await request(app, "POST", "/qr/import/9", {});
+
+    assert.equal(res.status, 201);
 });
 
 test("POST /qr/verify requires a token", async () => {
