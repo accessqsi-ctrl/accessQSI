@@ -21,7 +21,7 @@ export default function GettingStartedPage() {
     }, []);
 
     if (!progress && !error) return <div className="flex min-h-[55vh] items-center justify-center"><Loader2 className="h-9 w-9 animate-spin text-blue-600" /></div>;
-    if (error) return <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">{error}</div>;
+    if (error) return <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700 dark:bg-red-500/15 dark:border-red-500/30 dark:text-red-300">{error}</div>;
 
     const steps = getVisibleOnboardingSteps(progress);
     const nextStep = getNextOnboardingStep(progress);
@@ -79,7 +79,7 @@ export default function GettingStartedPage() {
             const panelId = `onboarding-step-${step.key}`;
             return <article key={step.key} className={`rounded-2xl border transition-colors ${done ? "border-emerald-200 bg-emerald-50/60 dark:border-emerald-900/50 dark:bg-emerald-950/15" : current ? "border-blue-300 bg-white shadow-sm dark:border-blue-800 dark:bg-slate-950" : "border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950"}`}>
                 <button type="button" onClick={() => toggleStep(step.key)} aria-expanded={expanded} aria-controls={panelId} className="flex w-full items-center gap-4 rounded-2xl p-5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 sm:px-6">
-                    <div className={`flex h-11 w-11 flex-none items-center justify-center rounded-xl ${done ? "bg-emerald-600 text-white" : current ? "bg-blue-600 text-white" : "bg-blue-50 text-blue-700 dark:bg-blue-950"}`}>{done ? <Check className="h-5 w-5" /> : <Icon className="h-5 w-5" />}</div>
+                    <div className={`flex h-11 w-11 flex-none items-center justify-center rounded-xl ${done ? "bg-emerald-600 text-white" : current ? "bg-blue-600 text-white" : "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300"}`}>{done ? <Check className="h-5 w-5" /> : <Icon className="h-5 w-5" />}</div>
                     <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
                             <p className="text-xs font-black uppercase tracking-wider text-slate-400">Étape {index + 1}</p>

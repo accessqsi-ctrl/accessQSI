@@ -107,6 +107,12 @@ test("previewing a canvas scene wraps long names and uses the selected font", as
     assert.ok((svg.match(/<tspan /g) || []).length >= 2);
 });
 
+test("previewing a template does not require its name yet", async () => {
+    const { service } = loadCustomTemplateService();
+    const svg = await service.previewPayload({ name: "", baseTemplateId: "event-ticket" });
+    assert.match(svg, /^<svg|<svg /);
+});
+
 // L'éditeur (frontend) embarque une copie de l'algorithme : elle doit rester identique.
 const frontendLayoutPath = require("path").resolve(__dirname, "../../frontendAccessQ/src/app/lib/cardTextLayout.mjs");
 test("frontend text layout stays identical to the server implementation", { skip: !require("fs").existsSync(frontendLayoutPath) }, () => {

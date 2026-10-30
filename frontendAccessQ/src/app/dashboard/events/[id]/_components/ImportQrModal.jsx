@@ -16,15 +16,15 @@ export default function ImportQrModal({ handleDownloadTemplate, handleImportCSV,
                         <LoadingBar label="Import CSV et génération des QR" />
                     )}
                     {importError && (
-                        <div className="p-3 bg-red-50 text-red-600 rounded-xl text-sm border border-red-100">{importError}</div>
+                        <div className="p-3 bg-red-50 text-red-600 rounded-xl text-sm border border-red-100 dark:bg-red-500/15 dark:text-red-300 dark:border-red-500/30">{importError}</div>
                     )}
                     {importSuccess && (
-                        <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl text-sm border border-emerald-100 flex items-center gap-2">
+                        <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl text-sm border border-emerald-100 flex items-center gap-2 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/30">
                             <CheckCircle2 className="w-4 h-4" /> {importSuccess}
                         </div>
                     )}
                     {importReport?.errors?.length > 0 && (
-                        <div className="max-h-44 overflow-y-auto rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                        <div className="max-h-44 overflow-y-auto rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:bg-amber-500/15 dark:border-amber-500/30 dark:text-amber-300">
                             <p className="mb-2 font-bold">
                                 Détail des lignes non terminées ({importReport.errors.length})
                             </p>
@@ -46,7 +46,7 @@ export default function ImportQrModal({ handleDownloadTemplate, handleImportCSV,
                             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                         />
                         <div className="space-y-2">
-                            <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center mx-auto">
+                            <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center mx-auto dark:bg-blue-500/15 dark:text-blue-300">
                                 <Download className="w-6 h-6 rotate-180" />
                             </div>
                             <p className="text-sm font-medium text-slate-900 dark:text-white">{importFile ? importFile.name : "Cliquez ou glissez votre fichier CSV ici"}</p>
@@ -61,6 +61,7 @@ export default function ImportQrModal({ handleDownloadTemplate, handleImportCSV,
                             <li>Les colonnes obligatoires sont : <code className="bg-slate-200 dark:bg-slate-700 px-1 rounded">fullName</code>.</li>
                             <li>Les types d'accès valides : <code className="bg-slate-200 dark:bg-slate-700 px-1 rounded">single</code>, <code className="bg-slate-200 dark:bg-slate-700 px-1 rounded">multi</code>, <code className="bg-slate-200 dark:bg-slate-700 px-1 rounded">unlimited</code>.</li>
                             <li>Limite par période (optionnelle) : <code className="bg-slate-200 dark:bg-slate-700 px-1 rounded">periodUnit</code> = <code className="bg-slate-200 dark:bg-slate-700 px-1 rounded">day</code>, <code className="bg-slate-200 dark:bg-slate-700 px-1 rounded">week</code> ou <code className="bg-slate-200 dark:bg-slate-700 px-1 rounded">month</code>, avec <code className="bg-slate-200 dark:bg-slate-700 px-1 rounded">periodLimit</code> (1 par défaut).</li>
+                            <li>Dates de validité (optionnelles) : <code className="bg-slate-200 dark:bg-slate-700 px-1 rounded">validFrom</code> et <code className="bg-slate-200 dark:bg-slate-700 px-1 rounded">validUntil</code> au format <code className="bg-slate-200 dark:bg-slate-700 px-1 rounded">JJ/MM/AAAA HH:mm</code> ou <code className="bg-slate-200 dark:bg-slate-700 px-1 rounded">AAAA-MM-JJ HH:mm</code>, dans votre fuseau horaire. Sans heure, la validité couvre toute la journée.</li>
                         </ul>
                         <button
                             type="button"

@@ -229,3 +229,19 @@ export const addBackSide = (scene) => {
 };
 
 export const removeBackSide = (scene) => ({ ...scene, back: null });
+
+// ===== Couleurs du modèle =====
+// Les couleurs d'une scène libre sont écrites dans chaque élément : changer une couleur du modèle
+// remplace ses occurrences (remplissage, contour, fonds), recto et verso. Les autres teintes restent.
+export const replaceSceneColor = (scene, from, to) => {
+    const source = String(from || "").toLowerCase();
+    if (!scene || !source || !/^#[0-9a-f]{6}$/i.test(to || "") || source === to.toLowerCase()) return scene;
+    const swap = (color) => (String(color || "").toLowerCase() === source ? to : color);
+    const recolor = (objects = []) => objects.map(object => ({ ...object, fill: swap(object.fill), stroke: swap(object.stroke) }));
+    return {
+        ...scene,
+        canvas: { ...scene.canvas, backgroundColor: swap(scene.canvas.backgroundColor) },
+        objects: recolor(scene.objects),
+        back: scene.back ? { ...scene.back, backgroundColor: swap(scene.back.backgroundColor), objects: recolor(scene.back.objects) } : scene.back
+    };
+};

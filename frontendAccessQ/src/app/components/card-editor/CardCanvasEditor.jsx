@@ -45,9 +45,21 @@ export default function CardCanvasEditor({ initialScene, template, onChange, onP
     const svgRef = useRef(null);
     const dragRef = useRef(null);
     const sceneRef = useRef(scene);
+    // Taille d'affichage de la carte (pixels écran par unité de carte) et type de pointeur : les poignées
+    // et les zones de saisie gardent une taille utilisable au doigt, même sur un téléphone.
+    const [screenScale, setScreenScale] = useState(1);
+    const [coarsePointer, setCoarsePointer] = useState(false);
     useCardFontsReady();
 
     useEffect(() => { sceneRef.current = scene; }, [scene]);
+
+    useEffect(() => {
+        const media = window.matchMedia("(pointer: coarse)");
+        const update = () => setCoarsePointer(media.matches);
+        update();
+        media.addEventListener("change", update);
+        return () => media.removeEventListener("change", update);
+    }, []);
 
     const values = useMemo(() => sampleValues(template), [template]);
     const view = sideView(scene, side);
@@ -67,6 +79,11 @@ export default function CardCanvasEditor({ initialScene, template, onChange, onP
         setScene(next);
         onChange(next);
     }, [onChange]);
+
+    // Une scène modifiée hors de l'éditeur (couleurs du modèle) entre dans l'historique comme une édition.
+    useEffect(() => {
+        if (initialScene && initialScene !== sceneRef.current) commit(initialScene);
+    }, [commit, initialScene]);
 
     // Valide une modification du côté affiché.
     const commitView = useCallback((nextView, previous = sceneRef.current) => {
@@ -235,7 +252,25 @@ export default function CardCanvasEditor({ initialScene, template, onChange, onP
     }, [duplicateSelected, redo, removeSelected, selectedId, side, undo, updateSelected]);
 
     const { width, height, backgroundColor } = view.canvas;
-    const handleSize = Math.max(14, Math.round(Math.max(width, height) / 70));
+
+    useEffect(() => {
+        const svg = svgRef.current;
+        if (!svg || typeof ResizeObserver === "undefined") return undefined;
+        const observer = new ResizeObserver(() => {
+            const shown = svg.getBoundingClientRect().width;
+            if (shown > 0) setScreenScale(shown / width);
+        });
+        observer.observe(svg);
+        return () => observer.disconnect();
+    }, [width]);
+
+    // Tailles exprimées en pixels écran puis converties en unités de carte.
+    const toCanvasUnits = (pixels) => Math.round(pixels / screenScale);
+    const handleSize = Math.max(14, Math.round(Math.max(width, height) / 70), toCanvasUnits(coarsePointer ? 28 : 14));
+    const minHitSize = Math.max(12, toCanvasUnits(coarsePointer ? 32 : 8));
+    const lineHitSize = Math.max(24, toCanvasUnits(coarsePointer ? 36 : 12));
+    const outlineWidth = Math.max(2, toCanvasUnits(2));
+    const outlineDash = Math.max(14, toCanvasUnits(9));
     const toolButton = "inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800";
     const sideButton = (active) => `px-3 py-1.5 text-xs font-bold ${active ? "bg-blue-600 text-white" : "text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"}`;
 
@@ -267,7 +302,7 @@ export default function CardCanvasEditor({ initialScene, template, onChange, onP
                 </div>
 
                 {/* Zone de travail */}
-                <div className="overflow-auto rounded-2xl bg-slate-200/70 p-4 dark:bg-slate-900">
+                <div className="-mx-2 overflow-auto rounded-2xl bg-slate-200/70 p-2 dark:bg-slate-900 sm:mx-0 sm:p-4">
                     <svg
                         ref={svgRef}
                         viewBox={`0 0 ${width} ${height}`}
@@ -294,9 +329,9 @@ export default function CardCanvasEditor({ initialScene, template, onChange, onP
                                 {/* Zone de saisie élargie : les lignes et textes fins restent faciles à attraper */}
                                 <rect
                                     x={Math.min(object.x, object.x + object.width)}
-                                    y={Math.min(object.y, object.y + object.height) - (object.type === "line" ? 12 : 0)}
-                                    width={Math.max(Math.abs(object.width), 12)}
-                                    height={Math.max(Math.abs(object.height), object.type === "line" ? 24 : 12)}
+                                    y={Math.min(object.y, object.y + object.height) - (object.type === "line" ? lineHitSize / 2 : 0)}
+                                    width={Math.max(Math.abs(object.width), minHitSize)}
+                                    height={Math.max(Math.abs(object.height), object.type === "line" ? lineHitSize : minHitSize)}
                                     fill="transparent"
                                     transform={object.rotation ? `rotate(${object.rotation} ${object.x + object.width / 2} ${object.y + object.height / 2})` : undefined}
                                 />
@@ -311,8 +346,8 @@ export default function CardCanvasEditor({ initialScene, template, onChange, onP
                                     height={Math.abs(selected.height) + 8}
                                     fill="none"
                                     stroke={selected.locked ? "#f59e0b" : "#2563eb"}
-                                    strokeWidth={Math.max(2, handleSize / 5)}
-                                    strokeDasharray={`${handleSize} ${handleSize / 2}`}
+                                    strokeWidth={outlineWidth}
+                                    strokeDasharray={`${outlineDash} ${outlineDash / 2}`}
                                 />
                                 {!selected.locked && (
                                     <rect
@@ -335,8 +370,10 @@ export default function CardCanvasEditor({ initialScene, template, onChange, onP
                     </svg>
                 </div>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Glissez les éléments pour les déplacer, la poignée pour les redimensionner. Flèches : déplacer (Maj = 10 px) · Suppr : supprimer · Ctrl+D : dupliquer · Ctrl+Z : annuler.
-                    Les textes passent à la ligne et se réduisent automatiquement pour tenir dans leur cadre.
+                    {coarsePointer
+                        ? "Touchez un élément pour le sélectionner, glissez-le pour le déplacer, la poignée pour le redimensionner. Réglez-le au pixel près dans l’onglet « Élément » ci-dessous."
+                        : "Glissez les éléments pour les déplacer, la poignée pour les redimensionner. Flèches : déplacer (Maj = 10 px) · Suppr : supprimer · Ctrl+D : dupliquer · Ctrl+Z : annuler."}
+                    {" "}Les textes passent à la ligne et se réduisent automatiquement pour tenir dans leur cadre.
                     {scene.back && " Le verso est imprimé sur la page suivant chaque recto du PDF."}
                 </p>
                 {error && <p role="alert" className="text-sm font-semibold text-red-600 dark:text-red-400">{error}</p>}

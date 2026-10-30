@@ -135,7 +135,7 @@ export default function NewEventPage() {
             </div>
 
             {error && (
-                <div className="p-4 bg-red-50 text-red-600 rounded-xl border border-red-200">
+                <div className="p-4 bg-red-50 text-red-600 rounded-xl border border-red-200 dark:bg-red-500/15 dark:text-red-300 dark:border-red-500/30">
                     {error}
                 </div>
             )}
@@ -245,7 +245,7 @@ export default function NewEventPage() {
                                 <p className="text-sm text-red-500">Aucune zone disponible - Veuillez en créer une</p>
                             ) : (
                                 areas.map(area => (
-                                    <label key={area.area_id} className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${formData.areaIds.includes(area.area_id) ? 'bg-blue-50 border-blue-200 text-blue-700 shadow-sm' : 'bg-slate-50 dark:bg-slate-900 border-slate-100 dark:border-slate-800 hover:border-slate-200 text-slate-600 dark:text-slate-300'}`}>
+                                    <label key={area.area_id} className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${formData.areaIds.includes(area.area_id) ? 'bg-blue-50 border-blue-200 text-blue-700 shadow-sm dark:bg-blue-500/15 dark:border-blue-500/30 dark:text-blue-300' : 'bg-slate-50 dark:bg-slate-900 border-slate-100 dark:border-slate-800 hover:border-slate-200 text-slate-600 dark:text-slate-300'}`}>
                                         <input
                                             type="checkbox"
                                             checked={formData.areaIds.includes(area.area_id)}

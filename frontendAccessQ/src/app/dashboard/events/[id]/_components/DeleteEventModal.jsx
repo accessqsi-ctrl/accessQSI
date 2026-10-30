@@ -8,7 +8,7 @@ export default function DeleteEventModal({ canDeleteEvent, deleteConfirmationTex
                 {isDeleting && (
                     <LoadingBar label="Suppression en cours" className="mb-5 text-left" />
                 )}
-                <div className="w-14 h-14 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <div className="w-14 h-14 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center mx-auto mb-4 dark:bg-red-500/15">
                     <Trash2 className="w-7 h-7" />
                 </div>
                 <h2 className="text-lg font-bold text-slate-900 dark:text-white">Supprimer l'événement ?</h2>

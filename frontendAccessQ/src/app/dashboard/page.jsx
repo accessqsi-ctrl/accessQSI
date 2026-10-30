@@ -10,6 +10,7 @@ import DismissiblePlanPromotion from "../components/DismissiblePlanPromotion";
 import { useUserPlan } from "../lib/useUserPlan";
 import { getNextOnboardingStep } from "../lib/onboardingSteps";
 import { buildScanLogQuery, scanStatusLabel } from "../lib/dashboardScans.mjs";
+import { browserTimeZone } from "../lib/eventQr.mjs";
 
 const initialScanFilters = {
     eventId: "",
@@ -67,7 +68,8 @@ export default function Dashboard() {
         try {
             const session = await refreshSession();
             if (!session.ok) return;
-            window.open(apiUrl(`/export/${format}`), '_blank');
+            // Le rapport affiche les heures dans le fuseau de l'administrateur.
+            window.open(apiUrl(`/export/${format}?tz=${encodeURIComponent(browserTimeZone())}`), '_blank');
         } finally {
             setExportingFormat("");
         }
@@ -166,7 +168,7 @@ export default function Dashboard() {
     if (error) {
         return (
             <div className="flex h-[60vh] items-center justify-center">
-                <div className="text-center p-6 bg-red-50 text-red-600 rounded-xl border border-red-200">
+                <div className="text-center p-6 bg-red-50 text-red-600 rounded-xl border border-red-200 dark:bg-red-500/15 dark:text-red-300 dark:border-red-500/30">
                     <p className="font-semibold text-lg">{error}</p>
                     <p className="text-sm mt-2">Veuillez vous assurer que vous êtes connecté.</p>
                 </div>
@@ -239,7 +241,7 @@ export default function Dashboard() {
                 {/* **************************************** */}
                 <div className="aq-panel p-6 hover:shadow-md transition-shadow">
                     <div className="flex items-center gap-4 mb-4">
-                        <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
+                        <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 dark:bg-blue-500/15 dark:text-blue-300">
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
                         </div>
                         <div>
@@ -255,7 +257,7 @@ export default function Dashboard() {
                 {/* **************************************** */}
                 <div className="aq-panel p-6 hover:shadow-md transition-shadow">
                     <div className="flex items-center gap-4 mb-4">
-                        <div className="w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600">
+                        <div className="w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600 dark:bg-purple-500/15 dark:text-purple-300">
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
                         </div>
                         <div>
@@ -271,7 +273,7 @@ export default function Dashboard() {
                 {/* **************************************** */}
                 <div className="aq-panel p-6 hover:shadow-md transition-shadow">
                     <div className="flex items-center gap-4 mb-4">
-                        <div className="w-12 h-12 rounded-xl bg-orange-50 flex items-center justify-center text-orange-600">
+                        <div className="w-12 h-12 rounded-xl bg-orange-50 flex items-center justify-center text-orange-600 dark:bg-orange-500/15 dark:text-orange-300">
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                         </div>
                         <div>
@@ -289,7 +291,7 @@ export default function Dashboard() {
                 {/* **************************************** */}
                 <div className="aq-panel p-6 hover:shadow-md transition-shadow">
                     <div className="flex items-center gap-4 mb-4">
-                        <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
+                        <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300">
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
                         </div>
                         <div>
@@ -317,7 +319,7 @@ export default function Dashboard() {
                             <h3 className="text-lg font-bold text-slate-900 dark:text-white">Activité des scans</h3>
                             <p className="text-sm text-slate-500 dark:text-slate-400">Volume des contrôles sur les derniers jours.</p>
                         </div>
-                        <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
+                        <div className="p-2 bg-blue-50 text-blue-600 rounded-lg dark:bg-blue-500/15 dark:text-blue-300">
                             <TrendingUp className="w-5 h-5" />
                         </div>
                     </div>
@@ -362,7 +364,7 @@ export default function Dashboard() {
                             <h3 className="text-lg font-bold text-slate-900 dark:text-white">Agents les plus actifs</h3>
                             <p className="text-sm text-slate-500 dark:text-slate-400">Classement par nombre de scans.</p>
                         </div>
-                        <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
+                        <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg dark:bg-emerald-500/15 dark:text-emerald-300">
                             <Users className="w-5 h-5" />
                         </div>
                     </div>
@@ -372,8 +374,8 @@ export default function Dashboard() {
                                 <div key={index} className="flex items-center justify-between">
                                     <div className="flex items-center gap-3">
                                         <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs ${
-                                            index === 0 ? 'bg-amber-100 text-amber-700' : 
-                                            index === 1 ? 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200' : 'bg-orange-50 text-orange-700'
+                                            index === 0 ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300' : 
+                                            index === 1 ? 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200' : 'bg-orange-50 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300'
                                         }`}>
                                             {index + 1}
                                         </div>
@@ -519,7 +521,7 @@ export default function Dashboard() {
                                             <span className="mt-1 block text-xs">{new Date(scan.time).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${scan.status === "authorized" ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}>
+                                            <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${scan.status === "authorized" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300" : "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300"}`}>
                                                 {scanStatusLabel(scan.status)}
                                             </span>
                                         </td>

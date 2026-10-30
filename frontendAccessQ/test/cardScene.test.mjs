@@ -17,6 +17,7 @@ import {
     scaleSceneToCanvas,
     addBackSide,
     removeBackSide,
+    replaceSceneColor,
     sideView,
     withSide
 } from "../src/app/lib/cardScene.mjs";
@@ -124,4 +125,27 @@ test("the back side needs no QR code and is scaled with the front", () => {
 
     const scaled = scaleSceneToCanvas(scene, 600, 300);
     assert.ok(scaled.back.objects[0].fontSize < scene.back.objects[0].fontSize);
+});
+
+test("replaceSceneColor recolore recto et verso sans toucher aux autres teintes", () => {
+    const scene = {
+        canvas: { width: 1600, height: 600, backgroundColor: "#ffffff" },
+        objects: [
+            { id: "a", type: "rect", fill: "#2563EB", stroke: "#dbeafe" },
+            { id: "b", type: "text", fill: "#0f172a" }
+        ],
+        back: { backgroundColor: "#2563eb", objects: [{ id: "c", type: "line", stroke: "#2563eb" }] }
+    };
+    const next = replaceSceneColor(scene, "#2563eb", "#0b1f4b");
+    assert.equal(next.objects[0].fill, "#0b1f4b");
+    assert.equal(next.objects[0].stroke, "#dbeafe");
+    assert.equal(next.objects[1].fill, "#0f172a");
+    assert.equal(next.back.backgroundColor, "#0b1f4b");
+    assert.equal(next.back.objects[0].stroke, "#0b1f4b");
+    assert.equal(next.canvas.backgroundColor, "#ffffff");
+});
+
+test("replaceSceneColor ignore une saisie incomplète", () => {
+    const scene = { canvas: { width: 10, height: 10 }, objects: [{ id: "a", fill: "#2563eb" }], back: null };
+    assert.equal(replaceSceneColor(scene, "#2563eb", "#25"), scene);
 });

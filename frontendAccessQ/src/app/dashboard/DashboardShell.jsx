@@ -160,16 +160,16 @@ export default function DashboardShell({ children }) {
                                 key={item.name}
                                 href={item.href}
                                 className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-semibold text-sm transition-all ${isActive
-                                    ? "bg-blue-50 text-blue-800 border border-blue-100 shadow-sm dark:bg-blue-50 dark:text-blue-700 dark:border-blue-100/50"
+                                    ? "bg-blue-50 text-blue-800 border border-blue-100 shadow-sm dark:bg-blue-500/15 dark:text-blue-200 dark:border-blue-500/30 dark:shadow-none"
                                     : item.special
                                         ? "bg-blue-700 text-white hover:bg-blue-800 shadow-sm dark:bg-blue-600 dark:hover:bg-blue-700"
                                         : "text-slate-600 dark:text-slate-300 hover:bg-blue-50/70 dark:hover:bg-slate-800 hover:text-blue-900 dark:hover:text-white"
                                     }`}
                             >
                                 {ItemIcon ? (
-                                    <ItemIcon className={`h-5 w-5 ${isActive ? 'text-blue-600' : 'text-slate-400 dark:text-slate-500'}`} strokeWidth={2} />
+                                    <ItemIcon className={`h-5 w-5 ${isActive ? 'text-blue-600 dark:text-blue-300' : 'text-slate-400 dark:text-slate-500'}`} strokeWidth={2} />
                                 ) : (
-                                    <svg className={`w-5 h-5 ${isActive ? 'text-blue-600' : (item.special ? 'text-white' : 'text-slate-400 dark:text-slate-500')}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg className={`w-5 h-5 ${isActive ? 'text-blue-600 dark:text-blue-300' : (item.special ? 'text-white' : 'text-slate-400 dark:text-slate-500')}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={item.icon} />
                                     </svg>
                                 )}
@@ -299,16 +299,16 @@ export default function DashboardShell({ children }) {
                                         key={item.name}
                                         href={item.href}
                                         className={`flex items-center gap-3 px-3.5 py-3 rounded-xl font-semibold text-sm transition-all ${isActive
-                                            ? "bg-blue-50 text-blue-800 border border-blue-100 shadow-sm dark:bg-blue-50 dark:text-blue-700 dark:border-blue-100/50"
+                                            ? "bg-blue-50 text-blue-800 border border-blue-100 shadow-sm dark:bg-blue-500/15 dark:text-blue-200 dark:border-blue-500/30 dark:shadow-none"
                                             : item.special
                                                 ? "bg-blue-700 text-white hover:bg-blue-800 shadow-sm dark:bg-blue-600 dark:hover:bg-blue-700"
                                                 : "text-slate-600 dark:text-slate-300 hover:bg-blue-50/70 dark:hover:bg-slate-800 hover:text-blue-900 dark:hover:text-white"
                                             }`}
                                     >
                                         {ItemIcon ? (
-                                            <ItemIcon className={`h-5 w-5 ${isActive ? 'text-blue-600' : 'text-slate-400 dark:text-slate-500'}`} strokeWidth={2} />
+                                            <ItemIcon className={`h-5 w-5 ${isActive ? 'text-blue-600 dark:text-blue-300' : 'text-slate-400 dark:text-slate-500'}`} strokeWidth={2} />
                                         ) : (
-                                            <svg className={`w-5 h-5 ${isActive ? 'text-blue-600' : (item.special ? 'text-white' : 'text-slate-400 dark:text-slate-500')}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <svg className={`w-5 h-5 ${isActive ? 'text-blue-600 dark:text-blue-300' : (item.special ? 'text-white' : 'text-slate-400 dark:text-slate-500')}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={item.icon} />
                                             </svg>
                                         )}

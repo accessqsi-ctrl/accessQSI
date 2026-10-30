@@ -16,7 +16,7 @@ export default function EditEventModal({ areas, editError, editForm, handleAreaC
                         <LoadingBar label="Mise à jour de l'événement" />
                     )}
                     {editError && (
-                        <div className="p-3 bg-red-50 text-red-600 rounded-xl text-sm border border-red-100">{editError}</div>
+                        <div className="p-3 bg-red-50 text-red-600 rounded-xl text-sm border border-red-100 dark:bg-red-500/15 dark:text-red-300 dark:border-red-500/30">{editError}</div>
                     )}
                     <div className="space-y-1.5">
                         <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Titre *</label>
@@ -37,7 +37,7 @@ export default function EditEventModal({ areas, editError, editForm, handleAreaC
                                 <p className="text-xs text-red-500">Aucune zone disponible</p>
                             ) : (
                                 areas.map(area => (
-                                    <label key={area.area_id} className={`flex items-center gap-2 p-2 rounded-lg border transition-all cursor-pointer ${editForm.areaIds.includes(area.area_id) ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-slate-50 dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-600 dark:text-slate-300'}`}>
+                                    <label key={area.area_id} className={`flex items-center gap-2 p-2 rounded-lg border transition-all cursor-pointer ${editForm.areaIds.includes(area.area_id) ? 'bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-500/15 dark:border-blue-500/30 dark:text-blue-300' : 'bg-slate-50 dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-600 dark:text-slate-300'}`}>
                                         <input
                                             type="checkbox"
                                             checked={editForm.areaIds.includes(area.area_id)}

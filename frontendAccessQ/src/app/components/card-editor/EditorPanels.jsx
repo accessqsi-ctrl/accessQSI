@@ -70,7 +70,7 @@ export function PropertiesPanel({ object, template, canDelete, onChange, onDelet
                     </label>
                     <div className="flex flex-wrap gap-1">
                         {FIELD_OPTIONS.map(option => (
-                            <button key={option.id} type="button" onClick={() => onChange({ text: `${object.text || ""}{{${option.id}}}` })} className="rounded-full bg-blue-50 px-2 py-1 text-[11px] font-bold text-blue-700 hover:bg-blue-100 dark:bg-blue-950/40 dark:text-blue-200">
+                            <button key={option.id} type="button" onClick={() => onChange({ text: `${object.text || ""}{{${option.id}}}` })} className="rounded-full bg-blue-50 px-2 py-1 text-[11px] font-bold text-blue-700 hover:bg-blue-100 dark:bg-blue-950/40 dark:text-blue-200 dark:hover:bg-blue-500/25">
                                 + {option.label}
                             </button>
                         ))}
@@ -85,9 +85,9 @@ export function PropertiesPanel({ object, template, canDelete, onChange, onDelet
                         <NumberField label="Taille max." value={object.fontSize} min={6} max={220} onChange={(fontSize) => onChange({ fontSize })} />
                     </div>
                     <div className="flex items-center gap-2">
-                        <button type="button" aria-pressed={isBoldWeight(object.fontWeight)} onClick={() => onChange({ fontWeight: isBoldWeight(object.fontWeight) ? "400" : "700" })} className={`${iconButton} px-3 font-black ${isBoldWeight(object.fontWeight) ? "border-blue-300 bg-blue-50 text-blue-700" : ""}`}>G</button>
+                        <button type="button" aria-pressed={isBoldWeight(object.fontWeight)} onClick={() => onChange({ fontWeight: isBoldWeight(object.fontWeight) ? "400" : "700" })} className={`${iconButton} px-3 font-black ${isBoldWeight(object.fontWeight) ? "border-blue-300 bg-blue-50 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300" : ""}`}>G</button>
                         {[["left", "Gauche"], ["center", "Centre"], ["right", "Droite"]].map(([value, label]) => (
-                            <button key={value} type="button" aria-pressed={object.align === value} onClick={() => onChange({ align: value })} className={`${iconButton} px-2.5 text-xs font-bold ${object.align === value ? "border-blue-300 bg-blue-50 text-blue-700" : ""}`}>{label}</button>
+                            <button key={value} type="button" aria-pressed={object.align === value} onClick={() => onChange({ align: value })} className={`${iconButton} px-2.5 text-xs font-bold ${object.align === value ? "border-blue-300 bg-blue-50 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300" : ""}`}>{label}</button>
                         ))}
                     </div>
                     <ColorField label="Couleur du texte" value={object.fill} palette={palette} onChange={(fill) => onChange({ fill })} />

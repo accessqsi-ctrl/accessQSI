@@ -40,7 +40,7 @@ const canReadQr = roleMiddleware(["ORG_ADMIN", "SUPER_ADMIN", "ORG_AGENT"]);
 const canCreateQr = roleMiddleware(["ORG_ADMIN", "SUPER_ADMIN", "ORG_AGENT"]);
 const adminOnly = roleMiddleware(["ORG_ADMIN", "SUPER_ADMIN"]);
 const requireBulkQrImport = requirePlanCapability(PLAN_CAPABILITIES.BULK_QR_IMPORT, {
-    message: "L’import CSV de QR nécessite un abonnement Pro."
+    message: "L’import CSV de QR est disponible à partir de l’offre Essential."
 });
 
 // Vérification d'un QR code (Scanner)

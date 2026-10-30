@@ -186,7 +186,8 @@ const toApiTemplate = (template) => ({
 });
 
 exports.previewPayload = async (payload) => {
-    const normalized = normalizePayload(payload, null, { allowUnavailable: String(payload.templateId || "").startsWith("custom:") });
+    // Le nom n'apparaît pas sur la carte : l'aperçu reste disponible avant qu'il soit saisi.
+    const normalized = normalizePayload({ ...payload, name: String(payload.name || "").trim() || "Aperçu" }, null, { allowUnavailable: String(payload.templateId || "").startsWith("custom:") });
     const customization = await cardTemplateService.materializeCustomizationAssets({
         primaryColor: normalized.primary_color, secondaryColor: normalized.secondary_color,
         title: normalized.title, cardMessageDefault: normalized.card_message_default,

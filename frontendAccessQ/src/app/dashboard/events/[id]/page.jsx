@@ -22,6 +22,8 @@ import { getCardDownloadUrl } from "./_components/cardDownload";
 import { browserTimeZone, normalizePhone, selectTemplateForExistingQr, validateQrContact } from "../../../lib/eventQr.mjs";
 import { fromDateTimeLocal, toDateTimeLocal } from "../../../lib/dateTimeLocal.mjs";
 
+const STATUS_LABELS = { active: "Actif", used_up: "Épuisé", expired: "Expiré", revoked: "Révoqué" };
+
 
 
 
@@ -561,7 +563,7 @@ export default function EventDetailPage() {
         try {
             const session = await refreshSession();
             if (!session.ok) return;
-            window.open(apiUrl(`/export/${format}?event_id=${eventId}`), '_blank');
+            window.open(apiUrl(`/export/${format}?event_id=${eventId}&tz=${encodeURIComponent(browserTimeZone())}`), '_blank');
         } finally {
             setExportingFormat("");
         }
@@ -667,10 +669,10 @@ export default function EventDetailPage() {
     const filteredQrs = qrCodes;
 
     const getStatusStyle = (status) => {
-        if (status === 'active') return 'bg-emerald-100 text-emerald-700';
-        if (status === 'used_up') return 'bg-amber-100 text-amber-700';
-        if (status === 'expired') return 'bg-orange-100 text-orange-700';
-        if (status === 'revoked') return 'bg-red-100 text-red-700';
+        if (status === 'active') return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300';
+        if (status === 'used_up') return 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300';
+        if (status === 'expired') return 'bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300';
+        if (status === 'revoked') return 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300';
         return 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300';
     };
 
@@ -679,9 +681,9 @@ export default function EventDetailPage() {
         const now = new Date();
         const first = event.EventSchedules[0];
         const last = event.EventSchedules[event.EventSchedules.length - 1];
-        if (new Date(first.start_date) > now) return { label: "Upcoming", style: "bg-blue-100 text-blue-700" };
+        if (new Date(first.start_date) > now) return { label: "Upcoming", style: "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300" };
         if (new Date(last.end_date) < now) return { label: "Past", style: "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300" };
-        return { label: "Active", style: "bg-emerald-100 text-emerald-700" };
+        return { label: "Active", style: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300" };
     };
 
     const qrContactErrors = validateQrContact(qrForm);
@@ -700,7 +702,7 @@ export default function EventDetailPage() {
     if (error || !event) {
         return (
             <div className="max-w-lg mx-auto text-center py-20">
-                <div className="w-16 h-16 bg-red-50 text-red-400 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <div className="w-16 h-16 bg-red-50 text-red-400 rounded-2xl flex items-center justify-center mx-auto mb-4 dark:bg-red-500/15">
                     <X className="w-8 h-8" />
                 </div>
                 <h1 className="text-xl font-bold text-slate-900 dark:text-white mb-2">{error || "Événement introuvable"}</h1>
@@ -734,7 +736,7 @@ export default function EventDetailPage() {
                             setDeleteConfirmationText("");
                             setShowDeleteConfirm(true);
                         }}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 border border-red-100 rounded-xl text-sm font-medium hover:bg-red-100 active:scale-95 transition-all shadow-sm"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 border border-red-100 rounded-xl text-sm font-medium hover:bg-red-100 active:scale-95 transition-all shadow-sm dark:bg-red-500/15 dark:text-red-300 dark:border-red-500/30 dark:hover:bg-red-500/25"
                     >
                         <Trash2 className="w-4 h-4" /> Supprimer
                     </button>
@@ -945,7 +947,7 @@ export default function EventDetailPage() {
                                                     type="button"
                                                     onClick={() => setPhotoQr(qr)}
                                                     title={qr.hasPhoto ? "Voir la photo du titulaire" : "Ajouter une photo"}
-                                                    className="relative w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs hover:ring-2 hover:ring-blue-200 transition-shadow"
+                                                    className="relative w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs hover:ring-2 hover:ring-blue-200 transition-shadow dark:bg-blue-500/15 dark:text-blue-300 dark:hover:ring-blue-500/40"
                                                 >
                                                     {qr.holder?.charAt(0)?.toUpperCase() || '?'}
                                                     {qr.hasPhoto && (
@@ -966,7 +968,7 @@ export default function EventDetailPage() {
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${getStatusStyle(qr.status)}`}>
-                                                {qr.status === "used_up" ? "Épuisé" : qr.status.charAt(0).toUpperCase() + qr.status.slice(1)}
+                                                {STATUS_LABELS[qr.status] || qr.status}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-slate-500 dark:text-slate-400">{qr.createdAt}</td>

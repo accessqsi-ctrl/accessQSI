@@ -163,13 +163,13 @@ export default function AreasPage() {
                                 areas.map((area) => (
                                     <tr key={area.area_id} className={`table-row-hover group ${area.suspended_by_plan ? "opacity-60" : ""}`}>
                                         <td className="px-6 py-4 font-medium text-slate-900 dark:text-white flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                                            <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center dark:bg-blue-500/15 dark:text-blue-300">
                                                 <MapPin className="w-5 h-5" />
                                             </div>
                                             <span>{area.area_name}{area.suspended_by_plan && <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">Suspendue par le plan</span>}</span>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <span className="px-2.5 py-1 bg-amber-50 text-amber-700 rounded-full text-xs font-semibold border border-amber-100">
+                                            <span className="px-2.5 py-1 bg-amber-50 text-amber-700 rounded-full text-xs font-semibold border border-amber-100 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/30">
                                                 Niveau {area.accreditation_level}
                                             </span>
                                         </td>
@@ -260,14 +260,14 @@ export default function AreasPage() {
                         {deletingAreaId === areaToDelete.area_id && (
                             <LoadingBar label="Suppression de la zone" className="mb-5" />
                         )}
-                        <div className="w-12 h-12 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center mb-4">
+                        <div className="w-12 h-12 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center mb-4 dark:bg-red-500/15 dark:text-red-300">
                             <Trash2 className="w-6 h-6" />
                         </div>
                         <h2 className="text-lg font-bold text-slate-900 dark:text-white">Supprimer cette zone ?</h2>
                         <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
                             La zone <span className="font-semibold text-slate-700 dark:text-slate-200">"{areaToDelete.area_name}"</span> ne sera plus disponible pour les événements et les contrôles d'accès.
                         </p>
-                        <div className="mt-4 rounded-xl border border-amber-100 bg-amber-50 p-3 text-sm text-amber-800">
+                        <div className="mt-4 rounded-xl border border-amber-100 bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-500/15 dark:border-amber-500/30 dark:text-amber-300">
                             Niveau d'accréditation requis : <span className="font-semibold">Niveau {areaToDelete.accreditation_level}</span>
                         </div>
                         <div className="mt-6 flex gap-3">
