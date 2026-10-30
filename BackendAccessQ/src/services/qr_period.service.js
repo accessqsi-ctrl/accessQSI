@@ -51,14 +51,17 @@ const timeZoneOffsetMs = (date, timeZone) => {
     return asUtc - (date.getTime() - date.getMilliseconds());
 };
 
-// Instant UTC correspondant à minuit local de la date calendaire donnée.
-const zonedMidnight = (year, month, day, timeZone) => {
-    const guess = Date.UTC(year, month - 1, day);
+// Instant UTC correspondant à une heure locale (« heure murale ») dans un fuseau.
+const zonedDateTime = (year, month, day, hour, minute, second, timeZone) => {
+    const guess = Date.UTC(year, month - 1, day, hour, minute, second);
     let instant = guess - timeZoneOffsetMs(new Date(guess), timeZone);
     // Second passage pour les jours de changement d'heure.
     instant = guess - timeZoneOffsetMs(new Date(instant), timeZone);
     return new Date(instant);
 };
+
+// Instant UTC correspondant à minuit local de la date calendaire donnée.
+const zonedMidnight = (year, month, day, timeZone) => zonedDateTime(year, month, day, 0, 0, 0, timeZone);
 
 const getPeriodBounds = (unit, now = new Date(), timeZone = DEFAULT_TIMEZONE) => {
     if (!PERIOD_UNITS.includes(unit)) throw new Error(`Unité de période inconnue : ${unit}`);
@@ -108,5 +111,6 @@ module.exports = {
     formatPeriodBoundary,
     getPeriodBounds,
     isValidTimeZone,
-    resolveTimeZone
+    resolveTimeZone,
+    zonedDateTime
 };

@@ -22,6 +22,8 @@ import { getCardDownloadUrl } from "./_components/cardDownload";
 import { browserTimeZone, normalizePhone, selectTemplateForExistingQr, validateQrContact } from "../../../lib/eventQr.mjs";
 import { fromDateTimeLocal, toDateTimeLocal } from "../../../lib/dateTimeLocal.mjs";
 
+const STATUS_LABELS = { active: "Actif", used_up: "Épuisé", expired: "Expiré", revoked: "Révoqué" };
+
 
 
 
@@ -561,7 +563,7 @@ export default function EventDetailPage() {
         try {
             const session = await refreshSession();
             if (!session.ok) return;
-            window.open(apiUrl(`/export/${format}?event_id=${eventId}`), '_blank');
+            window.open(apiUrl(`/export/${format}?event_id=${eventId}&tz=${encodeURIComponent(browserTimeZone())}`), '_blank');
         } finally {
             setExportingFormat("");
         }
@@ -966,7 +968,7 @@ export default function EventDetailPage() {
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${getStatusStyle(qr.status)}`}>
-                                                {qr.status === "used_up" ? "Épuisé" : qr.status.charAt(0).toUpperCase() + qr.status.slice(1)}
+                                                {STATUS_LABELS[qr.status] || qr.status}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-slate-500 dark:text-slate-400">{qr.createdAt}</td>

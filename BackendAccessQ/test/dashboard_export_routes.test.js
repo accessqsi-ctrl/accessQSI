@@ -244,6 +244,7 @@ test("GET /export/csv exports scans scoped by organization and optional event", 
                             status: "authorized",
                             location_lat: "-11.664",
                             location_long: "27.479",
+                            area: { area_name: "Entrée" },
                             scanned_by: { full_name: "Alice" }
                         }]
                     }, {
@@ -269,7 +270,7 @@ test("GET /export/csv exports scans scoped by organization and optional event", 
         PDFDocument: function PDFDocument() {}
     });
 
-    const res = await request(app, "GET", "/export/csv?event_id=5");
+    const res = await request(app, "GET", "/export/csv?event_id=5&tz=Africa/Kinshasa");
 
     assert.equal(res.status, 200);
     assert.equal(whereClause.event.org_id, 42);
@@ -280,6 +281,11 @@ test("GET /export/csv exports scans scoped by organization and optional event", 
     assert.equal(recordsWritten[0].result, "AUTORISÉ");
     assert.equal(recordsWritten[0].agent, "Alice");
     assert.equal(recordsWritten[0].latitude, "-11.664");
+    // Heure de l'administrateur (Kinshasa, UTC+1), statut traduit.
+    assert.equal(recordsWritten[0].scanDate, "01/01/2026");
+    assert.equal(recordsWritten[0].scanTime, "11:00:00");
+    assert.equal(recordsWritten[0].zone, "Entrée");
+    assert.equal(recordsWritten[1].qrStatus, "ACTIF");
     assert.equal(recordsWritten[1].token, "token-2");
     assert.equal(recordsWritten[1].result, "AUCUN SCAN");
     assert.equal(res.body.downloaded, true);
@@ -309,12 +315,13 @@ test("GET /export/csv rejects free organizations with a clear upgrade message", 
 
 test("GET /export/pdf streams a PDF response for authenticated users", async () => {
     let whereClause = null;
+    const texts = [];
     class FakePDFDocument {
         pipe(res) {
             this.res = res;
         }
         fontSize() { return this; }
-        text() { return this; }
+        text(value) { texts.push(String(value)); return this; }
         moveDown() { return this; }
         font() { return this; }
         addPage() { return this; }
@@ -331,8 +338,14 @@ test("GET /export/pdf streams a PDF response for authenticated users", async () 
                     whereClause = where;
                     return [{
                         scanned_at: new Date("2026-01-01T10:00:00Z"),
+                        status: "authorized",
                         qr_code: { holder_name: "Jane", event: { title: "Concert" } },
                         scanned_by: { full_name: "Alice" }
+                    }, {
+                        scanned_at: new Date("2026-01-01T10:05:00Z"),
+                        status: "denied_revoked",
+                        qr_code: { holder_name: "Bob", event: { title: "Concert" } },
+                        scanned_by: null
                     }];
                 }
             }
@@ -341,10 +354,14 @@ test("GET /export/pdf streams a PDF response for authenticated users", async () 
         PDFDocument: FakePDFDocument
     });
 
-    const res = await request(app, "GET", "/export/pdf");
+    const res = await request(app, "GET", "/export/pdf?tz=Africa/Kinshasa");
 
     assert.equal(res.status, 200);
     assert.equal(whereClause.qr_code.event.org_id, 42);
+    // Synthèse, résultat de chaque scan, heure locale ; un agent supprimé ne fait pas échouer le rapport.
+    assert.ok(texts.includes("2 scans · 1 autorisé · 1 refusé"));
+    assert.ok(texts.includes("REFUSÉ - RÉVOQUÉ"));
+    assert.ok(texts.includes("01/01/2026 11:00"));
     assert.equal(res.body, "PDF");
 });
 

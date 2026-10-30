@@ -35,13 +35,18 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #020617;
-    /* slate-950 */
+    /* Palette « midnight indigo » : fond de page sombre, cartes en #282B4A un ton au-dessus,
+       champs en creux (slate-900), bordures (slate-800 / 700) et textes discrets (slate-500 / 400)
+       éclaircis pour rester lisibles sur l'indigo. Les classes Tailwind lisent ces variables. */
+    --background: #15172b;
     --foreground: #f8fafc;
-    /* slate-50 */
-    /* Les cartes (bg-slate-950) passent un ton au-dessus du fond de page (#020617)
-       pour retrouver une hiérarchie de profondeur ; les champs restent en slate-900. */
-    --color-slate-950: #0b1120;
+    --color-slate-950: #282b4a;
+    --color-slate-900: #1f2240;
+    --color-slate-800: #3a3e66;
+    --color-slate-700: #4a4f7a;
+    --color-slate-600: #5d6290;
+    --color-slate-500: #959cc2;
+    --color-slate-400: #a9afd0;
     color-scheme: dark;
   }
 }
@@ -258,7 +263,7 @@ body {
 
 @media (prefers-color-scheme: dark) {
   .aq-app-shell {
-    background: #020617;
+    background: var(--background);
   }
 
   .aq-app-main {
@@ -272,12 +277,12 @@ body {
   .aq-page-header,
   .aq-panel,
   .aq-toolbar {
-    border-color: #1e293b;
+    border-color: var(--color-slate-800);
     background: var(--color-slate-950);
   }
 
   .aq-sidebar {
-    background: #020617;
+    background: var(--background);
     box-shadow: 0 1px 2px rgb(0 0 0 / 0.18);
   }
 
@@ -286,8 +291,8 @@ body {
   }
 
   .aq-topbar {
-    border-color: rgb(30 41 59 / 0.6);
-    background: rgb(2 6 23 / 0.5);
+    border-color: var(--color-slate-800);
+    background: rgb(21 23 43 / 0.6);
   }
 
   .aq-page-header::after {
@@ -300,24 +305,24 @@ body {
   }
 
   .aq-page-subtitle {
-    color: #94a3b8;
+    color: var(--color-slate-400);
   }
 
   .aq-button-secondary {
-    border-color: #334155;
-    background: #0f172a;
+    border-color: var(--color-slate-700);
+    background: var(--color-slate-900);
     color: #e2e8f0;
   }
 
   .aq-button-secondary:hover:not(:disabled) {
-    border-color: #475569;
-    background: #172033;
+    border-color: var(--color-slate-600);
+    background: var(--color-slate-800);
     color: #ffffff;
   }
 
   .aq-table-head {
-    border-color: #1e293b;
-    background: #0f172a;
+    border-color: var(--color-slate-800);
+    background: var(--color-slate-900);
     color: #cbd5e1;
   }
 }
@@ -474,14 +479,14 @@ select {
   .fixed.inset-0 input:not([type="file"]),
   .fixed.inset-0 textarea,
   .fixed.inset-0 select {
-    background: #0f172a;
-    border-color: #334155;
+    background: var(--color-slate-900);
+    border-color: var(--color-slate-700);
     color: #f8fafc;
   }
 
   .fixed.inset-0 input::placeholder,
   .fixed.inset-0 textarea::placeholder {
-    color: #94a3b8;
+    color: var(--color-slate-400);
   }
 
   .process-progress {
@@ -495,7 +500,7 @@ select {
   .table-action-neutral {
     color: #cbd5e1;
     border-color: rgb(122 144 164 / 0.42);
-    background: #0f172a;
+    background: var(--color-slate-900);
   }
 
   .table-action-neutral:hover {

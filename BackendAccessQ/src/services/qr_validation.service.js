@@ -1,9 +1,32 @@
-const { PERIOD_UNITS, resolveTimeZone } = require("./qr_period.service");
+const { PERIOD_UNITS, resolveTimeZone, zonedDateTime } = require("./qr_period.service");
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const ACCESS_TYPES = new Set(["single", "multi", "unlimited"]);
 
-const toOptionalDate = (value) => value ? new Date(value) : null;
+// Dates sans fuseau (import CSV : « 2026-11-02 08:00 », « 02/11/2026 08:00 ») : heure locale de
+// l'administrateur, et non celle du serveur. Une date seule vaut minuit, ou la fin du jour pour une date de fin.
+// Les dates avec fuseau (ISO « Z » ou « +01:00 » envoyées par l'interface) sont lues telles quelles.
+const NAIVE_ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2}))?)?$/;
+const NAIVE_FR_DATE = /^(\d{2})\/(\d{2})\/(\d{4})(?:[T ](\d{2}):(\d{2})(?::(\d{2}))?)?$/;
+
+const toOptionalDate = (value, timeZone, { endOfDay = false } = {}) => {
+    if (!value) return null;
+    if (value instanceof Date) return value;
+    const text = String(value).trim();
+    const iso = text.match(NAIVE_ISO_DATE);
+    const fr = text.match(NAIVE_FR_DATE);
+    if (!iso && !fr) return new Date(text);
+    const [year, month, day] = (iso ? [iso[1], iso[2], iso[3]] : [fr[3], fr[2], fr[1]]).map(Number);
+    const [hour, minute, second] = (iso || fr).slice(4, 7).map(part => Number(part || 0));
+    const hasTime = (iso || fr)[4] !== undefined;
+    // Refuse les dates impossibles (31/02, 25:00) au lieu de les reporter sur le jour suivant.
+    const calendar = new Date(Date.UTC(year, month - 1, day));
+    if (calendar.getUTCMonth() !== month - 1 || calendar.getUTCDate() !== day || hour > 23 || minute > 59 || second > 59) {
+        return new Date(NaN);
+    }
+    if (!hasTime && endOfDay) return new Date(zonedDateTime(year, month, day + 1, 0, 0, 0, timeZone).getTime() - 1);
+    return zonedDateTime(year, month, day, hour, minute, second, timeZone);
+};
 
 // Keep the complete holder name while normalizing whitespace pasted from
 // spreadsheets, phones or rich-text sources (including non-breaking spaces).
@@ -19,8 +42,9 @@ const validateQrPayload = (input = {}, { line = null } = {}) => {
     const accessType = String(input.accessType || "single").trim().toLowerCase();
     const limit = input.limit === undefined || input.limit === "" ? (accessType === "multi" ? 2 : 1) : Number(input.limit);
     const level = input.level === undefined || input.level === "" ? 1 : Number(input.level);
-    const validFrom = toOptionalDate(input.validFrom);
-    const validUntil = toOptionalDate(input.validUntil);
+    const inputTimeZone = resolveTimeZone(String(input.periodTimezone || "").trim());
+    const validFrom = toOptionalDate(input.validFrom, inputTimeZone);
+    const validUntil = toOptionalDate(input.validUntil, inputTimeZone, { endOfDay: true });
     const cardTemplateId = String(input.cardTemplateId || input.card_template_id || input.templateId || "").trim();
     const cardMessage = String(input.cardMessage || input.card_message || "").trim().slice(0, 160);
     const periodUnit = String(input.periodUnit ?? input.period_unit ?? "").trim().toLowerCase() || null;
@@ -28,7 +52,7 @@ const validateQrPayload = (input = {}, { line = null } = {}) => {
     const periodLimit = periodUnit
         ? (rawPeriodLimit === undefined || rawPeriodLimit === "" ? 1 : Number(rawPeriodLimit))
         : null;
-    const periodTimezone = periodUnit ? resolveTimeZone(String(input.periodTimezone || "").trim()) : null;
+    const periodTimezone = periodUnit ? inputTimeZone : null;
     const errors = [];
 
     const addError = (field, message) => errors.push({

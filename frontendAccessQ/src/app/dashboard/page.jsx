@@ -10,6 +10,7 @@ import DismissiblePlanPromotion from "../components/DismissiblePlanPromotion";
 import { useUserPlan } from "../lib/useUserPlan";
 import { getNextOnboardingStep } from "../lib/onboardingSteps";
 import { buildScanLogQuery, scanStatusLabel } from "../lib/dashboardScans.mjs";
+import { browserTimeZone } from "../lib/eventQr.mjs";
 
 const initialScanFilters = {
     eventId: "",
@@ -67,7 +68,8 @@ export default function Dashboard() {
         try {
             const session = await refreshSession();
             if (!session.ok) return;
-            window.open(apiUrl(`/export/${format}`), '_blank');
+            // Le rapport affiche les heures dans le fuseau de l'administrateur.
+            window.open(apiUrl(`/export/${format}?tz=${encodeURIComponent(browserTimeZone())}`), '_blank');
         } finally {
             setExportingFormat("");
         }
