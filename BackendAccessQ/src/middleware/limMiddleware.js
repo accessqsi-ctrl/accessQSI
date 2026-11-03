@@ -73,4 +73,22 @@ const registrationRecoveryLimiter = rateLimit({
     legacyHeaders: false
 });
 
-module.exports = { generalLimiter, loginLimiter, signinLimiter, refreshLimiter, verificationEmailLimiter, passwordResetLimiter, publicRegistrationLimiter, registrationRecoveryLimiter };
+// Envoi des codes de connexion à la box : limite le spam d'emails par adresse IP.
+const attendeeCodeRequestLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 10,
+    message: { success: false, message: "Trop de codes demandés. Veuillez réessayer dans une heure." },
+    standardHeaders: "draft-7",
+    legacyHeaders: false
+});
+
+// Saisie du code ou du mot de passe : chaque code est déjà borné à 5 essais, ceci freine le balayage d'adresses.
+const attendeeLoginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 20,
+    message: { success: false, message: "Trop de tentatives. Veuillez réessayer dans 15 minutes." },
+    standardHeaders: "draft-7",
+    legacyHeaders: false
+});
+
+module.exports = { generalLimiter, loginLimiter, signinLimiter, refreshLimiter, verificationEmailLimiter, passwordResetLimiter, publicRegistrationLimiter, registrationRecoveryLimiter, attendeeCodeRequestLimiter, attendeeLoginLimiter };

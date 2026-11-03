@@ -1,6 +1,6 @@
 const prisma = require('../lib/prisma');
-const bcrypt = require('bcrypt');
 const { writeAudit } = require('../services/audit.service');
+const { verifySuperAdminPassword } = require('../services/super-admin.service');
 
 const STANDARD_PLAN_CONFIG = Object.freeze({
     DISCOVERY: Object.freeze({ interval: null, months: null, status: 'CANCELED', maxAgents: 2, maxAreas: 2, maxEventsPerCycle: 1, maxQrCodesPerEvent: 50, capabilities: [] }),
@@ -19,24 +19,19 @@ const addSubscriptionMonths = (date, months) => new Date(
     date.getTime() + months * 30 * 24 * 60 * 60 * 1000
 );
 
+// Commission de billetterie : même valeur par défaut que le backend (TICKET_COMMISSION_PERCENT, 10 %).
+const MAX_TICKET_COMMISSION_BPS = 5000;
+const defaultTicketCommissionPercent = () => {
+    const parsed = Number(String(process.env.TICKET_COMMISSION_PERCENT || '').replace(',', '.'));
+    return Number.isFinite(parsed) && parsed >= 0 && parsed * 100 <= MAX_TICKET_COMMISSION_BPS && String(process.env.TICKET_COMMISSION_PERCENT || '').trim() !== ''
+        ? parsed
+        : 10;
+};
+
 const organizationPath = (orgId, type, message) => (
     `/organizations/${orgId}?${type}=${encodeURIComponent(message)}`
 );
 
-const verifySuperAdminPassword = async (req) => {
-    const password = typeof req.body.superAdminPassword === 'string' ? req.body.superAdminPassword : '';
-    if (!password) return false;
-    const administrator = await prisma.userQ.findFirst({
-        where: {
-            user_id: Number(req.user?.id),
-            role: 'SUPER_ADMIN',
-            is_active: true,
-            deleted_at: null
-        },
-        select: { password_hash: true }
-    });
-    return Boolean(administrator && await bcrypt.compare(password, administrator.password_hash));
-};
 
 const reconcilePlanResources = async (tx, orgId, config) => {
     const agents = await tx.userQ.findMany({
@@ -169,6 +164,7 @@ exports.showOrganization = async (req, res) => {
             administrators: organization.usersQ.filter(({ role }) => role === 'ORG_ADMIN'),
             agents: organization.usersQ.filter(({ role }) => role === 'ORG_AGENT' || role === 'OPERATOR'),
             qrCodeCount,
+            defaultTicketCommissionPercent: defaultTicketCommissionPercent(),
             error: req.query.error || null,
             success: req.query.success || null
         });
@@ -412,6 +408,37 @@ exports.changeSubscription = async (req, res) => {
             ? 'La base de données a mis trop de temps à répondre. Aucun changement n’a été appliqué ; veuillez réessayer.'
             : messages[error.message] || 'Impossible de modifier l’abonnement.';
         return res.redirect(organizationPath(orgId, 'error', message));
+    }
+};
+
+// Champ vide : l'organisation revient au taux par défaut de la plateforme.
+exports.changeTicketCommission = async (req, res) => {
+    const orgId = parseId(req.params.id);
+    if (!orgId) return res.redirect('/organizations?error=Organisation invalide.');
+    const raw = String(req.body.commissionPercent ?? '').trim().replace(',', '.');
+    const percent = raw === '' ? null : Number(raw);
+    const bps = percent === null ? null : Math.round(percent * 100);
+    if (bps !== null && (!/^\d{1,2}(\.\d{1,2})?$/.test(raw) || bps < 0 || bps > MAX_TICKET_COMMISSION_BPS)) {
+        return res.redirect(organizationPath(orgId, 'error', 'La commission doit être comprise entre 0 et 50 %, avec deux décimales au plus.'));
+    }
+    try {
+        if (!await verifySuperAdminPassword(req)) {
+            writeAudit({ actorId: req.user.id, action: 'TICKET_COMMISSION_CHANGE', targetType: 'ORGANIZATION', targetId: orgId, organizationId: orgId, outcome: 'DENIED' });
+            return res.redirect(organizationPath(orgId, 'error', 'Mot de passe incorrect. La commission n’a pas été modifiée.'));
+        }
+        const result = await prisma.organization.updateMany({
+            where: { org_id: orgId, deleted_at: null },
+            data: { ticket_commission_bps: bps }
+        });
+        if (result.count === 0) return res.redirect('/organizations?error=Organisation introuvable ou archivée.');
+        writeAudit({ actorId: req.user.id, action: 'TICKET_COMMISSION_CHANGE', targetType: 'ORGANIZATION', targetId: orgId, organizationId: orgId });
+        const message = bps === null
+            ? `La commission revient au taux par défaut (${defaultTicketCommissionPercent()} %).`
+            : `Commission fixée à ${bps / 100} % pour les prochaines ventes.`;
+        res.redirect(organizationPath(orgId, 'success', message));
+    } catch (error) {
+        console.error('Erreur changeTicketCommission:', error);
+        res.redirect(organizationPath(orgId, 'error', 'Erreur lors de la modification de la commission.'));
     }
 };
 

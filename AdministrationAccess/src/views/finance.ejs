@@ -1,0 +1,76 @@
+<%- include('partials/header', { title: 'Finances' }) %>
+<%- include('partials/app-shell-start', { currentPage: 'finance', pageTitle: 'Finances', pageDescription: 'Reversements aux organisateurs et remboursements des billets' }) %>
+<%
+const money = (amount, currency) => { try { return new Intl.NumberFormat('fr-FR', { style: 'currency', currency }).format(Number(amount)); } catch { return `${amount} ${currency}`; } };
+const date = (value) => value ? new Date(value).toLocaleString('fr-FR') : '—';
+const payoutBadge = { APPROVED: ['badge-blue', 'Validé, envoi en cours'], SUBMITTING: ['badge-blue', 'Envoi en cours'], PROCESSING: ['badge-blue', 'Chez l’opérateur'], COMPLETED: ['badge-green', 'Versé'], FAILED: ['badge-amber', 'Échoué, recrédité'], REJECTED: ['badge-slate', 'Refusé'], CANCELED: ['badge-slate', 'Annulé par l’organisateur'] };
+const refundBadge = { PENDING: ['badge-blue', 'Envoi en cours'], PROCESSING: ['badge-blue', 'Chez l’opérateur'], COMPLETED: ['badge-green', 'Remboursé'], FAILED: ['badge-amber', 'Échoué'] };
+%>
+<section class="page-intro"><div><h2>Finances de la billetterie</h2><p>Les validations sont enregistrées ici ; le backend AccessQ envoie ensuite l’argent via pawaPay et vérifie le résultat.</p></div><span class="badge badge-blue"><%= requested.length %> reversement(s) à valider</span></section>
+<% if (error) { %><div class="alert alert-error" role="alert"><%= error %></div><% } %><% if (success) { %><div class="alert alert-success" role="status"><%= success %></div><% } %>
+
+<section class="panel">
+    <div class="panel-header"><div><h3>Reversements à valider</h3><p>Le montant est déjà retiré du solde de l’organisateur. Un refus le lui rend.</p></div></div>
+    <div class="table-wrap"><table class="data-table"><thead><tr><th>Organisation</th><th>Montant</th><th>Destination</th><th>Demandé par</th><th class="align-right">Décision</th></tr></thead><tbody>
+    <% requested.forEach(payout => { %><tr>
+        <td><a class="entity-link" href="/organizations/<%= payout.org_id %>"><%= payout.organization.name %></a><div class="cell-subtitle">le <%= date(payout.created_at) %></div></td>
+        <td><strong><%= money(payout.amount, payout.currency) %></strong></td>
+        <td><%= payout.provider %><div class="cell-subtitle"><%= payout.phone_number %> · <%= payout.country %></div>
+            <% if (payout.accountRecentlyChanged) { %><span class="badge badge-amber">Compte modifié le <%= date(payout.accountUpdatedAt) %></span><% } %></td>
+        <td><%= payout.requested_by.full_name %><div class="cell-subtitle"><%= payout.requested_by.email %></div></td>
+        <td class="align-right"><div class="action-row">
+            <form action="/finance/payouts/<%= payout.payout_id %>/approve" method="POST" data-password-confirm data-confirm-title="Valider le reversement" data-confirm-message="<%= `${money(payout.amount, payout.currency)} vers ${payout.phone_number}. Saisissez votre mot de passe de super-admin.` %>">
+                <input type="hidden" name="_csrf" value="<%= user.csrf %>"><button class="action-button success">Valider</button>
+            </form>
+            <form action="/finance/payouts/<%= payout.payout_id %>/reject" method="POST" class="action-row" data-password-confirm data-confirm-title="Refuser le reversement" data-confirm-message="Le montant reviendra sur le solde de l’organisateur. Saisissez votre mot de passe de super-admin.">
+                <input type="hidden" name="_csrf" value="<%= user.csrf %>"><input name="reason" required maxlength="500" placeholder="Motif du refus" class="field-input"><button class="action-button warning">Refuser</button>
+            </form>
+        </div></td>
+    </tr><% }) %>
+    <% if (!requested.length) { %><tr><td colspan="5" class="empty-state">Aucun reversement en attente.</td></tr><% } %>
+    </tbody></table></div>
+</section>
+
+<section class="panel">
+    <div class="panel-header"><div><h3>Paiements à vérifier</h3><p>Paiement reçu sans billet émis : montant incohérent, ou offre complète au moment de la confirmation. Le remboursement est envoyé au numéro qui a payé.</p></div><span class="badge badge-amber"><%= reviewPayments.length %></span></div>
+    <div class="table-wrap"><table class="data-table"><thead><tr><th>Acheteur</th><th>Organisation · offre</th><th>Montant</th><th>Motif</th><th class="align-right">Action</th></tr></thead><tbody>
+    <% reviewPayments.forEach(payment => { %><tr>
+        <td><%= payment.attendee.full_name %><div class="cell-subtitle"><%= payment.attendee.email %> · <%= payment.phone_number %></div></td>
+        <td><%= payment.organization.name %><div class="cell-subtitle"><%= payment.offer.name %></div></td>
+        <td><strong><%= money(payment.amount, payment.currency) %></strong><div class="cell-subtitle"><%= date(payment.completed_at) %></div></td>
+        <td><%= payment.failure_code || '—' %><% if (payment.refund?.status === 'FAILED') { %><div class="cell-subtitle">Remboursement précédent échoué : <%= payment.refund.failure_code %></div><% } %></td>
+        <td class="align-right">
+            <form action="/finance/ticket-payments/<%= payment.ticket_payment_id %>/refund" method="POST" class="action-row" data-password-confirm data-confirm-title="Rembourser l’acheteur" data-confirm-message="<%= `${money(payment.amount, payment.currency)} seront renvoyés à ${payment.phone_number}. Saisissez votre mot de passe de super-admin.` %>">
+                <input type="hidden" name="_csrf" value="<%= user.csrf %>"><input name="reason" required maxlength="500" placeholder="Motif" class="field-input"><button class="action-button danger">Rembourser</button>
+            </form>
+        </td>
+    </tr><% }) %>
+    <% if (!reviewPayments.length) { %><tr><td colspan="5" class="empty-state">Aucun paiement à vérifier.</td></tr><% } %>
+    </tbody></table></div>
+</section>
+
+<section class="detail-grid">
+    <article class="panel">
+        <div class="panel-header"><div><h3>Derniers reversements</h3></div></div>
+        <div class="table-wrap"><table class="data-table"><thead><tr><th>Organisation</th><th>Montant</th><th>État</th></tr></thead><tbody>
+        <% recentPayouts.forEach(payout => { const [tone, label] = payoutBadge[payout.status] || ['badge-slate', payout.status]; %><tr>
+            <td><%= payout.organization.name %><div class="cell-subtitle"><%= date(payout.updated_at) %></div></td>
+            <td><%= money(payout.amount, payout.currency) %></td>
+            <td><span class="badge <%= tone %>"><%= label %></span><% if (payout.failure_code) { %><div class="cell-subtitle"><%= payout.failure_code %></div><% } %></td>
+        </tr><% }) %>
+        <% if (!recentPayouts.length) { %><tr><td colspan="3" class="empty-state">Aucun reversement.</td></tr><% } %>
+        </tbody></table></div>
+    </article>
+    <article class="panel">
+        <div class="panel-header"><div><h3>Derniers remboursements</h3></div></div>
+        <div class="table-wrap"><table class="data-table"><thead><tr><th>Acheteur</th><th>Montant</th><th>État</th></tr></thead><tbody>
+        <% recentRefunds.forEach(refund => { const [tone, label] = refundBadge[refund.status] || ['badge-slate', refund.status]; %><tr>
+            <td><%= refund.ticket_payment.attendee.full_name %><div class="cell-subtitle"><%= refund.ticket_payment.organization.name %> · <%= refund.reason %></div></td>
+            <td><%= money(refund.ticket_payment.amount, refund.ticket_payment.currency) %></td>
+            <td><span class="badge <%= tone %>"><%= label %></span></td>
+        </tr><% }) %>
+        <% if (!recentRefunds.length) { %><tr><td colspan="3" class="empty-state">Aucun remboursement.</td></tr><% } %>
+        </tbody></table></div>
+    </article>
+</section>
+<%- include('partials/app-shell-end') %><%- include('partials/footer') %>

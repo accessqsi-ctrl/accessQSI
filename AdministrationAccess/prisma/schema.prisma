@@ -32,17 +32,22 @@ model UserQ {
   organization                  Organization? @relation(fields: [org_id], references: [org_id])
   payments                      Payment[]
 
+  payout_accounts_updated  OrganizerPayoutAccount[] @relation("PayoutAccountUpdatedBy")
+  payouts_requested        OrganizerPayout[]        @relation("PayoutRequestedBy")
+  payouts_reviewed         OrganizerPayout[]        @relation("PayoutReviewedBy")
+  ticket_refunds_requested TicketRefund[]           @relation("TicketRefundRequestedBy")
+
   @@index([org_id, deleted_at])
   @@index([role])
   @@map("usersQ")
 }
 
 model Organization {
-  org_id                        Int                    @id @default(autoincrement())
+  org_id                        Int                      @id @default(autoincrement())
   name                          String
-  created_at                    DateTime               @default(now())
+  created_at                    DateTime                 @default(now())
   deleted_at                    DateTime?
-  is_active                     Boolean                @default(true)
+  is_active                     Boolean                  @default(true)
   subscription_plan             Int?
   subscription_started_at       DateTime?
   subscription_expires_at       DateTime?
@@ -52,11 +57,13 @@ model Organization {
   enterprise_contract_reference String?
   enterprise_entitlements       Json?
   default_card_template_id      String?
+  // Commission de la plateforme sur la billetterie, en points de base (1000 = 10 %). Null : taux par défaut.
+  ticket_commission_bps         Int?
   areas                         Area[]
   assets                        OrganizationAsset[]
   card_templates                CardTemplateCustom[]
   events                        Event[]
-  plan                          Plan?                  @relation(fields: [subscription_plan], references: [plan_id])
+  plan                          Plan?                    @relation(fields: [subscription_plan], references: [plan_id])
   payments                      Payment[]
   refunds                       Refund[]
   event_passes                  EventPass[]
@@ -67,6 +74,10 @@ model Organization {
   pass_issuance_requests        PassIssuanceRequest[]
   registration_forms            RegistrationForm[]
   registrations                 Registration[]
+  ticket_payments               TicketPayment[]
+  ledger_entries                OrganizerLedgerEntry[]
+  payout_accounts               OrganizerPayoutAccount[]
+  payouts                       OrganizerPayout[]
   usersQ                        UserQ[]
 
   @@index([deleted_at])
@@ -241,6 +252,7 @@ model RegistrationForm {
   event                Event                  @relation(fields: [event_id], references: [event_id])
   offers               RegistrationOffer[]
   registrations        Registration[]
+  ticket_payments      TicketPayment[]
 
   @@index([org_id, created_at])
   @@index([event_id])
@@ -262,10 +274,16 @@ model RegistrationOffer {
   valid_until           DateTime?
   card_template_id      String?          @db.VarChar(160)
   card_message          String?          @db.VarChar(240)
+  // Le QR n'est montré que dans la box du participant : ni PDF ni lien par email.
+  box_only_qr           Boolean          @default(false)
+  // Prix public de l'offre dans sa devise. Null : offre gratuite.
+  price                 Decimal?         @db.Decimal(18, 2)
+  currency              String?          @db.VarChar(3)
   created_at            DateTime         @default(now())
   updated_at            DateTime         @updatedAt
   form                  RegistrationForm @relation(fields: [registration_form_id], references: [registration_form_id], onDelete: Cascade)
   registrations         Registration[]
+  ticket_payments       TicketPayment[]
 
   @@index([registration_form_id, position])
   @@map("registration_offers")
@@ -277,6 +295,8 @@ model Registration {
   event_id              Int
   registration_form_id  String                      @db.Uuid
   registration_offer_id String                      @db.Uuid
+  // Propriétaire actuel du billet. Null pour les inscriptions antérieures à la box.
+  owner_attendee_id     String?                     @db.Uuid
   submission_key_hash   String                      @db.Char(64)
   request_hash          String                      @db.Char(64)
   holder_name           String                      @db.VarChar(160)
@@ -299,6 +319,8 @@ model Registration {
   form                  RegistrationForm            @relation(fields: [registration_form_id], references: [registration_form_id])
   offer                 RegistrationOffer           @relation(fields: [registration_offer_id], references: [registration_offer_id])
   qr_code               QrCode?                     @relation(fields: [qr_id], references: [qr_id])
+  owner                 Attendee?                   @relation(fields: [owner_attendee_id], references: [attendee_id])
+  ticket_payment        TicketPayment?
   access_tokens         RegistrationAccessToken[]
   email_deliveries      RegistrationEmailDelivery[]
   jobs                  RegistrationJob[]
@@ -308,7 +330,184 @@ model Registration {
   @@index([registration_form_id, status, created_at])
   @@index([registration_offer_id, capacity_held])
   @@index([holder_email])
+  @@index([owner_attendee_id, created_at])
   @@map("registrations")
+}
+
+// Compte participant : distinct des membres d'organisation (UserQ), il détient les billets de sa box.
+model Attendee {
+  attendee_id       String          @id @default(uuid()) @db.Uuid
+  email             String          @unique @db.VarChar(320)
+  full_name         String          @db.VarChar(160)
+  phone             String?         @db.VarChar(40)
+  // Null tant que le participant n'a pas sécurisé sa box : il se connecte alors par code email.
+  password_hash     String?
+  email_verified_at DateTime?
+  session_version   Int             @default(0)
+  is_active         Boolean         @default(true)
+  last_login        DateTime?
+  created_at        DateTime        @default(now())
+  updated_at        DateTime        @updatedAt
+  registrations     Registration[]
+  ticket_payments   TicketPayment[]
+
+  @@map("attendees")
+}
+
+// Achat d'un billet payant par un participant. La place est réservée jusqu'à hold_expires_at ;
+// le billet n'est créé qu'après confirmation du dépôt auprès de pawaPay.
+model TicketPayment {
+  ticket_payment_id       String                 @id @default(uuid()) @db.Uuid
+  deposit_id              String                 @unique @db.Uuid
+  org_id                  Int
+  registration_form_id    String                 @db.Uuid
+  registration_offer_id   String                 @db.Uuid
+  attendee_id             String                 @db.Uuid
+  registration_id         String?                @unique @db.Uuid
+  submission_key_hash     String                 @db.Char(64)
+  request_hash            String                 @db.Char(64)
+  holder_phone            String?                @db.VarChar(40)
+  amount                  Decimal                @db.Decimal(18, 2)
+  currency                String                 @db.VarChar(3)
+  // Taux et répartition figés au moment de l'achat.
+  commission_bps          Int
+  commission_amount       Decimal                @db.Decimal(18, 2)
+  organizer_amount        Decimal                @db.Decimal(18, 2)
+  country                 String                 @db.VarChar(3)
+  provider                String
+  phone_number            String
+  status                  PaymentStatus          @default(PENDING)
+  hold_expires_at         DateTime
+  provider_transaction_id String?
+  failure_code            String?
+  failure_message         String?
+  provider_payload        Json?
+  created_at              DateTime               @default(now())
+  updated_at              DateTime               @updatedAt
+  completed_at            DateTime?
+  organization            Organization           @relation(fields: [org_id], references: [org_id])
+  form                    RegistrationForm       @relation(fields: [registration_form_id], references: [registration_form_id])
+  offer                   RegistrationOffer      @relation(fields: [registration_offer_id], references: [registration_offer_id])
+  attendee                Attendee               @relation(fields: [attendee_id], references: [attendee_id])
+  registration            Registration?          @relation(fields: [registration_id], references: [registration_id])
+  ledger_entries          OrganizerLedgerEntry[]
+  refund                  TicketRefund?
+
+  @@unique([registration_form_id, submission_key_hash])
+  @@index([registration_offer_id, status, hold_expires_at])
+  @@index([attendee_id, created_at])
+  @@index([org_id, created_at])
+  @@index([status, created_at])
+  @@map("ticket_payments")
+}
+
+// Journal en ajout seul des sommes dues à l'organisateur. Le solde est la somme par devise.
+model OrganizerLedgerEntry {
+  ledger_entry_id   String           @id @default(uuid()) @db.Uuid
+  org_id            Int
+  type              LedgerEntryType
+  amount            Decimal          @db.Decimal(18, 2)
+  currency          String           @db.VarChar(3)
+  ticket_payment_id String?          @db.Uuid
+  payout_id         String?          @db.Uuid
+  created_at        DateTime         @default(now())
+  organization      Organization     @relation(fields: [org_id], references: [org_id])
+  ticket_payment    TicketPayment?   @relation(fields: [ticket_payment_id], references: [ticket_payment_id])
+  payout            OrganizerPayout? @relation(fields: [payout_id], references: [payout_id])
+
+  @@unique([ticket_payment_id, type])
+  @@unique([payout_id, type])
+  @@index([org_id, currency])
+  @@map("organizer_ledger_entries")
+}
+
+// Compte Mobile Money sur lequel l'organisateur reçoit ses reversements, un par devise.
+model OrganizerPayoutAccount {
+  payout_account_id String       @id @default(uuid()) @db.Uuid
+  org_id            Int
+  currency          String       @db.VarChar(3)
+  country           String       @db.VarChar(3)
+  provider          String
+  phone_number      String
+  updated_by_id     Int
+  created_at        DateTime     @default(now())
+  updated_at        DateTime     @updatedAt
+  organization      Organization @relation(fields: [org_id], references: [org_id])
+  updated_by        UserQ        @relation("PayoutAccountUpdatedBy", fields: [updated_by_id], references: [user_id])
+
+  @@unique([org_id, currency])
+  @@map("organizer_payout_accounts")
+}
+
+// Reversement du solde d'un organisateur. Le montant est retiré du solde dès la demande,
+// et y revient si la demande est refusée, annulée ou échoue. Validé par un super-admin, envoyé par le backend.
+model OrganizerPayout {
+  payout_id               String                 @id @default(uuid()) @db.Uuid
+  provider_payout_id      String                 @unique @db.Uuid
+  org_id                  Int
+  amount                  Decimal                @db.Decimal(18, 2)
+  currency                String                 @db.VarChar(3)
+  // Destination figée à la demande.
+  country                 String                 @db.VarChar(3)
+  provider                String
+  phone_number            String
+  status                  PayoutStatus           @default(REQUESTED)
+  requested_by_id         Int
+  reviewed_by_id          Int?
+  reviewed_at             DateTime?
+  submitted_at            DateTime?
+  provider_transaction_id String?
+  failure_code            String?
+  failure_message         String?
+  provider_payload        Json?
+  created_at              DateTime               @default(now())
+  updated_at              DateTime               @updatedAt
+  completed_at            DateTime?
+  organization            Organization           @relation(fields: [org_id], references: [org_id])
+  requested_by            UserQ                  @relation("PayoutRequestedBy", fields: [requested_by_id], references: [user_id])
+  reviewed_by             UserQ?                 @relation("PayoutReviewedBy", fields: [reviewed_by_id], references: [user_id])
+  ledger_entries          OrganizerLedgerEntry[]
+
+  @@index([org_id, created_at])
+  @@index([status, created_at])
+  @@map("organizer_payouts")
+}
+
+// Remboursement d'un achat de billet au payeur d'origine, demandé par un super-admin et exécuté par le backend.
+model TicketRefund {
+  ticket_refund_id        String        @id @default(uuid()) @db.Uuid
+  provider_refund_id      String        @unique @db.Uuid
+  ticket_payment_id       String        @unique @db.Uuid
+  status                  RefundStatus  @default(PENDING)
+  reason                  String        @db.VarChar(500)
+  requested_by_id         Int
+  submitted_at            DateTime?
+  provider_transaction_id String?
+  failure_code            String?
+  failure_message         String?
+  provider_payload        Json?
+  created_at              DateTime      @default(now())
+  updated_at              DateTime      @updatedAt
+  completed_at            DateTime?
+  ticket_payment          TicketPayment @relation(fields: [ticket_payment_id], references: [ticket_payment_id])
+  requested_by            UserQ         @relation("TicketRefundRequestedBy", fields: [requested_by_id], references: [user_id])
+
+  @@index([status, created_at])
+  @@map("ticket_refunds")
+}
+
+// Code de connexion à usage unique envoyé par email. Seule l'empreinte est stockée.
+model AttendeeLoginCode {
+  attendee_login_code_id String    @id @default(uuid()) @db.Uuid
+  email                  String    @db.VarChar(320)
+  code_hash              String    @db.Char(64)
+  attempts               Int       @default(0)
+  expires_at             DateTime
+  consumed_at            DateTime?
+  created_at             DateTime  @default(now())
+
+  @@index([email, created_at])
+  @@map("attendee_login_codes")
 }
 
 model RegistrationAccessToken {
@@ -601,6 +800,7 @@ enum ScanStatus {
   denied_area_not_allowed
   denied_insufficient_level
   denied_period_limit
+  denied_dynamic_code
 }
 
 enum QrPeriodUnit {
@@ -646,6 +846,23 @@ enum SubscriptionChangeStatus {
   EXPIRED
   REVIEW_REQUIRED
   REFUND_PENDING
+}
+
+enum LedgerEntryType {
+  TICKET_SALE
+  PAYOUT
+  PAYOUT_REVERSAL
+}
+
+enum PayoutStatus {
+  REQUESTED
+  APPROVED
+  SUBMITTING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REJECTED
+  CANCELED
 }
 
 enum RefundStatus {

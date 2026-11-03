@@ -62,6 +62,41 @@ exports.sendPassAccessEmail = async ({ toEmail, fullName, eventTitle, offerName,
     });
 };
 
+exports.sendAttendeeLoginCode = async ({ toEmail, fullName, code, ttlMinutes }) => {
+    const greeting = fullName ? `Bonjour ${fullName},` : "Bonjour,";
+    return sendEmail({
+        to: [{ email: toEmail, ...(fullName ? { name: fullName } : {}) }],
+        subject: `${code} est votre code AccessQ`,
+        textContent: `${greeting}\n\nVotre code de connexion à votre box AccessQ : ${code}\n\nIl expire dans ${ttlMinutes} minutes. Si vous n’avez rien demandé, ignorez cet email.`,
+        htmlContent: `
+            <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;color:#0f172a">
+                <p>${escapeHtml(greeting)}</p>
+                <p>Votre code de connexion à votre box AccessQ :</p>
+                <p style="font-size:32px;font-weight:bold;letter-spacing:8px;color:#1d4ed8">${escapeHtml(code)}</p>
+                <p style="font-size:12px;color:#64748b">Il expire dans ${Number(ttlMinutes)} minutes. Si vous n’avez rien demandé, ignorez cet email.</p>
+            </div>
+        `
+    });
+};
+
+exports.sendBoxTicketEmail = async ({ toEmail, fullName, eventTitle, offerName, boxUrl }) => {
+    const safeUrl = escapeHtml(boxUrl);
+    return sendEmail({
+        to: [{ email: toEmail, name: fullName }],
+        subject: `Votre billet pour ${eventTitle} est dans votre box - AccessQ`,
+        textContent: `Bonjour ${fullName},\n\nVotre billet ${offerName} pour ${eventTitle} a été ajouté à votre box AccessQ :\n${boxUrl}\n\nPrésentez le QR affiché dans votre box à l’entrée.`,
+        htmlContent: `
+            <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;color:#0f172a">
+                <h2 style="color:#1d4ed8">Votre billet est dans votre box</h2>
+                <p>Bonjour <strong>${escapeHtml(fullName)}</strong>,</p>
+                <p>Votre billet <strong>${escapeHtml(offerName)}</strong> pour <strong>${escapeHtml(eventTitle)}</strong> a été ajouté à votre box.</p>
+                <a href="${safeUrl}" style="display:inline-block;padding:12px 20px;background:#1d4ed8;color:#fff;text-decoration:none;border-radius:8px">Ouvrir ma box</a>
+                <p style="margin-top:24px;font-size:12px;color:#64748b">Présentez le QR affiché dans votre box à l’entrée.</p>
+            </div>
+        `
+    });
+};
+
 exports.sendVerificationEmail = async (toEmail, fullName, token) => {
     try {
         const baseUrl = process.env.FRONTEND_URL || "http://localhost:3000";

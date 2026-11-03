@@ -16,17 +16,31 @@ test("free registration flow is atomic on PostgreSQL", { skip: !enabled || !safe
     const emailService = require("../src/services/email.service");
     const worker = require("../src/workers/registration.worker");
     const passIssuance = require("../src/services/pass_issuance.service");
+    const box = require("../src/services/box.service");
+    const boxQr = require("../src/services/box_qr.service");
+    const qrVerify = require("../src/services/qr_verify.service");
+    const ticketPayments = require("../src/services/ticket_payment.service");
+    const pawaPay = require("../src/services/pawapay.service");
+    const payouts = require("../src/services/organizer_payout.service");
 
     const cleanup = async () => {
+        await prisma.organizerLedgerEntry.deleteMany();
+        await prisma.ticketRefund.deleteMany();
+        await prisma.organizerPayout.deleteMany();
+        await prisma.organizerPayoutAccount.deleteMany();
+        await prisma.ticketPayment.deleteMany();
         await prisma.registrationJob.deleteMany();
         await prisma.registrationEmailDelivery.deleteMany();
         await prisma.registrationAccessToken.deleteMany();
         await prisma.registration.deleteMany();
+        await prisma.attendee.deleteMany({ where: { email: { endsWith: "@example.test" } } });
         await prisma.registrationOffer.deleteMany();
         await prisma.registrationForm.deleteMany();
         await prisma.passIssuanceRequest.deleteMany();
+        await prisma.scanLog.deleteMany();
         await prisma.qrCode.deleteMany();
         await prisma.event.deleteMany();
+        await prisma.userQ.deleteMany({ where: { email: { endsWith: "@example.test" } } });
         await prisma.organization.deleteMany();
     };
     await cleanup();
@@ -35,6 +49,7 @@ test("free registration flow is atomic on PostgreSQL", { skip: !enabled || !safe
     const org = await prisma.organization.create({ data: { name: "PostgreSQL V1 test" } });
     const otherOrg = await prisma.organization.create({ data: { name: "Other tenant" } });
     const event = await prisma.event.create({ data: { org_id: org.org_id, title: "Concert test", qr_limit: 10 } });
+    const attendeeFor = (email, fullName) => prisma.attendee.upsert({ where: { email }, create: { email, full_name: fullName, email_verified_at: new Date() }, update: {} });
 
     await t.test("last offer place and submission idempotency", async () => {
         let form = await registrations.createForm(org.org_id, {
@@ -43,21 +58,24 @@ test("free registration flow is atomic on PostgreSQL", { skip: !enabled || !safe
             offers: [{ name: "Gratuit", capacity: 1, cardTemplateId: "event-ticket" }]
         });
         form = await registrations.setFormStatus(org.org_id, form.registration_form_id, "PUBLISHED");
-        const command = suffix => registrations.submit(form.public_slug, { fullName: `Participant ${suffix}`, email: `${suffix}@example.test`, offerId: form.offers[0].registration_offer_id }, `key-${suffix}`);
+        const attendees = { one: await attendeeFor("one@example.test", "Participant one"), two: await attendeeFor("two@example.test", "Participant two") };
+        const command = suffix => registrations.submit(form.public_slug, { offerId: form.offers[0].registration_offer_id }, `key-${suffix}`, attendees[suffix]);
         const settled = await Promise.allSettled([command("one"), command("two")]);
         assert.equal(settled.filter(result => result.status === "fulfilled").length, 1);
         assert.equal(settled.filter(result => result.status === "rejected" && result.reason.code === "OFFER_SOLD_OUT").length, 1);
         const winner = settled.find(result => result.status === "fulfilled").value;
-        const replay = await registrations.submit(form.public_slug, {
-            fullName: winner.registration.holder_name,
-            email: winner.registration.holder_email,
-            offerId: form.offers[0].registration_offer_id
-        }, winner.registration.holder_email.includes("one") ? "key-one" : "key-two");
+        const winnerKey = winner.registration.holder_email.includes("one") ? "one" : "two";
+        assert.equal(winner.registration.owner_attendee_id, attendees[winnerKey].attendee_id);
+        const replay = await registrations.submit(form.public_slug, { offerId: form.offers[0].registration_offer_id }, `key-${winnerKey}`, attendees[winnerKey]);
         assert.equal(replay.replayed, true);
         assert.equal(replay.registration.registration_id, winner.registration.registration_id);
         await assert.rejects(
-            registrations.submit(form.public_slug, { fullName: "Changed", email: winner.registration.holder_email, offerId: form.offers[0].registration_offer_id }, winner.registration.holder_email.includes("one") ? "key-one" : "key-two"),
+            registrations.submit(form.public_slug, { offerId: form.offers[0].registration_offer_id, phone: "+243810000000" }, `key-${winnerKey}`, attendees[winnerKey]),
             error => error.code === "IDEMPOTENCY_KEY_CONFLICT"
+        );
+        await assert.rejects(
+            registrations.submit(form.public_slug, { offerId: form.offers[0].registration_offer_id }, "key-anonymous", null),
+            error => error.code === "ATTENDEE_AUTH_REQUIRED"
         );
         const updated = await registrations.updateForm(org.org_id, form.registration_form_id, {
             title: form.title,
@@ -71,13 +89,14 @@ test("free registration flow is atomic on PostgreSQL", { skip: !enabled || !safe
         await prisma.registrationJob.updateMany({ where: { registration_id: winner.registration.registration_id }, data: { status: "COMPLETED", completed_at: new Date() } });
     });
 
-    await t.test("job leases, exactly one pass, email acceptance and hashed tokens", async () => {
+    await t.test("job leases, exactly one pass, box email and box ownership", async () => {
         const form = await registrations.setFormStatus(org.org_id, (await registrations.createForm(org.org_id, {
             eventId: event.event_id,
             title: "Parcours complet",
             offers: [{ name: "Standard", cardTemplateId: "event-ticket", accessType: "multi", usageLimit: 2 }]
         })).registration_form_id, "PUBLISHED");
-        const submitted = await registrations.submit(form.public_slug, { fullName: "Ada Lovelace", email: "ada@example.test", offerId: form.offers[0].registration_offer_id }, "ada-submit");
+        const ada = await attendeeFor("ada@example.test", "Ada Lovelace");
+        const submitted = await registrations.submit(form.public_slug, { offerId: form.offers[0].registration_offer_id }, "ada-submit", ada);
 
         const snapshot = submitted.registration.offer_snapshot;
         const orphanedIssuance = await passIssuance.issuePass({
@@ -104,41 +123,85 @@ test("free registration flow is atomic on PostgreSQL", { skip: !enabled || !safe
 
         const emailJob = await jobs.claimNext({ id: "email-worker" });
         let captured;
-        emailService.sendPassAccessEmail = async message => { captured = message; return { messageId: "test-message" }; };
+        emailService.sendBoxTicketEmail = async message => { captured = message; return { messageId: "test-message" }; };
         await worker.processEmail(emailJob);
         assert.equal(captured.toEmail, "ada@example.test");
-        assert.match(captured.accessUrl, /\/register\/access\?token=/);
-        const rawEmailToken = new URL(captured.accessUrl).searchParams.get("token");
-        const stored = await prisma.registrationAccessToken.findUnique({ where: { token_hash: accessTokens.hashToken(rawEmailToken) } });
-        assert.ok(stored);
-        assert.equal(JSON.stringify(await prisma.registrationJob.findMany()).includes(rawEmailToken), false);
+        assert.match(captured.boxUrl, new RegExp(`/box/tickets/${completed.registration_id}$`));
+        // Un billet de box ne reçoit jamais de lien d'accès par email.
+        assert.equal(await prisma.registrationAccessToken.count({ where: { registration_id: completed.registration_id } }), 0);
         const emailed = await prisma.registration.findUnique({ where: { registration_id: completed.registration_id } });
         assert.equal(emailed.email_status, "ACCEPTED");
 
         await registrations.reacquireCapacityAndEnqueue(org.org_id, completed.registration_id, "SEND_PASS_EMAIL");
         const failedEmailJob = await prisma.registrationJob.findFirst({ where: { registration_id: completed.registration_id, type: "SEND_PASS_EMAIL", status: "PENDING" }, orderBy: { created_at: "desc" } });
         await prisma.registrationJob.update({ where: { registration_job_id: failedEmailJob.registration_job_id }, data: { max_attempts: 1 } });
-        emailService.sendPassAccessEmail = async () => { throw new Error("test provider outage"); };
+        emailService.sendBoxTicketEmail = async () => { throw new Error("test provider outage"); };
         const failedClaim = await jobs.claimNext({ id: "email-failure-worker" });
         await worker.processEmail(failedClaim);
         const afterEmailFailure = await prisma.registration.findUnique({ where: { registration_id: completed.registration_id } });
         assert.equal(afterEmailFailure.email_status, "FAILED");
         assert.equal(afterEmailFailure.qr_id, completed.qr_id);
 
-        const second = await registrations.submit(form.public_slug, { fullName: "Ada Second Pass", email: "ada@example.test", offerId: form.offers[0].registration_offer_id }, "ada-second-submit");
+        const second = await registrations.submit(form.public_slug, { offerId: form.offers[0].registration_offer_id }, "ada-second-submit", ada);
         const secondIssueJob = await jobs.claimNext({ id: "second-pass-worker" });
         await worker.processIssuePass(secondIssueJob);
         await prisma.registrationJob.updateMany({ where: { registration_id: second.registration.registration_id, type: "SEND_PASS_EMAIL", status: "PENDING" }, data: { status: "COMPLETED", completed_at: new Date() } });
-        assert.equal(await registrations.queueRecovery("ADA@example.test", form.public_slug), 2);
-        assert.equal(await prisma.registrationJob.count({ where: { type: "SEND_PASS_EMAIL", status: "PENDING", registration: { holder_email: "ada@example.test" } } }), 2);
-        await prisma.registrationJob.updateMany({ where: { type: "SEND_PASS_EMAIL", status: "PENDING", registration: { holder_email: "ada@example.test" } }, data: { status: "COMPLETED", completed_at: new Date() } });
+        // Les billets de box ne passent pas par la récupération par lien.
+        assert.equal(await registrations.queueRecovery("ADA@example.test", form.public_slug), 0);
+
+        const tickets = await box.listTickets(ada.attendee_id);
+        assert.equal(tickets.length, 2);
+        assert.ok(tickets.every(ticket => ticket.qrAvailable && ticket.pdfAvailable));
+        const { image: png, expiresAt } = await box.renderTicketQr(ada.attendee_id, completed.registration_id);
+        assert.equal(png.subarray(1, 4).toString(), "PNG");
+        // Billet téléchargeable : QR statique, identique au PDF, sans échéance.
+        assert.equal(expiresAt, null);
+        const stranger = await attendeeFor("stranger@example.test", "Stranger");
+        await assert.rejects(box.getTicket(stranger.attendee_id, completed.registration_id), error => error.code === "TICKET_NOT_FOUND");
+        await assert.rejects(box.renderTicketQr(stranger.attendee_id, completed.registration_id), error => error.code === "TICKET_NOT_FOUND");
+    });
+
+    await t.test("box-only offers never produce a PDF and require the rotating QR", async () => {
+        const form = await registrations.setFormStatus(org.org_id, (await registrations.createForm(org.org_id, {
+            eventId: event.event_id,
+            title: "QR dans la box",
+            offers: [{ name: "Box", cardTemplateId: "event-ticket", boxOnlyQr: true }]
+        })).registration_form_id, "PUBLISHED");
+        assert.equal(form.offers[0].box_only_qr, true);
+        const grace = await attendeeFor("grace@example.test", "Grace Hopper");
+        const submitted = await registrations.submit(form.public_slug, { offerId: form.offers[0].registration_offer_id }, "grace-submit", grace);
+        assert.equal(submitted.registration.offer_snapshot.boxOnlyQr, true);
+        await worker.processIssuePass(await jobs.claimNext({ id: "box-only-worker" }));
+        const [ticket] = await box.listTickets(grace.attendee_id);
+        assert.equal(ticket.qrAvailable, true);
+        assert.equal(ticket.pdfAvailable, false);
+        await assert.rejects(box.renderTicketPdf(grace.attendee_id, ticket.id), error => error.code === "BOX_ONLY_QR");
+
+        const rendered = await box.renderTicketQr(grace.attendee_id, ticket.id);
+        assert.ok(rendered.expiresAt > new Date());
+        const scanner = await prisma.userQ.create({ data: { clef: "scanner-box-only", full_name: "Scanner", email: "scanner@example.test", password_hash: "x", role: "ORG_AGENT", org_id: org.org_id, is_verified: true } });
+        const qr = await prisma.qrCode.findFirst({ where: { registration: { registration_id: ticket.id } } });
+        const scan = extra => qrVerify.verifyAndRecordScan({ token: qr.unique_token, scannerId: scanner.user_id, scannerOrgId: org.org_id, eventId: event.event_id, ...extra });
+        // Capture d'écran ou PDF : jeton statique seul, ou code d'une période dépassée.
+        const staticScan = await scan({});
+        assert.equal(staticScan.decision.scanStatus, "denied_dynamic_code");
+        const old = JSON.parse(boxQr.buildDynamicPayload(qr, new Date(Date.now() - 3 * boxQr.STEP_SECONDS * 1000)).payload);
+        assert.equal((await scan({ dynamicStep: old.s, dynamicCode: old.c })).decision.scanStatus, "denied_dynamic_code");
+        const forged = JSON.parse(boxQr.buildDynamicPayload(qr).payload);
+        assert.equal((await scan({ dynamicStep: forged.s, dynamicCode: forged.c.replace(/.$/, forged.c.endsWith("A") ? "B" : "A") })).decision.scanStatus, "denied_dynamic_code");
+        const live = JSON.parse(boxQr.buildDynamicPayload(qr).payload);
+        const authorized = await scan({ dynamicStep: live.s, dynamicCode: live.c });
+        assert.equal(authorized.decision.success, true);
+        assert.equal(await prisma.scanLog.count({ where: { qr_code_id: qr.qr_id, status: "denied_dynamic_code" } }), 3);
+        assert.equal((await prisma.qrCode.findUnique({ where: { qr_id: qr.qr_id } })).scans_count, 1);
+        await prisma.registrationJob.updateMany({ where: { registration_id: ticket.id, status: "PENDING" }, data: { status: "COMPLETED", completed_at: new Date() } });
     });
 
     await t.test("commercial quota releases capacity and supports controlled recovery", async () => {
         const limitedEvent = await prisma.event.create({ data: { org_id: org.org_id, title: "Quota test", qr_limit: 1, entitlement_type: "EVENT_PASS", entitlement_expires_at: new Date(Date.now() + 86_400_000) } });
         await passIssuance.issuePass({ organizationId: org.org_id, eventId: limitedEvent.event_id, input: { fullName: "Existing pass", email: "existing@example.test", accessType: "single", level: 1, cardTemplateId: "event-ticket" } });
         const form = await registrations.setFormStatus(org.org_id, (await registrations.createForm(org.org_id, { eventId: limitedEvent.event_id, title: "Quota blocked", offers: [{ name: "Unique", capacity: 1, cardTemplateId: "event-ticket" }] })).registration_form_id, "PUBLISHED");
-        const submitted = await registrations.submit(form.public_slug, { fullName: "Quota Holder", email: "quota@example.test", offerId: form.offers[0].registration_offer_id }, "quota-holder");
+        const submitted = await registrations.submit(form.public_slug, { offerId: form.offers[0].registration_offer_id }, "quota-holder", await attendeeFor("quota@example.test", "Quota Holder"));
         const issueJob = await jobs.claimNext({ id: "quota-worker" });
         await worker.processIssuePass(issueJob);
         const blocked = await prisma.registration.findUnique({ where: { registration_id: submitted.registration.registration_id } });
@@ -172,5 +235,196 @@ test("free registration flow is atomic on PostgreSQL", { skip: !enabled || !safe
         assert.ok((await registrations.listForms(org.org_id)).length > 0);
         assert.equal((await registrations.listForms(otherOrg.org_id)).length, 0);
         assert.equal(await registrations.getForm(otherOrg.org_id, (await registrations.listForms(org.org_id))[0].registration_form_id), null);
+    });
+
+    await t.test("paid offers hold the place, issue only after pawaPay confirms and credit the organizer", async () => {
+        const previousEnv = { enabled: process.env.TICKET_PAYMENTS_ENABLED, percent: process.env.TICKET_COMMISSION_PERCENT };
+        const originals = { conf: pawaPay.getActiveConfiguration, initiate: pawaPay.initiateDeposit, check: pawaPay.checkDeposit };
+        process.env.TICKET_PAYMENTS_ENABLED = "true";
+        delete process.env.TICKET_COMMISSION_PERCENT;
+        const remote = new Map();
+        pawaPay.getActiveConfiguration = async () => ({ countries: [{ country: "COD", prefix: "243", providers: [{ provider: "VODACOM_MPESA_COD", displayName: "M-Pesa", currencies: [{ currency: "USD", operationTypes: { DEPOSIT: { decimals: 2 } } }] }] }] });
+        pawaPay.initiateDeposit = async payload => {
+            remote.set(payload.depositId, { depositId: payload.depositId, status: "ACCEPTED", amount: payload.amount, currency: payload.currency, country: "COD", payer: payload.payer });
+            return { depositId: payload.depositId, status: "ACCEPTED" };
+        };
+        pawaPay.checkDeposit = async depositId => remote.has(depositId) ? { status: "FOUND", data: remote.get(depositId) } : { status: "NOT_FOUND" };
+        ticketPayments.resetProviderCache();
+        t.after(() => {
+            Object.assign(pawaPay, { getActiveConfiguration: originals.conf, initiateDeposit: originals.initiate, checkDeposit: originals.check });
+            if (previousEnv.enabled === undefined) delete process.env.TICKET_PAYMENTS_ENABLED; else process.env.TICKET_PAYMENTS_ENABLED = previousEnv.enabled;
+            if (previousEnv.percent !== undefined) process.env.TICKET_COMMISSION_PERCENT = previousEnv.percent;
+        });
+        const settle = (payment, status, patch = {}) => remote.set(payment.deposit_id, { ...remote.get(payment.deposit_id), status, ...patch });
+
+        await assert.rejects(registrations.createForm(org.org_id, { eventId: event.event_id, title: "Sans devise", offers: [{ name: "VIP", price: "10", cardTemplateId: "event-ticket" }] }), error => error.code === "INVALID_OFFER");
+        const form = await registrations.setFormStatus(org.org_id, (await registrations.createForm(org.org_id, {
+            eventId: event.event_id,
+            title: "Billetterie payante",
+            offers: [{ name: "VIP", price: "12,50", currency: "usd", capacity: 1, cardTemplateId: "event-ticket" }]
+        })).registration_form_id, "PUBLISHED");
+        const offer = form.offers[0];
+        assert.equal(String(offer.price), "12.5");
+        assert.equal(offer.currency, "USD");
+        const buyer = await attendeeFor("buyer@example.test", "Buyer One");
+        const rival = await attendeeFor("rival@example.test", "Buyer Two");
+        const checkout = (attendee, key, extra = {}) => ticketPayments.initiate(form.public_slug, { offerId: offer.registration_offer_id, provider: "VODACOM_MPESA_COD", country: "COD", payerPhone: "0991234567", ...extra }, key, attendee);
+
+        await assert.rejects(registrations.submit(form.public_slug, { offerId: offer.registration_offer_id }, "free-on-paid", buyer), error => error.code === "PAYMENT_REQUIRED");
+        assert.equal((await ticketPayments.listOfferProviders(form.public_slug, offer.registration_offer_id)).length, 1);
+
+        const { payment } = await checkout(buyer, "buyer-1");
+        assert.equal(payment.status, "PENDING");
+        assert.equal(payment.phone_number, "243991234567");
+        assert.equal(String(payment.commission_amount), "1.25");
+        assert.equal(String(payment.organizer_amount), "11.25");
+        assert.equal(payment.registration_id, null);
+        assert.equal((await checkout(buyer, "buyer-1")).replayed, true);
+        await assert.rejects(checkout(buyer, "buyer-1", { payerPhone: "0997654321" }), error => error.code === "IDEMPOTENCY_KEY_CONFLICT");
+        await assert.rejects(checkout(rival, "rival-1"), error => error.code === "OFFER_SOLD_OUT");
+        await assert.rejects(ticketPayments.getForAttendee(rival.attendee_id, payment.ticket_payment_id), error => error.code === "TICKET_PAYMENT_NOT_FOUND");
+
+        settle(payment, "PROCESSING");
+        assert.equal((await ticketPayments.reconcile(payment.deposit_id)).status, "PROCESSING");
+        assert.equal(await prisma.registration.count({ where: { owner_attendee_id: buyer.attendee_id } }), 0);
+
+        settle(payment, "COMPLETED", { providerTransactionId: "tx-1" });
+        const completed = await ticketPayments.reconcile(payment.deposit_id);
+        assert.equal(completed.status, "COMPLETED");
+        await ticketPayments.reconcile(payment.deposit_id);
+        const ticket = await prisma.registration.findUnique({ where: { registration_id: completed.registration_id }, include: { jobs: true } });
+        assert.equal(ticket.owner_attendee_id, buyer.attendee_id);
+        assert.equal(ticket.offer_snapshot.price, "12.5");
+        assert.deepEqual(ticket.jobs.map(job => job.type), ["ISSUE_PASS"]);
+        assert.equal(await prisma.organizerLedgerEntry.count({ where: { ticket_payment_id: payment.ticket_payment_id } }), 1);
+        await assert.rejects(checkout(rival, "rival-2"), error => error.code === "OFFER_SOLD_OUT");
+        await prisma.registrationJob.updateMany({ where: { registration_id: ticket.registration_id }, data: { status: "COMPLETED", completed_at: new Date() } });
+
+        // Taux propre à l'organisation, échec, montant falsifié, et paiement arrivé après expiration de la réservation.
+        await prisma.organization.update({ where: { org_id: org.org_id }, data: { ticket_commission_bps: 750 } });
+        const open = await registrations.updateForm(org.org_id, form.registration_form_id, { title: form.title, offers: [{ id: offer.registration_offer_id, name: "VIP", price: "12.50", currency: "USD", capacity: 2, cardTemplateId: "event-ticket" }] });
+        assert.equal(open.offers[0].capacity, 2);
+        const failed = (await checkout(rival, "rival-3")).payment;
+        assert.equal(String(failed.commission_amount), "0.94");
+        settle(failed, "FAILED", { failureReason: { failureCode: "INSUFFICIENT_BALANCE" } });
+        assert.equal((await ticketPayments.reconcile(failed.deposit_id)).status, "FAILED");
+        const tampered = (await checkout(rival, "rival-4")).payment;
+        settle(tampered, "COMPLETED", { amount: "1.00" });
+        assert.equal((await ticketPayments.reconcile(tampered.deposit_id)).status, "REVIEW_REQUIRED");
+        const late = (await checkout(rival, "rival-5")).payment;
+        await prisma.ticketPayment.update({ where: { ticket_payment_id: late.ticket_payment_id }, data: { hold_expires_at: new Date(Date.now() - 1000) } });
+        const onTime = (await checkout(buyer, "buyer-2")).payment;
+        settle(onTime, "COMPLETED");
+        assert.equal((await ticketPayments.reconcile(onTime.deposit_id)).status, "COMPLETED");
+        settle(late, "COMPLETED");
+        assert.equal((await ticketPayments.reconcile(late.deposit_id)).status, "REVIEW_REQUIRED");
+        assert.equal(await prisma.registration.count({ where: { registration_offer_id: offer.registration_offer_id } }), 2);
+
+        const balance = await ticketPayments.organizationBalance(org.org_id);
+        assert.equal(balance.defaultCommissionPercent, 10);
+        const usd = balance.balances.find(row => row.currency === "USD");
+        assert.equal(usd.ticketsSold, 2);
+        assert.equal(usd.gross, "25");
+        assert.equal(usd.commission, "2.19");
+        assert.equal(usd.balance, "22.81");
+        assert.equal((await ticketPayments.organizationBalance(otherOrg.org_id)).balances.length, 0);
+        await prisma.registrationJob.updateMany({ data: { status: "COMPLETED", completed_at: new Date() } });
+    });
+
+    await t.test("payouts leave the balance on request, return on failure and refunds reach the payer", async () => {
+        const bcrypt = require("bcrypt");
+        const originals = { conf: pawaPay.getActiveConfiguration, payout: pawaPay.initiatePayout, checkPayout: pawaPay.checkPayout, refund: pawaPay.initiateRefund, checkRefund: pawaPay.checkRefund };
+        t.after(() => Object.assign(pawaPay, { getActiveConfiguration: originals.conf, initiatePayout: originals.payout, checkPayout: originals.checkPayout, initiateRefund: originals.refund, checkRefund: originals.checkRefund }));
+        const remote = new Map();
+        let payoutResponse = () => ({ status: "ACCEPTED" });
+        const refundRequests = [];
+        pawaPay.getActiveConfiguration = async () => ({ countries: [{ country: "COD", prefix: "243", providers: [{ provider: "VODACOM_MPESA_COD", displayName: "M-Pesa", currencies: [{ currency: "USD", operationTypes: { DEPOSIT: { decimals: 2 }, PAYOUT: { decimals: 2 } } }] }] }] });
+        pawaPay.initiatePayout = async payload => {
+            const response = payoutResponse(payload);
+            if (response.status === "ACCEPTED") remote.set(payload.payoutId, { payoutId: payload.payoutId, status: "PROCESSING", amount: payload.amount, currency: payload.currency, recipient: payload.recipient });
+            return response;
+        };
+        pawaPay.checkPayout = async id => remote.has(id) ? { status: "FOUND", data: remote.get(id) } : { status: "NOT_FOUND" };
+        pawaPay.initiateRefund = async payload => { refundRequests.push(payload); remote.set(payload.refundId, { refundId: payload.refundId, status: "PROCESSING" }); return { status: "ACCEPTED" }; };
+        pawaPay.checkRefund = async id => remote.has(id) ? { status: "FOUND", data: remote.get(id) } : { status: "NOT_FOUND" };
+        payouts.resetProviderCache();
+
+        const admin = await prisma.userQ.create({ data: { clef: "payout-admin", full_name: "Org Admin", email: "payout-admin@example.test", password_hash: await bcrypt.hash("Secret#123", 4), role: "ORG_ADMIN", org_id: org.org_id, is_verified: true } });
+        const superAdmin = await prisma.userQ.create({ data: { clef: "payout-super", full_name: "Super", email: "payout-super@example.test", password_hash: "x", role: "SUPER_ADMIN", is_verified: true } });
+        const usdBalance = async () => (await ticketPayments.organizationBalance(org.org_id)).balances.find(row => row.currency === "USD").balance;
+        const approve = payout => prisma.organizerPayout.update({ where: { payout_id: payout.id }, data: { status: "APPROVED", reviewed_by_id: superAdmin.user_id, reviewed_at: new Date() } });
+        const payoutRow = payout => prisma.organizerPayout.findUnique({ where: { payout_id: payout.id } });
+        const request = amount => payouts.requestPayout(org.org_id, admin.user_id, { currency: "USD", amount, password: "Secret#123" });
+        assert.equal(await usdBalance(), "22.81");
+
+        await assert.rejects(payouts.requestPayout(org.org_id, admin.user_id, { currency: "USD", password: "Secret#123" }), error => error.code === "PAYOUT_ACCOUNT_REQUIRED");
+        await assert.rejects(payouts.setAccount(org.org_id, admin.user_id, { currency: "USD", provider: "VODACOM_MPESA_COD", country: "COD", phoneNumber: "0991234567", password: "wrong" }), error => error.code === "INVALID_PASSWORD");
+        await assert.rejects(payouts.setAccount(org.org_id, admin.user_id, { currency: "CDF", provider: "VODACOM_MPESA_COD", country: "COD", phoneNumber: "0991234567", password: "Secret#123" }), error => error.code === "PROVIDER_NOT_AVAILABLE");
+        const account = await payouts.setAccount(org.org_id, admin.user_id, { currency: "USD", provider: "VODACOM_MPESA_COD", country: "COD", phoneNumber: "0991234567", password: "Secret#123" });
+        assert.equal(account.phoneNumber, "2439••••567");
+
+        await assert.rejects(request("100"), error => error.code === "INSUFFICIENT_BALANCE");
+        const all = await request();
+        assert.equal(all.amount, "22.81");
+        assert.equal(await usdBalance(), "0");
+        await assert.rejects(request("1"), error => error.code === "PAYOUT_IN_PROGRESS");
+        await payouts.cancelPayout(org.org_id, all.id);
+        assert.equal(await usdBalance(), "22.81");
+        await assert.rejects(payouts.cancelPayout(org.org_id, all.id), error => error.code === "PAYOUT_NOT_CANCELABLE");
+
+        // Validé, envoyé puis confirmé par pawaPay.
+        const sent = await request("10");
+        await payouts.processPending();
+        assert.equal((await payoutRow(sent)).status, "REQUESTED");
+        await approve(sent);
+        await payouts.processPending();
+        const processing = await payoutRow(sent);
+        assert.equal(processing.status, "PROCESSING");
+        remote.set(processing.provider_payout_id, { ...remote.get(processing.provider_payout_id), status: "COMPLETED", providerTransactionId: "po-1" });
+        await payouts.processPending();
+        assert.equal((await payoutRow(sent)).status, "COMPLETED");
+        assert.equal(await usdBalance(), "12.81");
+
+        // Refusé par pawaPay à l'envoi : le montant revient.
+        payoutResponse = () => ({ status: "REJECTED", failureReason: { failureCode: "RECIPIENT_NOT_FOUND" } });
+        const rejected = await request();
+        await approve(rejected);
+        await payouts.processPending();
+        assert.equal((await payoutRow(rejected)).status, "FAILED");
+        assert.equal(await usdBalance(), "12.81");
+
+        // Issue incertaine puis échec final : renvoyé avec le même identifiant, recrédité une seule fois.
+        payoutResponse = () => { throw new pawaPay.PawaPayRequestError("timeout"); };
+        const retried = await request();
+        await approve(retried);
+        await payouts.processPending();
+        assert.equal((await payoutRow(retried)).status, "APPROVED");
+        payoutResponse = () => ({ status: "ACCEPTED" });
+        await payouts.processPending();
+        const inFlight = await payoutRow(retried);
+        assert.equal(inFlight.status, "PROCESSING");
+        remote.set(inFlight.provider_payout_id, { ...remote.get(inFlight.provider_payout_id), status: "FAILED", failureReason: { failureCode: "PROVIDER_TEMPORARILY_UNAVAILABLE" } });
+        await payouts.processPending();
+        await payouts.reconcilePayout(inFlight.provider_payout_id);
+        assert.equal((await payoutRow(retried)).status, "FAILED");
+        assert.equal(await prisma.organizerLedgerEntry.count({ where: { payout_id: retried.id, type: "PAYOUT_REVERSAL" } }), 1);
+        assert.equal(await usdBalance(), "12.81");
+        assert.equal((await payouts.getOverview(org.org_id)).payouts.length, 4);
+
+        // Remboursement d'un achat « à vérifier » au payeur d'origine.
+        const review = await prisma.ticketPayment.findFirst({ where: { org_id: org.org_id, status: "REVIEW_REQUIRED" } });
+        const refund = await prisma.$transaction(async tx => {
+            await tx.ticketPayment.update({ where: { ticket_payment_id: review.ticket_payment_id }, data: { status: "REFUND_PENDING" } });
+            return tx.ticketRefund.create({ data: { provider_refund_id: require("crypto").randomUUID(), ticket_payment_id: review.ticket_payment_id, reason: "Offre complète", requested_by_id: superAdmin.user_id } });
+        });
+        assert.equal(await payouts.isTicketRefund(refund.provider_refund_id), true);
+        await payouts.processPending();
+        assert.deepEqual(refundRequests.map(item => [item.depositId, item.amount, item.currency]), [[review.deposit_id, "12.5", "USD"]]);
+        assert.equal((await prisma.ticketRefund.findUnique({ where: { ticket_refund_id: refund.ticket_refund_id } })).status, "PROCESSING");
+        remote.set(refund.provider_refund_id, { refundId: refund.provider_refund_id, status: "COMPLETED" });
+        await payouts.processPending();
+        assert.equal((await prisma.ticketRefund.findUnique({ where: { ticket_refund_id: refund.ticket_refund_id } })).status, "COMPLETED");
+        assert.equal((await prisma.ticketPayment.findUnique({ where: { ticket_payment_id: review.ticket_payment_id } })).status, "REFUNDED");
+        assert.equal(await usdBalance(), "12.81");
     });
 });

@@ -2,10 +2,10 @@ const crypto = require("crypto");
 const { Prisma } = require("@prisma/client");
 const prisma = require("../prisma/client");
 const { enqueue } = require("./registration_job.service");
-const { createAccessToken } = require("./registration_access.service");
 const { requestHashFor, resolveCardTemplate, createTemplateSnapshot } = require("./pass_issuance.service");
 const { getOrganizationPlanContext } = require("../utils/planAccess");
 const { assertRegistrationConfigurationAllowed } = require("./registration_plan.service");
+const { TICKET_CURRENCIES } = require("../config/ticketing");
 
 class RegistrationError extends Error {
     constructor(message, code, statusCode = 400) {
@@ -32,6 +32,28 @@ const validateDates = (opensAt, closesAt) => {
         throw new RegistrationError("La fermeture doit suivre l’ouverture.", "INVALID_REGISTRATION_PERIOD", 422);
     }
     return { opens, closes };
+};
+
+// Prix vide ou nul : offre gratuite. Sinon montant positif à deux décimales au plus, dans une devise acceptée.
+const normalizePrice = offer => {
+    const raw = offer?.price;
+    if (raw === undefined || raw === null || String(raw).trim() === "" || Number(raw) === 0) return { price: null, currency: null };
+    const text = String(raw).trim().replace(",", ".");
+    if (!/^\d{1,12}(\.\d{1,2})?$/.test(text) || Number(text) <= 0) throw new RegistrationError("Prix de l’offre invalide.", "INVALID_OFFER", 422);
+    const currency = clean(offer?.currency, 3).toUpperCase();
+    if (!TICKET_CURRENCIES.includes(currency)) throw new RegistrationError("Choisissez la devise de l’offre payante.", "INVALID_OFFER", 422);
+    return { price: new Prisma.Decimal(text), currency };
+};
+
+const isPaidOffer = offer => offer?.price != null && new Prisma.Decimal(offer.price).gt(0);
+
+// Places occupées : billets qui retiennent une place et paiements en cours dont la réservation court encore.
+const heldPlaces = async (tx, offerId, now = new Date()) => {
+    const [registrations, payments] = await Promise.all([
+        tx.registration.count({ where: { registration_offer_id: offerId, capacity_held: true } }),
+        tx.ticketPayment.count({ where: { registration_offer_id: offerId, registration_id: null, status: { in: ["PENDING", "PROCESSING"] }, hold_expires_at: { gt: now } } })
+    ]);
+    return registrations + payments;
 };
 
 const normalizeOffer = offer => {
@@ -63,7 +85,9 @@ const normalizeOffer = offer => {
         valid_from: validFrom,
         valid_until: validUntil,
         card_template_id: clean(offer?.cardTemplateId || offer?.card_template_id, 160) || null,
-        card_message: clean(offer?.cardMessage || offer?.card_message, 240) || null
+        card_message: clean(offer?.cardMessage || offer?.card_message, 240) || null,
+        box_only_qr: Boolean(offer?.boxOnlyQr ?? offer?.box_only_qr),
+        ...normalizePrice(offer)
     };
 };
 
@@ -94,7 +118,7 @@ const createForm = async (orgId, input) => {
     if (!title) throw new RegistrationError("Le titre est requis.", "INVALID_FORM", 422);
     const dates = validateDates(input.opensAt, input.closesAt);
     const offers = Array.isArray(input.offers) ? input.offers.map(normalizeOffer) : [];
-    if (!offers.length) throw new RegistrationError("Ajoutez au moins une offre gratuite.", "INVALID_FORM", 422);
+    if (!offers.length) throw new RegistrationError("Ajoutez au moins une offre.", "INVALID_FORM", 422);
     await validateTemplates(orgId, offers);
     return prisma.registrationForm.create({
         data: {
@@ -118,7 +142,7 @@ const updateForm = async (orgId, id, input) => {
     if (!current) throw new RegistrationError("Formulaire introuvable.", "FORM_NOT_FOUND", 404);
     const dates = validateDates(input.opensAt, input.closesAt);
     const offers = Array.isArray(input.offers) ? input.offers.map(normalizeOffer) : null;
-    if (offers && !offers.length) throw new RegistrationError("Ajoutez au moins une offre gratuite.", "INVALID_FORM", 422);
+    if (offers && !offers.length) throw new RegistrationError("Ajoutez au moins une offre.", "INVALID_FORM", 422);
     if (offers) await validateTemplates(orgId, offers);
     return prisma.$transaction(async tx => {
         await tx.registrationForm.update({ where: { registration_form_id: id }, data: {
@@ -137,7 +161,7 @@ const updateForm = async (orgId, id, input) => {
                 const { registration_offer_id: offerId, ...data } = normalized;
                 if (offerId) {
                     if (!currentIds.has(offerId)) throw new RegistrationError("Une offre ne dépend pas de ce formulaire.", "OFFER_NOT_FOUND", 404);
-                    const held = await tx.registration.count({ where: { registration_offer_id: offerId, capacity_held: true } });
+                    const held = await heldPlaces(tx, offerId);
                     if (data.capacity !== null && data.capacity < held) {
                         throw new RegistrationError(`La capacité ne peut pas être inférieure aux ${held} place(s) déjà attribuée(s).`, "CAPACITY_BELOW_USAGE", 409);
                     }
@@ -205,7 +229,10 @@ const snapshotOffer = async (offer, orgId) => {
         validUntil: offer.valid_until,
         cardTemplateId: offer.card_template_id,
         cardTemplateSnapshot: templateSnapshot,
-        cardMessage: offer.card_message
+        cardMessage: offer.card_message,
+        boxOnlyQr: offer.box_only_qr,
+        price: offer.price == null ? null : String(offer.price),
+        currency: offer.currency || null
     };
 };
 
@@ -219,23 +246,24 @@ const serializePublicRegistration = registration => ({
     passAvailable: Boolean(registration.qr_id && registration.issuance_status === "SUCCEEDED")
 });
 
-const submit = async (slug, input, submissionKey) => {
+// Le billet est émis au nom du participant connecté et déposé dans sa box.
+const submit = async (slug, input, submissionKey, attendee) => {
     const key = clean(submissionKey, 500);
     if (!key) throw new RegistrationError("Une clé Idempotency-Key est requise.", "IDEMPOTENCY_KEY_REQUIRED", 400);
-    const name = clean(input.fullName, 160);
-    const email = clean(input.email, 320).toLowerCase();
+    if (!attendee?.attendee_id) throw new RegistrationError("Connectez-vous à votre box pour vous inscrire.", "ATTENDEE_AUTH_REQUIRED", 401);
+    const name = clean(attendee.full_name, 160);
+    const email = clean(attendee.email, 320).toLowerCase();
     const phone = clean(input.phone, 40) || null;
     const offerId = clean(input.offerId, 50);
     if (!name || !emailPattern.test(email)) throw new RegistrationError("Nom et email valide requis.", "INVALID_PARTICIPANT", 422);
     if (!uuidPattern.test(offerId)) throw new RegistrationError("Offre invalide.", "OFFER_NOT_FOUND", 404);
     const keyHash = sha256(key);
-    const requestHash = requestHashFor({ name, email, phone, offerId });
+    const requestHash = requestHashFor({ attendeeId: attendee.attendee_id, name, email, phone, offerId });
 
     const existing = await prisma.registration.findFirst({ where: { form: { public_slug: clean(slug, 80) }, submission_key_hash: keyHash } });
     if (existing) {
         if (existing.request_hash !== requestHash) throw new RegistrationError("Cette soumission a déjà été utilisée avec d’autres données.", "IDEMPOTENCY_KEY_CONFLICT", 409);
-        const access = await createAccessToken(existing.registration_id);
-        return { registration: existing, access, replayed: true };
+        return { registration: existing, replayed: true };
     }
 
     const run = () => prisma.$transaction(async tx => {
@@ -251,15 +279,15 @@ const submit = async (slug, input, submissionKey) => {
         if (!offerRows.length) throw new RegistrationError("Offre invalide.", "OFFER_NOT_FOUND", 404);
         const offer = await tx.registrationOffer.findUnique({ where: { registration_offer_id: offerId } });
         if (!offer.is_active) throw new RegistrationError("Cette offre n’est plus disponible.", "OFFER_CLOSED", 409);
+        if (isPaidOffer(offer)) throw new RegistrationError("Cette offre est payante : réglez-la pour recevoir votre billet.", "PAYMENT_REQUIRED", 402);
         if (offer.capacity !== null) {
-            const held = await tx.registration.count({ where: { registration_offer_id: offerId, capacity_held: true } });
+            const held = await heldPlaces(tx, offerId, now);
             if (held >= offer.capacity) throw new RegistrationError("Cette offre est complète.", "OFFER_SOLD_OUT", 409);
         }
         const duplicate = await tx.registration.findUnique({ where: { registration_form_id_submission_key_hash: { registration_form_id: form.registration_form_id, submission_key_hash: keyHash } } });
         if (duplicate) {
             if (duplicate.request_hash !== requestHash) throw new RegistrationError("Cette soumission a déjà été utilisée avec d’autres données.", "IDEMPOTENCY_KEY_CONFLICT", 409);
-            const access = await createAccessToken(duplicate.registration_id, {}, tx);
-            return { registration: duplicate, access, replayed: true };
+            return { registration: duplicate, replayed: true };
         }
         const offerSnapshot = await snapshotOffer(offer, form.org_id);
         const registration = await tx.registration.create({ data: {
@@ -267,6 +295,7 @@ const submit = async (slug, input, submissionKey) => {
             event_id: form.event_id,
             registration_form_id: form.registration_form_id,
             registration_offer_id: offer.registration_offer_id,
+            owner_attendee_id: attendee.attendee_id,
             submission_key_hash: keyHash,
             request_hash: requestHash,
             holder_name: name,
@@ -275,8 +304,7 @@ const submit = async (slug, input, submissionKey) => {
             offer_snapshot: offerSnapshot
         } });
         await enqueue(registration.registration_id, "ISSUE_PASS", tx);
-        const access = await createAccessToken(registration.registration_id, {}, tx);
-        return { registration, access, replayed: false };
+        return { registration, replayed: false };
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
     for (let attempt = 1; attempt <= 3; attempt += 1) {
         try {
@@ -311,7 +339,9 @@ const queueRecovery = async (emailValue, formSlug) => {
         where: {
             holder_email: { equals: email, mode: "insensitive" },
             form: { public_slug: slug },
-            issuance_status: "SUCCEEDED"
+            issuance_status: "SUCCEEDED",
+            // Les billets de la box ne sont jamais renvoyés par lien : le participant se connecte.
+            owner_attendee_id: null
         },
         select: { registration_id: true }
     });
@@ -329,7 +359,7 @@ const reacquireCapacityAndEnqueue = async (orgId, registrationId, type) => prism
     if (type === "ISSUE_PASS" && registration.issuance_status !== "SUCCEEDED") {
         await tx.$queryRaw(Prisma.sql`SELECT registration_offer_id FROM registration_offers WHERE registration_offer_id = ${registration.registration_offer_id}::uuid FOR UPDATE`);
         if (!registration.capacity_held && registration.offer.capacity !== null) {
-            const held = await tx.registration.count({ where: { registration_offer_id: registration.registration_offer_id, capacity_held: true } });
+            const held = await heldPlaces(tx, registration.registration_offer_id);
             if (held >= registration.offer.capacity) throw new RegistrationError("La capacité est désormais atteinte.", "OFFER_SOLD_OUT", 409);
         }
         await tx.registration.update({ where: { registration_id: registrationId }, data: { status: "PROCESSING", issuance_status: "PENDING", capacity_held: true, capacity_released_at: null, failure_code: null, failure_message: null } });
@@ -340,4 +370,4 @@ const reacquireCapacityAndEnqueue = async (orgId, registrationId, type) => prism
     return job;
 }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
-module.exports = { RegistrationError, createForm, getForm, listForms, listRegistrations, publicForm, queueRecovery, reacquireCapacityAndEnqueue, serializePublicRegistration, setFormStatus, submit, updateForm };
+module.exports = { RegistrationError, clean, emailPattern, heldPlaces, isPaidOffer, sha256, snapshotOffer, uuidPattern, createForm, getForm, listForms, listRegistrations, publicForm, queueRecovery, reacquireCapacityAndEnqueue, serializePublicRegistration, setFormStatus, submit, updateForm };

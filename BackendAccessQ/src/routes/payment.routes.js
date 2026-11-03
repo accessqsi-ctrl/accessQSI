@@ -1,5 +1,6 @@
 const express = require("express");
 const paymentController = require("../controllers/api.payment.controller");
+const ticketPaymentController = require("../controllers/api.ticket_payment.controller");
 const authMiddleware = require("../middleware/authMiddleware");
 const roleMiddleware = require("../middleware/roleMiddleware");
 
@@ -8,6 +9,7 @@ const organizationAdminOnly = roleMiddleware(["ORG_ADMIN"]);
 
 router.post("/callbacks/pawapay", paymentController.callback);
 router.post("/callbacks/pawapay/refunds", paymentController.refundCallback);
+router.post("/callbacks/pawapay/payouts", ticketPaymentController.payoutCallback);
 
 router.use(authMiddleware);
 router.get("/plans", paymentController.getPlans);

@@ -40,7 +40,12 @@ const csrfProtection = (req, res, next) => {
 
     if (originAllowed) return next();
 
-    const hasSessionCookie = Boolean(req.cookies?.token || req.cookies?.refreshToken);
+    const hasSessionCookie = Boolean(
+        req.cookies?.token
+        || req.cookies?.refreshToken
+        || req.cookies?.attendeeToken
+        || req.cookies?.attendeeRefreshToken
+    );
     if (!origin && !hasSessionCookie) {
         // Appels serveur-à-serveur (callbacks de paiement, CLI) sans session web.
         return next();

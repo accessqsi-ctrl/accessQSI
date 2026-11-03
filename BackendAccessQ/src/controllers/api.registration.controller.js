@@ -2,6 +2,7 @@ const registrationService = require("../services/registration.service");
 const { resolveAccessToken } = require("../services/registration_access.service");
 const { generateRegistrationPassPdf } = require("../services/registration_card.service");
 const logger = require("../utils/logger");
+const { getTicketingConfig } = require("../config/ticketing");
 
 const requestMeta = (req, operation) => ({
     operation,
@@ -42,7 +43,10 @@ const offerDto = offer => ({
     usageLimit: offer.usage_limit,
     level: offer.level,
     validFrom: offer.valid_from,
-    validUntil: offer.valid_until
+    validUntil: offer.valid_until,
+    boxOnlyQr: offer.box_only_qr,
+    price: offer.price == null ? null : String(offer.price),
+    currency: offer.currency || null
 });
 
 const formDto = (form, includeConfiguration = false) => ({
@@ -62,7 +66,8 @@ const formDto = (form, includeConfiguration = false) => ({
         ...(includeConfiguration ? { cardTemplateId: offer.card_template_id, cardMessage: offer.card_message } : {})
     })),
     registrationCount: form._count?.registrations,
-    open: form.open
+    open: form.open,
+    ticketPaymentsEnabled: getTicketingConfig().enabled
 });
 
 exports.listForms = async (req, res) => {
@@ -121,13 +126,12 @@ exports.getPublicForm = async (req, res) => {
 
 exports.submit = async (req, res) => {
     try {
-        const result = await registrationService.submit(req.params.slug, req.body, req.get("idempotency-key"));
+        const result = await registrationService.submit(req.params.slug, req.body, req.get("idempotency-key"), req.attendee);
         return res.status(result.replayed ? 200 : 202).json({
             success: true,
             replayed: result.replayed,
             registration: registrationService.serializePublicRegistration(result.registration),
-            accessToken: result.access.rawToken,
-            accessExpiresAt: result.access.expiresAt
+            ticketId: result.registration.registration_id
         });
     } catch (error) { return handleError(req, res, error, "submit_public_registration"); }
 };
@@ -149,6 +153,10 @@ exports.download = async (req, res) => {
         if (!access) {
             logger.warn("registration.access_denied", { ...requestMeta(req, "download_pass"), status: 404, code: "ACCESS_LINK_INVALID" });
             return res.status(404).json({ success: false, code: "ACCESS_LINK_INVALID", message: "Lien invalide ou expiré.", requestId: req.requestId });
+        }
+        // Un billet rattaché à une box ne se télécharge que depuis la box de son propriétaire.
+        if (access.registration.owner_attendee_id) {
+            return res.status(409).json({ success: false, code: "TICKET_IN_BOX", message: "Ce billet se trouve dans votre box. Connectez-vous pour l’afficher.", requestId: req.requestId });
         }
         const buffer = await generateRegistrationPassPdf(access.registration);
         res.setHeader("Content-Type", "application/pdf");

@@ -12,7 +12,7 @@
     "prisma:generate": "prisma generate",
     "prisma:sync": "node scripts/sync-prisma-schema.js",
     "test": "node --test",
-    "check": "node scripts/sync-prisma-schema.js --check && prisma validate && node --check scripts/sync-prisma-schema.js && node --check server.js && node --check scripts/style-css-access.js && node --check src/public/js/admin.js && node --check src/controllers/auth.controller.js && node --check src/controllers/organization.controller.js && node --check src/controllers/user.controller.js && node --check src/services/agent-access.service.js && node --check src/services/audit.service.js"
+    "check": "node scripts/sync-prisma-schema.js --check && prisma validate && node --check scripts/sync-prisma-schema.js && node --check server.js && node --check scripts/style-css-access.js && node --check src/public/js/admin.js && node --check src/controllers/auth.controller.js && node --check src/controllers/organization.controller.js && node --check src/controllers/user.controller.js && node --check src/services/agent-access.service.js && node --check src/services/audit.service.js && node --check src/controllers/finance.controller.js && node --check src/services/super-admin.service.js"
   },
   "keywords": [],
   "author": "",

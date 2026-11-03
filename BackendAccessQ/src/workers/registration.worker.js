@@ -109,16 +109,27 @@ const processEmail = async job => {
     const delivery = await prisma.registrationEmailDelivery.create({ data: { registration_id: registration.registration_id } });
     let token;
     try {
-        token = await createAccessToken(registration.registration_id);
         const frontend = (process.env.FRONTEND_URL || "http://localhost:3000").replace(/\/$/, "");
-        const accessUrl = `${frontend}/register/access?token=${encodeURIComponent(token.rawToken)}`;
-        const response = await emailService.sendPassAccessEmail({
-            toEmail: registration.holder_email,
-            fullName: registration.holder_name,
-            eventTitle: registration.event.title,
-            offerName: registration.offer.name,
-            accessUrl
-        });
+        let response;
+        if (registration.owner_attendee_id) {
+            // Billet de box : l'email ne porte aucun lien d'accès, seulement le chemin vers la box.
+            response = await emailService.sendBoxTicketEmail({
+                toEmail: registration.holder_email,
+                fullName: registration.holder_name,
+                eventTitle: registration.event.title,
+                offerName: registration.offer.name,
+                boxUrl: `${frontend}/box/tickets/${encodeURIComponent(registration.registration_id)}`
+            });
+        } else {
+            token = await createAccessToken(registration.registration_id);
+            response = await emailService.sendPassAccessEmail({
+                toEmail: registration.holder_email,
+                fullName: registration.holder_name,
+                eventTitle: registration.event.title,
+                offerName: registration.offer.name,
+                accessUrl: `${frontend}/register/access?token=${encodeURIComponent(token.rawToken)}`
+            });
+        }
         await prisma.$transaction([
             prisma.registrationEmailDelivery.update({ where: { registration_email_delivery_id: delivery.registration_email_delivery_id }, data: { status: "ACCEPTED", provider_message_id: response?.messageId ? String(response.messageId).slice(0, 200) : null, accepted_at: new Date() } }),
             prisma.registration.update({ where: { registration_id: registration.registration_id }, data: { email_status: "ACCEPTED" } })

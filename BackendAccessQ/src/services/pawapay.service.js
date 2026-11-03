@@ -74,10 +74,10 @@ const checkDeposit = (depositId) => request({
     path: `/v2/deposits/${encodeURIComponent(depositId)}`
 });
 
-const initiateRefund = ({ refundId, depositId }) => request({
+const initiateRefund = ({ refundId, depositId, amount, currency }) => request({
     method: "POST",
     path: "/v2/refunds",
-    data: { refundId, depositId }
+    data: amount && currency ? { refundId, depositId, amount, currency } : { refundId, depositId }
 });
 
 const checkRefund = (refundId) => request({
@@ -85,9 +85,20 @@ const checkRefund = (refundId) => request({
     path: `/v2/refunds/${encodeURIComponent(refundId)}`
 });
 
-const getActiveConfiguration = () => {
+const initiatePayout = (payload) => request({
+    method: "POST",
+    path: "/v2/payouts",
+    data: payload
+});
+
+const checkPayout = (payoutId) => request({
+    method: "GET",
+    path: `/v2/payouts/${encodeURIComponent(payoutId)}`
+});
+
+const getActiveConfiguration = (operationType = "DEPOSIT") => {
     const { country } = getPaymentConfig();
-    const params = { operationType: "DEPOSIT" };
+    const params = { operationType };
     if (country) params.country = country;
     return request({
         method: "GET",
@@ -96,7 +107,8 @@ const getActiveConfiguration = () => {
     });
 };
 
-const extractProviders = (configuration) => {
+// operationType : "DEPOSIT" (encaissement) ou "PAYOUT" (reversement).
+const extractProviders = (configuration, operationType = "DEPOSIT") => {
     const countries = Array.isArray(configuration?.countries)
         ? configuration.countries
         : Array.isArray(configuration?.data?.countries)
@@ -113,10 +125,10 @@ const extractProviders = (configuration) => {
                     const operationTypes = currencyConfig?.operationTypes;
                     const depositConfig = Array.isArray(operationTypes)
                         ? operationTypes.find((operation) => (
-                            operation.operationType === "DEPOSIT" || operation.DEPOSIT
+                            operation.operationType === operationType || operation[operationType]
                         ))
-                        : operationTypes?.DEPOSIT;
-                    const normalizedDepositConfig = depositConfig?.DEPOSIT || depositConfig;
+                        : operationTypes?.[operationType];
+                    const normalizedDepositConfig = depositConfig?.[operationType] || depositConfig;
                     return {
                         provider: provider.provider,
                         displayName: provider.displayName || provider.provider,
@@ -125,7 +137,7 @@ const extractProviders = (configuration) => {
                         country: country.country || country.countryCode || null,
                         countryDisplayName: country.displayName || null,
                         prefix: country.prefix || null,
-                        supportsDeposit: !currencyConfig || Boolean(normalizedDepositConfig),
+                        [operationType === "PAYOUT" ? "supportsPayout" : "supportsDeposit"]: !currencyConfig || Boolean(normalizedDepositConfig),
                         decimals: normalizedDepositConfig?.decimals
                             ?? normalizedDepositConfig?.decimalPlaces
                             ?? normalizedDepositConfig?.decimalsInAmount
@@ -151,6 +163,8 @@ module.exports = {
     checkDeposit,
     initiateRefund,
     checkRefund,
+    initiatePayout,
+    checkPayout,
     getActiveConfiguration,
     extractProviders
 };

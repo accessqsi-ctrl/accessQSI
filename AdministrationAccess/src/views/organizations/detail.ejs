@@ -47,7 +47,16 @@
             <div><dt>Fin d’essai</dt><dd><%= organization.trial_expires_at ? new Date(organization.trial_expires_at).toLocaleDateString('fr-FR') : '—' %></dd></div>
             <div><dt>Référence Entreprise</dt><dd><%= organization.enterprise_contract_reference || '—' %></dd></div>
             <div><dt>Paiements</dt><dd><%= organization._count.payments %></dd></div>
+            <div><dt>Commission billetterie</dt><dd><%= organization.ticket_commission_bps == null ? `${defaultTicketCommissionPercent} % (taux par défaut)` : `${organization.ticket_commission_bps / 100} % (taux personnalisé)` %></dd></div>
         </dl>
+        <form action="/organizations/<%= organization.org_id %>/ticket-commission" method="POST" class="subscription-admin" data-password-confirm data-confirm-title="Confirmer la commission" data-confirm-message="Saisissez votre mot de passe de super-admin pour modifier la commission de billetterie.">
+            <input type="hidden" name="_csrf" value="<%= user.csrf %>">
+            <label class="field-label">Commission sur les billets vendus (%)
+                <input type="number" name="commissionPercent" class="field-input" min="0" max="50" step="0.01" placeholder="<%= defaultTicketCommissionPercent %> (par défaut)" value="<%= organization.ticket_commission_bps == null ? '' : organization.ticket_commission_bps / 100 %>">
+            </label>
+            <button type="submit" class="action-button">Enregistrer la commission</button>
+            <p>Laissez vide pour appliquer le taux par défaut de la plateforme. Le nouveau taux s’applique aux prochaines ventes ; chaque vente garde le taux en vigueur au moment de l’achat.</p>
+        </form>
         <div class="subscription-admin">
             <button type="button" class="primary-button" data-open-subscription-dialog>Changer l’abonnement</button>
             <p>Les plans payants sont activés immédiatement pour une nouvelle période. Le passage au plan Discovery applique ses quotas sans supprimer les données.</p>

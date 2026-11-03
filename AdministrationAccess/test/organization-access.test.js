@@ -8,6 +8,7 @@ const loadController = (prisma) => {
     const auditPath = require.resolve(path.join(process.cwd(), 'src/services/audit.service.js'));
     const controllerPath = require.resolve(path.join(process.cwd(), 'src/controllers/organization.controller.js'));
     delete require.cache[controllerPath];
+    delete require.cache[require.resolve(path.join(process.cwd(), 'src/services/super-admin.service.js'))];
     require.cache[prismaPath] = { id: prismaPath, filename: prismaPath, loaded: true, exports: prisma };
     require.cache[auditPath] = { id: auditPath, filename: auditPath, loaded: true, exports: { writeAudit: () => {} } };
     return require(controllerPath);

@@ -70,6 +70,78 @@ Les liens publics utilisent des jetons aléatoires expirants dont seule
 l'empreinte SHA-256 est stockée. Le jeton QR de contrôle d'accès n'est jamais
 utilisé comme jeton de téléchargement.
 
+## Box des participants
+
+Une inscription exige un compte participant (`attendees`), distinct des
+membres d'organisation. Le participant se connecte avec un code à 6 chiffres
+reçu par email (`/attendee/code/request` puis `/attendee/code/verify`) :
+le premier code valide crée son compte. Il peut ensuite définir un mot de passe
+(`PUT /attendee/password`). Les sessions utilisent les cookies
+`attendeeToken` / `attendeeRefreshToken`, jamais ceux des organisateurs.
+
+Chaque billet appartient à un participant (`registrations.owner_attendee_id`)
+et s'affiche dans sa box (`/box/tickets`). L'email envoyé après l'émission ne
+contient aucun lien d'accès, seulement le chemin vers la box. Quand l'offre
+active `box_only_qr`, le QR n'est servi que comme image privée dans la box et
+aucun PDF n'est disponible. Les inscriptions antérieures à la box gardent leurs
+liens d'accès par email.
+
+Le QR d'un billet `box_only_qr` est tournant : il porte un code HMAC renouvelé
+toutes les 30 secondes (`box_qr.service.js`, clé dérivée de la clé privée JWT).
+Le scanner transmet ce code et le serveur refuse le jeton seul ou un code
+dépassé (statut `denied_dynamic_code`, journalisé). Une capture d'écran devient
+donc inutilisable après 30 à 60 secondes. Aucun navigateur ne permet
+d'interdire la capture elle-même. La box masque aussi le QR dès que la page
+passe en arrière-plan.
+
+## Billetterie payante
+
+Une offre devient payante quand elle a un prix et une devise (`price`, `currency`). Seuls
+les opérateurs pawaPay qui acceptent cette devise sont proposés. L'argent est encaissé sur
+le compte pawaPay d'AccessQ, indépendamment des abonnements Pro :
+
+```env
+TICKET_PAYMENTS_ENABLED=true
+TICKET_COMMISSION_PERCENT=10
+TICKET_PAYMENT_HOLD_MINUTES=15
+```
+
+1. `POST /public/registrations/forms/:slug/checkout` (participant connecté, `Idempotency-Key`)
+   réserve la place pour `TICKET_PAYMENT_HOLD_MINUTES` et lance le dépôt (`ticket_payments`).
+2. Le billet n'est créé qu'après confirmation du dépôt **auprès de pawaPay**, par le callback
+   de dépôt habituel (`/billing/callbacks/pawapay`, aiguillé automatiquement), par la page de
+   suivi (`GET /box/payments/:id`) ou par la réconciliation en arrière-plan.
+3. Chaque vente fige son taux de commission et ajoute au journal `organizer_ledger_entries`
+   le montant net dû à l'organisateur. Le solde par devise est servi par
+   `GET /registration-forms/balance`.
+
+La commission vaut `TICKET_COMMISSION_PERCENT` (10 % par défaut). Un super-admin peut fixer
+un taux propre à une organisation depuis la console d'administration. Un dépôt dont le
+montant ne correspond pas, ou confirmé après expiration de la réservation alors que l'offre
+est complète, passe en `REVIEW_REQUIRED` sans émettre de billet.
+
+### Reversements et remboursements
+
+L'organisateur (ORG_ADMIN) enregistre un compte Mobile Money de réception par devise
+(`PUT /registration-forms/payouts/accounts`), puis demande un reversement
+(`POST /registration-forms/payouts`). Chaque action demande son mot de passe. Le montant est
+retiré du solde dès la demande (entrée `PAYOUT` du journal). Il y revient (`PAYOUT_REVERSAL`)
+si la demande est annulée, refusée ou échoue.
+
+Un super-admin valide ou refuse la demande depuis la page **Finances** de la console
+d'administration. Il y demande aussi le remboursement des paiements `REVIEW_REQUIRED` au
+payeur d'origine. La console n'écrit qu'en base : le worker du backend (même boucle que les
+abonnements) envoie les reversements et remboursements validés à pawaPay, puis en vérifie le
+résultat. Un envoi interrompu est renvoyé avec le même identifiant, et pawaPay ignore les
+doublons.
+
+Configurez dans pawaPay les URL de callback des reversements et des remboursements :
+
+```text
+https://votre-api.example.com/billing/callbacks/pawapay/payouts
+https://votre-api.example.com/billing/callbacks/pawapay/refunds
+```
+
 ## Déploiement Docker
 
 `docker compose up -d --build` lance deux conteneurs à partir de la même image :

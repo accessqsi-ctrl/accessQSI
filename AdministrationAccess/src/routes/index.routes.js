@@ -3,6 +3,7 @@ const router = express.Router();
 const authController = require('../controllers/auth.controller');
 const orgController = require('../controllers/organization.controller');
 const userController = require('../controllers/user.controller');
+const financeController = require('../controllers/finance.controller');
 const { rateLimit } = require('express-rate-limit');
 
 const loginLimiter = rateLimit({
@@ -43,6 +44,13 @@ router.post('/organizations/:id/activate', orgController.activateOrganization);
 router.post('/organizations/:id/archive', orgController.archiveOrganization);
 router.post('/organizations/:id/subscription', orgController.changeSubscription);
 router.post('/organizations/:id/enterprise', orgController.activateEnterprise);
+router.post('/organizations/:id/ticket-commission', orgController.changeTicketCommission);
+
+// Finances : reversements aux organisateurs et remboursements des billets
+router.get('/finance', financeController.showFinance);
+router.post('/finance/payouts/:id/approve', financeController.approvePayout);
+router.post('/finance/payouts/:id/reject', financeController.rejectPayout);
+router.post('/finance/ticket-payments/:id/refund', financeController.refundTicketPayment);
 
 // Gestion des agents depuis une organisation
 router.post('/users/:id/deactivate', userController.deactivateUser);

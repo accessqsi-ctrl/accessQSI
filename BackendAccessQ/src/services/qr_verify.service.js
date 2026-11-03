@@ -1,6 +1,7 @@
 const prisma = require("../prisma/client");
 const { evaluateQrScan, applyPeriodLimit } = require("./qr_policy.service");
 const { getPeriodBounds } = require("./qr_period.service");
+const { requiresDynamicCode, verifyDynamicCode } = require("./box_qr.service");
 
 const qrScanInclude = {
     event: {
@@ -10,7 +11,8 @@ const qrScanInclude = {
                 include: { area: true }
             }
         }
-    }
+    },
+    registration: { select: { offer_snapshot: true } }
 };
 
 const buildScanData = (qrId, scannerId, status, location = {}, areaId = null) => {
@@ -41,6 +43,8 @@ exports.verifyAndRecordScan = async ({
     scannerOrgId,
     areaId,
     eventId,
+    dynamicStep,
+    dynamicCode,
     location = {},
     now = new Date()
 }) => {
@@ -57,6 +61,20 @@ exports.verifyAndRecordScan = async ({
             include: qrScanInclude
         });
         let decision = evaluateQrScan(qr, scannerOrgId, now, areaId, eventId);
+
+        // Un billet « box uniquement » n'est valable qu'avec le code tournant affiché en direct dans la box :
+        // une capture d'écran ou un QR imprimé est refusé, et la tentative est journalisée.
+        if (decision.shouldRecord && requiresDynamicCode(qr) && !verifyDynamicCode(token, dynamicStep, dynamicCode, now)) {
+            decision = {
+                httpStatus: 200,
+                success: false,
+                message: "Accès Refusé",
+                reason: "QR expiré ou capturé : le participant doit afficher son billet en direct depuis sa box AccessQ.",
+                scanStatus: "denied_dynamic_code",
+                shouldRecord: true,
+                areaId: Number.isInteger(Number(areaId)) ? Number(areaId) : null
+            };
+        }
 
         // Le comptage s'effectue sous le verrou du QR : deux scans simultanés ne peuvent
         // pas consommer tous les deux le dernier passage de la période.

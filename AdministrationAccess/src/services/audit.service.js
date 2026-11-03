@@ -5,7 +5,7 @@ const writeAudit = ({ actorId, action, targetType, targetId, organizationId = nu
         actor_id: Number(actorId),
         action,
         target_type: targetType,
-        target_id: Number(targetId),
+        target_id: Number.isInteger(Number(targetId)) ? Number(targetId) : String(targetId),
         organization_id: organizationId == null ? null : Number(organizationId),
         outcome
     }));

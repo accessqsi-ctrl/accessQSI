@@ -36,4 +36,4 @@ const generateRegistrationPassPdf = async registration => {
     }]);
 };
 
-module.exports = { generateRegistrationPassPdf, resolveSnapshot };
+module.exports = { buildQrPayload, generateRegistrationPassPdf, resolveSnapshot };

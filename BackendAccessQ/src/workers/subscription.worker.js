@@ -1,4 +1,6 @@
 const paymentService = require("../services/payment.service");
+const ticketPayments = require("../services/ticket_payment.service");
+const organizerPayouts = require("../services/organizer_payout.service");
 const logger = require("../utils/logger");
 
 const run = async () => {
@@ -10,6 +12,16 @@ const run = async () => {
         }
     } catch (error) {
         logger.error("subscription.lifecycle_worker_failed", { error });
+    }
+    try {
+        await ticketPayments.reconcilePending();
+    } catch (error) {
+        logger.error("ticket_payment.reconciliation_worker_failed", { error });
+    }
+    try {
+        await organizerPayouts.processPending();
+    } catch (error) {
+        logger.error("payout.worker_failed", { error });
     }
 };
 
