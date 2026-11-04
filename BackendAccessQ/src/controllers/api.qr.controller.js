@@ -2,6 +2,7 @@ const QRCode = require("qrcode");
 const fs = require("fs");
 const crypto = require("crypto");
 const csv = require("csv-parser");
+const { csvParserOptions } = require("../utils/csvImport");
 const eventService = require('../services/event.service');
 const qrService = require('../services/qr.service');
 const cardTemplateService = require('../services/card_template.service');
@@ -604,7 +605,8 @@ exports.downloadQrImportTemplate = async (req, res) => {
         const filename = `modele_import_qr_evenement_${eventId}.csv`;
         res.setHeader("Content-Type", "text/csv; charset=utf-8");
         res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
-        return res.status(200).send(`${headers.join(",")}\n`);
+        // Point-virgule et BOM UTF-8 : le modèle s'ouvre en colonnes dans Excel en français.
+        return res.status(200).send(`\uFEFF${headers.join(";")}\n`);
     } catch (error) {
         console.error("Erreur lors du téléchargement du modèle CSV :", error);
         return res.status(500).json({ success: false, message: "Erreur lors du téléchargement du modèle" });
@@ -632,9 +634,10 @@ exports.importQrsFromCSV = async (req, res) => {
         }
 
         const results = [];
+        const parserOptions = csvParserOptions(fs.readFileSync(file.path, "utf8").slice(0, 4096));
         const processStream = new Promise((resolve, reject) => {
             fs.createReadStream(file.path)
-                .pipe(csv())
+                .pipe(csv(parserOptions))
                 .on('data', (data) => results.push(data))
                 .on('error', (err) => reject(err))
                 .on('end', () => resolve(results));
@@ -703,11 +706,19 @@ exports.importQrsFromCSV = async (req, res) => {
         const partial = errors.length > 0;
         const success = createdCount > 0;
         const statusCode = !success ? 422 : partial ? 207 : 201;
+        // « 9 QR créés et 1 ligne à corriger » : accords au singulier et compteurs nuls omis.
+        const count = (n, one, many) => `${n} ${n > 1 ? many : one}`;
+        const summary = [
+            count(createdCount, "QR créé", "QR créés"),
+            failedCount ? count(failedCount, "ligne à corriger", "lignes à corriger") : null,
+            warningCount ? count(warningCount, "création avec avertissement", "créations avec avertissement") : null
+        ].filter(Boolean);
+        const summaryText = summary.length > 1 ? `${summary.slice(0, -1).join(", ")} et ${summary[summary.length - 1]}` : summary[0];
         const message = !rows.length
             ? "Le fichier CSV ne contient aucune ligne à importer."
             : partial
-                ? `Import partiel : ${createdCount} QR créés, ${failedCount} lignes échouées et ${warningCount} créations avec avertissement.`
-                : `${createdCount} QR Codes importés avec succès.`;
+                ? `Import partiel : ${summaryText}.`
+                : `${count(createdCount, "QR Code importé", "QR Codes importés")} avec succès.`;
 
         return res.status(statusCode).json({
             success,

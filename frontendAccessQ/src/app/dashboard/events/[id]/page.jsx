@@ -681,9 +681,9 @@ export default function EventDetailPage() {
         const now = new Date();
         const first = event.EventSchedules[0];
         const last = event.EventSchedules[event.EventSchedules.length - 1];
-        if (new Date(first.start_date) > now) return { label: "Upcoming", style: "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300" };
-        if (new Date(last.end_date) < now) return { label: "Past", style: "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300" };
-        return { label: "Active", style: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300" };
+        if (new Date(first.start_date) > now) return { label: "À venir", style: "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300" };
+        if (new Date(last.end_date) < now) return { label: "Terminé", style: "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300" };
+        return { label: "Actif", style: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300" };
     };
 
     const qrContactErrors = validateQrContact(qrForm);
