@@ -67,14 +67,18 @@ const sections = [
   {
     id: "conservation",
     title: "Durée de conservation",
-    body: <ul>
-      <li><strong>Compte et box</strong> : tant que le compte est actif, puis jusqu’à 3 ans après la dernière activité, sauf demande de suppression.</li>
-      <li><strong>Photo du titulaire</strong> : jusqu’à la fin de l’événement, puis au plus 6 mois, sauf suppression anticipée par l’organisateur ou à votre demande.</li>
-      <li><strong>Historique des scans</strong> : jusqu’à 1 an après l’événement.</li>
-      <li><strong>Paiements, reversements, remboursements</strong> : pendant la durée exigée par les obligations comptables et fiscales (en principe 10 ans).</li>
-      <li><strong>Codes de connexion</strong> : valables 10 minutes, puis inutilisables.</li>
-      <li><strong>Journaux techniques</strong> : au plus 12 mois.</li>
-    </ul>
+    body: <>
+      <p>Les suppressions ci-dessous sont faites automatiquement, plusieurs fois par jour.</p>
+      <ul>
+        <li><strong>Compte organisateur et agents</strong> : tant que l’organisation utilise {COMPANY.brand}. Vous pouvez demander la suppression à tout moment.</li>
+        <li><strong>Box participant</strong> : après 3 ans sans activité (connexion, billet obtenu ou acheté), la box est fermée et votre nom, votre adresse e-mail, votre téléphone et votre mot de passe sont effacés. Les paiements restent conservés, rattachés à un compte anonyme, pour les obligations comptables.</li>
+        <li><strong>Photo du titulaire</strong> : effacée 6 mois après la fin de l’événement ou de la validité du billet. Pour un badge sans date de fin, 6 mois après sa dernière utilisation. L’organisateur peut la supprimer plus tôt, et vous pouvez le demander.</li>
+        <li><strong>Historique des scans</strong> : effacé 1 an après l’événement. Pour un badge sans date de fin, chaque passage est effacé au bout d’un an.</li>
+        <li><strong>Paiements, reversements, remboursements</strong> : pendant la durée exigée par les obligations comptables et fiscales (en principe 10 ans).</li>
+        <li><strong>Codes de connexion</strong> : valables 10 minutes, effacés après 24 heures.</li>
+        <li><strong>Journaux techniques</strong> : au plus 12 mois.</li>
+      </ul>
+    </>
   },
   {
     id: "securite",

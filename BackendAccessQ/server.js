@@ -3,6 +3,7 @@ const app = require("./src/app");
 const logger = require("./src/utils/logger");
 const storageService = require("./src/services/storage.service");
 const { startSubscriptionLifecycleWorker } = require("./src/workers/subscription.worker");
+const { startDataRetentionWorker } = require("./src/workers/data_retention.worker");
 
 
 
@@ -18,6 +19,7 @@ const server = app.listen(PORT, () => {
     node_env: process.env.NODE_ENV || "development"
   });
   startSubscriptionLifecycleWorker();
+  startDataRetentionWorker();
 });
 
 server.on("error", (error) => {
