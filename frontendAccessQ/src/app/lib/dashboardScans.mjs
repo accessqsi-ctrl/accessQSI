@@ -7,7 +7,8 @@ const statusLabels = {
     denied_event_not_selected: "Mauvais événement",
     denied_area_not_allowed: "Zone non autorisée",
     denied_insufficient_level: "Niveau insuffisant",
-    denied_period_limit: "Limite de la période atteinte"
+    denied_period_limit: "Limite de la période atteinte",
+    denied_dynamic_code: "QR capturé ou expiré"
 };
 
 export const scanStatusLabel = (status) => statusLabels[status] || "Refusé";

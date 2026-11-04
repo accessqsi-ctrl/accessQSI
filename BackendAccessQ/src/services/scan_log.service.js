@@ -9,7 +9,8 @@ const SCAN_STATUSES = new Set([
     "denied_event_not_selected",
     "denied_area_not_allowed",
     "denied_insufficient_level",
-    "denied_period_limit"
+    "denied_period_limit",
+    "denied_dynamic_code"
 ]);
 
 const boundedInteger = (value, fallback, min, max) => {

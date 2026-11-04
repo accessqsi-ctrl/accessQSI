@@ -3,7 +3,7 @@ const logger = require("../utils/logger");
 
 exports.verifyScan = async (req, res) => {
     try {
-        const { token, location, areaId, eventId } = req.body;
+        const { token, location, areaId, eventId, dynamicStep, dynamicCode } = req.body;
         const scannerId = req.user.user_id;
         const scannerOrgId = req.user.org_id;
 
@@ -39,6 +39,8 @@ exports.verifyScan = async (req, res) => {
             scannerOrgId,
             areaId: selectedAreaId,
             eventId: selectedEventId,
+            dynamicStep,
+            dynamicCode,
             location: scanLocation
         });
 

@@ -4,6 +4,10 @@ const {
     PawaPayRequestError
 } = require("../services/pawapay.service");
 const logger = require("../utils/logger");
+const ticketPayments = require("../services/ticket_payment.service");
+const organizerPayouts = require("../services/organizer_payout.service");
+const ticketPaymentController = require("./api.ticket_payment.controller");
+const { getTicketingConfig } = require("../config/ticketing");
 
 const handleError = (res, error) => {
     if (error instanceof paymentService.PaymentValidationError) {
@@ -161,6 +165,11 @@ exports.refreshStatus = async (req, res) => {
 };
 
 exports.callback = async (req, res) => {
+    // pawaPay n'appelle qu'une seule URL de dépôt : les achats de billets sont aiguillés vers la billetterie.
+    if (req.body?.depositId && await ticketPayments.isTicketDeposit(req.body.depositId)) {
+        if (!getTicketingConfig().enabled) return res.status(202).json({ success: true, ignored: true });
+        return ticketPaymentController.handleCallback(req, res, req.body.depositId);
+    }
     if (!paymentService.arePaymentsEnabled()) {
         return res.status(202).json({ success: true, ignored: true });
     }
@@ -192,6 +201,11 @@ exports.callback = async (req, res) => {
 };
 
 exports.refundCallback = async (req, res) => {
+    // Les remboursements de billets partagent l'URL de callback des remboursements.
+    if (req.body?.refundId && await organizerPayouts.isTicketRefund(req.body.refundId)) {
+        if (!getTicketingConfig().enabled) return res.status(202).json({ success: true, ignored: true });
+        return ticketPaymentController.handleRefundCallback(req, res, req.body.refundId);
+    }
     if (!paymentService.arePaymentsEnabled()) {
         return res.status(202).json({ success: true, ignored: true });
     }

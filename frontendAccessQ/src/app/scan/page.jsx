@@ -139,9 +139,12 @@ export default function ScanPage() {
         setLoading(true);
         try {
             let qrToken = token;
+            let dynamic = null;
             try {
                 const parsed = JSON.parse(token);
                 qrToken = parsed.t || token;
+                // QR tournant d'un billet « box uniquement » : le code de la période accompagne le jeton.
+                if (parsed.c) dynamic = { dynamicStep: parsed.s, dynamicCode: parsed.c };
             } catch {
                 qrToken = token;
             }
@@ -151,6 +154,7 @@ export default function ScanPage() {
                 token: qrToken,
                 eventId: Number(selectedEventId),
                 areaId: Number(selectedAreaId),
+                ...(dynamic || {}),
                 ...(location ? { location } : {})
             };
 

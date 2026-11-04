@@ -8,7 +8,7 @@ import { apiFetch } from "../../../lib/api";
 import { toDateTimeLocal } from "../../../lib/dateTimeLocal.mjs";
 
 const dateInput = toDateTimeLocal;
-const editorValue = form => ({ ...form, eventId: form.event?.id, opensAt: dateInput(form.opensAt), closesAt: dateInput(form.closesAt), offers: form.offers.map(offer => ({ ...offer, capacity: offer.capacity ?? "", validFrom: dateInput(offer.validFrom), validUntil: dateInput(offer.validUntil), cardTemplateId: offer.cardTemplateId || "event-ticket", cardMessage: offer.cardMessage || "" })) });
+const editorValue = form => ({ ...form, eventId: form.event?.id, opensAt: dateInput(form.opensAt), closesAt: dateInput(form.closesAt), offers: form.offers.map(offer => ({ ...offer, capacity: offer.capacity ?? "", validFrom: dateInput(offer.validFrom), validUntil: dateInput(offer.validUntil), cardTemplateId: offer.cardTemplateId || "event-ticket", cardMessage: offer.cardMessage || "", price: offer.price ?? "", currency: offer.currency || "USD" })) });
 
 export default function RegistrationFormDetailPage() {
   const { id } = useParams();

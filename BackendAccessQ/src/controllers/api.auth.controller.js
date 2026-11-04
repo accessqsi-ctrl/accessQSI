@@ -7,6 +7,7 @@ const prisma = require("../prisma/client");
 const { getPublicKey } = require("../config/jwtKeys");
 const logger = require("../utils/logger");
 const { getPlanSummary } = require("../config/subscription");
+const { TERMS_VERSION, hasAcceptedTerms } = require("../config/legal");
 const { evaluateAccess, findUserAccessState } = require("../services/account_access.service");
 const {
     pm,
@@ -255,10 +256,14 @@ exports.refreshSession = async (req, res) => {
 
 exports.signin = async (req, res) => {
     try {
-        const { fullName, email, organizationName, password } = req.body;
+        const { fullName, email, organizationName, password, acceptTerms } = req.body;
 
         if (!fullName || !email || !organizationName || !password) {
             return res.status(400).json({ success: false, message: "Tous les champs obligatoires doivent être remplis." });
+        }
+
+        if (!hasAcceptedTerms(acceptTerms)) {
+            return res.status(400).json({ success: false, code: "TERMS_REQUIRED", message: "Acceptez les conditions d’utilisation et la politique de confidentialité pour créer votre compte." });
         }
 
         // Appliquer la politique de mot de passe fort
@@ -288,7 +293,9 @@ exports.signin = async (req, res) => {
                 role: "ORG_ADMIN",
                 is_verified: false,
                 verification_token: verificationToken,
-                verification_token_expires_at: new Date(Date.now() + VERIFICATION_TOKEN_TTL_MS)
+                verification_token_expires_at: new Date(Date.now() + VERIFICATION_TOKEN_TTL_MS),
+                terms_version: TERMS_VERSION,
+                terms_accepted_at: new Date()
             };
 
             const result = await userService.createOrgAndAdminUser(orgData, userData);

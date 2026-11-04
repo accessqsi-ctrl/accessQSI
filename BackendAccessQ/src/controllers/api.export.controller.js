@@ -40,7 +40,8 @@ const formatScanStatus = (status) => {
         denied_event_not_selected: "REFUSÉ - AUTRE ÉVÉNEMENT",
         denied_area_not_allowed: "REFUSÉ - ZONE NON AUTORISÉE",
         denied_insufficient_level: "REFUSÉ - NIVEAU INSUFFISANT",
-        denied_period_limit: "REFUSÉ - LIMITE DE LA PÉRIODE"
+        denied_period_limit: "REFUSÉ - LIMITE DE LA PÉRIODE",
+        denied_dynamic_code: "REFUSÉ - QR CAPTURÉ OU EXPIRÉ"
     };
     return labels[status] || status || "-";
 };

@@ -12,6 +12,7 @@ import {
   ScanLine,
 } from "lucide-react";
 import { SITE_DESCRIPTION, baseOpenGraph } from "./lib/seo";
+import { LEGAL_LINKS } from "./lib/legal";
 
 // La vidéo est hébergée hors du dépôt (les .mp4 sont ignorés par git) ; en local, le fichier de public/ sert de repli.
 const DEMO_VIDEO_URL = process.env.NEXT_PUBLIC_DEMO_VIDEO_URL || "/accessq-demo.mp4";
@@ -616,7 +617,7 @@ export default function Home() {
       </section>
 
       <footer className="w-full border-t border-slate-200 dark:border-slate-700 py-8 bg-slate-50 dark:bg-slate-800 z-20">
-        <div className="container mx-auto flex flex-col items-center justify-center gap-2 px-6 text-center text-sm text-slate-500 dark:text-slate-400 sm:flex-row sm:gap-4">
+        <div className="container mx-auto flex flex-col items-center justify-center gap-2 px-6 text-center text-sm text-slate-500 dark:text-slate-400 sm:flex-row sm:flex-wrap sm:gap-4">
           <p>&copy; 2026 Tinkli Software. Tous droits réservés.</p>
           <a
             href="mailto:access.supportclient@gmail.com"
@@ -624,6 +625,11 @@ export default function Home() {
           >
             Nous contacter
           </a>
+          {LEGAL_LINKS.map(item => (
+            <Link key={item.href} href={item.href} className="transition-colors hover:text-blue-600 hover:underline dark:hover:text-blue-300">
+              {item.label}
+            </Link>
+          ))}
         </div>
       </footer>
     </div>
