@@ -560,7 +560,8 @@ test("POST /user/signin creates an organization admin and sends a verification e
         fullName: "Admin User",
         email: "admin@example.com",
         organizationName: "Access Org",
-        password: "Strong!123"
+        password: "Strong!123",
+        acceptTerms: true
     });
 
     assert.equal(res.status, 201);
@@ -570,9 +571,36 @@ test("POST /user/signin creates an organization admin and sends a verification e
     assert.equal(created.userData.password_hash, "hashed:Strong!123");
     assert.equal(created.userData.role, "ORG_ADMIN");
     assert.equal(created.userData.is_verified, false);
+    assert.equal(created.userData.terms_version, require("../src/config/legal").TERMS_VERSION);
+    assert.ok(created.userData.terms_accepted_at instanceof Date);
     assert.equal(verificationEmail[0], "admin@example.com");
     assert.equal(verificationEmail[1], "Admin User");
     assert.equal(typeof verificationEmail[2], "string");
+});
+
+test("POST /user/signin refuses to create an account without accepting the terms", async () => {
+    let createCalled = false;
+    const app = loadUserApp({
+        userService: {
+            findByEmail: async () => null,
+            createOrgAndAdminUser: async () => {
+                createCalled = true;
+            }
+        }
+    });
+
+    for (const acceptTerms of [undefined, false, "true"]) {
+        const res = await request(app, "POST", "/user/signin", {
+            fullName: "Admin User",
+            email: "admin@example.com",
+            organizationName: "Access Org",
+            password: "Strong!123",
+            acceptTerms
+        });
+        assert.equal(res.status, 400);
+        assert.equal(res.body.code, "TERMS_REQUIRED");
+    }
+    assert.equal(createCalled, false);
 });
 
 test("POST /user/signin rejects weak passwords before creating an account", async () => {
@@ -590,7 +618,8 @@ test("POST /user/signin rejects weak passwords before creating an account", asyn
         fullName: "Admin User",
         email: "admin@example.com",
         organizationName: "Access Org",
-        password: "weak"
+        password: "weak",
+        acceptTerms: true
     });
 
     assert.equal(res.status, 400);

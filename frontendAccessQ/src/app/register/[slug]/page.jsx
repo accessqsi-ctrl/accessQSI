@@ -199,7 +199,7 @@ export default function PublicRegistrationPage() {
                       {providers.map(item => <option key={`${item.provider}|${item.country}`} value={`${item.provider}|${item.country}`}>{item.displayName}{item.countryDisplayName ? ` · ${item.countryDisplayName}` : ""}</option>)}
                     </select></label>}
                 <Field label="Numéro Mobile Money qui paie" type="tel" required placeholder="0991234567" value={payerPhone} onChange={setPayerPhone} />
-                <p className="text-xs text-slate-500 dark:text-slate-400">Vous recevrez une demande de confirmation sur ce téléphone. Le billet est ajouté à votre box dès que l’opérateur confirme le paiement. Votre place est réservée pendant quelques minutes.</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Vous recevrez une demande de confirmation sur ce téléphone. Le billet est ajouté à votre box dès que l’opérateur confirme le paiement. Votre place est réservée pendant quelques minutes. En payant, vous acceptez les <a href="/conditions-vente" target="_blank" rel="noopener" className="font-semibold text-blue-700 underline dark:text-blue-300">conditions de vente des billets</a>.</p>
               </div>
               : <p className="text-xs text-slate-500 dark:text-slate-400">Les droits d’accès, la validité et le modèle du billet sont ceux définis par l’organisateur. Aucun paiement n’est demandé : le billet sera ajouté à votre box.</p>}
             {error && <p className="rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-700 dark:border dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300">{error}</p>}

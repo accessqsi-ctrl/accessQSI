@@ -29,8 +29,11 @@ test("attendee email-code login and box password on PostgreSQL", { skip: !enable
         assert.notEqual(stored.code_hash, code);
 
         await assert.rejects(auth.verifyLoginCode({ email: "new@box.test", code }), error => error.code === "NAME_REQUIRED");
-        const { attendee, created } = await auth.verifyLoginCode({ email: "new@box.test", code, fullName: "New Attendee" });
+        await assert.rejects(auth.verifyLoginCode({ email: "new@box.test", code, fullName: "New Attendee" }), error => error.code === "TERMS_REQUIRED");
+        const { attendee, created } = await auth.verifyLoginCode({ email: "new@box.test", code, fullName: "New Attendee", acceptTerms: true });
         assert.equal(created, true);
+        assert.equal(attendee.terms_version, require("../src/config/legal").TERMS_VERSION);
+        assert.ok(attendee.terms_accepted_at);
         assert.equal(attendee.full_name, "New Attendee");
         assert.ok(attendee.email_verified_at);
         await assert.rejects(auth.verifyLoginCode({ email: "new@box.test", code }), error => error.code === "CODE_EXPIRED");
@@ -55,6 +58,11 @@ test("attendee email-code login and box password on PostgreSQL", { skip: !enable
         assert.equal(secured.session_version, attendee.session_version);
         await assert.rejects(auth.loginWithPassword({ email: "new@box.test", password: "Wrong-Pass1" }), error => error.code === "INVALID_CREDENTIALS");
         assert.equal((await auth.loginWithPassword({ email: "new@box.test", password: "Box-Secure1" })).attendee_id, attendee.attendee_id);
+
+        // Une nouvelle version des conditions doit être acceptée à la connexion suivante.
+        await prisma.attendee.update({ where: { attendee_id: attendee.attendee_id }, data: { terms_version: "2000-01-01" } });
+        await assert.rejects(auth.loginWithPassword({ email: "new@box.test", password: "Box-Secure1" }), error => error.code === "TERMS_REQUIRED");
+        assert.equal((await auth.loginWithPassword({ email: "new@box.test", password: "Box-Secure1", acceptTerms: true })).terms_version, require("../src/config/legal").TERMS_VERSION);
 
         await assert.rejects(auth.setPassword(attendee.attendee_id, { currentPassword: "Wrong-Pass1", newPassword: "Box-Secure2" }), error => error.code === "INVALID_CREDENTIALS");
         const changed = await auth.setPassword(attendee.attendee_id, { currentPassword: "Box-Secure1", newPassword: "Box-Secure2" });

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { KeyRound, Loader2, Mail } from "lucide-react";
 import { attendeeJson } from "../lib/attendeeApi";
+import TermsCheckbox from "./TermsCheckbox";
 
 // Connexion à la box : un code à 6 chiffres envoyé par email crée ou ouvre le compte participant.
 export default function AttendeeSignIn({ onSignedIn, askName = false, allowPassword = false }) {
@@ -11,6 +12,9 @@ export default function AttendeeSignIn({ onSignedIn, askName = false, allowPassw
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
   const [needsName, setNeedsName] = useState(askName);
+  // Une nouvelle box (askName) doit accepter les conditions ; un compte existant seulement si le serveur le demande.
+  const [needsTerms, setNeedsTerms] = useState(askName);
+  const [acceptTerms, setAcceptTerms] = useState(false);
   const [code, setCode] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -21,7 +25,9 @@ export default function AttendeeSignIn({ onSignedIn, askName = false, allowPassw
     setBusy(true); setError("");
     try { await action(); }
     catch (reason) {
-      if (reason.code === "NAME_REQUIRED") setNeedsName(true);
+      // Une box à créer demande aussi les conditions : un seul aller-retour au lieu de deux.
+      if (reason.code === "NAME_REQUIRED") { setNeedsName(true); setNeedsTerms(true); }
+      if (reason.code === "TERMS_REQUIRED") setNeedsTerms(true);
       setError(reason.message);
     }
     finally { setBusy(false); }
@@ -33,18 +39,19 @@ export default function AttendeeSignIn({ onSignedIn, askName = false, allowPassw
   });
 
   const verifyCode = () => run(async () => {
-    const data = await attendeeJson("/attendee/code/verify", { method: "POST", body: JSON.stringify({ email, code, fullName: needsName ? fullName : undefined }) });
+    const data = await attendeeJson("/attendee/code/verify", { method: "POST", body: JSON.stringify({ email, code, fullName: needsName ? fullName : undefined, acceptTerms: needsTerms ? acceptTerms : undefined }) });
     onSignedIn(data.attendee);
   });
 
   const login = () => run(async () => {
-    const data = await attendeeJson("/attendee/login", { method: "POST", body: JSON.stringify({ email, password }) });
+    const data = await attendeeJson("/attendee/login", { method: "POST", body: JSON.stringify({ email, password, acceptTerms: needsTerms ? acceptTerms : undefined }) });
     onSignedIn(data.attendee);
   });
 
   if (mode === "password") return <form onSubmit={event => { event.preventDefault(); login(); }} className="space-y-4">
     <Field label="Adresse email" type="email" required autoComplete="email" value={email} onChange={setEmail} />
     <Field label="Mot de passe" type="password" required autoComplete="current-password" value={password} onChange={setPassword} />
+    {needsTerms && <TermsCheckbox id="accept-terms-password" checked={acceptTerms} onChange={setAcceptTerms} />}
     <ErrorText text={error} />
     <Submit busy={busy} icon={KeyRound}>Se connecter</Submit>
     <button type="button" onClick={() => { setMode("code"); setError(""); }} className="w-full text-sm font-semibold text-blue-700 dark:text-blue-300">Recevoir plutôt un code par email</button>
@@ -54,6 +61,7 @@ export default function AttendeeSignIn({ onSignedIn, askName = false, allowPassw
     {needsName && <Field label="Nom complet" required autoComplete="name" value={fullName} onChange={setFullName} />}
     <Field label="Adresse email" type="email" required autoComplete="email" value={email} onChange={setEmail} />
     <p className="text-xs text-slate-500 dark:text-slate-400">Nous vous envoyons un code à 6 chiffres. Il ouvre votre box AccessQ, ou la crée si c’est votre premier billet.</p>
+    {needsTerms && <TermsCheckbox id="accept-terms-email" checked={acceptTerms} onChange={setAcceptTerms} />}
     <ErrorText text={error} />
     <Submit busy={busy} icon={Mail}>Recevoir mon code</Submit>
     {allowPassword && <button type="button" onClick={() => { setMode("password"); setError(""); }} className="w-full text-sm font-semibold text-blue-700 dark:text-blue-300">J’ai un mot de passe</button>}
@@ -63,6 +71,7 @@ export default function AttendeeSignIn({ onSignedIn, askName = false, allowPassw
     {notice && <p className="rounded-xl bg-blue-50 p-3 text-sm text-blue-800 dark:bg-blue-950/40 dark:text-blue-200">{notice}</p>}
     {needsName && <Field label="Nom complet" required autoComplete="name" value={fullName} onChange={setFullName} />}
     <Field label="Code reçu par email" required inputMode="numeric" autoComplete="one-time-code" pattern="\d{6}" maxLength={6} value={code} onChange={next => setCode(next.replace(/\D/g, "").slice(0, 6))} />
+    {needsTerms && <TermsCheckbox id="accept-terms-code" checked={acceptTerms} onChange={setAcceptTerms} />}
     <ErrorText text={error} />
     <Submit busy={busy} icon={KeyRound}>Valider le code</Submit>
     <div className="flex justify-between text-sm font-semibold text-blue-700 dark:text-blue-300">

@@ -6,6 +6,7 @@ const prisma = require("../prisma/client");
 const emailService = require("./email.service");
 const { getPrivateKey } = require("../config/jwtKeys");
 const { getSessionCookieOptions } = require("../config/security");
+const { TERMS_VERSION, hasAcceptedTerms } = require("../config/legal");
 const { pm, emailPattern, passwordPolicyMessage, BCRYPT_SALT_ROUNDS, normalizeEmail } = require("../utils/account");
 
 class AttendeeAuthError extends Error {
@@ -39,6 +40,11 @@ const validEmail = value => {
     return email;
 };
 
+// Un compte sans acceptation, ou dont la version acceptée est dépassée, doit (ré)accepter les conditions.
+const needsTerms = attendee => !attendee || attendee.terms_version !== TERMS_VERSION;
+const termsRequired = () => new AttendeeAuthError("Acceptez les conditions de vente des billets et la politique de confidentialité pour continuer.", "TERMS_REQUIRED", 422);
+const termsAcceptance = now => ({ terms_version: TERMS_VERSION, terms_accepted_at: now });
+
 const serializeAttendee = attendee => ({
     id: attendee.attendee_id,
     email: attendee.email,
@@ -63,7 +69,7 @@ const requestLoginCode = async (emailValue, now = new Date()) => {
     return { expiresInSeconds: CODE_TTL_MS / 1000 };
 };
 
-const verifyLoginCode = async ({ email: emailValue, code: codeValue, fullName: fullNameValue }, now = new Date()) => {
+const verifyLoginCode = async ({ email: emailValue, code: codeValue, fullName: fullNameValue, acceptTerms }, now = new Date()) => {
     const email = validEmail(emailValue);
     const code = clean(codeValue, 6);
     const fullName = clean(fullNameValue, 160);
@@ -86,6 +92,10 @@ const verifyLoginCode = async ({ email: emailValue, code: codeValue, fullName: f
     // Le code reste valide : le participant complète son nom puis renvoie le même code.
     if (!existing && !fullName) throw new AttendeeAuthError("Indiquez votre nom pour créer votre box.", "NAME_REQUIRED", 422);
     if (existing && !existing.is_active) throw new AttendeeAuthError("Ce compte est désactivé.", "ACCOUNT_DISABLED", 403);
+    // Comme pour le nom, le code reste valide le temps de cocher la case.
+    const mustAccept = needsTerms(existing);
+    if (mustAccept && !hasAcceptedTerms(acceptTerms)) throw termsRequired();
+    const acceptance = mustAccept ? termsAcceptance(now) : {};
 
     return prisma.$transaction(async tx => {
         const consumed = await tx.attendeeLoginCode.updateMany({
@@ -95,20 +105,23 @@ const verifyLoginCode = async ({ email: emailValue, code: codeValue, fullName: f
         if (!consumed.count) throw new AttendeeAuthError("Code déjà utilisé. Demandez-en un nouveau.", "CODE_EXPIRED", 401);
         const attendee = await tx.attendee.upsert({
             where: { email },
-            create: { email, full_name: fullName, email_verified_at: now, last_login: now },
-            update: { email_verified_at: existing?.email_verified_at || now, last_login: now }
+            create: { email, full_name: fullName, email_verified_at: now, last_login: now, ...acceptance },
+            update: { email_verified_at: existing?.email_verified_at || now, last_login: now, ...acceptance }
         });
         return { attendee, created: !existing };
     });
 };
 
-const loginWithPassword = async ({ email: emailValue, password }) => {
+const loginWithPassword = async ({ email: emailValue, password, acceptTerms }) => {
     const email = validEmail(emailValue);
     const attendee = await prisma.attendee.findUnique({ where: { email } });
     const valid = Boolean(attendee?.password_hash && typeof password === "string" && await bcrypt.compare(password, attendee.password_hash));
     if (!valid) throw new AttendeeAuthError("Adresse email ou mot de passe incorrect.", "INVALID_CREDENTIALS", 401);
     if (!attendee.is_active) throw new AttendeeAuthError("Ce compte est désactivé.", "ACCOUNT_DISABLED", 403);
-    return prisma.attendee.update({ where: { attendee_id: attendee.attendee_id }, data: { last_login: new Date() } });
+    const mustAccept = needsTerms(attendee);
+    if (mustAccept && !hasAcceptedTerms(acceptTerms)) throw termsRequired();
+    const now = new Date();
+    return prisma.attendee.update({ where: { attendee_id: attendee.attendee_id }, data: { last_login: now, ...(mustAccept ? termsAcceptance(now) : {}) } });
 };
 
 const setPassword = async (attendeeId, { currentPassword, newPassword }) => {

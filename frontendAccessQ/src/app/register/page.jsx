@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import LoadingBar from "../components/LoadingBar";
 import { apiUrl } from "../lib/api";
+import TermsCheckbox from "../components/TermsCheckbox";
 
 export default function Register() {
     const [formData, setFormData] = useState({
@@ -28,6 +29,7 @@ export default function Register() {
     const [loading, setLoading] = useState(false);
     const [resending, setResending] = useState(false);
     const [hasOrganization, setHasOrganization] = useState(true);
+    const [acceptTerms, setAcceptTerms] = useState(false);
 
     // Strict Password Validator matching the backend rules
     const isValidPassword = (password) => {
@@ -53,6 +55,11 @@ export default function Register() {
             return;
         }
 
+        if (!acceptTerms) {
+            setError("Acceptez les conditions d’utilisation et la politique de confidentialité pour créer votre compte.");
+            return;
+        }
+
         setLoading(true);
 
         try {
@@ -67,6 +74,7 @@ export default function Register() {
                     email: formData.email,
                     organizationName: hasOrganization ? formData.organizationName : formData.fullName,
                     password: formData.password,
+                    acceptTerms,
                 }),
             });
 
@@ -284,6 +292,8 @@ export default function Register() {
                         <p className="text-xs text-slate-500 dark:text-slate-400 -mt-2">
                             Minimum 8 caractères, avec majuscule, minuscule, chiffre et symbole.
                         </p>
+
+                        <TermsCheckbox audience="organizer" checked={acceptTerms} onChange={setAcceptTerms} />
 
                         {/* Submit Button */}
                         <button
