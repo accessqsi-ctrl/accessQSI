@@ -96,6 +96,13 @@ const checkPayout = (payoutId) => request({
     path: `/v2/payouts/${encodeURIComponent(payoutId)}`
 });
 
+// Opérateur et pays d'un numéro Mobile Money (numéro renvoyé normalisé au format international).
+const predictProvider = (phoneNumber) => request({
+    method: "POST",
+    path: "/v2/predict-provider",
+    data: { phoneNumber }
+});
+
 const getActiveConfiguration = (operationType = "DEPOSIT") => {
     const { country } = getPaymentConfig();
     const params = { operationType };
@@ -165,6 +172,7 @@ module.exports = {
     checkRefund,
     initiatePayout,
     checkPayout,
+    predictProvider,
     getActiveConfiguration,
     extractProviders
 };

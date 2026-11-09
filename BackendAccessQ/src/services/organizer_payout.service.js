@@ -160,7 +160,8 @@ const requestPayout = async (orgId, userId, input = {}) => {
 };
 
 // Remet le montant au solde. Idempotent grâce à l'unicité (payout_id, type).
-const reverse = (tx, payout) => tx.organizerLedgerEntry.upsert({
+// Un reversement de la plateforme (sans organisation) n'a pas d'écriture : son échec suffit à le sortir du calcul du solde.
+const reverse = (tx, payout) => !payout.org_id ? null : tx.organizerLedgerEntry.upsert({
     where: { payout_id_type: { payout_id: payout.payout_id, type: "PAYOUT_REVERSAL" } },
     create: { org_id: payout.org_id, type: "PAYOUT_REVERSAL", amount: payout.amount, currency: payout.currency, payout_id: payout.payout_id },
     update: {}
@@ -179,9 +180,9 @@ const cancelPayout = async (orgId, payoutId) => {
 
 const unwrap = response => response?.status === "FOUND" && response.data ? response.data : null;
 
-const failPayout = (payout, failure, payload) => prisma.$transaction(async tx => {
+const failPayout = (payout, failure, payload, fromStatuses = ["SUBMITTING", "PROCESSING"]) => prisma.$transaction(async tx => {
     const claimed = await tx.organizerPayout.updateMany({
-        where: { payout_id: payout.payout_id, status: { in: ["SUBMITTING", "PROCESSING"] } },
+        where: { payout_id: payout.payout_id, status: { in: fromStatuses } },
         data: { status: "FAILED", failure_code: failure.code || "FAILED", failure_message: failure.message || failure.code || "FAILED", provider_payload: payload ?? undefined }
     });
     if (claimed.count === 1) await reverse(tx, payout);
@@ -212,7 +213,42 @@ const applyRemotePayout = async (payout, remote) => {
     }
 };
 
-const submitPayout = async payout => {
+// Destinataire saisi par un super-admin : l'opérateur est demandé à pawaPay, puis contrôlé
+// (pays saisi, devise, reversements actifs, décimales). Une erreur réseau laisse le reversement « validé » pour le prochain passage.
+const resolveManualRecipient = async payout => {
+    let prediction;
+    try {
+        prediction = await pawaPay.predictProvider(payout.phone_number);
+    } catch (error) {
+        if (!(error?.status >= 400 && error.status < 500)) throw error;
+        await failPayout(payout, { code: "INVALID_PHONE_NUMBER", message: "Numéro refusé par pawaPay." }, error.responseData, ["APPROVED"]);
+        return null;
+    }
+    const provider = (await payoutProviders()).find(item => item.provider === prediction?.provider && item.currency === payout.currency);
+    let failure = null;
+    if (!prediction?.provider) failure = { code: "PROVIDER_NOT_DETECTED", message: "Aucun opérateur Mobile Money trouvé pour ce numéro." };
+    else if (prediction.country && prediction.country !== payout.country) failure = { code: "COUNTRY_MISMATCH", message: `Ce numéro relève du pays ${prediction.country}, pas ${payout.country}.` };
+    else if (!provider) failure = { code: "PROVIDER_NOT_AVAILABLE", message: `${prediction.provider} n’accepte pas les reversements en ${payout.currency}.` };
+    else if (roundForProvider(new Prisma.Decimal(payout.amount).toString(), provider.decimals) !== Number(new Prisma.Decimal(payout.amount).toString())) {
+        failure = { code: "INVALID_AMOUNT", message: `${prediction.provider} n’accepte pas ce nombre de décimales.` };
+    }
+    if (failure) {
+        await failPayout(payout, failure, prediction, ["APPROVED"]);
+        return null;
+    }
+    const phoneNumber = prediction.phoneNumber || payout.phone_number;
+    const updated = await prisma.organizerPayout.updateMany({
+        where: { payout_id: payout.payout_id, status: "APPROVED", provider: null },
+        data: { provider: prediction.provider, phone_number: phoneNumber }
+    });
+    if (updated.count !== 1) return null;
+    logger.info("payout.provider_detected", { payout_id: payout.payout_id, provider: prediction.provider });
+    return { ...payout, provider: prediction.provider, phone_number: phoneNumber };
+};
+
+const submitPayout = async initial => {
+    const payout = initial.provider ? initial : await resolveManualRecipient(initial);
+    if (!payout) return;
     const claimed = await prisma.organizerPayout.updateMany({ where: { payout_id: payout.payout_id, status: "APPROVED" }, data: { status: "SUBMITTING", submitted_at: new Date() } });
     if (claimed.count !== 1) return;
     try {
@@ -223,7 +259,10 @@ const submitPayout = async payout => {
             recipient: { type: "MMO", accountDetails: { phoneNumber: payout.phone_number, provider: payout.provider } },
             clientReferenceId: `ACCESSQ-PAYOUT-${payout.payout_id.slice(0, 8)}`,
             customerMessage: "AccessQ reversement",
-            metadata: [{ organizationId: String(payout.org_id), isPII: false }, { payoutId: payout.payout_id, isPII: false }]
+            metadata: [
+                payout.org_id ? { organizationId: String(payout.org_id), isPII: false } : { source: "PLATFORM", isPII: false },
+                { payoutId: payout.payout_id, isPII: false }
+            ]
         });
         if (["ACCEPTED", "DUPLICATE_IGNORED", "PROCESSING"].includes(response?.status)) {
             await prisma.organizerPayout.update({ where: { payout_id: payout.payout_id }, data: { status: "PROCESSING", provider_payload: response } });

@@ -452,6 +452,29 @@ test("free registration flow is atomic on PostgreSQL", { skip: !enabled || !safe
         assert.equal((await prisma.ticketRefund.findUnique({ where: { ticket_refund_id: refund.ticket_refund_id } })).status, "COMPLETED");
         assert.equal((await prisma.ticketPayment.findUnique({ where: { ticket_payment_id: review.ticket_payment_id } })).status, "REFUNDED");
         assert.equal(await usdBalance(), "12.81");
+
+        // Reversement saisi par un super-admin : opérateur détecté auprès de pawaPay avant l'envoi.
+        const originalPredict = pawaPay.predictProvider;
+        t.after(() => { pawaPay.predictProvider = originalPredict; });
+        pawaPay.predictProvider = async phoneNumber => ({ country: phoneNumber.startsWith("243") ? "COD" : "ZMB", provider: phoneNumber.startsWith("243") ? "VODACOM_MPESA_COD" : "MTN_MOMO_ZMB", phoneNumber });
+        const manual = data => prisma.organizerPayout.create({ data: {
+            provider_payout_id: require("crypto").randomUUID(), amount: "5", currency: "USD", country: "COD", phone_number: "243997654321",
+            manual_recipient: true, note: "Prestataire", status: "APPROVED", requested_by_id: superAdmin.user_id, reviewed_by_id: superAdmin.user_id, reviewed_at: new Date(), ...data
+        } });
+        const platformPayout = await manual({});
+        const wrongCountry = await manual({ phone_number: "260971234567" });
+        await payouts.processPending();
+        const detected = await prisma.organizerPayout.findUnique({ where: { payout_id: platformPayout.payout_id } });
+        assert.equal(detected.status, "PROCESSING");
+        assert.equal(detected.provider, "VODACOM_MPESA_COD");
+        const mismatch = await prisma.organizerPayout.findUnique({ where: { payout_id: wrongCountry.payout_id } });
+        assert.equal(mismatch.status, "FAILED");
+        assert.equal(mismatch.failure_code, "COUNTRY_MISMATCH");
+        assert.equal(await prisma.organizerLedgerEntry.count({ where: { payout_id: { in: [platformPayout.payout_id, wrongCountry.payout_id] } } }), 0);
+        remote.set(detected.provider_payout_id, { ...remote.get(detected.provider_payout_id), status: "COMPLETED" });
+        await payouts.processPending();
+        assert.equal((await prisma.organizerPayout.findUnique({ where: { payout_id: platformPayout.payout_id } })).status, "COMPLETED");
+        assert.equal(await usdBalance(), "12.81");
     });
 
     await t.test("paid sales stop at the event QR quota and a late payment goes to review", async () => {

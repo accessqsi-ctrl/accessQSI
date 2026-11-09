@@ -40,13 +40,13 @@ export const onboardingSteps = [
         summary: "Laissez les participants s’inscrire et recevoir leur pass.",
         description: "Permettez aux participants de renseigner eux-mêmes leurs informations et de recevoir automatiquement leur pass.",
         details: [
-            "Reliez le formulaire à un événement, choisissez les informations demandées et configurez les offres autorisées.",
+            "Ouvrez l’événement concerné : le formulaire se crée depuis sa section « Billetterie et inscriptions ». Choisissez ensuite les informations demandées et les offres autorisées.",
             "Votre abonnement détermine les options disponibles : une offre en Découverte, plusieurs offres dès Essential et des modèles personnalisés avec Pro.",
             "Publiez ensuite le lien public. Les droits, la capacité et le modèle sont toujours vérifiés par le serveur."
         ],
         outcome: "Vous réduisez la saisie manuelle tout en conservant les mêmes contrôles d’accès et quotas AccessQ.",
-        href: "/dashboard/registration-forms/new",
-        action: "Créer un formulaire",
+        href: "/dashboard/events",
+        action: "Ouvrir mes événements",
         duration: "4 min",
         icon: ClipboardList
     },
