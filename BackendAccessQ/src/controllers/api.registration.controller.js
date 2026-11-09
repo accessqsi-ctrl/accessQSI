@@ -72,7 +72,7 @@ const formDto = (form, includeConfiguration = false) => ({
 });
 
 exports.listForms = async (req, res) => {
-    try { return res.json({ success: true, forms: (await registrationService.listForms(req.user.org_id)).map(form => formDto(form, true)) }); }
+    try { return res.json({ success: true, forms: (await registrationService.listForms(req.user.org_id, { eventId: req.query.eventId })).map(form => formDto(form, true)) }); }
     catch (error) { return handleError(req, res, error, "list_forms"); }
 };
 

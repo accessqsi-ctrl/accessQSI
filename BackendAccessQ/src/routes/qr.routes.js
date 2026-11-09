@@ -59,6 +59,7 @@ router.get("/template/:event_id", adminOnly, qrController.downloadQrImportTempla
 
 // Récupération des QR codes d'un événement spécifique
 router.get("/event/:event_id", canReadQr, qrController.getQrsByEvent);
+router.get("/event/:event_id/usage", canReadQr, qrController.getEventQrUsage);
 
 // Générer un QR code pour un événement spécifique
 router.post("/generate/:event_id", canCreateQr, qrController.generateQrForEvent);

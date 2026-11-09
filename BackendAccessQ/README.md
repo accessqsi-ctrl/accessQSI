@@ -130,7 +130,8 @@ si la demande est annulée, refusée ou échoue.
 
 Un super-admin valide ou refuse la demande depuis la page **Finances** de la console
 d'administration. Il y demande aussi le remboursement des paiements `REVIEW_REQUIRED` au
-payeur d'origine. La console n'écrit qu'en base : le worker du backend (même boucle que les
+payeur d'origine. Il peut aussi reverser lui-même un solde, mot de passe obligatoire, mais
+uniquement vers le compte de réception enregistré par l'organisateur. La console n'écrit qu'en base : le worker du backend (même boucle que les
 abonnements) envoie les reversements et remboursements validés à pawaPay, puis en vérifie le
 résultat. Un envoi interrompu est renvoyé avec le même identifiant, et pawaPay ignore les
 doublons.

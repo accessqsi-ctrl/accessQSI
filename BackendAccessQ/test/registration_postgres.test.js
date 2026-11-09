@@ -199,8 +199,9 @@ test("free registration flow is atomic on PostgreSQL", { skip: !enabled || !safe
 
     await t.test("ticket sales stay within the event QR quota and recover after a downgrade", async () => {
         const limitedEvent = await prisma.event.create({ data: { org_id: org.org_id, title: "Quota test", qr_limit: 2, entitlement_type: "EVENT_PASS", entitlement_expires_at: new Date(Date.now() + 86_400_000) } });
-        const manualPass = input => passIssuance.issuePass({ organizationId: org.org_id, eventId: limitedEvent.event_id, input: { accessType: "single", level: 1, cardTemplateId: "event-ticket", ...input } });
-        await manualPass({ fullName: "Existing pass", email: "existing@example.test" });
+        const member = await prisma.userQ.create({ data: { clef: "quota-member", full_name: "Agent Quota", email: "quota-member@example.test", password_hash: "x", role: "ORG_AGENT", org_id: org.org_id, is_verified: true } });
+        const manualPass = (input, extra = {}) => passIssuance.issuePass({ organizationId: org.org_id, eventId: limitedEvent.event_id, input: { accessType: "single", level: 1, cardTemplateId: "event-ticket", ...input }, ...extra });
+        await manualPass({ fullName: "Existing pass", email: "existing@example.test" }, { createdById: member.user_id });
         const form = await registrations.setFormStatus(org.org_id, (await registrations.createForm(org.org_id, { eventId: limitedEvent.event_id, title: "Quota blocked", offers: [{ name: "Illimitée", cardTemplateId: "event-ticket" }] })).registration_form_id, "PUBLISHED");
         const offerId = form.offers[0].registration_offer_id;
         assert.equal((await registrations.publicForm(form.public_slug)).offers[0].sold_out, false);
@@ -228,6 +229,14 @@ test("free registration flow is atomic on PostgreSQL", { skip: !enabled || !safe
         const recovered = await prisma.registration.findUnique({ where: { registration_id: blocked.registration_id } });
         assert.equal(recovered.issuance_status, "SUCCEEDED");
         assert.ok(recovered.qr_id);
+        // Origine des QR de l'événement : un par la billetterie, un par l'agent.
+        const usage = await require("../src/services/qr.service").getEventQrUsage(org.org_id, limitedEvent.event_id);
+        assert.deepEqual([usage.issued, usage.reserved, usage.remaining], [2, 0, 0]);
+        assert.equal(usage.sources.ticketing, 1);
+        assert.deepEqual(usage.sources.members, [{ userId: member.user_id, name: "Agent Quota", role: "ORG_AGENT", count: 1 }]);
+        assert.equal(usage.sources.unattributed, 0);
+        assert.equal(await require("../src/services/qr.service").getEventQrUsage(otherOrg.org_id, limitedEvent.event_id), null);
+        assert.deepEqual((await registrations.listForms(org.org_id, { eventId: limitedEvent.event_id })).map(item => item.registration_form_id), [form.registration_form_id]);
         await prisma.registrationJob.updateMany({ where: { registration_id: recovered.registration_id, type: "SEND_PASS_EMAIL", status: "PENDING" }, data: { status: "COMPLETED", completed_at: new Date() } });
     });
 

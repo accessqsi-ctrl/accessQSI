@@ -26,6 +26,18 @@ Le super-admin peut y appliquer immédiatement un plan Discovery, Essential ou P
 
 Le fichier `prisma/schema.prisma` est une copie de `BackendAccessQ/src/prisma/schema.prisma`, qui reste la source de vérité. Après toute modification du schéma backend, lancez `npm run prisma:sync` (également exécuté par `npm run dev`). Un test et `npm run check` échouent si les deux fichiers divergent. Les migrations de la base restent pilotées par `BackendAccessQ`.
 
+## Finances
+
+La page `/finance` regroupe :
+- les demandes de reversement des organisateurs, à valider ou à refuser ;
+- les soldes des organisateurs, que le super-admin peut reverser lui-même ;
+- les paiements de billets « à vérifier », à rembourser au payeur d'origine.
+
+Chaque action redemande le mot de passe du super-admin et est journalisée. Un reversement part
+toujours vers le compte de réception enregistré par l'organisateur : la console ne permet pas de
+saisir un autre numéro. La console n'appelle jamais pawaPay. Le backend AccessQ envoie les
+opérations validées et en vérifie le résultat.
+
 ## Sécurité des accès
 
 - La désactivation est réversible et modifie uniquement l'état d'accès. Elle ne supprime pas les données personnelles.

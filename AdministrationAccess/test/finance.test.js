@@ -91,3 +91,67 @@ test('a refund can only be requested for a payment under review and resets a fai
     assert.equal(upserts.length, 1);
     assert.match(res.destination, /error=/);
 });
+
+test('a super-admin payout needs the password and goes only to the registered account', async () => {
+    const { Prisma } = require('@prisma/client');
+    const passwordHash = await bcrypt.hash('correct-password', 4);
+    const created = { payouts: [], ledger: [] };
+    let state;
+    const reset = (overrides = {}) => {
+        state = { account: { country: 'COD', provider: 'VODACOM_MPESA_COD', phone_number: '243991234567' }, open: null, balance: '22.81', ...overrides };
+        created.payouts.length = 0;
+        created.ledger.length = 0;
+    };
+    let transactions = 0;
+    const tx = {
+        $queryRaw: async () => [],
+        organizerPayoutAccount: { findUnique: async () => state.account },
+        organizerPayout: {
+            findFirst: async () => state.open,
+            create: async ({ data }) => { created.payouts.push(data); return { ...data, payout_id: 'p-1' }; }
+        },
+        organizerLedgerEntry: {
+            aggregate: async () => ({ _sum: { amount: new Prisma.Decimal(state.balance) } }),
+            create: async ({ data }) => { created.ledger.push(data); }
+        }
+    };
+    const controller = loadController({
+        userQ: { findFirst: async () => ({ password_hash: passwordHash }) },
+        $transaction: (work) => { transactions += 1; return work(tx); }
+    });
+    const pay = async (body) => {
+        const res = response();
+        await controller.createPayout({ params: { orgId: '3' }, body: { superAdminPassword: 'correct-password', currency: 'USD', ...body }, user: { id: 1 } }, res);
+        return res.destination;
+    };
+
+    reset();
+    assert.match(await pay({ superAdminPassword: 'wrong' }), /Mot%20de%20passe%20incorrect/);
+    assert.equal(transactions, 0);
+
+    // Un numéro envoyé avec le formulaire est ignoré : seule la destination enregistrée compte.
+    assert.match(await pay({ amount: '10', phone_number: '243000000000' }), /success=/);
+    assert.equal(created.payouts[0].phone_number, '243991234567');
+    assert.equal(created.payouts[0].status, 'APPROVED');
+    assert.equal(created.payouts[0].reviewed_by_id, 1);
+    assert.equal(created.payouts[0].amount.toString(), '10');
+    assert.equal(created.ledger[0].type, 'PAYOUT');
+    assert.equal(created.ledger[0].amount.toString(), '-10');
+
+    reset();
+    await pay({});
+    assert.equal(created.payouts[0].amount.toString(), '22.81');
+
+    reset();
+    assert.match(await pay({ amount: '30' }), /d%C3%A9passe/);
+    assert.equal(created.payouts.length, 0);
+    reset({ account: null });
+    assert.match(await pay({}), /compte%20de%20r%C3%A9ception/);
+    reset({ open: { payout_id: 'busy' } });
+    assert.match(await pay({}), /d%C3%A9j%C3%A0%20en%20cours/);
+    reset({ balance: '0' });
+    assert.match(await pay({}), /Aucun%20montant/);
+    reset();
+    assert.match(await pay({ amount: '1.234' }), /Montant%20invalide/);
+    assert.equal(created.payouts.length, 0);
+});

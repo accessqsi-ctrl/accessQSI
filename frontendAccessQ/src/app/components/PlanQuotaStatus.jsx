@@ -19,7 +19,7 @@ export default function PlanQuotaStatus({ label, quota, className = "" }) {
             </div>
             <p className="mt-2 text-xs">
                 {quota.reached
-                    ? "Limite atteinte. Le plan Pro supprime cette limite."
+                    ? "Limite atteinte. Passez à un plan supérieur pour en créer davantage."
                     : `${quota.remaining} place${quota.remaining > 1 ? "s" : ""} disponible${quota.remaining > 1 ? "s" : ""}.`}
             </p>
         </div>

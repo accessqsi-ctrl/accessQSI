@@ -50,6 +50,7 @@ router.post('/organizations/:id/ticket-commission', orgController.changeTicketCo
 router.get('/finance', financeController.showFinance);
 router.post('/finance/payouts/:id/approve', financeController.approvePayout);
 router.post('/finance/payouts/:id/reject', financeController.rejectPayout);
+router.post('/finance/organizations/:orgId/payouts', financeController.createPayout);
 router.post('/finance/ticket-payments/:id/refund', financeController.refundTicketPayment);
 
 // Gestion des agents depuis une organisation

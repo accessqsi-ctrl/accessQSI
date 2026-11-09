@@ -1,4 +1,5 @@
 const prisma = require("../prisma/client");
+const { eventQrAllowance } = require("./organization_quota.service");
 
 const normalizePagination = ({ page = 1, pageSize = 25 } = {}) => {
     const safePage = Math.max(1, Number.parseInt(page, 10) || 1);
@@ -181,4 +182,31 @@ exports.deleteQrPermanently = async (id) => {
     return prisma.qrCode.delete({
         where: { qr_id: id }
     });
+};
+
+// Quota de QR d'un événement (QR émis + places réservées par la billetterie) et origine des QR émis :
+// billetterie, membre de l'organisation qui les a créés, ou QR antérieurs au suivi de l'auteur.
+exports.getEventQrUsage = async (orgId, eventId) => {
+    const event = await prisma.event.findFirst({ where: { event_id: eventId, org_id: orgId, deleted_at: null } });
+    if (!event) return null;
+    const organization = await prisma.organization.findUnique({ where: { org_id: orgId }, include: { plan: true } });
+    const [allowance, ticketing, byCreator] = await Promise.all([
+        eventQrAllowance(prisma, { organization, event }),
+        prisma.qrCode.count({ where: { event_id: eventId, registration: { isNot: null } } }),
+        prisma.qrCode.groupBy({ by: ["created_by_id"], where: { event_id: eventId, registration: { is: null } }, _count: { _all: true } })
+    ]);
+    const creatorIds = byCreator.map(row => row.created_by_id).filter(id => id !== null);
+    const users = creatorIds.length ? await prisma.userQ.findMany({ where: { user_id: { in: creatorIds } }, select: { user_id: true, full_name: true, role: true } }) : [];
+    const { planSummary, ...quota } = allowance;
+    return {
+        ...quota,
+        sources: {
+            ticketing,
+            members: byCreator.filter(row => row.created_by_id !== null).map(row => {
+                const user = users.find(item => item.user_id === row.created_by_id);
+                return { userId: row.created_by_id, name: user?.full_name || "Membre supprimé", role: user?.role || null, count: row._count._all };
+            }).sort((a, b) => b.count - a.count),
+            unattributed: byCreator.find(row => row.created_by_id === null)?._count._all || 0
+        }
+    };
 };

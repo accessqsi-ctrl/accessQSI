@@ -152,7 +152,9 @@ const issuePass = async ({
     trustedTemplateSnapshot = null,
     idempotency = null,
     // Inscription dont la place est déjà comptée dans le quota (billetterie).
-    reservationId = null
+    reservationId = null,
+    // Membre qui crée le QR à la main ; absent pour la billetterie.
+    createdById = null
 }) => {
     const orgId = Number(organizationId);
     const normalizedEventId = Number(eventId);
@@ -254,7 +256,8 @@ const issuePass = async ({
         period_limit: values.periodUnit ? values.periodLimit : null,
         period_unit: values.periodUnit,
         period_timezone: values.periodTimezone,
-        event_id: event.event_id
+        event_id: event.event_id,
+        created_by_id: Number.isInteger(Number(createdById)) && createdById !== null ? Number(createdById) : null
     };
     let replayed = false;
 

@@ -12,6 +12,7 @@ const { evaluateQrScan } = require("../src/services/qr_policy.service");
 const noopQrController = {
     getAllQrs: (req, res) => res.json({ success: true, qrs: [] }),
     getQrsByEvent: (req, res) => res.json({ success: true, qrs: [] }),
+    getEventQrUsage: (req, res) => res.json({ success: true, usage: {} }),
     generateQrForEvent: (req, res) => res.status(201).json({ success: true }),
     downloadQrImportTemplate: (req, res) => res.send("fullName,email,phone,accessType,limit,validFrom,validUntil,level\n"),
     importQrsFromCSV: (req, res) => res.status(201).json({ success: true }),

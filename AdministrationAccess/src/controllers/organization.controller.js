@@ -4,8 +4,8 @@ const { verifySuperAdminPassword } = require('../services/super-admin.service');
 
 const STANDARD_PLAN_CONFIG = Object.freeze({
     DISCOVERY: Object.freeze({ interval: null, months: null, status: 'CANCELED', maxAgents: 2, maxAreas: 2, maxEventsPerCycle: 1, maxQrCodesPerEvent: 50, capabilities: [] }),
-    ESSENTIAL: Object.freeze({ months: { MONTHLY: 1, ANNUAL: 12 }, status: 'ACTIVE', maxAgents: 5, maxAreas: 6, maxEventsPerCycle: 5, maxQrCodesPerEvent: 200, capabilities: ['bulk_qr_import', 'multiple_registration_offers', 'scan_exports'] }),
-    PRO: Object.freeze({ months: { MONTHLY: 1, ANNUAL: 12 }, status: 'ACTIVE', maxAgents: 10, maxAreas: 15, maxEventsPerCycle: 7, maxQrCodesPerEvent: 350, capabilities: ['bulk_qr_import', 'custom_card_templates', 'multiple_registration_offers', 'scan_exports', 'advanced_analytics'] })
+    ESSENTIAL: Object.freeze({ months: { MONTHLY: 1, ANNUAL: 12 }, status: 'ACTIVE', maxAgents: 5, maxAreas: 6, maxEventsPerCycle: 3, maxQrCodesPerEvent: 200, capabilities: ['bulk_qr_import', 'multiple_registration_offers', 'scan_exports'] }),
+    PRO: Object.freeze({ months: { MONTHLY: 1, ANNUAL: 12 }, status: 'ACTIVE', maxAgents: 10, maxAreas: 10, maxEventsPerCycle: 5, maxQrCodesPerEvent: 350, capabilities: ['bulk_qr_import', 'custom_card_templates', 'multiple_registration_offers', 'scan_exports', 'advanced_analytics'] })
 });
 
 // A subscription change reconciles quotas and writes several audit records.

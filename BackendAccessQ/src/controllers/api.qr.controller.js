@@ -287,6 +287,7 @@ exports.generateQrForEvent = async (req, res) => {
             input: req.body,
             planContext,
             useOrganizationDefaultTemplate: true,
+            createdById: req.user.user_id,
             idempotency: idempotencyKey ? {
                 scope: `manual:event:${eventId}`,
                 key: idempotencyKey
@@ -379,6 +380,21 @@ exports.getAllQrs = async (req, res) => {
 };
 
 // Obtenir tous les QR Codes pour un événement spécifique
+// Utilisation du quota de QR d'un événement et origine des QR : billetterie, organisateur ou agents.
+exports.getEventQrUsage = async (req, res) => {
+    try {
+        if (!req.user || !req.user.org_id) {
+            return res.status(401).json({ success: false, message: "Non autorisé" });
+        }
+        const usage = await qrService.getEventQrUsage(req.user.org_id, Number(req.params.event_id));
+        if (!usage) return res.status(404).json({ success: false, message: "Événement introuvable" });
+        return res.json({ success: true, usage });
+    } catch (error) {
+        console.error("Erreur lors du calcul de l’utilisation des QR :", error);
+        return res.status(500).json({ success: false, message: "Impossible de charger l’utilisation des QR." });
+    }
+};
+
 exports.getQrsByEvent = async (req, res) => {
     try {
         if (!req.user || !req.user.org_id) {
@@ -658,7 +674,8 @@ exports.importQrsFromCSV = async (req, res) => {
                     // Le fuseau du navigateur de l'administrateur sert de référence aux limites par période.
                     input: { periodTimezone: req.body?.periodTimezone, ...row },
                     planContext,
-                    useOrganizationDefaultTemplate: false
+                    useOrganizationDefaultTemplate: false,
+                    createdById: req.user.user_id
                 });
 
                 createdCount += 1;

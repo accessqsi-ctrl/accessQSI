@@ -30,11 +30,11 @@ test("Découverte applique 1 événement mensuel, 50 QR par événement, 2 agent
   assert.equal(getAreaQuotaStatus(summary, 2).allowed, false);
 });
 
-test("Essential applique 5 événements, 200 QR, 5 agents et 6 zones", () => {
+test("Essential applique 3 événements, 200 QR, 5 agents et 6 zones", () => {
   const summary = getPlanSummary({ plan: { title: "ESSENTIAL" } });
   assert.deepEqual(summary.limits, {
-    maxEvents: 5,
-    maxEventsPerCycle: 5,
+    maxEvents: 3,
+    maxEventsPerCycle: 3,
     maxQrCodes: 200,
     maxQrCodesPerEvent: 200,
     maxAgents: 5,
@@ -61,14 +61,14 @@ test("Essential est identifié comme un essai pendant sa période gratuite", () 
   assert.equal(summary.subscriptionType, "TRIAL");
 });
 
-test("Pro applique 7 événements, 350 QR, 10 agents et 15 zones", () => {
+test("Pro applique 5 événements, 350 QR, 10 agents et 10 zones", () => {
   const summary = getPlanSummary({ plan: { title: "PRO" } });
-  assert.equal(getEventQuotaStatus(summary, 6).allowed, true);
-  assert.equal(getEventQuotaStatus(summary, 7).allowed, false);
+  assert.equal(getEventQuotaStatus(summary, 4).allowed, true);
+  assert.equal(getEventQuotaStatus(summary, 5).allowed, false);
   assert.equal(getQrQuotaStatus(summary, 349).allowed, true);
   assert.equal(getQrQuotaStatus(summary, 350).allowed, false);
   assert.equal(summary.limits.maxAgents, 10);
-  assert.equal(summary.limits.maxAreas, 15);
+  assert.equal(summary.limits.maxAreas, 10);
   assert.equal(hasPlanCapability(summary, PLAN_CAPABILITIES.ADVANCED_ANALYTICS), true);
 });
 
@@ -125,7 +125,7 @@ test("le cycle mensuel utilise des périodes fixes de 30 jours même en facturat
 test("le profil de consommation calcule le restant de chaque quota", () => {
   const summary = getPlanSummary({ plan: { title: "ESSENTIAL" } });
   const usage = getPlanUsage(summary, { events: 2, qrCodes: 75, agents: 4, areas: 1 });
-  assert.deepEqual(usage.events, { used: 2, limit: 5, remaining: 3, reached: false });
+  assert.deepEqual(usage.events, { used: 2, limit: 3, remaining: 1, reached: false });
   assert.deepEqual(usage.qrCodes, { used: 75, limit: 200, remaining: 125, reached: false });
   assert.deepEqual(usage.agents, { used: 4, limit: 5, remaining: 1, reached: false });
   assert.deepEqual(usage.areas, { used: 1, limit: 6, remaining: 5, reached: false });

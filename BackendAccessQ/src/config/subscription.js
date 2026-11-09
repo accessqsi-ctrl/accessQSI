@@ -74,7 +74,7 @@ const PLAN_DETAILS = Object.freeze({
         currency: "USD",
         fixedPrices: ESSENTIAL_FIXED_PRICES,
         annualFixedPrices: ESSENTIAL_ANNUAL_FIXED_PRICES,
-        maxEventsPerCycle: 5,
+        maxEventsPerCycle: 3,
         maxQrCodesPerEvent: 200,
         maxAgents: 5,
         maxAreas: 6,
@@ -83,7 +83,7 @@ const PLAN_DETAILS = Object.freeze({
             PLAN_CAPABILITIES.MULTIPLE_REGISTRATION_OFFERS,
             PLAN_CAPABILITIES.SCAN_EXPORTS
         ]),
-        features: ["Tout Découverte inclus", "5 événements par mois", "200 QR par événement", "5 agents actifs", "6 zones actives", "Import de QR en masse (CSV)", "Export des scans en CSV et PDF", "Formulaires d’inscription à plusieurs offres"]
+        features: ["Tout Découverte inclus", "3 événements par mois", "200 QR par événement", "5 agents actifs", "6 zones actives", "Import de QR en masse (CSV)", "Export des scans en CSV et PDF", "Formulaires d’inscription à plusieurs offres"]
     }),
     PRO: Object.freeze({
         key: PLAN_KEYS.PRO,
@@ -93,12 +93,12 @@ const PLAN_DETAILS = Object.freeze({
         currency: "USD",
         fixedPrices: PRO_FIXED_PRICES,
         annualFixedPrices: PRO_ANNUAL_FIXED_PRICES,
-        maxEventsPerCycle: 7,
+        maxEventsPerCycle: 5,
         maxQrCodesPerEvent: 350,
         maxAgents: 10,
-        maxAreas: 15,
+        maxAreas: 10,
         capabilities: Object.freeze(Object.values(PLAN_CAPABILITIES)),
-        features: ["Tout Essential inclus", "7 événements par mois", "350 QR par événement", "10 agents actifs", "15 zones actives", "Modèles de carte personnalisés (logo, fond, textes)", "Statistiques avancées : scans des 7 derniers jours et meilleurs agents"]
+        features: ["Tout Essential inclus", "5 événements par mois", "350 QR par événement", "10 agents actifs", "10 zones actives", "Modèles de carte personnalisés (logo, fond, textes)", "Statistiques avancées : scans des 7 derniers jours et meilleurs agents"]
     }),
     ENTERPRISE: Object.freeze({
         key: PLAN_KEYS.ENTERPRISE,

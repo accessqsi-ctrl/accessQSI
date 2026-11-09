@@ -40,6 +40,8 @@ model UserQ {
   payouts_reviewed         OrganizerPayout[]        @relation("PayoutReviewedBy")
   ticket_refunds_requested TicketRefund[]           @relation("TicketRefundRequestedBy")
 
+  qr_codes_created QrCode[] @relation("QrCreatedBy")
+
   @@index([org_id, deleted_at])
   @@index([role])
   @@map("usersQ")
@@ -194,15 +196,19 @@ model QrCode {
   period_limit           Int?
   period_unit            QrPeriodUnit?
   period_timezone        String?              @db.VarChar(64)
+  // Membre qui a créé le QR (organisateur ou agent). Null pour la billetterie et les QR antérieurs au suivi.
+  created_by_id          Int?
   created_at             DateTime             @default(now())
   updated_at             DateTime             @updatedAt
   event                  Event                @relation(fields: [event_id], references: [event_id])
+  created_by             UserQ?               @relation("QrCreatedBy", fields: [created_by_id], references: [user_id], onDelete: SetNull)
   scan_logs              ScanLog[]
   issuance_request       PassIssuanceRequest?
   registration           Registration?
   holder_photo           QrHolderPhoto?
 
   @@index([event_id, status, deleted_at])
+  @@index([event_id, created_by_id])
   @@index([card_template_id])
   @@map("qr_codes")
 }

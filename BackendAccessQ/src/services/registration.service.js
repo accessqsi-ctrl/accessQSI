@@ -115,7 +115,14 @@ const formInclude = {
     _count: { select: { registrations: true } }
 };
 
-const listForms = orgId => prisma.registrationForm.findMany({ where: { org_id: orgId }, include: formInclude, orderBy: { created_at: "desc" } });
+const listForms = (orgId, { eventId } = {}) => {
+    const event = Number(eventId);
+    return prisma.registrationForm.findMany({
+        where: { org_id: orgId, ...(Number.isInteger(event) && event > 0 ? { event_id: event } : {}) },
+        include: formInclude,
+        orderBy: { created_at: "desc" }
+    });
+};
 const getForm = (orgId, id) => prisma.registrationForm.findFirst({ where: { registration_form_id: id, org_id: orgId }, include: formInclude });
 
 // Quota de QR de l'événement d'un formulaire, pour l'afficher à l'organisateur.

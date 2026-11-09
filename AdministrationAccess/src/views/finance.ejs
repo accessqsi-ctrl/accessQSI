@@ -32,6 +32,29 @@ const refundBadge = { PENDING: ['badge-blue', 'Envoi en cours'], PROCESSING: ['b
 </section>
 
 <section class="panel">
+    <div class="panel-header"><div><h3>Soldes des organisateurs</h3><p>Reversez un solde sans attendre la demande de l’organisateur. L’argent part uniquement vers le compte de réception qu’il a enregistré.</p></div><span class="badge badge-blue"><%= balances.length %></span></div>
+    <div class="table-wrap"><table class="data-table"><thead><tr><th>Organisation</th><th>Solde disponible</th><th>Compte de réception</th><th class="align-right">Reverser</th></tr></thead><tbody>
+    <% balances.forEach(row => { %><tr>
+        <td><a class="entity-link" href="/organizations/<%= row.orgId %>"><%= row.organizationName %></a></td>
+        <td><strong><%= money(row.balance, row.currency) %></strong></td>
+        <td><% if (row.account) { %><%= row.account.provider %><div class="cell-subtitle"><%= row.account.phone_number %> · <%= row.account.country %></div><% if (row.accountRecentlyChanged) { %><span class="badge badge-amber">Compte modifié le <%= date(row.account.updated_at) %></span><% } %><% } else { %><span class="badge badge-slate">Aucun compte enregistré</span><% } %></td>
+        <td class="align-right">
+            <% if (!row.account) { %><span class="action-note">L’organisateur doit enregistrer un compte</span>
+            <% } else if (row.payoutInProgress) { %><span class="action-note">Reversement déjà en cours</span>
+            <% } else { %>
+            <form action="/finance/organizations/<%= row.orgId %>/payouts" method="POST" class="action-row" data-password-confirm data-confirm-title="Confirmer le reversement" data-confirm-message="<%= `Le montant sera envoyé à ${row.account.phone_number} (${row.account.provider}). Saisissez votre mot de passe de super-admin pour valider la transaction.` %>">
+                <input type="hidden" name="_csrf" value="<%= user.csrf %>"><input type="hidden" name="currency" value="<%= row.currency %>">
+                <input name="amount" inputmode="decimal" placeholder="<%= `${row.balance} (tout)` %>" class="field-input" aria-label="Montant à reverser">
+                <button class="action-button success">Reverser</button>
+            </form>
+            <% } %>
+        </td>
+    </tr><% }) %>
+    <% if (!balances.length) { %><tr><td colspan="4" class="empty-state">Aucun solde à reverser.</td></tr><% } %>
+    </tbody></table></div>
+</section>
+
+<section class="panel">
     <div class="panel-header"><div><h3>Paiements à vérifier</h3><p>Paiement reçu sans billet émis : montant incohérent, ou offre complète au moment de la confirmation. Le remboursement est envoyé au numéro qui a payé.</p></div><span class="badge badge-amber"><%= reviewPayments.length %></span></div>
     <div class="table-wrap"><table class="data-table"><thead><tr><th>Acheteur</th><th>Organisation · offre</th><th>Montant</th><th>Motif</th><th class="align-right">Action</th></tr></thead><tbody>
     <% reviewPayments.forEach(payment => { %><tr>

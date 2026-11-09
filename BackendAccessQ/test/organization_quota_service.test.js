@@ -64,7 +64,7 @@ test("withOrganizationQuota locks, counts and creates in one serializable transa
 });
 
 test("withOrganizationQuota rolls back before creation when the Essential quota is reached", async () => {
-    const service = loadService({ plan: "ESSENTIAL", currentCount: 5 });
+    const service = loadService({ plan: "ESSENTIAL", currentCount: 3 });
 
     await assert.rejects(
         service.withOrganizationQuota({
@@ -76,8 +76,8 @@ test("withOrganizationQuota rolls back before creation when the Essential quota 
         }),
         (error) => {
             assert.equal(error.code, "PLAN_QUOTA_EXCEEDED");
-            assert.equal(error.currentCount, 5);
-            assert.equal(error.limit, 5);
+            assert.equal(error.currentCount, 3);
+            assert.equal(error.limit, 3);
             return true;
         }
     );
@@ -94,7 +94,7 @@ test("withOrganizationQuota retries serialization conflicts", async () => {
             findUnique: async () => ({ plan: { title: "PRO" } })
         },
         event: {
-            count: async () => 6,
+            count: async () => 4,
             create: async () => ({ event_id: 1 })
         }
     };

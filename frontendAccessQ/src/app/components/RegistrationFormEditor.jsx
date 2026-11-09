@@ -14,12 +14,12 @@ const templates = [
   ["event-ticket", "Billet événement"], ["access-pass", "Pass d’accès"], ["vip-pass", "Pass VIP"], ["staff-badge-horizontal", "Badge horizontal"]
 ];
 
-export default function RegistrationFormEditor({ initial, onSaved }) {
+export default function RegistrationFormEditor({ initial, fixedEventId, onSaved }) {
   const [events, setEvents] = useState([]);
   const [templateOptions, setTemplateOptions] = useState(templates);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [value, setValue] = useState(() => initial || { eventId: "", title: "", description: "", opensAt: "", closesAt: "", askPhone: false, phoneRequired: false, offers: [emptyOffer()] });
+  const [value, setValue] = useState(() => initial || { eventId: fixedEventId || "", title: "", description: "", opensAt: "", closesAt: "", askPhone: false, phoneRequired: false, offers: [emptyOffer()] });
   const { profileLoading, hasCapability, planName } = useUserPlan();
   const canUseCustomTemplates = hasCapability("custom_card_templates");
   const canUseMultipleOffers = hasCapability("multiple_registration_offers");
@@ -46,7 +46,7 @@ export default function RegistrationFormEditor({ initial, onSaved }) {
 
   return <form onSubmit={submit} className="space-y-6">
     <section className="aq-panel p-6"><h2 className="text-lg font-bold text-slate-950 dark:text-slate-50">Informations du formulaire</h2><div className="mt-5 grid gap-4 md:grid-cols-2">
-      <Select label="Événement" required value={value.eventId} disabled={Boolean(initial?.id)} onChange={eventId => setValue(current => ({ ...current, eventId }))} options={events.map(event => [event.id, event.name])} />
+      <Select label="Événement" required value={value.eventId} disabled={Boolean(initial?.id || fixedEventId)} onChange={eventId => setValue(current => ({ ...current, eventId }))} options={events.map(event => [event.id, event.name])} />
       <Field label="Titre public" required value={value.title} onChange={title => setValue(current => ({ ...current, title }))} />
       <label className="md:col-span-2 text-sm font-semibold">Description<textarea value={value.description} onChange={event => setValue(current => ({ ...current, description: event.target.value }))} rows={3} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-blue-400 dark:focus:ring-blue-900/60" /></label>
       <Field label="Ouverture (facultative)" type="datetime-local" value={value.opensAt} onChange={opensAt => setValue(current => ({ ...current, opensAt }))} />

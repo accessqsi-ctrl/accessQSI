@@ -113,7 +113,7 @@ const pricingPlans = [
     cadence: "/ mois",
     annual: "144 $ par an — économisez 20 %",
     description: "Pour les organisateurs et équipes aux besoins réguliers.",
-    features: ["Tout Découverte inclus", "5 événements par mois", "200 QR par événement", "5 agents actifs", "6 zones actives", "Import de QR en masse (CSV)", "Export des scans en CSV et PDF"],
+    features: ["Tout Découverte inclus", "3 événements par mois", "200 QR par événement", "5 agents actifs", "6 zones actives", "Import de QR en masse (CSV)", "Export des scans en CSV et PDF"],
     cta: "Essayer Essential gratuitement",
     href: "/register",
     featured: true
@@ -124,7 +124,7 @@ const pricingPlans = [
     cadence: "/ mois",
     annual: "240 $ par an — économisez 20 %",
     description: "Pour les opérations exigeantes et les volumes importants.",
-    features: ["Tout Essential inclus", "7 événements par mois", "350 QR par événement", "10 agents actifs", "15 zones actives", "Modèles de carte personnalisés (logo, fond, textes)", "Statistiques avancées : scans des 7 derniers jours et meilleurs agents"],
+    features: ["Tout Essential inclus", "5 événements par mois", "350 QR par événement", "10 agents actifs", "10 zones actives", "Modèles de carte personnalisés (logo, fond, textes)", "Statistiques avancées : scans des 7 derniers jours et meilleurs agents"],
     cta: "Créer mon compte",
     href: "/register"
   },

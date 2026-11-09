@@ -17,6 +17,9 @@ import EditEventModal from "./_components/EditEventModal";
 import DeleteEventModal from "./_components/DeleteEventModal";
 import ImportQrModal from "./_components/ImportQrModal";
 import HolderPhotoModal from "./_components/HolderPhotoModal";
+import EventTicketingPanel from "./_components/EventTicketingPanel";
+import QrSourcesBreakdown from "./_components/QrSourcesBreakdown";
+import { useFeatures } from "../../../lib/useFeatures";
 import { preparePhotoForUpload, uploadHolderPhoto } from "../../../lib/holderPhoto";
 import { getCardDownloadUrl } from "./_components/cardDownload";
 import { browserTimeZone, normalizePhone, selectTemplateForExistingQr, validateQrContact } from "../../../lib/eventQr.mjs";
@@ -107,13 +110,21 @@ export default function EventDetailPage() {
     const [cardTemplates, setCardTemplates] = useState([]);
     const [selectedCardTemplateId, setSelectedCardTemplateId] = useState("");
     const { userProfile, planLimits, hasCapability, refreshPlan } = useUserPlan();
+    const { registrationForms: registrationFormsEnabled } = useFeatures();
+    // Quota calculé par le serveur : QR émis et places vendues par la billetterie, avec l'origine des QR.
+    const [qrUsage, setQrUsage] = useState(null);
     const canManageEvent = userProfile?.role === "ORG_ADMIN" || userProfile?.role === "SUPER_ADMIN";
     const canCreateQr = canManageEvent || userProfile?.role === "ORG_AGENT";
     const eventQrLimit = event?.entitlement_type === "EVENT_PASS" || planLimits?.maxQrCodesPerEvent == null
         ? event?.qr_limit ?? Number.MAX_SAFE_INTEGER
         : planLimits?.maxQrCodesPerEvent || planLimits?.maxQrCodes || 50;
     const issuedQrCount = event?._count?.qr_codes || 0;
-    const qrQuota = {
+    const qrQuota = qrUsage && qrUsage.limit !== null ? {
+        used: qrUsage.issued + qrUsage.reserved,
+        limit: qrUsage.limit,
+        remaining: qrUsage.remaining,
+        reached: qrUsage.expired || qrUsage.remaining <= 0
+    } : {
         used: issuedQrCount,
         limit: eventQrLimit,
         remaining: Math.max(0, eventQrLimit - issuedQrCount),
@@ -165,6 +176,9 @@ export default function EventDetailPage() {
                 apiFetch(`/events/${eventId}`),
                 apiFetch(`/qr/event/${eventId}?${params.toString()}`)
             ]);
+            apiFetch(`/qr/event/${eventId}/usage`)
+                .then(async response => { if (response.ok) setQrUsage((await response.json()).usage); })
+                .catch(() => {});
             const eventData = await eventRes.json();
             const qrData = await qrRes.json();
 
@@ -831,7 +845,8 @@ export default function EventDetailPage() {
                     </div>
 
                 </div>
-                <PlanQuotaStatus label="QR émis pour cet événement" quota={qrQuota} className="mt-6" />
+                <PlanQuotaStatus label={qrUsage?.reserved > 0 ? "QR émis et billets vendus pour cet événement" : "QR émis pour cet événement"} quota={qrQuota} className="mt-6" />
+                {canManageEvent && <QrSourcesBreakdown usage={qrUsage} currentUserId={userProfile?.user_id} />}
                 {(exportingFormat || downloadingTemplate) && (
                     <LoadingBar
                         label={downloadingTemplate ? "Préparation du modèle CSV" : `Préparation export ${exportingFormat.toUpperCase()}`}
@@ -840,6 +855,8 @@ export default function EventDetailPage() {
                 )}
                 </div>
             </div>
+
+            {canManageEvent && registrationFormsEnabled && <EventTicketingPanel eventId={eventId} />}
 
             {/* Gestion des codes QR de l'événement */}
             

@@ -24,7 +24,7 @@ test("le quota mensuel compte aussi les événements supprimés du cycle", async
         event: {
             count: async ({ where }) => {
                 eventWhere = where;
-                return 5;
+                return 3;
             }
         }
     };
@@ -34,7 +34,7 @@ test("le quota mensuel compte aussi les événements supprimés du cycle", async
             organizationId: 42,
             create: async () => { created = true; }
         }),
-        (error) => error.code === "PLAN_QUOTA_EXCEEDED" && error.limit === 5
+        (error) => error.code === "PLAN_QUOTA_EXCEEDED" && error.limit === 3
     );
     assert.equal(created, false);
     assert.equal(Object.hasOwn(eventWhere, "deleted_at"), false);
