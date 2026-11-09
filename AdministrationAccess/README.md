@@ -31,12 +31,18 @@ Le fichier `prisma/schema.prisma` est une copie de `BackendAccessQ/src/prisma/sc
 La page `/finance` regroupe :
 - les demandes de reversement des organisateurs, à valider ou à refuser ;
 - les soldes des organisateurs, que le super-admin peut reverser lui-même ;
-- les paiements de billets « à vérifier », à rembourser au payeur d'origine.
+- les paiements de billets « à vérifier », à rembourser au payeur d'origine ;
+- un formulaire « Nouveau reversement » où le super-admin saisit pays, devise, montant, numéro du
+  bénéficiaire et motif. Avec une organisation, le montant est prélevé sur son solde ; sans organisation,
+  sur le solde de la plateforme ;
+- le solde de la plateforme par devise : abonnements et pass payés + commissions sur les billets vendus
+  − reversements de la plateforme (les frais pawaPay ne sont pas déduits).
 
-Chaque action redemande le mot de passe du super-admin et est journalisée. Un reversement part
-toujours vers le compte de réception enregistré par l'organisateur : la console ne permet pas de
-saisir un autre numéro. La console n'appelle jamais pawaPay. Le backend AccessQ envoie les
-opérations validées et en vérifie le résultat.
+Chaque action redemande le mot de passe du super-admin et est journalisée. Le bouton « Reverser » d'un
+solde d'organisateur utilise le compte de réception qu'il a enregistré. Pour un reversement saisi à la
+main, l'opérateur n'est pas choisi : le backend le détecte auprès de pawaPay (predict-provider) et
+n'envoie rien si le numéro ne correspond pas au pays ou à la devise. La console n'appelle jamais pawaPay.
+Le backend AccessQ envoie les opérations validées et en vérifie le résultat.
 
 ## Sécurité des accès
 

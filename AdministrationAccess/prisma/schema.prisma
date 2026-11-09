@@ -453,16 +453,21 @@ model OrganizerPayoutAccount {
 
 // Reversement du solde d'un organisateur. Le montant est retiré du solde dès la demande,
 // et y revient si la demande est refusée, annulée ou échoue. Validé par un super-admin, envoyé par le backend.
+// Un super-admin peut aussi saisir lui-même le destinataire (manual_recipient) : sans organisation,
+// le reversement est prélevé sur le solde de la plateforme (abonnements + commissions billetterie).
 model OrganizerPayout {
   payout_id               String                 @id @default(uuid()) @db.Uuid
   provider_payout_id      String                 @unique @db.Uuid
-  org_id                  Int
+  org_id                  Int?
   amount                  Decimal                @db.Decimal(18, 2)
   currency                String                 @db.VarChar(3)
   // Destination figée à la demande.
   country                 String                 @db.VarChar(3)
-  provider                String
+  // Nul tant que l'opérateur d'un numéro saisi à la main n'a pas été détecté auprès de pawaPay.
+  provider                String?
   phone_number            String
+  manual_recipient        Boolean                @default(false)
+  note                    String?                @db.VarChar(500)
   status                  PayoutStatus           @default(REQUESTED)
   requested_by_id         Int
   reviewed_by_id          Int?
@@ -475,7 +480,7 @@ model OrganizerPayout {
   created_at              DateTime               @default(now())
   updated_at              DateTime               @updatedAt
   completed_at            DateTime?
-  organization            Organization           @relation(fields: [org_id], references: [org_id])
+  organization            Organization?          @relation(fields: [org_id], references: [org_id], onDelete: Restrict)
   requested_by            UserQ                  @relation("PayoutRequestedBy", fields: [requested_by_id], references: [user_id])
   reviewed_by             UserQ?                 @relation("PayoutReviewedBy", fields: [reviewed_by_id], references: [user_id])
   ledger_entries          OrganizerLedgerEntry[]

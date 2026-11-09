@@ -41,7 +41,14 @@ exports.renderLogin = (req, res) => {
 
 exports.requireLoginCsrf = (req, res, next) => {
     if (!safeTokenMatch(req.cookies?.adminLoginCsrf, req.body?._csrf)) {
-        return res.status(403).send('Requête de connexion refusée : jeton de sécurité invalide.');
+        // Jeton expiré ou absent (page restée ouverte trop longtemps) : on réaffiche le formulaire avec un jeton neuf.
+        const loginCsrf = crypto.randomBytes(32).toString('hex');
+        res.cookie('adminLoginCsrf', loginCsrf, csrfCookieOptions());
+        return res.status(403).render('login', {
+            error: 'Votre session de connexion a expiré. Veuillez ressaisir vos identifiants.',
+            email: String(req.body?.email || '').trim(),
+            loginCsrf
+        });
     }
     next();
 };

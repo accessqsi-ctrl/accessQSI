@@ -43,13 +43,39 @@
     const passwordError = passwordDialog?.querySelector('[data-password-error]');
     let pendingForm = null;
 
+    // data-confirm-template : « {nom} » est remplacé par la valeur du champ (texte de l'option pour une liste).
+    const confirmMessageFor = (form) => {
+        if (!form.dataset.confirmTemplate) return form.dataset.confirmMessage || 'Saisissez votre mot de passe pour continuer.';
+        return form.dataset.confirmTemplate.replace(/\{(\w+)\}/g, (match, name) => {
+            const field = form.elements.namedItem(name);
+            if (!field) return match;
+            return field.tagName === 'SELECT' ? (field.selectedOptions[0]?.textContent || '').trim() : String(field.value || '').trim();
+        });
+    };
+
+    // Reversement manuel : seules les devises du pays choisi sont proposées.
+    document.querySelectorAll('[data-manual-payout]').forEach((form) => {
+        const countrySelect = form.querySelector('[data-country-select]');
+        const currencySelect = form.querySelector('[data-currency-select]');
+        const syncCurrencies = () => {
+            const allowed = (countrySelect.selectedOptions[0]?.dataset.currencies || '').split(',');
+            Array.from(currencySelect.options).forEach((option) => {
+                option.hidden = !allowed.includes(option.value);
+                option.disabled = option.hidden;
+            });
+            if (!allowed.includes(currencySelect.value)) currencySelect.value = allowed[0] || '';
+        };
+        countrySelect?.addEventListener('change', syncCurrencies);
+        if (countrySelect && currencySelect) syncCurrencies();
+    });
+
     document.querySelectorAll('form[data-password-confirm]').forEach((form) => {
         form.addEventListener('submit', (event) => {
             if (form.dataset.passwordConfirmed === 'true') return;
             event.preventDefault();
             pendingForm = form;
             passwordDialog.querySelector('[data-password-dialog-title]').textContent = form.dataset.confirmTitle || 'Confirmer l’action';
-            passwordDialog.querySelector('[data-password-dialog-message]').textContent = form.dataset.confirmMessage || 'Saisissez votre mot de passe pour continuer.';
+            passwordDialog.querySelector('[data-password-dialog-message]').textContent = confirmMessageFor(form);
             passwordInput.value = '';
             passwordError.hidden = true;
             passwordDialog.showModal();

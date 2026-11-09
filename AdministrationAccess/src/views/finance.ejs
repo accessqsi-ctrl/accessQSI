@@ -10,6 +10,44 @@ const refundBadge = { PENDING: ['badge-blue', 'Envoi en cours'], PROCESSING: ['b
 <% if (error) { %><div class="alert alert-error" role="alert"><%= error %></div><% } %><% if (success) { %><div class="alert alert-success" role="status"><%= success %></div><% } %>
 
 <section class="panel">
+    <div class="panel-header"><div><h3>Nouveau reversement</h3><p>Saisissez vous-même le bénéficiaire. Sans organisation, le montant est prélevé sur le solde de la plateforme. L’opérateur Mobile Money est détecté auprès de pawaPay avant l’envoi : si le numéro ne correspond pas au pays, rien n’est envoyé.</p></div></div>
+    <form action="/finance/payouts" method="POST" class="manual-payout-form" data-manual-payout data-password-confirm data-confirm-title="Confirmer le reversement" data-confirm-template="{amount} {currency} vers {phone_number} ({country}), prélevés sur : {org_id}. Saisissez votre mot de passe de super-admin pour valider la transaction.">
+        <input type="hidden" name="_csrf" value="<%= user.csrf %>">
+        <label class="field"><span class="field-label">Prélevé sur</span>
+            <select name="org_id" class="field-input">
+                <option value="">Solde de la plateforme AccessQ</option>
+                <% [...new Map(balances.map(row => [row.orgId, row])).values()].forEach(row => { %><option value="<%= row.orgId %>"><%= row.organizationName %> (<%= balances.filter(item => item.orgId === row.orgId).map(item => money(item.balance, item.currency)).join(' · ') %>)</option><% }) %>
+            </select></label>
+        <label class="field"><span class="field-label">Pays</span>
+            <select name="country" required class="field-input" data-country-select>
+                <% payoutCountries.forEach(country => { %><option value="<%= country.code %>" data-currencies="<%= country.currencies.join(',') %>" data-prefix="<%= country.prefix %>"><%= country.name %> (+<%= country.prefix %>)</option><% }) %>
+            </select></label>
+        <label class="field"><span class="field-label">Devise</span>
+            <select name="currency" required class="field-input" data-currency-select>
+                <% [...new Set(payoutCountries.flatMap(country => country.currencies))].forEach(currency => { %><option value="<%= currency %>"><%= currency %></option><% }) %>
+            </select></label>
+        <label class="field"><span class="field-label">Montant</span><input name="amount" required inputmode="decimal" pattern="\d{1,12}([.,]\d{1,2})?" class="field-input" placeholder="100.00"></label>
+        <label class="field"><span class="field-label">Numéro du bénéficiaire</span><input name="phone_number" required inputmode="tel" autocomplete="off" class="field-input" placeholder="0991234567 ou +243991234567"></label>
+        <label class="field field-wide"><span class="field-label">Motif</span><input name="note" required maxlength="500" class="field-input" placeholder="Ex. retrait des commissions, paiement d’un prestataire…"></label>
+        <div class="field-actions"><button class="action-button success">Envoyer le reversement</button></div>
+    </form>
+</section>
+
+<section class="panel">
+    <div class="panel-header"><div><h3>Solde de la plateforme</h3><p>Abonnements et pass payés + commissions sur les billets vendus − reversements de la plateforme. Les frais pawaPay ne sont pas déduits : vérifiez le solde réel de votre compte pawaPay avant un gros reversement.</p></div></div>
+    <div class="table-wrap"><table class="data-table"><thead><tr><th>Devise</th><th>Abonnements et pass</th><th>Commissions billetterie</th><th>Déjà reversé</th><th class="align-right">Disponible</th></tr></thead><tbody>
+    <% platformBalances.forEach(row => { %><tr>
+        <td><strong><%= row.currency %></strong></td>
+        <td><%= money(row.subscriptions, row.currency) %></td>
+        <td><%= money(row.commissions, row.currency) %></td>
+        <td><%= money(row.payouts, row.currency) %></td>
+        <td class="align-right"><strong><%= money(row.balance, row.currency) %></strong></td>
+    </tr><% }) %>
+    <% if (!platformBalances.length) { %><tr><td colspan="5" class="empty-state">Aucun encaissement pour l’instant.</td></tr><% } %>
+    </tbody></table></div>
+</section>
+
+<section class="panel">
     <div class="panel-header"><div><h3>Reversements à valider</h3><p>Le montant est déjà retiré du solde de l’organisateur. Un refus le lui rend.</p></div></div>
     <div class="table-wrap"><table class="data-table"><thead><tr><th>Organisation</th><th>Montant</th><th>Destination</th><th>Demandé par</th><th class="align-right">Décision</th></tr></thead><tbody>
     <% requested.forEach(payout => { %><tr>
@@ -75,10 +113,11 @@ const refundBadge = { PENDING: ['badge-blue', 'Envoi en cours'], PROCESSING: ['b
 <section class="detail-grid">
     <article class="panel">
         <div class="panel-header"><div><h3>Derniers reversements</h3></div></div>
-        <div class="table-wrap"><table class="data-table"><thead><tr><th>Organisation</th><th>Montant</th><th>État</th></tr></thead><tbody>
+        <div class="table-wrap"><table class="data-table"><thead><tr><th>Source</th><th>Montant</th><th>État</th></tr></thead><tbody>
         <% recentPayouts.forEach(payout => { const [tone, label] = payoutBadge[payout.status] || ['badge-slate', payout.status]; %><tr>
-            <td><%= payout.organization.name %><div class="cell-subtitle"><%= date(payout.updated_at) %></div></td>
-            <td><%= money(payout.amount, payout.currency) %></td>
+            <td><%= payout.organization ? payout.organization.name : 'Plateforme AccessQ' %><div class="cell-subtitle"><%= date(payout.updated_at) %></div>
+                <% if (payout.manual_recipient) { %><div class="cell-subtitle">Saisi par <%= payout.requested_by.full_name %><% if (payout.note) { %> · <%= payout.note %><% } %></div><% } %></td>
+            <td><%= money(payout.amount, payout.currency) %><div class="cell-subtitle">+<%= payout.phone_number %> · <%= payout.provider || 'opérateur en détection' %></div></td>
             <td><span class="badge <%= tone %>"><%= label %></span><% if (payout.failure_code) { %><div class="cell-subtitle"><%= payout.failure_code %></div><% } %></td>
         </tr><% }) %>
         <% if (!recentPayouts.length) { %><tr><td colspan="3" class="empty-state">Aucun reversement.</td></tr><% } %>

@@ -3,6 +3,7 @@ const { Prisma } = require('@prisma/client');
 const prisma = require('../lib/prisma');
 const { writeAudit } = require('../services/audit.service');
 const { verifySuperAdminPassword } = require('../services/super-admin.service');
+const { PAYOUT_COUNTRIES, findCountry, normalizeRecipientPhone } = require('../services/payout-recipient.service');
 
 // La console ne parle jamais à pawaPay : elle valide ou refuse en base, le backend AccessQ exécute et vérifie.
 const financePath = (type, message) => `/finance?${type}=${encodeURIComponent(message)}`;
@@ -12,6 +13,30 @@ const cleanReason = (value) => String(value || '').trim().slice(0, 500);
 const RECENT_ACCOUNT_CHANGE_MS = 48 * 60 * 60 * 1000;
 const OPEN_PAYOUT_STATUSES = ['REQUESTED', 'APPROVED', 'SUBMITTING', 'PROCESSING'];
 const CURRENCY_PATTERN = /^[A-Z]{3}$/;
+const AMOUNT_PATTERN = /^\d{1,12}(\.\d{1,2})?$/;
+// Un reversement échoué, refusé ou annulé n'a pas fait sortir d'argent.
+const SETTLED_OUT_STATUSES = ['FAILED', 'REJECTED', 'CANCELED'];
+
+// Solde de la plateforme par devise : abonnements et pass payés + commissions sur les billets vendus,
+// moins les reversements de la plateforme (sans organisation) en cours ou réussis. Les frais pawaPay n'y figurent pas.
+const loadPlatformBalances = async (client = prisma) => {
+    const [subscriptions, commissions, payouts] = await Promise.all([
+        client.payment.groupBy({ by: ['currency'], where: { status: 'COMPLETED' }, _sum: { amount: true } }),
+        client.ticketPayment.groupBy({ by: ['currency'], where: { status: 'COMPLETED' }, _sum: { commission_amount: true } }),
+        client.organizerPayout.groupBy({ by: ['currency'], where: { org_id: null, status: { notIn: SETTLED_OUT_STATUSES } }, _sum: { amount: true } })
+    ]);
+    const rows = new Map();
+    const row = (currency) => {
+        if (!rows.has(currency)) rows.set(currency, { currency, subscriptions: new Prisma.Decimal(0), commissions: new Prisma.Decimal(0), payouts: new Prisma.Decimal(0) });
+        return rows.get(currency);
+    };
+    subscriptions.forEach((item) => { row(item.currency).subscriptions = new Prisma.Decimal(item._sum.amount || 0); });
+    commissions.forEach((item) => { row(item.currency).commissions = new Prisma.Decimal(item._sum.commission_amount || 0); });
+    payouts.forEach((item) => { row(item.currency).payouts = new Prisma.Decimal(item._sum.amount || 0); });
+    return [...rows.values()]
+        .map((item) => ({ ...item, balance: item.subscriptions.plus(item.commissions).minus(item.payouts) }))
+        .sort((a, b) => a.currency.localeCompare(b.currency));
+};
 
 // Soldes positifs par organisation et devise, avec le compte de réception et l'éventuel reversement en cours.
 const loadBalances = async (now) => {
@@ -48,7 +73,7 @@ exports.showFinance = async (req, res) => {
             }),
             prisma.organizerPayout.findMany({
                 where: { status: { not: 'REQUESTED' } },
-                include: { organization: { select: { name: true } } },
+                include: { organization: { select: { name: true } }, requested_by: { select: { full_name: true } } },
                 orderBy: { updated_at: 'desc' },
                 take: 30
             }),
@@ -67,7 +92,7 @@ exports.showFinance = async (req, res) => {
             where: { OR: requested.map((payout) => ({ org_id: payout.org_id, currency: payout.currency })) }
         }) : [];
         const now = Date.now();
-        const balances = await loadBalances(now);
+        const [balances, platformBalances] = await Promise.all([loadBalances(now), loadPlatformBalances()]);
         res.render('finance', {
             user: req.user,
             requested: requested.map((payout) => {
@@ -76,6 +101,8 @@ exports.showFinance = async (req, res) => {
             }),
             recentPayouts,
             balances,
+            platformBalances,
+            payoutCountries: PAYOUT_COUNTRIES,
             reviewPayments,
             recentRefunds,
             error: req.query.error || null,
@@ -231,3 +258,75 @@ exports.createPayout = async (req, res) => {
         res.redirect(financePath('error', 'Erreur lors de la création du reversement.'));
     }
 };
+
+// Reversement saisi entièrement par le super-admin : pays, devise, montant et numéro du bénéficiaire.
+// Prélevé sur le solde d'une organisation si elle est choisie, sinon sur le solde de la plateforme.
+// L'opérateur est détecté par le backend auprès de pawaPay avant l'envoi (échec sans envoi si le pays ne correspond pas).
+exports.createManualPayout = async (req, res) => {
+    const rawOrg = String(req.body.org_id ?? '').trim();
+    const orgId = rawOrg ? Number.parseInt(rawOrg, 10) : null;
+    const country = findCountry(req.body.country);
+    const currency = String(req.body.currency || '').trim().toUpperCase();
+    const rawAmount = String(req.body.amount ?? '').trim().replace(',', '.');
+    const note = cleanReason(req.body.note);
+    if (rawOrg && (!Number.isInteger(orgId) || orgId <= 0 || String(orgId) !== rawOrg)) return res.redirect(financePath('error', 'Organisation invalide.'));
+    if (!country) return res.redirect(financePath('error', 'Choisissez le pays du bénéficiaire.'));
+    if (!country.currencies.includes(currency)) return res.redirect(financePath('error', `Devise non disponible pour ${country.name}.`));
+    if (!AMOUNT_PATTERN.test(rawAmount) || new Prisma.Decimal(rawAmount).lte(0)) return res.redirect(financePath('error', 'Montant invalide (deux décimales au plus).'));
+    const phoneNumber = normalizeRecipientPhone(req.body.phone_number, country);
+    if (!phoneNumber) return res.redirect(financePath('error', `Numéro invalide pour ${country.name} (indicatif +${country.prefix}).`));
+    if (!note) return res.redirect(financePath('error', 'Indiquez le motif du reversement.'));
+    const amount = new Prisma.Decimal(rawAmount);
+    try {
+        if (!await verifySuperAdminPassword(req)) {
+            writeAudit({ actorId: req.user.id, action: 'PAYOUT_CREATE_MANUAL', targetType: orgId ? 'ORGANIZATION' : 'PLATFORM', targetId: orgId || 'platform', organizationId: orgId, outcome: 'DENIED' });
+            return res.redirect(financePath('error', 'Mot de passe incorrect. Aucun reversement n’a été créé.'));
+        }
+        const run = () => prisma.$transaction(async (tx) => {
+            if (orgId) {
+                const locked = await tx.$queryRaw`SELECT org_id FROM organizations WHERE org_id = ${orgId} FOR UPDATE`;
+                if (!locked.length) throw new PayoutRefusal('Organisation introuvable.');
+                const open = await tx.organizerPayout.findFirst({ where: { org_id: orgId, currency, status: { in: OPEN_PAYOUT_STATUSES } } });
+                if (open) throw new PayoutRefusal('Un reversement est déjà en cours pour cette organisation et cette devise.');
+                const sum = await tx.organizerLedgerEntry.aggregate({ where: { org_id: orgId, currency }, _sum: { amount: true } });
+                if (amount.gt(new Prisma.Decimal(sum._sum.amount || 0))) throw new PayoutRefusal('Le montant dépasse le solde disponible de l’organisation.');
+            } else {
+                // Un seul reversement de la plateforme à la fois vérifie le solde.
+                await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('accessq_platform_payout'))`;
+                const platform = (await loadPlatformBalances(tx)).find((item) => item.currency === currency);
+                if (!platform || amount.gt(platform.balance)) throw new PayoutRefusal(`Le montant dépasse le solde de la plateforme en ${currency}.`);
+            }
+            const now = new Date();
+            const payout = await tx.organizerPayout.create({ data: {
+                provider_payout_id: crypto.randomUUID(),
+                org_id: orgId,
+                amount,
+                currency,
+                country: country.code,
+                provider: null,
+                phone_number: phoneNumber,
+                manual_recipient: true,
+                note,
+                status: 'APPROVED',
+                requested_by_id: Number(req.user.id),
+                reviewed_by_id: Number(req.user.id),
+                reviewed_at: now
+            } });
+            if (orgId) await tx.organizerLedgerEntry.create({ data: { org_id: orgId, type: 'PAYOUT', amount: amount.neg(), currency, payout_id: payout.payout_id } });
+            return payout;
+        }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+        let payout;
+        for (let attempt = 1; !payout; attempt += 1) {
+            try { payout = await run(); }
+            catch (error) { if (error?.code !== 'P2034' || attempt === 3) throw error; }
+        }
+        writeAudit({ actorId: req.user.id, action: 'PAYOUT_CREATE_MANUAL', targetType: 'PAYOUT', targetId: payout.payout_id, organizationId: orgId });
+        res.redirect(financePath('success', `Reversement de ${payout.amount} ${currency} vers +${phoneNumber} créé. L’opérateur est vérifié puis l’envoi part dans la minute.`));
+    } catch (error) {
+        if (error instanceof PayoutRefusal) return res.redirect(financePath('error', error.message));
+        console.error('Erreur createManualPayout:', error);
+        res.redirect(financePath('error', 'Erreur lors de la création du reversement.'));
+    }
+};
+
+exports.loadPlatformBalances = loadPlatformBalances;

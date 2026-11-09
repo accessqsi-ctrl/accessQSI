@@ -155,3 +155,82 @@ test('a super-admin payout needs the password and goes only to the registered ac
     assert.match(await pay({ amount: '1.234' }), /Montant%20invalide/);
     assert.equal(created.payouts.length, 0);
 });
+
+test('a manual payout takes the typed recipient and checks the organization or platform balance', async () => {
+    const { Prisma } = require('@prisma/client');
+    const { normalizeRecipientPhone, findCountry } = require(path.join(process.cwd(), 'src/services/payout-recipient.service.js'));
+    assert.equal(normalizeRecipientPhone('0991234567', findCountry('COD')), '243991234567');
+    assert.equal(normalizeRecipientPhone('+243 99 123 4567', findCountry('COD')), '243991234567');
+    assert.equal(normalizeRecipientPhone('0707070707', findCountry('CIV')), '2250707070707');
+    assert.equal(normalizeRecipientPhone('12', findCountry('COD')), null);
+
+    const passwordHash = await bcrypt.hash('correct-password', 4);
+    const created = { payouts: [], ledger: [] };
+    let state;
+    const reset = (overrides = {}) => {
+        state = { orgExists: true, open: null, orgBalance: '22.81', subscriptions: '100', commissions: '5', platformPaid: '30', ...overrides };
+        created.payouts.length = 0;
+        created.ledger.length = 0;
+    };
+    const sumRow = (field, value) => (value === null ? [] : [{ currency: 'USD', _sum: { [field]: new Prisma.Decimal(value) } }]);
+    const tx = {
+        $queryRaw: async () => (state.orgExists ? [{ org_id: 3 }] : []),
+        $executeRaw: async () => 1,
+        payment: { groupBy: async () => sumRow('amount', state.subscriptions) },
+        ticketPayment: { groupBy: async () => sumRow('commission_amount', state.commissions) },
+        organizerPayout: {
+            groupBy: async () => sumRow('amount', state.platformPaid),
+            findFirst: async () => state.open,
+            create: async ({ data }) => { created.payouts.push(data); return { ...data, payout_id: 'p-2' }; }
+        },
+        organizerLedgerEntry: {
+            aggregate: async () => ({ _sum: { amount: new Prisma.Decimal(state.orgBalance) } }),
+            create: async ({ data }) => { created.ledger.push(data); }
+        }
+    };
+    const controller = loadController({
+        userQ: { findFirst: async () => ({ password_hash: passwordHash }) },
+        $transaction: (work) => work(tx)
+    });
+    const pay = async (body) => {
+        const res = response();
+        await controller.createManualPayout({ body: { superAdminPassword: 'correct-password', country: 'COD', currency: 'USD', amount: '10', phone_number: '0997654321', note: 'Prestataire', ...body }, user: { id: 1 } }, res);
+        return res.destination;
+    };
+
+    // Solde plateforme : 100 + 5 − 30 = 75 USD.
+    reset();
+    assert.match(await pay({}), /success=/);
+    assert.equal(created.payouts[0].org_id, null);
+    assert.equal(created.payouts[0].phone_number, '243997654321');
+    assert.equal(created.payouts[0].provider, null);
+    assert.equal(created.payouts[0].manual_recipient, true);
+    assert.equal(created.payouts[0].status, 'APPROVED');
+    assert.equal(created.ledger.length, 0);
+    reset();
+    assert.match(await pay({ amount: '75.01' }), /solde%20de%20la%20plateforme/);
+    assert.equal(created.payouts.length, 0);
+
+    // Organisation : débit de son solde.
+    reset();
+    assert.match(await pay({ org_id: '3', amount: '20' }), /success=/);
+    assert.equal(created.payouts[0].org_id, 3);
+    assert.equal(created.ledger[0].amount.toString(), '-20');
+    reset();
+    assert.match(await pay({ org_id: '3', amount: '30' }), /d%C3%A9passe/);
+    reset({ open: { payout_id: 'busy' } });
+    assert.match(await pay({ org_id: '3' }), /d%C3%A9j%C3%A0%20en%20cours/);
+    reset({ orgExists: false });
+    assert.match(await pay({ org_id: '3' }), /introuvable/);
+
+    // Validations avant tout accès à la base.
+    reset();
+    assert.match(await pay({ superAdminPassword: 'wrong' }), /Mot%20de%20passe%20incorrect/);
+    assert.match(await pay({ currency: 'XOF' }), /Devise%20non%20disponible/);
+    assert.match(await pay({ country: 'FRA' }), /pays/);
+    assert.match(await pay({ amount: '0' }), /Montant%20invalide/);
+    assert.match(await pay({ phone_number: '12' }), /Num%C3%A9ro%20invalide/);
+    assert.match(await pay({ note: '' }), /motif/);
+    assert.match(await pay({ org_id: '3abc' }), /Organisation%20invalide/);
+    assert.equal(created.payouts.length, 0);
+});
