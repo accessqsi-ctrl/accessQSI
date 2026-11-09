@@ -7,8 +7,8 @@ import { ArrowRight, CalendarDays, CheckCircle2, Crown, Lightbulb, Mail, Menu, S
 import { useState, useEffect, useMemo } from "react";
 import { apiFetch } from "../lib/api";
 import { useUserPlan } from "../lib/useUserPlan";
+import { useFeatures } from "../lib/useFeatures";
 
-const REGISTRATION_FORMS_ENABLED = process.env.NEXT_PUBLIC_REGISTRATION_FORMS_ENABLED === "true";
 
 export default function DashboardShell({ children }) {
     const pathname = usePathname();
@@ -17,6 +17,7 @@ export default function DashboardShell({ children }) {
     const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
     const [welcomeOffer, setWelcomeOffer] = useState(null);
     const { userProfile, profileLoading, isProPlan, planName } = useUserPlan();
+    const { registrationForms: registrationFormsEnabled } = useFeatures();
     const isOperator = userProfile?.role === "OPERATOR";
     const isAgent = userProfile?.role === "ORG_AGENT";
     const operatorAllowedPath = pathname === "/dashboard/settings";
@@ -95,7 +96,7 @@ export default function DashboardShell({ children }) {
                 iconComponent: Mail
             },
         ];
-        if (!REGISTRATION_FORMS_ENABLED) {
+        if (!registrationFormsEnabled) {
             items.splice(items.findIndex(item => item.href === "/dashboard/registration-forms"), 1);
         }
         if (userProfile?.role === "OPERATOR") {
@@ -109,7 +110,7 @@ export default function DashboardShell({ children }) {
             return items.filter(item => item.name !== "Agents" && item.href !== "/dashboard/upgrade");
         }
         return items;
-    }, [userProfile]);
+    }, [userProfile, registrationFormsEnabled]);
 
     const pageTitle = useMemo(() => {
         return navigation.find(n => pathname === n.href || (pathname.startsWith(n.href) && n.href !== '/dashboard'))?.name || "Dashboard";

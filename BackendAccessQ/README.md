@@ -21,8 +21,8 @@ Le module utilise l'API Merchant v2 de pawaPay. Copiez les variables
 `PAWAPAY_*` de `.env.example` dans votre environnement, puis renseignez au
 minimum `PAWAPAY_API_TOKEN`. Le sandbox est utilisé par défaut.
 Les appels pawaPay restent entièrement gelés tant que
-`PRO_PAYMENTS_ENABLED` n'est pas défini à `true`. Le frontend masque également
-le formulaire avec `NEXT_PUBLIC_PRO_PAYMENTS_ENABLED=false`.
+`PRO_PAYMENTS_ENABLED` n'est pas défini à `true`. Le frontend lit cette valeur
+(et `REGISTRATION_FORMS_ENABLED`) via `GET /config/features` pour masquer les écrans concernés.
 Le catalogue Pro est exprimé en USD et les pays/opérateurs proposés sont
 chargés dynamiquement depuis la configuration active du compte pawaPay.
 Le prix de référence est de 10 USD. Pour les autres devises, le backend utilise

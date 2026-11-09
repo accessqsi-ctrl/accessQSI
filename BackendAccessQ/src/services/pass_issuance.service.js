@@ -150,7 +150,9 @@ const issuePass = async ({
     planContext = null,
     useOrganizationDefaultTemplate = false,
     trustedTemplateSnapshot = null,
-    idempotency = null
+    idempotency = null,
+    // Inscription dont la place est déjà comptée dans le quota (billetterie).
+    reservationId = null
 }) => {
     const orgId = Number(organizationId);
     const normalizedEventId = Number(eventId);
@@ -259,6 +261,7 @@ const issuePass = async ({
     const qrRecord = await withEventQrQuota({
         organizationId: orgId,
         eventId: event.event_id,
+        reservationId,
         resolveExisting: normalizedIdempotency ? async (tx) => {
             const existing = await findIdempotentRecord(orgId, normalizedIdempotency, tx);
             const existingQr = resolveIdempotentRecord(existing, requestHash);

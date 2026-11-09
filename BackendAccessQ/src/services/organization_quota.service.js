@@ -154,7 +154,56 @@ const withEventCreationQuota = async ({ organizationId, eventPassId = null, crea
     });
 };
 
-const withEventQrQuota = async ({ organizationId, eventId, resolveExisting = null, create }) => {
+// Places promises par la billetterie mais pas encore transformées en QR : billets vendus en attente
+// d'émission et paiements en cours dont la réservation court encore. Elles consomment déjà le quota.
+const pendingTicketReservations = async (tx, eventId, { excludeRegistrationId = null, now = new Date() } = {}) => {
+    const [registrations, payments] = await Promise.all([
+        tx.registration.count({ where: {
+            event_id: eventId,
+            capacity_held: true,
+            qr_id: null,
+            ...(excludeRegistrationId ? { NOT: { registration_id: excludeRegistrationId } } : {})
+        } }),
+        tx.ticketPayment.count({ where: {
+            form: { event_id: eventId },
+            registration_id: null,
+            status: { in: ["PENDING", "PROCESSING"] },
+            hold_expires_at: { gt: now }
+        } })
+    ]);
+    return registrations + payments;
+};
+
+// Quota de QR d'un événement : QR déjà émis plus places réservées par la billetterie.
+const eventQrAllowance = async (tx, { organization, event, excludeRegistrationId = null, now = new Date() }) => {
+    const expired = event.entitlement_type === "EVENT_PASS" && event.entitlement_expires_at <= now;
+    const planSummary = getPlanSummary(organization, now);
+    const limit = event.entitlement_type === "EVENT_PASS" ? event.qr_limit : planSummary.limits.maxQrCodesPerEvent;
+    const [issued, reserved] = await Promise.all([
+        tx.qrCode.count({ where: { event_id: event.event_id } }),
+        pendingTicketReservations(tx, event.event_id, { excludeRegistrationId, now })
+    ]);
+    return {
+        planSummary,
+        expired,
+        limit: limit ?? null,
+        issued,
+        reserved,
+        remaining: expired ? 0 : limit === null || limit === undefined ? null : Math.max(0, limit - issued - reserved)
+    };
+};
+
+// Pour la billetterie : verrouille l'événement afin que deux ventes ne prennent pas la même dernière place du quota.
+const ticketQrAllowance = async (tx, { organizationId, eventId, now = new Date() }) => {
+    await tx.$queryRaw(Prisma.sql`SELECT event_id FROM events WHERE event_id = ${eventId} FOR UPDATE`);
+    const [organization, event] = await Promise.all([
+        tx.organization.findUnique({ where: { org_id: organizationId }, include: { plan: true } }),
+        tx.event.findUnique({ where: { event_id: eventId } })
+    ]);
+    return eventQrAllowance(tx, { organization, event, now });
+};
+
+const withEventQrQuota = async ({ organizationId, eventId, resolveExisting = null, reservationId = null, create }) => {
     return runSerializable(async (tx) => {
         const organization = await lockOrganizationWithPlan(tx, organizationId);
         await tx.$queryRaw(Prisma.sql`SELECT event_id FROM events WHERE event_id = ${eventId} FOR UPDATE`);
@@ -180,27 +229,27 @@ const withEventQrQuota = async ({ organizationId, eventId, resolveExisting = nul
             error.code = "EVENT_PASS_EXPIRED";
             throw error;
         }
-
-        const planSummary = getPlanSummary(organization, now);
-        const limit = event.entitlement_type === "EVENT_PASS"
-            ? event.qr_limit
-            : planSummary.limits.maxQrCodesPerEvent;
-        const currentCount = await tx.qrCode.count({ where: { event_id: eventId } });
-        const quotaStatus = getQuotaStatus(limit, currentCount);
+        // Le billet émis pour une réservation (reservationId) ne se bloque pas lui-même.
+        const allowance = await eventQrAllowance(tx, { organization, event, excludeRegistrationId: reservationId, now });
+        const quotaStatus = getQuotaStatus(allowance.limit, allowance.issued + allowance.reserved);
         if (!quotaStatus.allowed) {
             throw new PlanQuotaError({
-                resourceName: "de QR pour cet événement",
-                currentCount,
+                resourceName: allowance.reserved > 0
+                    ? `de QR pour cet événement, dont ${allowance.reserved} place(s) réservée(s) par la billetterie`
+                    : "de QR pour cet événement",
+                currentCount: quotaStatus.currentCount,
                 limit: quotaStatus.limit,
-                planSummary
+                planSummary: allowance.planSummary
             });
         }
-        return create(tx, { event, planSummary });
+        return create(tx, { event, planSummary: allowance.planSummary });
     });
 };
 
 module.exports = {
     PlanQuotaError,
+    eventQrAllowance,
+    ticketQrAllowance,
     withOrganizationQuota,
     withEventCreationQuota,
     withEventQrQuota

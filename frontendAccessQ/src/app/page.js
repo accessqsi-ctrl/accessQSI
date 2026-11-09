@@ -15,7 +15,7 @@ import { SITE_DESCRIPTION, baseOpenGraph } from "./lib/seo";
 import { LEGAL_LINKS } from "./lib/legal";
 
 // La vidéo est hébergée hors du dépôt (les .mp4 sont ignorés par git) ; en local, le fichier de public/ sert de repli.
-const DEMO_VIDEO_URL = process.env.NEXT_PUBLIC_DEMO_VIDEO_URL || "/accessq-demo.mp4";
+const DEMO_VIDEO_URL = process.env.DEMO_VIDEO_URL || "/accessq-demo.mp4";
 
 const HOME_TITLE = "Contrôle d’accès par QR code pour vous faciliter la tâche | AccessQ";
 
@@ -103,7 +103,7 @@ const pricingPlans = [
     name: "Découverte",
     price: "Gratuit",
     description: "Pour tester un premier contrôle à petite échelle.",
-    features: ["1 événement par mois", "50 QR par événement", "2 agents actifs", "2 zones actives", "Dashboard basique"],
+    features: ["1 événement par mois", "50 QR par événement", "2 agents actifs", "2 zones actives", "Création des QR un par un", "Modèles de carte standard", "Tableau de bord de base"],
     cta: "Créer mon compte",
     href: "/register"
   },
@@ -113,7 +113,7 @@ const pricingPlans = [
     cadence: "/ mois",
     annual: "144 $ par an — économisez 20 %",
     description: "Pour les organisateurs et équipes aux besoins réguliers.",
-    features: ["5 événements par mois", "200 QR par événement", "5 agents actifs", "6 zones actives", "Imports CSV et exports"],
+    features: ["Tout Découverte inclus", "5 événements par mois", "200 QR par événement", "5 agents actifs", "6 zones actives", "Import de QR en masse (CSV)", "Export des scans en CSV et PDF"],
     cta: "Essayer Essential gratuitement",
     href: "/register",
     featured: true
@@ -124,7 +124,7 @@ const pricingPlans = [
     cadence: "/ mois",
     annual: "240 $ par an — économisez 20 %",
     description: "Pour les opérations exigeantes et les volumes importants.",
-    features: ["7 événements par mois", "350 QR par événement", "10 agents actifs", "15 zones actives", "Analytics et modèles personnalisés"],
+    features: ["Tout Essential inclus", "7 événements par mois", "350 QR par événement", "10 agents actifs", "15 zones actives", "Modèles de carte personnalisés (logo, fond, textes)", "Statistiques avancées : scans des 7 derniers jours et meilleurs agents"],
     cta: "Créer mon compte",
     href: "/register"
   },
@@ -132,7 +132,7 @@ const pricingPlans = [
     name: "Entreprise",
     price: "Sur devis",
     description: "Pour les grands comptes et les déploiements sur mesure.",
-    features: ["Volumes personnalisés", "Support événementiel", "Personnalisation avancée", "Toutes les capacités Pro", "SLA sur mesure"],
+    features: ["Toutes les fonctionnalités Pro", "Événements, QR, agents et zones sur mesure", "Support événementiel", "Personnalisation avancée", "SLA sur mesure"],
     cta: "Nous contacter",
     href: "mailto:access.supportclient@gmail.com"
   }
@@ -599,7 +599,7 @@ export default function Home() {
                 <span className="rounded-full bg-amber-200 px-3 py-1 text-xs font-black uppercase tracking-wider text-amber-900 dark:bg-amber-800 dark:text-amber-100">Paiement unique</span>
               </div>
               <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-300">
-                Un seul événement, jusqu&apos;à 200 QR et 30 jours de validité après attribution. Idéal si vous n&apos;avez pas besoin d&apos;un abonnement récurrent.
+                Un seul événement, jusqu&apos;à 200 QR et 30 jours de validité après attribution. Les agents, les zones et les fonctionnalités restent ceux de votre plan. Idéal si vous n&apos;avez pas besoin d&apos;un abonnement récurrent.
               </p>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">

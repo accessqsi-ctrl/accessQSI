@@ -14,8 +14,8 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiFetch } from "../../lib/api";
 import { useUserPlan } from "../../lib/useUserPlan";
+import { useFeatures } from "../../lib/useFeatures";
 
-const PAYMENTS_ENABLED = process.env.NEXT_PUBLIC_PRO_PAYMENTS_ENABLED === "true";
 const PURCHASABLE = ["ESSENTIAL", "PRO", "EVENT_PASS"];
 const statusPresentation = {
     PENDING: { label: "En attente", className: "bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300", icon: Clock3 },
@@ -50,6 +50,7 @@ const providerPriceKey = (planKey, interval) => {
 };
 
 export default function UpgradePage() {
+    const { proPayments: paymentsEnabled } = useFeatures();
     const { plan, planName, refreshPlan } = useUserPlan();
     const [plans, setPlans] = useState([]);
     const [providers, setProviders] = useState([]);
@@ -118,7 +119,7 @@ export default function UpgradePage() {
         if (!silent) setLoading(true);
         try {
             const requests = [apiFetch("/billing/plans"), apiFetch("/billing")];
-            if (PAYMENTS_ENABLED) requests.push(apiFetch("/billing/providers"));
+            if (paymentsEnabled) requests.push(apiFetch("/billing/providers"));
             const responses = await Promise.all(requests);
             const payloads = await Promise.all(responses.map((response) => response.json()));
             if (!responses[0].ok) throw new Error(payloads[0].message || "Impossible de charger les offres.");
@@ -148,12 +149,12 @@ export default function UpgradePage() {
         } finally {
             if (!silent) setLoading(false);
         }
-    }, []);
+    }, [paymentsEnabled]);
 
     useEffect(() => { loadBilling(); }, [loadBilling]);
 
     useEffect(() => {
-        if (!PAYMENTS_ENABLED || !form.country || !form.provider || !form.currency || !selectedPlan) {
+        if (!paymentsEnabled || !form.country || !form.provider || !form.currency || !selectedPlan) {
             setQuote(null);
             return;
         }
@@ -167,7 +168,7 @@ export default function UpgradePage() {
             if (active) setQuote(response.ok ? data.quote : null);
         }).catch(() => { if (active) setQuote(null); });
         return () => { active = false; };
-    }, [form.country, form.provider, form.currency, selectedPlan, interval]);
+    }, [paymentsEnabled, form.country, form.provider, form.currency, selectedPlan, interval]);
 
     useEffect(() => {
         const change = billing.subscription?.pendingChange;
@@ -304,7 +305,7 @@ export default function UpgradePage() {
     if (loading) return <div className="flex min-h-[60vh] items-center justify-center"><LoaderCircle className="h-8 w-8 animate-spin text-blue-600" /></div>;
 
     const payableAmount = quote?.amount ?? localPrice;
-    const canPay = Boolean(PAYMENTS_ENABLED && selectedProvider && payableAmount != null && form.phoneNumber && !activeDepositId);
+    const canPay = Boolean(paymentsEnabled && selectedProvider && payableAmount != null && form.phoneNumber && !activeDepositId);
     const activePasses = billing.eventPasses.filter((item) => item.status === "AVAILABLE");
 
     return (
@@ -394,7 +395,7 @@ export default function UpgradePage() {
                 </div>
             )}
 
-            {PAYMENTS_ENABLED ? (
+            {paymentsEnabled ? (
                 <section className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
                     <form onSubmit={submitPayment} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
                         <div className="flex items-center gap-3"><Smartphone className="h-6 w-6 text-blue-600" /><div><h2 className="font-bold text-slate-900 dark:text-white">Payer {chosenPlan?.name}</h2><p className="text-sm text-slate-500">Le PIN reste saisi sur votre téléphone.</p></div></div>
@@ -411,7 +412,7 @@ export default function UpgradePage() {
                         <div className="mt-5 space-y-3">{billing.payments.length === 0 ? <p className="rounded-xl border border-dashed p-8 text-center text-sm text-slate-500">Aucun paiement.</p> : billing.payments.map((payment) => { const presentation = statusPresentation[payment.status] || statusPresentation.PENDING; const StatusIcon = presentation.icon; const pending = ["PENDING", "PROCESSING"].includes(payment.status); return <div key={payment.depositId} className="rounded-2xl border border-slate-100 p-4 dark:border-slate-800"><div className="flex justify-between gap-3"><div><p className="font-bold">{payment.reason || payment.plan} · {formatMoney(payment.amount, payment.currency)}</p><p className="mt-1 text-xs text-slate-500">{payment.billingInterval} · {formatDate(payment.createdAt)}</p></div><div className="flex items-center gap-2"><span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${presentation.className}`}><StatusIcon className={`h-3.5 w-3.5 ${payment.status === "PROCESSING" ? "animate-spin" : ""}`} />{presentation.label}</span>{pending && <button type="button" onClick={() => refreshPayment(payment.depositId)} disabled={refreshingId === payment.depositId} className="rounded-lg border p-1.5"><RefreshCw className={`h-3.5 w-3.5 ${refreshingId === payment.depositId ? "animate-spin" : ""}`} /></button>}</div></div>{payment.failureMessage && <p className="mt-3 rounded-lg bg-red-50 p-2 text-xs text-red-700 dark:bg-red-500/15 dark:text-red-300">{payment.failureMessage}</p>}</div>; })}</div>
                     </div>
                 </section>
-            ) : <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:bg-amber-500/15 dark:border-amber-500/30 dark:text-amber-300">Les tarifs sont configurés. Activez <code>NEXT_PUBLIC_PRO_PAYMENTS_ENABLED=true</code> et la configuration pawaPay pour permettre les achats.</div>}
+            ) : <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:bg-amber-500/15 dark:border-amber-500/30 dark:text-amber-300">Les tarifs sont configurés. Activez <code>PRO_PAYMENTS_ENABLED=true</code> côté backend et la configuration pawaPay pour permettre les achats.</div>}
         </div>
     );
 }

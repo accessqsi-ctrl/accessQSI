@@ -46,7 +46,8 @@ const offerDto = offer => ({
     validUntil: offer.valid_until,
     boxOnlyQr: offer.box_only_qr,
     price: offer.price == null ? null : String(offer.price),
-    currency: offer.currency || null
+    currency: offer.currency || null,
+    ...(offer.sold_out === undefined ? {} : { soldOut: offer.sold_out })
 });
 
 const formDto = (form, includeConfiguration = false) => ({
@@ -79,7 +80,9 @@ exports.getForm = async (req, res) => {
     try {
         const form = await registrationService.getForm(req.user.org_id, req.params.id);
         if (!form) return res.status(404).json({ success: false, message: "Formulaire introuvable." });
-        return res.json({ success: true, form: formDto(form, true) });
+        // Quota de QR de l'événement, partagé entre la billetterie et les QR créés à la main.
+        const { limit, issued, reserved, remaining, expired } = await registrationService.formQrAllowance(form);
+        return res.json({ success: true, form: formDto(form, true), qrAllowance: { limit, issued, reserved, remaining, expired } });
     } catch (error) { return handleError(req, res, error, "get_form"); }
 };
 

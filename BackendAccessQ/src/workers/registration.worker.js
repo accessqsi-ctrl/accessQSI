@@ -64,7 +64,8 @@ const processIssuePass = async job => {
                 cardMessage: offer.cardMessage || ""
             },
             trustedTemplateSnapshot: offer.cardTemplateSnapshot,
-            idempotency: { scope: `registration:${registration.registration_id}`, key: registration.registration_id }
+            idempotency: { scope: `registration:${registration.registration_id}`, key: registration.registration_id },
+            reservationId: registration.registration_id
         });
         await prisma.$transaction(async tx => {
             await tx.registration.update({

@@ -64,7 +64,7 @@ const PLAN_DETAILS = Object.freeze({
         maxAgents: 2,
         maxAreas: 2,
         capabilities: Object.freeze([]),
-        features: ["1 événement par mois", "50 QR par événement", "2 agents actifs", "2 zones actives", "Dashboard basique"]
+        features: ["1 événement par mois", "50 QR par événement", "2 agents actifs", "2 zones actives", "Création des QR un par un", "Modèles de carte standard", "Tableau de bord de base"]
     }),
     ESSENTIAL: Object.freeze({
         key: PLAN_KEYS.ESSENTIAL,
@@ -83,7 +83,7 @@ const PLAN_DETAILS = Object.freeze({
             PLAN_CAPABILITIES.MULTIPLE_REGISTRATION_OFFERS,
             PLAN_CAPABILITIES.SCAN_EXPORTS
         ]),
-        features: ["5 événements par mois", "200 QR par événement", "Formulaires multi-offres", "5 agents actifs", "6 zones actives", "Dashboard fonctionnel"]
+        features: ["Tout Découverte inclus", "5 événements par mois", "200 QR par événement", "5 agents actifs", "6 zones actives", "Import de QR en masse (CSV)", "Export des scans en CSV et PDF", "Formulaires d’inscription à plusieurs offres"]
     }),
     PRO: Object.freeze({
         key: PLAN_KEYS.PRO,
@@ -98,7 +98,7 @@ const PLAN_DETAILS = Object.freeze({
         maxAgents: 10,
         maxAreas: 15,
         capabilities: Object.freeze(Object.values(PLAN_CAPABILITIES)),
-        features: ["7 événements par mois", "350 QR par événement", "10 agents actifs", "15 zones actives", "Analytics et modèles avancés"]
+        features: ["Tout Essential inclus", "7 événements par mois", "350 QR par événement", "10 agents actifs", "15 zones actives", "Modèles de carte personnalisés (logo, fond, textes)", "Statistiques avancées : scans des 7 derniers jours et meilleurs agents"]
     }),
     ENTERPRISE: Object.freeze({
         key: PLAN_KEYS.ENTERPRISE,
@@ -111,7 +111,7 @@ const PLAN_DETAILS = Object.freeze({
         maxAgents: null,
         maxAreas: null,
         capabilities: Object.freeze(Object.values(PLAN_CAPABILITIES)),
-        features: ["Volumes élevés", "Support événementiel", "Personnalisation", "SLA sur mesure"]
+        features: ["Toutes les fonctionnalités Pro", "Événements, QR, agents et zones sur mesure", "Support événementiel", "Personnalisation avancée", "SLA sur mesure"]
     }),
     EVENT_PASS: Object.freeze({
         key: PLAN_KEYS.EVENT_PASS,
@@ -125,7 +125,7 @@ const PLAN_DETAILS = Object.freeze({
         maxAreas: null,
         durationDays: EVENT_PASS_DURATION_DAYS,
         capabilities: Object.freeze([]),
-        features: ["1 événement", "200 QR", "Valable 30 jours après attribution"]
+        features: ["1 événement", "200 QR", "Valable 30 jours après attribution", "Agents, zones et fonctionnalités selon votre plan"]
     })
 });
 

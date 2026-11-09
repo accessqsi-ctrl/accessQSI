@@ -41,7 +41,7 @@ export default function PublicRegistrationPage() {
         const data = await response.json();
         if (!response.ok) throw new Error(data.message || "Formulaire introuvable.");
         setForm(data.form);
-        setOfferId(data.form.offers?.[0]?.id || "");
+        setOfferId(data.form.offers?.find(item => !item.soldOut)?.id || "");
       })
       .catch(reason => setError(reason.message))
       .finally(() => setLoading(false));
@@ -50,6 +50,15 @@ export default function PublicRegistrationPage() {
   const offer = useMemo(() => form?.offers?.find(item => item.id === offerId), [form, offerId]);
   const paid = isPaid(offer);
   const pendingKey = `accessq-ticket-payment:${slug}`;
+  const allSoldOut = Boolean(form?.offers?.length) && form.offers.every(item => item.soldOut);
+
+  // La dernière place a été prise entre l'affichage et la validation : l'offre passe en « Complet ».
+  const handleSoldOut = () => {
+    setForm(current => ({ ...current, offers: current.offers.map(item => item.id === offerId ? { ...item, soldOut: true } : item) }));
+    setOfferId(form.offers.find(item => item.id !== offerId && !item.soldOut)?.id || "");
+    setStep(1);
+    setError("Désolé, cette offre vient d’être complète.");
+  };
 
   // Opérateurs Mobile Money qui acceptent la devise de l'offre.
   useEffect(() => {
@@ -113,6 +122,7 @@ export default function PublicRegistrationPage() {
       if (response.status === 401) { setAttendee(null); setStep(2); throw new Error("Votre session a expiré. Reconnectez-vous à votre box."); }
       // Une réponse définitive (acceptée ou refusée) clôt la tentative ; une erreur de validation permet de corriger et réessayer.
       if (response.ok || response.status === 422 || response.status === 409) sessionStorage.removeItem(storageKey);
+      if (data.code === "OFFER_SOLD_OUT") return handleSoldOut();
       if (!response.ok) throw new Error(data.message || "Paiement impossible.");
       sessionStorage.setItem(pendingKey, data.payment.id);
       setPayment(data.payment);
@@ -138,6 +148,7 @@ export default function PublicRegistrationPage() {
       });
       const data = await response.json();
       if (response.status === 401) { setAttendee(null); setStep(2); throw new Error("Votre session a expiré. Reconnectez-vous à votre box."); }
+      if (data.code === "OFFER_SOLD_OUT") { setSubmitting(false); return handleSoldOut(); }
       if (!response.ok) throw new Error(data.message || "Inscription impossible.");
       sessionStorage.removeItem(storageKey);
       router.push(`/box/tickets/${encodeURIComponent(data.ticketId)}?new=1`);
@@ -158,16 +169,18 @@ export default function PublicRegistrationPage() {
         <p className="mt-3 text-slate-600 dark:text-slate-300">{form.description || form.event?.title}</p>
       </div>
 
-      {!form.open ? <Message title="Inscriptions fermées" text="Ce formulaire n’accepte plus de nouvelles inscriptions." /> : (
+      {!form.open ? <Message title="Inscriptions fermées" text="Ce formulaire n’accepte plus de nouvelles inscriptions." />
+        : allSoldOut && !payment ? <Message title="Complet" text="Toutes les places ont été vendues. Aucune nouvelle place n’est disponible." /> : (
         <>
           <div className="mb-8 flex gap-2 text-xs font-bold text-slate-500 dark:text-slate-400">
             {["Offre", "Votre box", "Récapitulatif"].map((label, index) => <span key={label} className={`flex-1 rounded-full px-3 py-2 text-center ${step === index + 1 ? "bg-blue-600 text-white dark:bg-blue-500 dark:text-slate-950" : "bg-slate-100 dark:bg-slate-800"}`}>{index + 1}. {label}</span>)}
           </div>
 
           {step === 1 && <div className="space-y-3">
-            {form.offers.map(item => <button type="button" key={item.id} onClick={() => setOfferId(item.id)} className={`w-full rounded-2xl border p-5 text-left transition ${offerId === item.id ? "border-blue-600 bg-blue-50 ring-2 ring-blue-100 dark:border-blue-400 dark:bg-blue-950/40 dark:ring-blue-900/70" : "border-slate-200 hover:border-blue-300 dark:border-slate-700 dark:bg-slate-900/50 dark:hover:border-blue-500"}`}>
-              <div className="flex items-start justify-between gap-3"><div><h2 className="font-bold text-slate-950 dark:text-slate-50">{item.name}</h2><p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{item.description || (isPaid(item) ? "Billet" : "Pass gratuit")}</p></div><span className="shrink-0 text-right">{isPaid(item) ? <span className="text-lg font-black text-slate-950 dark:text-slate-50">{priceLabel(item)}</span> : <Ticket className="h-5 w-5 text-blue-600 dark:text-blue-400" />}</span></div>
-              <p className="mt-3 text-xs font-semibold text-emerald-700 dark:text-emerald-400">{isPaid(item) ? "Paiement Mobile Money" : "Gratuit"} · {item.accessType === "unlimited" ? "Accès illimité" : `${item.usageLimit} passage(s)`}{item.boxOnlyQr ? " · QR visible uniquement dans votre box" : ""}</p>
+            {error && <p className="rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-700 dark:border dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300">{error}</p>}
+            {form.offers.map(item => <button type="button" key={item.id} disabled={item.soldOut} onClick={() => { setOfferId(item.id); setError(""); }} className={`w-full rounded-2xl border p-5 text-left transition disabled:cursor-not-allowed disabled:opacity-60 ${item.soldOut ? "border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/30" : offerId === item.id ? "border-blue-600 bg-blue-50 ring-2 ring-blue-100 dark:border-blue-400 dark:bg-blue-950/40 dark:ring-blue-900/70" : "border-slate-200 hover:border-blue-300 dark:border-slate-700 dark:bg-slate-900/50 dark:hover:border-blue-500"}`}>
+              <div className="flex items-start justify-between gap-3"><div><h2 className="font-bold text-slate-950 dark:text-slate-50">{item.name}</h2><p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{item.description || (isPaid(item) ? "Billet" : "Pass gratuit")}</p></div><span className="shrink-0 text-right">{item.soldOut ? <span className="rounded-full bg-red-50 px-3 py-1 text-xs font-black uppercase tracking-wide text-red-700 dark:bg-red-950/50 dark:text-red-300">Complet</span> : isPaid(item) ? <span className="text-lg font-black text-slate-950 dark:text-slate-50">{priceLabel(item)}</span> : <Ticket className="h-5 w-5 text-blue-600 dark:text-blue-400" />}</span></div>
+              <p className={`mt-3 text-xs font-semibold ${item.soldOut ? "text-slate-500 dark:text-slate-400" : "text-emerald-700 dark:text-emerald-400"}`}>{item.soldOut ? "Plus aucune place disponible · " : ""}{isPaid(item) ? "Paiement Mobile Money" : "Gratuit"} · {item.accessType === "unlimited" ? "Accès illimité" : `${item.usageLimit} passage(s)`}{item.boxOnlyQr ? " · QR visible uniquement dans votre box" : ""}</p>
             </button>)}
             <button disabled={!offerId} onClick={() => setStep(2)} className="mt-4 w-full rounded-xl bg-blue-600 px-5 py-3 font-bold text-white disabled:opacity-50">Continuer</button>
           </div>}

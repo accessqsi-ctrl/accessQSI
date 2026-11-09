@@ -23,9 +23,12 @@ BACKEND_API_URL=http://localhost:5000
 ```
 
 Browser requests use the same-origin `/api` path, which Next.js proxies to this
-URL. `NEXT_PUBLIC_API_URL` is still accepted as a deployment fallback, but
-`BACKEND_API_URL` is preferred because the backend address does not need to be
-exposed to browser code.
+URL; the backend address is never exposed to browser code.
+
+No `NEXT_PUBLIC_` variable is used: `SITE_URL` and `DEMO_VIDEO_URL` are read on
+the server, and feature switches (`PRO_PAYMENTS_ENABLED`,
+`REGISTRATION_FORMS_ENABLED`) are defined on the backend only and fetched at
+runtime from `/api/config/features`.
 
 You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
 

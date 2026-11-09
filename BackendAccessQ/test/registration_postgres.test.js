@@ -197,21 +197,34 @@ test("free registration flow is atomic on PostgreSQL", { skip: !enabled || !safe
         await prisma.registrationJob.updateMany({ where: { registration_id: ticket.id, status: "PENDING" }, data: { status: "COMPLETED", completed_at: new Date() } });
     });
 
-    await t.test("commercial quota releases capacity and supports controlled recovery", async () => {
-        const limitedEvent = await prisma.event.create({ data: { org_id: org.org_id, title: "Quota test", qr_limit: 1, entitlement_type: "EVENT_PASS", entitlement_expires_at: new Date(Date.now() + 86_400_000) } });
-        await passIssuance.issuePass({ organizationId: org.org_id, eventId: limitedEvent.event_id, input: { fullName: "Existing pass", email: "existing@example.test", accessType: "single", level: 1, cardTemplateId: "event-ticket" } });
-        const form = await registrations.setFormStatus(org.org_id, (await registrations.createForm(org.org_id, { eventId: limitedEvent.event_id, title: "Quota blocked", offers: [{ name: "Unique", capacity: 1, cardTemplateId: "event-ticket" }] })).registration_form_id, "PUBLISHED");
-        const submitted = await registrations.submit(form.public_slug, { offerId: form.offers[0].registration_offer_id }, "quota-holder", await attendeeFor("quota@example.test", "Quota Holder"));
-        const issueJob = await jobs.claimNext({ id: "quota-worker" });
-        await worker.processIssuePass(issueJob);
+    await t.test("ticket sales stay within the event QR quota and recover after a downgrade", async () => {
+        const limitedEvent = await prisma.event.create({ data: { org_id: org.org_id, title: "Quota test", qr_limit: 2, entitlement_type: "EVENT_PASS", entitlement_expires_at: new Date(Date.now() + 86_400_000) } });
+        const manualPass = input => passIssuance.issuePass({ organizationId: org.org_id, eventId: limitedEvent.event_id, input: { accessType: "single", level: 1, cardTemplateId: "event-ticket", ...input } });
+        await manualPass({ fullName: "Existing pass", email: "existing@example.test" });
+        const form = await registrations.setFormStatus(org.org_id, (await registrations.createForm(org.org_id, { eventId: limitedEvent.event_id, title: "Quota blocked", offers: [{ name: "Illimitée", cardTemplateId: "event-ticket" }] })).registration_form_id, "PUBLISHED");
+        const offerId = form.offers[0].registration_offer_id;
+        assert.equal((await registrations.publicForm(form.public_slug)).offers[0].sold_out, false);
+        const submitted = await registrations.submit(form.public_slug, { offerId }, "quota-holder", await attendeeFor("quota@example.test", "Quota Holder"));
+
+        // La place vendue compte déjà : plus de vente, plus de QR manuel, et l'offre s'affiche complète.
+        assert.equal((await registrations.publicForm(form.public_slug)).offers[0].sold_out, true);
+        await assert.rejects(registrations.submit(form.public_slug, { offerId }, "quota-late", await attendeeFor("late@example.test", "Late Buyer")), error => error.code === "OFFER_SOLD_OUT");
+        await assert.rejects(manualPass({ fullName: "Manual", email: "manual@example.test" }), error => error.code === "PLAN_QUOTA_EXCEEDED" && /réservée/.test(error.message));
+        const quota = await registrations.formQrAllowance(form);
+        assert.deepEqual([quota.limit, quota.issued, quota.reserved, quota.remaining], [2, 1, 1, 0]);
+
+        // Le quota baisse après la vente (changement de plan) : l'émission est bloquée et la place libérée.
+        await prisma.event.update({ where: { event_id: limitedEvent.event_id }, data: { qr_limit: 1 } });
+        await worker.processIssuePass(await jobs.claimNext({ id: "quota-worker" }));
         const blocked = await prisma.registration.findUnique({ where: { registration_id: submitted.registration.registration_id } });
         assert.equal(blocked.issuance_status, "BLOCKED_QUOTA");
         assert.equal(blocked.capacity_held, false);
         assert.equal(blocked.qr_id, null);
+        await assert.rejects(registrations.reacquireCapacityAndEnqueue(org.org_id, blocked.registration_id, "ISSUE_PASS"), error => error.code === "PLAN_QUOTA_EXCEEDED");
+
         await prisma.event.update({ where: { event_id: limitedEvent.event_id }, data: { qr_limit: 2 } });
         await registrations.reacquireCapacityAndEnqueue(org.org_id, blocked.registration_id, "ISSUE_PASS");
-        const retryJob = await jobs.claimNext({ id: "quota-retry-worker" });
-        await worker.processIssuePass(retryJob);
+        await worker.processIssuePass(await jobs.claimNext({ id: "quota-retry-worker" }));
         const recovered = await prisma.registration.findUnique({ where: { registration_id: blocked.registration_id } });
         assert.equal(recovered.issuance_status, "SUCCEEDED");
         assert.ok(recovered.qr_id);
@@ -273,7 +286,10 @@ test("free registration flow is atomic on PostgreSQL", { skip: !enabled || !safe
         await assert.rejects(registrations.submit(form.public_slug, { offerId: offer.registration_offer_id }, "free-on-paid", buyer), error => error.code === "PAYMENT_REQUIRED");
         assert.equal((await ticketPayments.listOfferProviders(form.public_slug, offer.registration_offer_id)).length, 1);
 
+        assert.equal((await registrations.publicForm(form.public_slug)).offers[0].sold_out, false);
         const { payment } = await checkout(buyer, "buyer-1");
+        // La place réservée par le paiement en cours suffit à afficher l'offre comme complète.
+        assert.equal((await registrations.publicForm(form.public_slug)).offers[0].sold_out, true);
         assert.equal(payment.status, "PENDING");
         assert.equal(payment.phone_number, "243991234567");
         assert.equal(String(payment.commission_amount), "1.25");
@@ -308,6 +324,7 @@ test("free registration flow is atomic on PostgreSQL", { skip: !enabled || !safe
         assert.equal(String(failed.commission_amount), "0.94");
         settle(failed, "FAILED", { failureReason: { failureCode: "INSUFFICIENT_BALANCE" } });
         assert.equal((await ticketPayments.reconcile(failed.deposit_id)).status, "FAILED");
+        assert.equal((await registrations.publicForm(form.public_slug)).offers[0].sold_out, false);
         const tampered = (await checkout(rival, "rival-4")).payment;
         settle(tampered, "COMPLETED", { amount: "1.00" });
         assert.equal((await ticketPayments.reconcile(tampered.deposit_id)).status, "REVIEW_REQUIRED");
@@ -426,5 +443,35 @@ test("free registration flow is atomic on PostgreSQL", { skip: !enabled || !safe
         assert.equal((await prisma.ticketRefund.findUnique({ where: { ticket_refund_id: refund.ticket_refund_id } })).status, "COMPLETED");
         assert.equal((await prisma.ticketPayment.findUnique({ where: { ticket_payment_id: review.ticket_payment_id } })).status, "REFUNDED");
         assert.equal(await usdBalance(), "12.81");
+    });
+
+    await t.test("paid sales stop at the event QR quota and a late payment goes to review", async () => {
+        const originals = { initiate: pawaPay.initiateDeposit, check: pawaPay.checkDeposit };
+        t.after(() => Object.assign(pawaPay, { initiateDeposit: originals.initiate, checkDeposit: originals.check }));
+        const remote = new Map();
+        pawaPay.initiateDeposit = async payload => { remote.set(payload.depositId, { depositId: payload.depositId, status: "ACCEPTED", amount: payload.amount, currency: payload.currency, country: "COD", payer: payload.payer }); return { status: "ACCEPTED" }; };
+        pawaPay.checkDeposit = async id => remote.has(id) ? { status: "FOUND", data: remote.get(id) } : { status: "NOT_FOUND" };
+        ticketPayments.resetProviderCache();
+
+        const passEvent = await prisma.event.create({ data: { org_id: org.org_id, title: "Pass payant", qr_limit: 1, entitlement_type: "EVENT_PASS", entitlement_expires_at: new Date(Date.now() + 86_400_000) } });
+        const form = await registrations.setFormStatus(org.org_id, (await registrations.createForm(org.org_id, { eventId: passEvent.event_id, title: "Quota payant", offers: [{ name: "Entrée", price: "5", currency: "USD", cardTemplateId: "event-ticket" }] })).registration_form_id, "PUBLISHED");
+        const offerId = form.offers[0].registration_offer_id;
+        const checkout = (email, key) => attendeeFor(email, email).then(attendee => ticketPayments.initiate(form.public_slug, { offerId, provider: "VODACOM_MPESA_COD", country: "COD", payerPhone: "0991234567" }, key, attendee));
+
+        const first = (await checkout("quota-a@example.test", "quota-a")).payment;
+        await assert.rejects(checkout("quota-b@example.test", "quota-b"), error => error.code === "OFFER_SOLD_OUT");
+        assert.equal((await registrations.publicForm(form.public_slug)).offers[0].sold_out, true);
+
+        // La réservation expire, un autre acheteur prend la place, puis le premier paiement aboutit trop tard.
+        await prisma.ticketPayment.update({ where: { ticket_payment_id: first.ticket_payment_id }, data: { hold_expires_at: new Date(Date.now() - 1000) } });
+        const second = (await checkout("quota-c@example.test", "quota-c")).payment;
+        remote.set(second.deposit_id, { ...remote.get(second.deposit_id), status: "COMPLETED" });
+        assert.equal((await ticketPayments.reconcile(second.deposit_id)).status, "COMPLETED");
+        remote.set(first.deposit_id, { ...remote.get(first.deposit_id), status: "COMPLETED" });
+        const late = await ticketPayments.reconcile(first.deposit_id);
+        assert.equal(late.status, "REVIEW_REQUIRED");
+        assert.equal(late.failure_code, "EVENT_QR_QUOTA_AFTER_HOLD");
+        assert.equal(await prisma.registration.count({ where: { event_id: passEvent.event_id } }), 1);
+        await prisma.registrationJob.updateMany({ data: { status: "COMPLETED", completed_at: new Date() } });
     });
 });

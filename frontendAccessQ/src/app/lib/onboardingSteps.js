@@ -1,7 +1,5 @@
 import { CalendarPlus, ClipboardList, MapPinned, Palette, QrCode, UserPlus } from "lucide-react";
 
-const REGISTRATION_FORMS_ENABLED = process.env.NEXT_PUBLIC_REGISTRATION_FORMS_ENABLED === "true";
-
 // Les clés correspondent à celles renvoyées par GET /dashboard/onboarding.
 export const onboardingSteps = [
     {
@@ -102,11 +100,8 @@ export const onboardingSteps = [
     }
 ];
 
-// Étapes réellement proposées à l’organisation selon son abonnement et les modules activés.
-export const getVisibleOnboardingSteps = (progress) => onboardingSteps.filter(step => (
-    progress?.available?.[step.key] !== false
-    && (step.key !== "registrations" || REGISTRATION_FORMS_ENABLED)
-));
+// Étapes réellement proposées à l’organisation selon son abonnement et les modules activés (fournis par le backend).
+export const getVisibleOnboardingSteps = (progress) => onboardingSteps.filter(step => progress?.available?.[step.key] !== false);
 
 export const getNextOnboardingStep = (progress) => (
     getVisibleOnboardingSteps(progress).find(step => !progress?.steps?.[step.key]) || null

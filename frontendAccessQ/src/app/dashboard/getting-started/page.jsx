@@ -6,7 +6,6 @@ import { ArrowRight, Check, ChevronDown, Clock, Lightbulb, Loader2, PartyPopper,
 import { apiFetch } from "../../lib/api";
 import { getNextOnboardingStep, getVisibleOnboardingSteps } from "../../lib/onboardingSteps";
 
-const REGISTRATION_FORMS_ENABLED = process.env.NEXT_PUBLIC_REGISTRATION_FORMS_ENABLED === "true";
 
 export default function GettingStartedPage() {
     const [progress, setProgress] = useState(null);
@@ -32,7 +31,7 @@ export default function GettingStartedPage() {
         {/* **************************************** */}
         {/* En-tête du parcours de démarrage */}
         {/* **************************************** */}
-        <header className="aq-page-header"><div><p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-blue-700 dark:text-blue-300">Configuration de l’organisation</p><h1 className="aq-page-title">Lancez votre premier contrôle avec confiance</h1><p className="aq-page-subtitle">Un parcours guidé adapté à votre abonnement pour préparer l’événement{REGISTRATION_FORMS_ENABLED ? ", publier les inscriptions" : ""}, sécuriser les accès et mobiliser votre équipe.</p></div></header>
+        <header className="aq-page-header"><div><p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-blue-700 dark:text-blue-300">Configuration de l’organisation</p><h1 className="aq-page-title">Lancez votre premier contrôle avec confiance</h1><p className="aq-page-subtitle">Un parcours guidé adapté à votre abonnement pour préparer l’événement{progress.available?.registrations ? ", publier les inscriptions" : ""}, sécuriser les accès et mobiliser votre équipe.</p></div></header>
 
         {/* **************************************** */}
         {/* Progression et prochaine action recommandée */}

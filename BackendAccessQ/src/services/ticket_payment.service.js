@@ -12,7 +12,8 @@ const { commissionBpsFor, getTicketingConfig, splitAmount } = require("../config
 const { selectProviderConfiguration, roundForProvider } = require("./payment/policy");
 const { normalizePhoneNumber, maskPhoneNumber, extractPawaPayFailure, publicPaymentFailureMessage } = require("./payment/format");
 const { unwrapDepositStatus, amountsMatch } = require("./payment/reconciliation");
-const { RegistrationError, clean, emailPattern, heldPlaces, isPaidOffer, sha256, snapshotOffer, uuidPattern } = require("./registration.service");
+const { ticketQrAllowance } = require("./organization_quota.service");
+const { RegistrationError, assertTicketQrAvailable, clean, emailPattern, heldPlaces, isPaidOffer, sha256, snapshotOffer, uuidPattern } = require("./registration.service");
 
 const OPEN_STATUSES = ["PENDING", "PROCESSING"];
 const FINAL_STATUSES = ["COMPLETED", "FAILED", "EXPIRED", "REFUNDED", "REVIEW_REQUIRED"];
@@ -152,6 +153,7 @@ const initiate = async (slug, input, submissionKey, attendee) => {
         if (current.capacity !== null && await heldPlaces(tx, current.registration_offer_id, now) >= current.capacity) {
             throw new RegistrationError("Cette offre est complète.", "OFFER_SOLD_OUT", 409);
         }
+        await assertTicketQrAvailable(tx, form, now);
         const commissionBps = commissionBpsFor(form.organization, config);
         const split = splitAmount(current.price, commissionBps, provider.decimals);
         return tx.ticketPayment.create({
@@ -239,11 +241,18 @@ const fulfil = async (paymentId, remote) => {
         const providerFields = { provider_transaction_id: remote.providerTransactionId || null, provider_payload: remote, completed_at: now, failure_code: null, failure_message: null };
 
         await tx.$queryRaw(Prisma.sql`SELECT registration_offer_id FROM registration_offers WHERE registration_offer_id = ${current.registration_offer_id}::uuid FOR UPDATE`);
-        const offer = await tx.registrationOffer.findUnique({ where: { registration_offer_id: current.registration_offer_id } });
-        // Réservation expirée et offre remplie entre-temps : on ne vend pas une place de trop, l'achat part en vérification.
-        if (current.hold_expires_at <= now && offer.capacity !== null && await heldPlaces(tx, offer.registration_offer_id, now) >= offer.capacity) {
-            logger.error("ticket_payment.completed_after_sold_out", { ticket_payment_id: paymentId, org_id: current.org_id });
-            return tx.ticketPayment.update({ where: { ticket_payment_id: paymentId }, data: { ...providerFields, status: "REVIEW_REQUIRED", failure_code: "OFFER_SOLD_OUT_AFTER_HOLD" } });
+        const offer = await tx.registrationOffer.findUnique({ where: { registration_offer_id: current.registration_offer_id }, include: { form: true } });
+        // Réservation expirée et offre ou quota de QR remplis entre-temps : on ne vend pas une place qui ne pourrait
+        // pas être émise, l'achat part en vérification (remboursement depuis la console).
+        if (current.hold_expires_at <= now) {
+            const capacityFull = offer.capacity !== null && await heldPlaces(tx, offer.registration_offer_id, now) >= offer.capacity;
+            const allowance = capacityFull ? null : await ticketQrAllowance(tx, { organizationId: current.org_id, eventId: offer.form.event_id, now });
+            const quotaFull = Boolean(allowance && (allowance.expired || (allowance.remaining !== null && allowance.remaining <= 0)));
+            if (capacityFull || quotaFull) {
+                const failureCode = capacityFull ? "OFFER_SOLD_OUT_AFTER_HOLD" : "EVENT_QR_QUOTA_AFTER_HOLD";
+                logger.error("ticket_payment.completed_after_sold_out", { ticket_payment_id: paymentId, org_id: current.org_id, reason: failureCode });
+                return tx.ticketPayment.update({ where: { ticket_payment_id: paymentId }, data: { ...providerFields, status: "REVIEW_REQUIRED", failure_code: failureCode } });
+            }
         }
         const registration = await tx.registration.create({ data: {
             org_id: current.org_id,

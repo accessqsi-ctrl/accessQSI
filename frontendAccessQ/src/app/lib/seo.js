@@ -1,7 +1,7 @@
 export const SITE_NAME = "AccessQ";
 
 // URL publique du site : sert de base aux liens canoniques et aux images de partage.
-export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+export const SITE_URL = process.env.SITE_URL || "http://localhost:3000";
 
 export const SITE_DESCRIPTION = "Créez des billets et badges QR nominatifs, contrôlez les entrées depuis un smartphone et suivez chaque passage. Offre Découverte gratuite.";
 

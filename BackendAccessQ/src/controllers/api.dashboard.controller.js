@@ -2,6 +2,7 @@ const prisma = require("../prisma/client");
 const { getPlanContextForUser } = require("../utils/planAccess");
 const { PLAN_CAPABILITIES, hasPlanCapability } = require("../config/subscription");
 const scanLogService = require("../services/scan_log.service");
+const { registrationFormsEnabled } = require("../config/features");
 
 const getOnboardingProgress = async (orgId, planContext) => {
     const [areas, models, events, qrs, agents, registrationForms] = await Promise.all([
@@ -15,8 +16,7 @@ const getOnboardingProgress = async (orgId, planContext) => {
     const customModelsAvailable = hasPlanCapability(planContext, PLAN_CAPABILITIES.CUSTOM_CARD_TEMPLATES);
     const steps = { areas: areas > 0, events: events > 0, registrations: registrationForms > 0, qrs: qrs > 0, agents: agents > 0, models: models > 0 };
     // Les formulaires d’inscription publics restent masqués tant que REGISTRATION_FORMS_ENABLED n’est pas à true.
-    const registrationFormsEnabled = process.env.REGISTRATION_FORMS_ENABLED === "true";
-    const available = { areas: true, events: true, registrations: registrationFormsEnabled, qrs: true, agents: true, models: customModelsAvailable };
+    const available = { areas: true, events: true, registrations: registrationFormsEnabled(), qrs: true, agents: true, models: customModelsAvailable };
     const eligibleKeys = Object.keys(steps).filter(key => available[key]);
     const completed = eligibleKeys.filter(key => steps[key]).length;
     const total = eligibleKeys.length;

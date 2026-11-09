@@ -88,6 +88,7 @@ test("le quota QR est propre à l'événement et une suppression ne le restitue 
                 deleted_at: null
             })
         },
+        registration: { count: async () => 0 }, ticketPayment: { count: async () => 0 },
         qrCode: {
             count: async ({ where }) => {
                 qrWhere = where;
@@ -119,6 +120,7 @@ test("une reprise idempotente retrouve le QR avant de réévaluer un quota déso
                 deleted_at: null
             })
         },
+        registration: { count: async () => 0 }, ticketPayment: { count: async () => 0 },
         qrCode: {
             count: async () => { counted = true; return 50; }
         }
@@ -162,6 +164,7 @@ test("deux émissions concurrentes ne consomment pas la même dernière place du
                         deleted_at: null
                     })
                 },
+                registration: { count: async () => 0 }, ticketPayment: { count: async () => 0 },
                 qrCode: { count: async () => activeQrs }
             };
             try {

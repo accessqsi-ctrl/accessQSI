@@ -6,6 +6,7 @@ const { requestHashFor, resolveCardTemplate, createTemplateSnapshot } = require(
 const { getOrganizationPlanContext } = require("../utils/planAccess");
 const { assertRegistrationConfigurationAllowed } = require("./registration_plan.service");
 const { TICKET_CURRENCIES } = require("../config/ticketing");
+const { eventQrAllowance, ticketQrAllowance } = require("./organization_quota.service");
 
 class RegistrationError extends Error {
     constructor(message, code, statusCode = 400) {
@@ -54,6 +55,13 @@ const heldPlaces = async (tx, offerId, now = new Date()) => {
         tx.ticketPayment.count({ where: { registration_offer_id: offerId, registration_id: null, status: { in: ["PENDING", "PROCESSING"] }, hold_expires_at: { gt: now } } })
     ]);
     return registrations + payments;
+};
+
+// La vente s'arrête quand le quota de QR de l'événement est atteint : jamais de billet vendu sans pouvoir être émis.
+const assertTicketQrAvailable = async (tx, form, now) => {
+    const allowance = await ticketQrAllowance(tx, { organizationId: form.org_id, eventId: form.event_id, now });
+    if (allowance.expired) throw new RegistrationError("La billetterie de cet événement est close.", "FORM_CLOSED", 409);
+    if (allowance.remaining !== null && allowance.remaining <= 0) throw new RegistrationError("Cette offre est complète.", "OFFER_SOLD_OUT", 409);
 };
 
 const normalizeOffer = offer => {
@@ -109,6 +117,16 @@ const formInclude = {
 
 const listForms = orgId => prisma.registrationForm.findMany({ where: { org_id: orgId }, include: formInclude, orderBy: { created_at: "desc" } });
 const getForm = (orgId, id) => prisma.registrationForm.findFirst({ where: { registration_form_id: id, org_id: orgId }, include: formInclude });
+
+// Quota de QR de l'événement d'un formulaire, pour l'afficher à l'organisateur.
+const formQrAllowance = async form => {
+    const [organization, event] = await Promise.all([
+        prisma.organization.findUnique({ where: { org_id: form.org_id }, include: { plan: true } }),
+        prisma.event.findUnique({ where: { event_id: form.event_id } })
+    ]);
+    const { planSummary, ...allowance } = await eventQrAllowance(prisma, { organization, event });
+    return allowance;
+};
 
 const createForm = async (orgId, input) => {
     const eventId = Number(input.eventId);
@@ -207,7 +225,15 @@ const publicForm = async slug => {
     if (!form) throw new RegistrationError("Formulaire introuvable.", "FORM_NOT_FOUND", 404);
     const now = new Date();
     const open = form.status === "PUBLISHED" && (!form.opens_at || form.opens_at <= now) && (!form.closes_at || form.closes_at > now);
-    return { ...form, open, offers: form.offers.filter(offer => offer.is_active) };
+    // Une offre est complète quand ses places sont prises ou réservées par un paiement en cours,
+    // ou quand le quota de QR de l'événement est épuisé.
+    const quota = await formQrAllowance(form);
+    const quotaExhausted = quota.remaining !== null && quota.remaining <= 0;
+    const offers = await Promise.all(form.offers.filter(offer => offer.is_active).map(async offer => ({
+        ...offer,
+        sold_out: quotaExhausted || (offer.capacity !== null && await heldPlaces(prisma, offer.registration_offer_id, now) >= offer.capacity)
+    })));
+    return { ...form, open, offers };
 };
 
 const snapshotOffer = async (offer, orgId) => {
@@ -284,6 +310,7 @@ const submit = async (slug, input, submissionKey, attendee) => {
             const held = await heldPlaces(tx, offerId, now);
             if (held >= offer.capacity) throw new RegistrationError("Cette offre est complète.", "OFFER_SOLD_OUT", 409);
         }
+        await assertTicketQrAvailable(tx, form, now);
         const duplicate = await tx.registration.findUnique({ where: { registration_form_id_submission_key_hash: { registration_form_id: form.registration_form_id, submission_key_hash: keyHash } } });
         if (duplicate) {
             if (duplicate.request_hash !== requestHash) throw new RegistrationError("Cette soumission a déjà été utilisée avec d’autres données.", "IDEMPOTENCY_KEY_CONFLICT", 409);
@@ -362,6 +389,12 @@ const reacquireCapacityAndEnqueue = async (orgId, registrationId, type) => prism
             const held = await heldPlaces(tx, registration.registration_offer_id);
             if (held >= registration.offer.capacity) throw new RegistrationError("La capacité est désormais atteinte.", "OFFER_SOLD_OUT", 409);
         }
+        if (!registration.capacity_held) {
+            const allowance = await ticketQrAllowance(tx, { organizationId: registration.org_id, eventId: registration.event_id });
+            if (allowance.expired || (allowance.remaining !== null && allowance.remaining <= 0)) {
+                throw new RegistrationError("Le quota de QR de l’événement est atteint. Augmentez-le avant de relancer l’émission.", "PLAN_QUOTA_EXCEEDED", 409);
+            }
+        }
         await tx.registration.update({ where: { registration_id: registrationId }, data: { status: "PROCESSING", issuance_status: "PENDING", capacity_held: true, capacity_released_at: null, failure_code: null, failure_message: null } });
     }
     if (type === "SEND_PASS_EMAIL" && registration.issuance_status !== "SUCCEEDED") throw new RegistrationError("Le pass n’est pas encore disponible.", "PASS_NOT_AVAILABLE", 409);
@@ -370,4 +403,4 @@ const reacquireCapacityAndEnqueue = async (orgId, registrationId, type) => prism
     return job;
 }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
-module.exports = { RegistrationError, clean, emailPattern, heldPlaces, isPaidOffer, sha256, snapshotOffer, uuidPattern, createForm, getForm, listForms, listRegistrations, publicForm, queueRecovery, reacquireCapacityAndEnqueue, serializePublicRegistration, setFormStatus, submit, updateForm };
+module.exports = { RegistrationError, assertTicketQrAvailable, formQrAllowance, clean, emailPattern, heldPlaces, isPaidOffer, sha256, snapshotOffer, uuidPattern, createForm, getForm, listForms, listRegistrations, publicForm, queueRecovery, reacquireCapacityAndEnqueue, serializePublicRegistration, setFormStatus, submit, updateForm };
