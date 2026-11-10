@@ -11,7 +11,7 @@ const refundBadge = { PENDING: ['badge-blue', 'Envoi en cours'], PROCESSING: ['b
 
 <section class="panel">
     <div class="panel-header"><div><h3>Nouveau reversement</h3><p>Saisissez vous-même le bénéficiaire. Sans organisation, le montant est prélevé sur le solde de la plateforme. L’opérateur Mobile Money est détecté auprès de pawaPay avant l’envoi : si le numéro ne correspond pas au pays, rien n’est envoyé.</p></div></div>
-    <form action="/finance/payouts" method="POST" class="manual-payout-form" data-manual-payout data-password-confirm data-confirm-title="Confirmer le reversement" data-confirm-template="{amount} {currency} vers {phone_number} ({country}), prélevés sur : {org_id}. Saisissez votre mot de passe de super-admin pour valider la transaction.">
+    <form action="/finance/payouts" method="POST" class="manual-payout-form" data-manual-payout data-password-confirm data-confirm-title="Confirmer le reversement" data-confirm-template="{amount} {currency} vers {phone_number} ({country}), prélevés sur : {org_id}. Saisissez votre mot de passe de super-admin pour valider la transaction." autocomplete="off">
         <input type="hidden" name="_csrf" value="<%= user.csrf %>">
         <label class="field"><span class="field-label">Prélevé sur</span>
             <select name="org_id" class="field-input">
@@ -57,10 +57,10 @@ const refundBadge = { PENDING: ['badge-blue', 'Envoi en cours'], PROCESSING: ['b
             <% if (payout.accountRecentlyChanged) { %><span class="badge badge-amber">Compte modifié le <%= date(payout.accountUpdatedAt) %></span><% } %></td>
         <td><%= payout.requested_by.full_name %><div class="cell-subtitle"><%= payout.requested_by.email %></div></td>
         <td class="align-right"><div class="action-row">
-            <form action="/finance/payouts/<%= payout.payout_id %>/approve" method="POST" data-password-confirm data-confirm-title="Valider le reversement" data-confirm-message="<%= `${money(payout.amount, payout.currency)} vers ${payout.phone_number}. Saisissez votre mot de passe de super-admin.` %>">
+            <form action="/finance/payouts/<%= payout.payout_id % autocomplete="off">/approve" method="POST" data-password-confirm data-confirm-title="Valider le reversement" data-confirm-message="<%= `${money(payout.amount, payout.currency)} vers ${payout.phone_number}. Saisissez votre mot de passe de super-admin.` %>">
                 <input type="hidden" name="_csrf" value="<%= user.csrf %>"><button class="action-button success">Valider</button>
             </form>
-            <form action="/finance/payouts/<%= payout.payout_id %>/reject" method="POST" class="action-row" data-password-confirm data-confirm-title="Refuser le reversement" data-confirm-message="Le montant reviendra sur le solde de l’organisateur. Saisissez votre mot de passe de super-admin.">
+            <form action="/finance/payouts/<%= payout.payout_id % autocomplete="off">/reject" method="POST" class="action-row" data-password-confirm data-confirm-title="Refuser le reversement" data-confirm-message="Le montant reviendra sur le solde de l’organisateur. Saisissez votre mot de passe de super-admin.">
                 <input type="hidden" name="_csrf" value="<%= user.csrf %>"><input name="reason" required maxlength="500" placeholder="Motif du refus" class="field-input"><button class="action-button warning">Refuser</button>
             </form>
         </div></td>
@@ -80,7 +80,7 @@ const refundBadge = { PENDING: ['badge-blue', 'Envoi en cours'], PROCESSING: ['b
             <% if (!row.account) { %><span class="action-note">L’organisateur doit enregistrer un compte</span>
             <% } else if (row.payoutInProgress) { %><span class="action-note">Reversement déjà en cours</span>
             <% } else { %>
-            <form action="/finance/organizations/<%= row.orgId %>/payouts" method="POST" class="action-row" data-password-confirm data-confirm-title="Confirmer le reversement" data-confirm-message="<%= `Le montant sera envoyé à ${row.account.phone_number} (${row.account.provider}). Saisissez votre mot de passe de super-admin pour valider la transaction.` %>">
+            <form action="/finance/organizations/<%= row.orgId % autocomplete="off">/payouts" method="POST" class="action-row" data-password-confirm data-confirm-title="Confirmer le reversement" data-confirm-message="<%= `Le montant sera envoyé à ${row.account.phone_number} (${row.account.provider}). Saisissez votre mot de passe de super-admin pour valider la transaction.` %>">
                 <input type="hidden" name="_csrf" value="<%= user.csrf %>"><input type="hidden" name="currency" value="<%= row.currency %>">
                 <input name="amount" inputmode="decimal" placeholder="<%= `${row.balance} (tout)` %>" class="field-input" aria-label="Montant à reverser">
                 <button class="action-button success">Reverser</button>
@@ -101,7 +101,7 @@ const refundBadge = { PENDING: ['badge-blue', 'Envoi en cours'], PROCESSING: ['b
         <td><strong><%= money(payment.amount, payment.currency) %></strong><div class="cell-subtitle"><%= date(payment.completed_at) %></div></td>
         <td><%= payment.failure_code || '—' %><% if (payment.refund?.status === 'FAILED') { %><div class="cell-subtitle">Remboursement précédent échoué : <%= payment.refund.failure_code %></div><% } %></td>
         <td class="align-right">
-            <form action="/finance/ticket-payments/<%= payment.ticket_payment_id %>/refund" method="POST" class="action-row" data-password-confirm data-confirm-title="Rembourser l’acheteur" data-confirm-message="<%= `${money(payment.amount, payment.currency)} seront renvoyés à ${payment.phone_number}. Saisissez votre mot de passe de super-admin.` %>">
+            <form action="/finance/ticket-payments/<%= payment.ticket_payment_id % autocomplete="off">/refund" method="POST" class="action-row" data-password-confirm data-confirm-title="Rembourser l’acheteur" data-confirm-message="<%= `${money(payment.amount, payment.currency)} seront renvoyés à ${payment.phone_number}. Saisissez votre mot de passe de super-admin.` %>">
                 <input type="hidden" name="_csrf" value="<%= user.csrf %>"><input name="reason" required maxlength="500" placeholder="Motif" class="field-input"><button class="action-button danger">Rembourser</button>
             </form>
         </td>

@@ -73,6 +73,11 @@ export default function ScanPage() {
         };
     }, []);
 
+    // Démarrer la caméra se fait en deux temps : la zone vidéo est d'abord affichée, puis la caméra est lancée
+    // dans un effet, une fois l'affichage à jour. Lancée sur une zone encore masquée (par exemple juste après
+    // l'écran « AUTORISÉ »), la caméra prendrait une taille nulle et ne lirait plus aucun QR.
+    const [startPending, setStartPending] = useState(false);
+
     const startScanner = () => {
         if (!window.Html5Qrcode) return;
         if (!selectedEventId) {
@@ -83,10 +88,18 @@ export default function ScanPage() {
             setCameraError("Sélectionnez d'abord la zone de contrôle.");
             return;
         }
-        
-        setIsScanning(true);
-        setCameraError(null);
 
+        setCameraError(null);
+        setIsScanning(true);
+        setStartPending(true);
+    };
+
+    useEffect(() => {
+        if (!startPending || !isScanning || flash) return;
+        setStartPending(false);
+
+        // Une instance arrêtée laisse sa vidéo dans la zone : on la retire avant d'en créer une nouvelle.
+        try { scannerRef.current?.clear(); } catch {}
         const html5QrCode = new window.Html5Qrcode("reader");
         scannerRef.current = html5QrCode;
 
@@ -97,11 +110,14 @@ export default function ScanPage() {
             config,
             onScanSuccess,
             onScanFailure
-        ).catch(err => {
+        ).catch(() => {
             setCameraError("Impossible d'accéder à la caméra. Vérifiez les permissions.");
             setIsScanning(false);
         });
-    };
+    // onScanSuccess est volontairement absent : l'effet ne s'exécute qu'au rendu qui suit la demande de démarrage,
+    // sa fermeture porte donc l'événement et la zone en cours ; le déclarer relancerait l'effet à chaque rendu.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [startPending, isScanning, flash]);
 
     const stopScanner = async () => {
         if (scannerRef.current) {

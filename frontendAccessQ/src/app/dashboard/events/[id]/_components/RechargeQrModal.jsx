@@ -4,7 +4,7 @@ import LoadingBar from "../../../../components/LoadingBar";
 export default function RechargeQrModal({ handleRecharge, qrToRecharge, rechargeAmount, rechargeError, rechargingId, setQrToRecharge, setRechargeAmount }) {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-            <form onSubmit={handleRecharge} className="bg-white dark:bg-slate-950 w-full max-w-md rounded-2xl shadow-2xl p-6 animate-in zoom-in duration-300">
+            <form autoComplete="off" onSubmit={handleRecharge} className="bg-white dark:bg-slate-950 w-full max-w-md rounded-2xl shadow-2xl p-6 animate-in zoom-in duration-300">
                 {rechargingId === qrToRecharge.id && (
                     <LoadingBar label="Recharge en cours" className="mb-5" />
                 )}
@@ -18,7 +18,7 @@ export default function RechargeQrModal({ handleRecharge, qrToRecharge, recharge
 
                 <label className="block mt-5">
                     <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">Passages à ajouter</span>
-                    <input
+                    <input autoComplete="off"
                         type="number"
                         min="1"
                         max="1000000"

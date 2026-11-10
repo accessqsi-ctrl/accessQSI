@@ -267,7 +267,7 @@ export default function AgentsPage() {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                         </svg>
                     </div>
-                    <input
+                    <input autoComplete="off"
                         type="text"
                         placeholder="Rechercher par nom ou email..."
                         value={searchQuery}
@@ -277,13 +277,13 @@ export default function AgentsPage() {
                 </div>
 
                 <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
-                    <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className="px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-950 text-sm text-slate-700 dark:text-slate-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
+                    <select autoComplete="off" value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className="px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-950 text-sm text-slate-700 dark:text-slate-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
                         <option>Tous les rôles</option>
                         <option>Admin</option>
                         <option>Agent</option>
                         <option>Opérateur</option>
                     </select>
-                    <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-950 text-sm text-slate-700 dark:text-slate-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
+                    <select autoComplete="off" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-950 text-sm text-slate-700 dark:text-slate-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
                         <option>Tous les statuts</option>
                         <option>Actif</option>
                         <option>Inactif</option>
@@ -410,7 +410,7 @@ export default function AgentsPage() {
                         <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Inviter un agent</h3>
                         <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">Créez un compte rattaché à votre organisation.</p>
 
-                        <form onSubmit={handleAddAgent} className="space-y-4">
+                        <form autoComplete="off" onSubmit={handleAddAgent} className="space-y-4">
                             {adding && (
                                 <LoadingBar label="Création du compte agent" />
                             )}
@@ -419,7 +419,7 @@ export default function AgentsPage() {
 
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Nom complet *</label>
-                                <input
+                                <input autoComplete="off"
                                     type="text"
                                     required
                                     value={addForm.fullName}
@@ -430,7 +430,7 @@ export default function AgentsPage() {
                             </div>
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Adresse Email *</label>
-                                <input
+                                <input autoComplete="off"
                                     type="email"
                                     required
                                     value={addForm.email}
@@ -442,7 +442,7 @@ export default function AgentsPage() {
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Mot de Passe *</label>
                                 <div className="relative">
-                                    <input
+                                    <input autoComplete="new-password"
                                         type={showPassword ? "text" : "password"}
                                         required
                                         minLength={8}
@@ -465,7 +465,7 @@ export default function AgentsPage() {
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Confirmer le mot de passe *</label>
                                 <div className="relative">
-                                    <input
+                                    <input autoComplete="new-password"
                                         type={showConfirmPassword ? "text" : "password"}
                                         required
                                         minLength={8}
@@ -487,7 +487,7 @@ export default function AgentsPage() {
                             </div>
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Rôle *</label>
-                                <select
+                                <select autoComplete="off"
                                     value={addForm.role}
                                     onChange={(e) => setAddForm({ ...addForm, role: e.target.value })}
                                     className="w-full px-4 py-3 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors text-sm font-medium"

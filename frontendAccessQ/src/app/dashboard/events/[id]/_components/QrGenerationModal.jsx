@@ -33,7 +33,7 @@ export default function QrGenerationModal({ cardTemplates, event, generatedAsset
                     </div>
                 </div>
 
-                <form onSubmit={handleGenerateQr}>
+                <form autoComplete="off" onSubmit={handleGenerateQr}>
                     <div className="max-h-[72vh] overflow-y-auto px-6 py-6 sm:px-8">
                         {generatingQr && (
                             <LoadingBar label="Génération du QR" className="mb-5" />
@@ -96,7 +96,7 @@ export default function QrGenerationModal({ cardTemplates, event, generatedAsset
                                             required
                                             type="text"
                                             name="fullName"
-                                            autoComplete="name"
+                                            autoComplete="off"
                                             maxLength={120}
                                             placeholder="Ex. Jane Smith"
                                             value={qrForm.fullName}
@@ -113,7 +113,7 @@ export default function QrGenerationModal({ cardTemplates, event, generatedAsset
                                         <input
                                             type="email"
                                             inputMode="email"
-                                            autoComplete="email"
+                                            autoComplete="off"
                                             placeholder="nom@domaine.com"
                                             value={qrForm.email}
                                             aria-invalid={showEmailError}
@@ -137,7 +137,7 @@ export default function QrGenerationModal({ cardTemplates, event, generatedAsset
                                         <input
                                             type="tel"
                                             inputMode="tel"
-                                            autoComplete="tel"
+                                            autoComplete="off"
                                             placeholder="+243 812 345 678"
                                             value={qrForm.phone}
                                             aria-invalid={showPhoneError}
@@ -206,7 +206,7 @@ export default function QrGenerationModal({ cardTemplates, event, generatedAsset
                                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-[180px_minmax(0,1fr)]">
                                     <div className="space-y-2">
                                         <label className="text-sm font-semibold text-slate-800 dark:text-slate-100">Niveau</label>
-                            <input
+                            <input autoComplete="off"
                                 type="number"
                                 min="1"
                                 value={qrForm.level}
@@ -241,7 +241,7 @@ export default function QrGenerationModal({ cardTemplates, event, generatedAsset
                                     {qrForm.accessType === 'multi' && (
                                         <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
                                             <label className="text-sm font-semibold text-slate-800 dark:text-slate-100">Nombre de scans</label>
-                                            <input
+                                            <input autoComplete="off"
                                                 type="number"
                                                 min="2"
                                                 value={qrForm.limit}
@@ -255,7 +255,7 @@ export default function QrGenerationModal({ cardTemplates, event, generatedAsset
                                         <label className="text-sm font-semibold text-slate-800 dark:text-slate-100">Limite par période</label>
                                         <div className="flex gap-2">
                                             {qrForm.periodUnit && (
-                                                <input
+                                                <input autoComplete="off"
                                                     type="number"
                                                     min="1"
                                                     max="1000"
@@ -265,7 +265,7 @@ export default function QrGenerationModal({ cardTemplates, event, generatedAsset
                                                     className="w-20 px-3 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all"
                                                 />
                                             )}
-                                            <select
+                                            <select autoComplete="off"
                                                 value={qrForm.periodUnit}
                                                 onChange={(e) => setQrForm({ ...qrForm, periodUnit: e.target.value, periodLimit: qrForm.periodLimit || "1" })}
                                                 className="min-w-0 flex-1 px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all"
@@ -282,7 +282,7 @@ export default function QrGenerationModal({ cardTemplates, event, generatedAsset
 
                                     <div className="space-y-2">
                                         <label className="text-sm font-semibold text-slate-800 dark:text-slate-100">Modèle de carte</label>
-                                        <select
+                                        <select autoComplete="off"
                                             value={selectedCardTemplateId}
                                             onChange={(e) => setSelectedCardTemplateId(e.target.value)}
                                             className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white dark:focus:bg-slate-950 transition-all"
@@ -320,7 +320,7 @@ export default function QrGenerationModal({ cardTemplates, event, generatedAsset
                                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                     <div className="space-y-2">
                                         <label className="text-sm font-semibold text-slate-800 dark:text-slate-100">Valide du</label>
-                                <input
+                                <input autoComplete="off"
                                     type="datetime-local"
                                     value={qrForm.validFrom}
                                     onChange={(e) => setQrForm({ ...qrForm, validFrom: e.target.value })}
@@ -329,7 +329,7 @@ export default function QrGenerationModal({ cardTemplates, event, generatedAsset
                             </div>
                             <div className="space-y-2">
                                         <label className="text-sm font-semibold text-slate-800 dark:text-slate-100">Valide jusqu'au</label>
-                                <input
+                                <input autoComplete="off"
                                     type="datetime-local"
                                     value={qrForm.validUntil}
                                     onChange={(e) => setQrForm({ ...qrForm, validUntil: e.target.value })}

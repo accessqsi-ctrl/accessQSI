@@ -57,7 +57,7 @@ function SalesBalance() {
       pending={payouts.payouts.some(item => item.currency === row.currency && openPayout(item.status))}
       onDone={done} onError={message => setNotice({ ok: false, message })} />)}</div>
     {payouts.payouts.length > 0 && <div className="mt-6 overflow-x-auto"><h3 className="mb-2 text-sm font-bold text-slate-900 dark:text-slate-100">Reversements</h3><table className="w-full min-w-[560px] text-left text-sm"><thead><tr className="aq-table-head"><th className="px-4 py-3">Date</th><th>Montant</th><th>Vers</th><th>État</th><th></th></tr></thead><tbody className="divide-y divide-slate-100 dark:divide-slate-800">{payouts.payouts.map(payout => <tr key={payout.id}>
-      <td className="px-4 py-3">{new Date(payout.createdAt).toLocaleString("fr-FR")}</td><td className="font-semibold">{money(payout.amount, payout.currency)}</td><td>{payout.provider} · {payout.phoneNumber}</td>
+      <td className="px-4 py-3">{new Date(payout.createdAt).toLocaleString("fr-FR")}</td><td className="font-semibold">{money(payout.amount, payout.currency)}</td><td>{payout.providerName || payout.provider} · {payout.phoneNumber}</td>
       <td>{payoutLabels[payout.status] || payout.status}{payout.failureMessage && <span className="block text-xs text-slate-500 dark:text-slate-400">{payout.failureMessage}</span>}</td>
       <td>{payout.status === "REQUESTED" && <button type="button" onClick={() => cancel(payout)} className="text-sm font-bold text-blue-700 dark:text-blue-300">Annuler</button>}</td>
     </tr>)}</tbody></table></div>}
@@ -99,7 +99,7 @@ function BalanceCard({ row, account, pending, onDone, onError }) {
     <p className="text-xs font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">Solde disponible {row.currency}</p>
     <p className="mt-1 text-2xl font-black text-slate-950 dark:text-slate-50">{money(row.balance, row.currency)}</p>
     <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{row.ticketsSold} billet(s) · {money(row.gross, row.currency)} encaissés · {money(row.commission, row.currency)} de commission</p>
-    <p className="mt-3 text-sm text-slate-700 dark:text-slate-300">{account ? <>Reçu sur <strong>{account.provider}</strong> · {account.phoneNumber}</> : "Aucun compte de réception enregistré."}</p>
+    <p className="mt-3 text-sm text-slate-700 dark:text-slate-300">{account ? <>Reçu sur <strong>{account.providerName || account.provider}</strong> · {account.phoneNumber}</> : "Aucun compte de réception enregistré."}</p>
     <div className="mt-3 flex flex-wrap gap-2">
       <button type="button" onClick={() => open("account")} className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-bold dark:border-slate-700 dark:text-slate-200">{account ? "Modifier le compte" : "Ajouter un compte"}</button>
       <button type="button" disabled={!canRequest} onClick={() => open("payout")} title={pending ? "Un reversement est déjà en cours" : undefined} className="aq-button-primary px-3 py-2 text-sm disabled:opacity-45">Demander le reversement</button>

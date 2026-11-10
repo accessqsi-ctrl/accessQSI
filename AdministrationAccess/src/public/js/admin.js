@@ -1,4 +1,10 @@
 (() => {
+    // Console d'administration : pas de saisie automatique du navigateur (mots de passe, numéros, montants).
+    document.querySelectorAll('form').forEach((form) => form.setAttribute('autocomplete', 'off'));
+    document.querySelectorAll('input:not([type="hidden"]), select, textarea').forEach((field) => {
+        field.setAttribute('autocomplete', field.type === 'password' ? 'new-password' : 'off');
+    });
+
     const body = document.body;
     const openButton = document.querySelector('[data-open-menu]');
     const closeButton = document.querySelector('[data-close-menu]');

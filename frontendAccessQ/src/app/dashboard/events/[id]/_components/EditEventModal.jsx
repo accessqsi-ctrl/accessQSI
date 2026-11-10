@@ -29,7 +29,7 @@ export default function EditEventModal({ areas, editError, editForm, handleAreaC
                         />
                     </div>
                     <div className="space-y-3">
-                        <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Zones / Areas *</label>
+                        <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Zones *</label>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto p-1">
                             {loadingAreas ? (
                                 <p className="text-xs text-slate-500 dark:text-slate-400 italic">Chargement...</p>

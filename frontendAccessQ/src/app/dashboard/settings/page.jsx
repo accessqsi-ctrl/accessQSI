@@ -255,7 +255,7 @@ export default function SettingsPage() {
                             <h2 className="font-bold text-slate-900 dark:text-white">Informations Personnelles</h2>
                         </div>
                         <div className="p-6 space-y-6">
-                            <form onSubmit={handleUpdateProfile} className="space-y-4">
+                            <form autoComplete="off" onSubmit={handleUpdateProfile} className="space-y-4">
                                 {profileLoading && (
                                     <LoadingBar label="Mise à jour du profil" />
                                 )}
@@ -271,7 +271,7 @@ export default function SettingsPage() {
                                 <div className="grid grid-cols-1 gap-4">
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Nom Complet</label>
-                                        <input
+                                        <input autoComplete="off"
                                             type="text"
                                             value={profileForm.fullName}
                                             onChange={(e) => setProfileForm({...profileForm, fullName: e.target.value})}
@@ -280,7 +280,7 @@ export default function SettingsPage() {
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Adresse Email</label>
-                                        <input
+                                        <input autoComplete="off"
                                             type="email"
                                             value={profileForm.email}
                                             onChange={(e) => setProfileForm({...profileForm, email: e.target.value})}
@@ -319,7 +319,7 @@ export default function SettingsPage() {
                             <h2 className="font-bold text-slate-900 dark:text-white">Mot de Passe</h2>
                         </div>
                         <div className="p-6 space-y-6">
-                            <form onSubmit={handleUpdatePassword} className="space-y-4">
+                            <form autoComplete="off" onSubmit={handleUpdatePassword} className="space-y-4">
                                 {pwdLoading && (
                                     <LoadingBar label="Changement du mot de passe" />
                                 )}
@@ -334,7 +334,7 @@ export default function SettingsPage() {
                                 
                                 <div className="space-y-2">
                                     <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Mot de passe actuel</label>
-                                    <input
+                                    <input autoComplete="new-password"
                                         type="password"
                                         value={pwdForm.currentPassword}
                                         onChange={(e) => setPwdForm({...pwdForm, currentPassword: e.target.value})}
@@ -344,7 +344,7 @@ export default function SettingsPage() {
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Nouveau mot de passe</label>
-                                        <input
+                                        <input autoComplete="new-password"
                                             type="password"
                                             value={pwdForm.newPassword}
                                             onChange={(e) => setPwdForm({...pwdForm, newPassword: e.target.value})}
@@ -353,7 +353,7 @@ export default function SettingsPage() {
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Confirmer</label>
-                                        <input
+                                        <input autoComplete="new-password"
                                             type="password"
                                             value={pwdForm.confirmPassword}
                                             onChange={(e) => setPwdForm({...pwdForm, confirmPassword: e.target.value})}
@@ -385,7 +385,7 @@ export default function SettingsPage() {
                                 <h2 className="font-bold text-slate-900 dark:text-white">Organisation</h2>
                             </div>
                             <div className="p-6 space-y-6">
-                                <form onSubmit={handleUpdateOrg} className="space-y-4">
+                                <form autoComplete="off" onSubmit={handleUpdateOrg} className="space-y-4">
                                     {orgLoading && (
                                         <LoadingBar label="Mise à jour de l'organisation" />
                                     )}
@@ -400,7 +400,7 @@ export default function SettingsPage() {
                                     
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Nom de l'Organisation</label>
-                                        <input
+                                        <input autoComplete="off"
                                             type="text"
                                             value={orgForm.name}
                                             onChange={(e) => setOrgForm({ name: e.target.value })}
@@ -473,7 +473,7 @@ export default function SettingsPage() {
                                 Veuillez taper exactement la phrase suivante pour confirmer :<br/>
                                 <strong className="select-all block mt-2 font-mono text-center">"{requiredDeleteText}"</strong>
                             </div>
-                            <input
+                            <input autoComplete="off"
                                 type="text"
                                 value={deleteInput}
                                 onChange={(e) => {

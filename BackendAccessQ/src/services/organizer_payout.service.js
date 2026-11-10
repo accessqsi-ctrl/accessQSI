@@ -49,20 +49,36 @@ const listPayoutProviders = async () => (await payoutProviders()).map(provider =
     currency: provider.currency
 }));
 
-const serializeAccount = account => ({
+// Nom affiché de l'opérateur (« Vodacom M-Pesa ») ; le code pawaPay reste disponible dans `provider`.
+const providerNameOf = (names, code) => names?.get(code) || code;
+
+// Noms des opérateurs d'après la configuration pawaPay en cache. Sans réponse de pawaPay, on garde les codes :
+// l'affichage du solde ne doit jamais échouer pour un libellé.
+const providerNames = async () => {
+    try {
+        return new Map((await payoutProviders()).map(provider => [provider.provider, provider.displayName || provider.provider]));
+    } catch (error) {
+        logger.warn("payout.provider_names_unavailable", { pawapay_failure_code: extractPawaPayFailure(error.responseData).code });
+        return new Map();
+    }
+};
+
+const serializeAccount = (account, names) => ({
     currency: account.currency,
     country: account.country,
     provider: account.provider,
+    providerName: providerNameOf(names, account.provider),
     phoneNumber: maskPhoneNumber(account.phone_number),
     updatedAt: account.updated_at
 });
 
-const serializePayout = payout => ({
+const serializePayout = (payout, names) => ({
     id: payout.payout_id,
     status: payout.status,
     amount: String(payout.amount),
     currency: payout.currency,
     provider: payout.provider,
+    providerName: providerNameOf(names, payout.provider),
     phoneNumber: maskPhoneNumber(payout.phone_number),
     failureMessage: payout.status === "REJECTED"
         ? payout.failure_message || "Demande refusée par AccessQ."
@@ -82,7 +98,8 @@ const getOverview = async orgId => {
         prisma.organizerPayoutAccount.findMany({ where: { org_id: orgId }, orderBy: { currency: "asc" } }),
         prisma.organizerPayout.findMany({ where: { org_id: orgId }, orderBy: { created_at: "desc" }, take: 20 })
     ]);
-    return { accounts: accounts.map(serializeAccount), payouts: payouts.map(serializePayout) };
+    const names = accounts.length || payouts.length ? await providerNames() : null;
+    return { accounts: accounts.map(account => serializeAccount(account, names)), payouts: payouts.map(payout => serializePayout(payout, names)) };
 };
 
 const normalizeCurrency = value => {
@@ -108,7 +125,7 @@ const setAccount = async (orgId, userId, input = {}) => {
         update: data
     });
     logger.info("payout.account_updated", { org_id: orgId, user_id: userId, currency, provider: provider.provider });
-    return serializeAccount(account);
+    return serializeAccount(account, new Map([[provider.provider, provider.displayName || provider.provider]]));
 };
 
 const requestPayout = async (orgId, userId, input = {}) => {
@@ -152,7 +169,7 @@ const requestPayout = async (orgId, userId, input = {}) => {
         try {
             const payout = await run();
             logger.info("payout.requested", { org_id: orgId, user_id: userId, payout_id: payout.payout_id, currency });
-            return serializePayout(payout);
+            return serializePayout(payout, new Map([[provider.provider, provider.displayName || provider.provider]]));
         } catch (error) {
             if (error?.code !== "P2034" || attempt === 3) throw error;
         }

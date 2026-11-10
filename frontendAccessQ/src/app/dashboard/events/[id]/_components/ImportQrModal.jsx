@@ -11,7 +11,7 @@ export default function ImportQrModal({ handleDownloadTemplate, handleImportCSV,
                 <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Importer des QR Codes</h2>
                 <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">Téléchargez un fichier CSV pour générer des codes QR en masse.</p>
 
-                <form onSubmit={handleImportCSV} className="space-y-4">
+                <form autoComplete="off" onSubmit={handleImportCSV} className="space-y-4">
                     {importing && (
                         <LoadingBar label="Import CSV et génération des QR" />
                     )}

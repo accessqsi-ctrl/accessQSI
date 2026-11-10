@@ -1,4 +1,5 @@
-const rateLimit = require("express-rate-limit");
+const { rateLimit, ipKeyGenerator } = require("express-rate-limit");
+const { normalizeEmail } = require("../utils/account");
 
 // Limiteur global (filet de sécurité contre les abus et attaques DDoS basiques)
 // Appliqué à toutes les routes dans app.js. Les limites sont généreuses pour ne pas
@@ -13,14 +14,29 @@ const generalLimiter = rateLimit({
     skip: () => process.env.NODE_ENV !== "production",
 });
 
-// Limiteur pour les routes d'authentification (anti brute-force)
-const loginLimiter = rateLimit({
+// Limiteurs de connexion (anti brute-force). Seuls les échecs comptent : une équipe entière qui se connecte depuis
+// le même réseau (Wi-Fi du lieu, partage de connexion) partage une seule adresse IP et ne doit pas se bloquer.
+// - Par compte : 10 échecs par quart d'heure pour une même adresse e-mail depuis une même IP.
+// - Par IP : 50 échecs par quart d'heure, toutes adresses confondues (balayage de comptes).
+const loginMessage = { success: false, message: "Trop de tentatives de connexion, veuillez réessayer après 15 minutes." };
+const loginAccountLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 10,
-    message: { success: false, message: "Trop de tentatives de connexion, veuillez réessayer après 15 minutes." },
+    skipSuccessfulRequests: true,
+    keyGenerator: (req) => `${ipKeyGenerator(req.ip)}|${normalizeEmail(req.body?.email)}`,
+    message: loginMessage,
     standardHeaders: false,
     legacyHeaders: false,
 });
+const loginIpLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 50,
+    skipSuccessfulRequests: true,
+    message: loginMessage,
+    standardHeaders: false,
+    legacyHeaders: false,
+});
+const loginLimiter = [loginIpLimiter, loginAccountLimiter];
 
 // Limiteur pour la création de comptes (anti spam d'inscriptions)
 // Plus souple que le loginLimiter, car le risque est le spam plutôt que le brute-force.
