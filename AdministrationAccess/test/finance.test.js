@@ -156,7 +156,7 @@ test('a super-admin payout needs the password and goes only to the registered ac
     assert.equal(created.payouts.length, 0);
 });
 
-test('a manual payout takes the typed recipient and checks the organization or platform balance', async () => {
+test('a manual payout takes the typed recipient and operator and checks the organization or platform balance', async () => {
     const { Prisma } = require('@prisma/client');
     const { normalizeRecipientPhone, findCountry } = require(path.join(process.cwd(), 'src/services/payout-recipient.service.js'));
     assert.equal(normalizeRecipientPhone('0991234567', findCountry('COD')), '243991234567');
@@ -168,7 +168,7 @@ test('a manual payout takes the typed recipient and checks the organization or p
     const created = { payouts: [], ledger: [] };
     let state;
     const reset = (overrides = {}) => {
-        state = { orgExists: true, open: null, orgBalance: '22.81', subscriptions: '100', commissions: '5', platformPaid: '30', ...overrides };
+        state = { orgExists: true, open: null, orgBalance: '22.81', subscriptions: '100', commissions: '5', platformPaid: '30', wallets: [], ...overrides };
         created.payouts.length = 0;
         created.ledger.length = 0;
     };
@@ -177,13 +177,15 @@ test('a manual payout takes the typed recipient and checks the organization or p
         $queryRaw: async () => (state.orgExists ? [{ org_id: 3 }] : []),
         $executeRaw: async () => 1,
         payment: { groupBy: async () => sumRow('amount', state.subscriptions) },
-        ticketPayment: { groupBy: async () => sumRow('commission_amount', state.commissions) },
+        ticketPayment: { groupBy: async ({ _sum }) => (_sum.commission_amount ? sumRow('commission_amount', state.commissions) : []) },
+        pawaPayWalletBalance: { findMany: async () => state.wallets },
         organizerPayout: {
-            groupBy: async () => sumRow('amount', state.platformPaid),
+            groupBy: async ({ where }) => (where.status.notIn ? sumRow('amount', state.platformPaid) : []),
             findFirst: async () => state.open,
             create: async ({ data }) => { created.payouts.push(data); return { ...data, payout_id: 'p-2' }; }
         },
         organizerLedgerEntry: {
+            groupBy: async () => [{ org_id: 3, currency: 'USD', _sum: { amount: new Prisma.Decimal(state.orgBalance) } }],
             aggregate: async () => ({ _sum: { amount: new Prisma.Decimal(state.orgBalance) } }),
             create: async ({ data }) => { created.ledger.push(data); }
         }
@@ -194,7 +196,7 @@ test('a manual payout takes the typed recipient and checks the organization or p
     });
     const pay = async (body) => {
         const res = response();
-        await controller.createManualPayout({ body: { superAdminPassword: 'correct-password', country: 'COD', currency: 'USD', amount: '10', phone_number: '0997654321', note: 'Prestataire', ...body }, user: { id: 1 } }, res);
+        await controller.createManualPayout({ body: { superAdminPassword: 'correct-password', country: 'COD', provider: 'ORANGE_COD', currency: 'USD', amount: '10', phone_number: '0997654321', note: 'Prestataire', ...body }, user: { id: 1 } }, res);
         return res.destination;
     };
 
@@ -203,13 +205,19 @@ test('a manual payout takes the typed recipient and checks the organization or p
     assert.match(await pay({}), /success=/);
     assert.equal(created.payouts[0].org_id, null);
     assert.equal(created.payouts[0].phone_number, '243997654321');
-    assert.equal(created.payouts[0].provider, null);
+    assert.equal(created.payouts[0].provider, 'ORANGE_COD');
     assert.equal(created.payouts[0].manual_recipient, true);
     assert.equal(created.payouts[0].status, 'APPROVED');
     assert.equal(created.ledger.length, 0);
     reset();
     assert.match(await pay({ amount: '75.01' }), /solde%20de%20la%20plateforme/);
     assert.equal(created.payouts.length, 0);
+    // Solde réel : wallet 90 − 22,81 dus à l'organisation = 67,19 USD (frais pawaPay déduits) : plafond retenu.
+    reset({ wallets: [{ country: 'COD', currency: 'USD', provider: '', balance: new Prisma.Decimal('90'), fetched_at: new Date() }] });
+    assert.match(await pay({ amount: '70' }), /solde%20r%C3%A9el/);
+    assert.equal(created.payouts.length, 0);
+    reset({ wallets: [{ country: 'COD', currency: 'USD', provider: '', balance: new Prisma.Decimal('90'), fetched_at: new Date() }] });
+    assert.match(await pay({ amount: '67.19' }), /success=/);
 
     // Organisation : débit de son solde.
     reset();
@@ -232,5 +240,40 @@ test('a manual payout takes the typed recipient and checks the organization or p
     assert.match(await pay({ phone_number: '12' }), /Num%C3%A9ro%20invalide/);
     assert.match(await pay({ note: '' }), /motif/);
     assert.match(await pay({ org_id: '3abc' }), /Organisation%20invalide/);
+    assert.match(await pay({ provider: '' }), /op%C3%A9rateur/);
+    assert.match(await pay({ provider: 'ORANGE_CIV' }), /op%C3%A9rateur/);
     assert.equal(created.payouts.length, 0);
+});
+
+test('the real platform balance subtracts organizer balances and pending operations from the pawaPay wallet', async () => {
+    const { Prisma } = require('@prisma/client');
+    const D = (value) => new Prisma.Decimal(value);
+    const fetchedAt = new Date('2026-11-11T10:00:00Z');
+    const client = {
+        pawaPayWalletBalance: { findMany: async () => [
+            { country: 'COD', currency: 'USD', provider: '', balance: D('150'), fetched_at: fetchedAt },
+            { country: 'COD', currency: 'CDF', provider: '', balance: D('1000'), fetched_at: fetchedAt }
+        ] },
+        organizerLedgerEntry: { groupBy: async () => [
+            { org_id: 1, currency: 'USD', _sum: { amount: D('40') } },
+            { org_id: 2, currency: 'USD', _sum: { amount: D('0') } }
+        ] },
+        organizerPayout: { groupBy: async () => [{ currency: 'USD', _sum: { amount: D('10') } }] },
+        ticketPayment: { groupBy: async () => [{ currency: 'USD', _sum: { amount: D('5') } }] }
+    };
+    const controller = loadController(client);
+    const rows = await controller.loadPlatformReconciliation(
+        [{ currency: 'USD', balance: D('100') }, { currency: 'XOF', balance: D('500') }],
+        client,
+        fetchedAt.getTime() + 60_000
+    );
+    const usd = rows.find((row) => row.currency === 'USD');
+    assert.equal(usd.available.toString(), '95');
+    assert.equal(usd.gap.toString(), '-5');
+    assert.equal(usd.stale, false);
+    assert.equal(rows.find((row) => row.currency === 'CDF').computed.toString(), '0');
+    const xof = rows.find((row) => row.currency === 'XOF');
+    assert.equal(xof.wallet, null);
+    assert.equal(xof.available, null);
+    assert.equal(xof.stale, true);
 });

@@ -230,8 +230,26 @@ const applyRemotePayout = async (payout, remote) => {
     }
 };
 
-// Destinataire saisi par un super-admin : l'opérateur est demandé à pawaPay, puis contrôlé
-// (pays saisi, devise, reversements actifs, décimales). Une erreur réseau laisse le reversement « validé » pour le prochain passage.
+// Opérateur d'un reversement saisi par un super-admin : actif en reversement pour ce pays et cette devise, décimales acceptées.
+const manualProviderFailure = async (payout, providerCode) => {
+    const provider = (await payoutProviders()).find(item => item.provider === providerCode && item.currency === payout.currency);
+    const amount = new Prisma.Decimal(payout.amount).toString();
+    if (!provider) return { code: "PROVIDER_NOT_AVAILABLE", message: `${providerCode} n’accepte pas les reversements en ${payout.currency}.` };
+    if (provider.country && provider.country !== payout.country) return { code: "COUNTRY_MISMATCH", message: `${providerCode} opère en ${provider.country}, pas ${payout.country}.` };
+    if (roundForProvider(amount, provider.decimals) !== Number(amount)) return { code: "INVALID_AMOUNT", message: `${providerCode} n’accepte pas ce nombre de décimales.` };
+    return null;
+};
+
+// Opérateur choisi par le super-admin : envoyé tel quel (pas de détection, un numéro porté serait mal identifié), après contrôle.
+const checkManualProvider = async payout => {
+    const failure = await manualProviderFailure(payout, payout.provider);
+    if (!failure) return payout;
+    await failPayout(payout, failure, null, ["APPROVED"]);
+    return null;
+};
+
+// Destinataire saisi sans opérateur (reversements créés avant le choix de l'opérateur) : l'opérateur est demandé à pawaPay,
+// puis contrôlé. Une erreur réseau laisse le reversement « validé » pour le prochain passage.
 const resolveManualRecipient = async payout => {
     let prediction;
     try {
@@ -241,14 +259,10 @@ const resolveManualRecipient = async payout => {
         await failPayout(payout, { code: "INVALID_PHONE_NUMBER", message: "Numéro refusé par pawaPay." }, error.responseData, ["APPROVED"]);
         return null;
     }
-    const provider = (await payoutProviders()).find(item => item.provider === prediction?.provider && item.currency === payout.currency);
     let failure = null;
     if (!prediction?.provider) failure = { code: "PROVIDER_NOT_DETECTED", message: "Aucun opérateur Mobile Money trouvé pour ce numéro." };
     else if (prediction.country && prediction.country !== payout.country) failure = { code: "COUNTRY_MISMATCH", message: `Ce numéro relève du pays ${prediction.country}, pas ${payout.country}.` };
-    else if (!provider) failure = { code: "PROVIDER_NOT_AVAILABLE", message: `${prediction.provider} n’accepte pas les reversements en ${payout.currency}.` };
-    else if (roundForProvider(new Prisma.Decimal(payout.amount).toString(), provider.decimals) !== Number(new Prisma.Decimal(payout.amount).toString())) {
-        failure = { code: "INVALID_AMOUNT", message: `${prediction.provider} n’accepte pas ce nombre de décimales.` };
-    }
+    else failure = await manualProviderFailure(payout, prediction.provider);
     if (failure) {
         await failPayout(payout, failure, prediction, ["APPROVED"]);
         return null;
@@ -264,7 +278,9 @@ const resolveManualRecipient = async payout => {
 };
 
 const submitPayout = async initial => {
-    const payout = initial.provider ? initial : await resolveManualRecipient(initial);
+    const payout = !initial.manual_recipient ? initial
+        : initial.provider ? await checkManualProvider(initial)
+            : await resolveManualRecipient(initial);
     if (!payout) return;
     const claimed = await prisma.organizerPayout.updateMany({ where: { payout_id: payout.payout_id, status: "APPROVED" }, data: { status: "SUBMITTING", submitted_at: new Date() } });
     if (claimed.count !== 1) return;

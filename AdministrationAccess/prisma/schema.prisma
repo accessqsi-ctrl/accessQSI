@@ -414,6 +414,20 @@ model TicketPayment {
 }
 
 // Journal en ajout seul des sommes dues à l'organisateur. Le solde est la somme par devise.
+// Dernier relevé des wallets pawaPay (remplacé entier à chaque relevé) : solde réel, frais et ajustements compris.
+model PawaPayWalletBalance {
+  wallet_balance_id String   @id @default(uuid()) @db.Uuid
+  country           String   @db.VarChar(3)
+  currency          String   @db.VarChar(3)
+  // Vide pour un wallet commun à tous les opérateurs du pays.
+  provider          String   @default("")
+  balance           Decimal  @db.Decimal(18, 2)
+  fetched_at        DateTime
+
+  @@unique([country, currency, provider])
+  @@map("pawapay_wallet_balances")
+}
+
 model OrganizerLedgerEntry {
   ledger_entry_id   String           @id @default(uuid()) @db.Uuid
   org_id            Int

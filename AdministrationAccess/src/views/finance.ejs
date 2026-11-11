@@ -10,8 +10,8 @@ const refundBadge = { PENDING: ['badge-blue', 'Envoi en cours'], PROCESSING: ['b
 <% if (error) { %><div class="alert alert-error" role="alert"><%= error %></div><% } %><% if (success) { %><div class="alert alert-success" role="status"><%= success %></div><% } %>
 
 <section class="panel">
-    <div class="panel-header"><div><h3>Nouveau reversement</h3><p>Saisissez vous-même le bénéficiaire. Sans organisation, le montant est prélevé sur le solde de la plateforme. L’opérateur Mobile Money est détecté auprès de pawaPay avant l’envoi : si le numéro ne correspond pas au pays, rien n’est envoyé.</p></div></div>
-    <form action="/finance/payouts" method="POST" class="manual-payout-form" data-manual-payout data-password-confirm data-confirm-title="Confirmer le reversement" data-confirm-template="{amount} {currency} vers {phone_number} ({country}), prélevés sur : {org_id}. Saisissez votre mot de passe de super-admin pour valider la transaction." autocomplete="off">
+    <div class="panel-header"><div><h3>Nouveau reversement</h3><p>Saisissez vous-même le bénéficiaire. Sans organisation, le montant est prélevé sur le solde de la plateforme. Choisissez l’opérateur Mobile Money sur lequel le numéro est réellement enregistré (attention aux numéros portés) : c’est lui qui recevra l’envoi.</p></div></div>
+    <form action="/finance/payouts" method="POST" class="manual-payout-form" data-manual-payout data-password-confirm data-confirm-title="Confirmer le reversement" data-confirm-template="{amount} {currency} vers {phone_number} ({provider}, {country}), prélevés sur : {org_id}. Saisissez votre mot de passe de super-admin pour valider la transaction." autocomplete="off">
         <input type="hidden" name="_csrf" value="<%= user.csrf %>">
         <label class="field"><span class="field-label">Prélevé sur</span>
             <select name="org_id" class="field-input">
@@ -21,6 +21,11 @@ const refundBadge = { PENDING: ['badge-blue', 'Envoi en cours'], PROCESSING: ['b
         <label class="field"><span class="field-label">Pays</span>
             <select name="country" required class="field-input" data-country-select>
                 <% payoutCountries.forEach(country => { %><option value="<%= country.code %>" data-currencies="<%= country.currencies.join(',') %>" data-prefix="<%= country.prefix %>"><%= country.name %> (+<%= country.prefix %>)</option><% }) %>
+            </select></label>
+        <label class="field"><span class="field-label">Opérateur</span>
+            <select name="provider" required class="field-input" data-provider-select>
+                <option value="">Choisir l’opérateur…</option>
+                <% payoutCountries.forEach(country => { country.providers.forEach(provider => { %><option value="<%= provider.code %>" data-country="<%= country.code %>"><%= provider.name %></option><% }) }) %>
             </select></label>
         <label class="field"><span class="field-label">Devise</span>
             <select name="currency" required class="field-input" data-currency-select>
@@ -34,16 +39,20 @@ const refundBadge = { PENDING: ['badge-blue', 'Envoi en cours'], PROCESSING: ['b
 </section>
 
 <section class="panel">
-    <div class="panel-header"><div><h3>Solde de la plateforme</h3><p>Abonnements et pass payés + commissions sur les billets vendus − reversements de la plateforme. Les frais pawaPay ne sont pas déduits : vérifiez le solde réel de votre compte pawaPay avant un gros reversement.</p></div></div>
-    <div class="table-wrap"><table class="data-table"><thead><tr><th>Devise</th><th>Abonnements et pass</th><th>Commissions billetterie</th><th>Déjà reversé</th><th class="align-right">Disponible</th></tr></thead><tbody>
-    <% platformBalances.forEach(row => { %><tr>
+    <div class="panel-header"><div><h3>Solde de la plateforme</h3><p>Le solde calculé vient de la base AccessQ et ne tient pas compte des frais pawaPay. Le solde réel part du wallet pawaPay, relevé toutes les 5 minutes : on en retire ce qui est dû aux organisateurs, les reversements pas encore envoyés et les achats à vérifier ou à rembourser. Un reversement de la plateforme ne peut pas dépasser le plus petit des deux.</p></div></div>
+    <div class="table-wrap"><table class="data-table"><thead><tr><th>Devise</th><th>Calculé AccessQ</th><th>Wallet pawaPay</th><th>Dû aux organisateurs</th><th>En attente</th><th class="align-right">Réellement disponible</th><th class="align-right">Écart (frais…)</th></tr></thead><tbody>
+    <% reconciliation.forEach(row => { const platform = platformBalances.find(item => item.currency === row.currency); %><tr>
         <td><strong><%= row.currency %></strong></td>
-        <td><%= money(row.subscriptions, row.currency) %></td>
-        <td><%= money(row.commissions, row.currency) %></td>
-        <td><%= money(row.payouts, row.currency) %></td>
-        <td class="align-right"><strong><%= money(row.balance, row.currency) %></strong></td>
+        <td><%= money(row.computed, row.currency) %><% if (platform) { %><div class="cell-subtitle">Abonnements <%= money(platform.subscriptions, row.currency) %> · commissions <%= money(platform.commissions, row.currency) %> · reversé <%= money(platform.payouts, row.currency) %></div><% } %></td>
+        <td><% if (row.wallet === null) { %><span class="badge badge-slate">Aucun relevé</span><% } else { %><%= money(row.wallet, row.currency) %>
+            <div class="cell-subtitle"><%= row.wallets.map(wallet => `${wallet.country}${wallet.provider ? ' ' + wallet.provider : ''} : ${money(wallet.balance, row.currency)}`).join(' · ') %></div>
+            <% if (row.stale) { %><span class="badge badge-amber">Relevé du <%= date(row.fetchedAt) %></span><% } else { %><div class="cell-subtitle">Relevé le <%= date(row.fetchedAt) %></div><% } %><% } %></td>
+        <td><%= money(row.owedToOrganizers, row.currency) %></td>
+        <td><%= money(row.pendingPayouts.plus(row.reservedPayments), row.currency) %><div class="cell-subtitle">Reversements <%= money(row.pendingPayouts, row.currency) %> · achats <%= money(row.reservedPayments, row.currency) %></div></td>
+        <td class="align-right"><strong><%= row.available === null ? '—' : money(row.available, row.currency) %></strong></td>
+        <td class="align-right"><% if (row.gap === null) { %>—<% } else { %><span class="badge <%= row.gap.lt(0) ? 'badge-amber' : 'badge-slate' %>"><%= row.gap.gt(0) ? '+' : '' %><%= money(row.gap, row.currency) %></span><% } %></td>
     </tr><% }) %>
-    <% if (!platformBalances.length) { %><tr><td colspan="5" class="empty-state">Aucun encaissement pour l’instant.</td></tr><% } %>
+    <% if (!reconciliation.length) { %><tr><td colspan="7" class="empty-state">Aucun encaissement pour l’instant.</td></tr><% } %>
     </tbody></table></div>
 </section>
 
@@ -57,10 +66,10 @@ const refundBadge = { PENDING: ['badge-blue', 'Envoi en cours'], PROCESSING: ['b
             <% if (payout.accountRecentlyChanged) { %><span class="badge badge-amber">Compte modifié le <%= date(payout.accountUpdatedAt) %></span><% } %></td>
         <td><%= payout.requested_by.full_name %><div class="cell-subtitle"><%= payout.requested_by.email %></div></td>
         <td class="align-right"><div class="action-row">
-            <form action="/finance/payouts/<%= payout.payout_id % autocomplete="off">/approve" method="POST" data-password-confirm data-confirm-title="Valider le reversement" data-confirm-message="<%= `${money(payout.amount, payout.currency)} vers ${payout.phone_number}. Saisissez votre mot de passe de super-admin.` %>">
+            <form action="/finance/payouts/<%= payout.payout_id %>/approve" method="POST" data-password-confirm data-confirm-title="Valider le reversement" data-confirm-message="<%= `${money(payout.amount, payout.currency)} vers ${payout.phone_number}. Saisissez votre mot de passe de super-admin.` %>" autocomplete="off">
                 <input type="hidden" name="_csrf" value="<%= user.csrf %>"><button class="action-button success">Valider</button>
             </form>
-            <form action="/finance/payouts/<%= payout.payout_id % autocomplete="off">/reject" method="POST" class="action-row" data-password-confirm data-confirm-title="Refuser le reversement" data-confirm-message="Le montant reviendra sur le solde de l’organisateur. Saisissez votre mot de passe de super-admin.">
+            <form action="/finance/payouts/<%= payout.payout_id %>/reject" method="POST" class="action-row" data-password-confirm data-confirm-title="Refuser le reversement" data-confirm-message="Le montant reviendra sur le solde de l’organisateur. Saisissez votre mot de passe de super-admin." autocomplete="off">
                 <input type="hidden" name="_csrf" value="<%= user.csrf %>"><input name="reason" required maxlength="500" placeholder="Motif du refus" class="field-input"><button class="action-button warning">Refuser</button>
             </form>
         </div></td>
@@ -80,7 +89,7 @@ const refundBadge = { PENDING: ['badge-blue', 'Envoi en cours'], PROCESSING: ['b
             <% if (!row.account) { %><span class="action-note">L’organisateur doit enregistrer un compte</span>
             <% } else if (row.payoutInProgress) { %><span class="action-note">Reversement déjà en cours</span>
             <% } else { %>
-            <form action="/finance/organizations/<%= row.orgId % autocomplete="off">/payouts" method="POST" class="action-row" data-password-confirm data-confirm-title="Confirmer le reversement" data-confirm-message="<%= `Le montant sera envoyé à ${row.account.phone_number} (${row.account.provider}). Saisissez votre mot de passe de super-admin pour valider la transaction.` %>">
+            <form action="/finance/organizations/<%= row.orgId %>/payouts" method="POST" class="action-row" data-password-confirm data-confirm-title="Confirmer le reversement" data-confirm-message="<%= `Le montant sera envoyé à ${row.account.phone_number} (${row.account.provider}). Saisissez votre mot de passe de super-admin pour valider la transaction.` %>" autocomplete="off">
                 <input type="hidden" name="_csrf" value="<%= user.csrf %>"><input type="hidden" name="currency" value="<%= row.currency %>">
                 <input name="amount" inputmode="decimal" placeholder="<%= `${row.balance} (tout)` %>" class="field-input" aria-label="Montant à reverser">
                 <button class="action-button success">Reverser</button>
@@ -101,7 +110,7 @@ const refundBadge = { PENDING: ['badge-blue', 'Envoi en cours'], PROCESSING: ['b
         <td><strong><%= money(payment.amount, payment.currency) %></strong><div class="cell-subtitle"><%= date(payment.completed_at) %></div></td>
         <td><%= payment.failure_code || '—' %><% if (payment.refund?.status === 'FAILED') { %><div class="cell-subtitle">Remboursement précédent échoué : <%= payment.refund.failure_code %></div><% } %></td>
         <td class="align-right">
-            <form action="/finance/ticket-payments/<%= payment.ticket_payment_id % autocomplete="off">/refund" method="POST" class="action-row" data-password-confirm data-confirm-title="Rembourser l’acheteur" data-confirm-message="<%= `${money(payment.amount, payment.currency)} seront renvoyés à ${payment.phone_number}. Saisissez votre mot de passe de super-admin.` %>">
+            <form action="/finance/ticket-payments/<%= payment.ticket_payment_id %>/refund" method="POST" class="action-row" data-password-confirm data-confirm-title="Rembourser l’acheteur" data-confirm-message="<%= `${money(payment.amount, payment.currency)} seront renvoyés à ${payment.phone_number}. Saisissez votre mot de passe de super-admin.` %>" autocomplete="off">
                 <input type="hidden" name="_csrf" value="<%= user.csrf %>"><input name="reason" required maxlength="500" placeholder="Motif" class="field-input"><button class="action-button danger">Rembourser</button>
             </form>
         </td>

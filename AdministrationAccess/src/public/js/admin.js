@@ -59,10 +59,11 @@
         });
     };
 
-    // Reversement manuel : seules les devises du pays choisi sont proposées.
+    // Reversement manuel : seuls les devises et opérateurs du pays choisi sont proposés.
     document.querySelectorAll('[data-manual-payout]').forEach((form) => {
         const countrySelect = form.querySelector('[data-country-select]');
         const currencySelect = form.querySelector('[data-currency-select]');
+        const providerSelect = form.querySelector('[data-provider-select]');
         const syncCurrencies = () => {
             const allowed = (countrySelect.selectedOptions[0]?.dataset.currencies || '').split(',');
             Array.from(currencySelect.options).forEach((option) => {
@@ -70,6 +71,15 @@
                 option.disabled = option.hidden;
             });
             if (!allowed.includes(currencySelect.value)) currencySelect.value = allowed[0] || '';
+            if (providerSelect) {
+                const country = countrySelect.value;
+                Array.from(providerSelect.options).forEach((option) => {
+                    if (!option.value) return;
+                    option.hidden = option.dataset.country !== country;
+                    option.disabled = option.hidden;
+                });
+                if (providerSelect.selectedOptions[0]?.disabled) providerSelect.value = '';
+            }
         };
         countrySelect?.addEventListener('change', syncCurrencies);
         if (countrySelect && currencySelect) syncCurrencies();

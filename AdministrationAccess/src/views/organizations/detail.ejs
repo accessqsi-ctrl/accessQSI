@@ -12,12 +12,12 @@
     <div class="hero-actions">
         <span class="badge <%= organization.is_active ? 'badge-green' : 'badge-amber' %>"><%= organization.is_active ? 'Active' : 'Désactivée' %></span>
         <% if (organization.is_active) { %>
-            <form action="/organizations/<%= organization.org_id % autocomplete="off">/deactivate" method="POST">
+            <form action="/organizations/<%= organization.org_id %>/deactivate" method="POST" autocomplete="off">
                 <input type="hidden" name="_csrf" value="<%= user.csrf %>">
                 <button class="action-button warning" data-confirm="Suspendre les accès de cette organisation ?">Désactiver l’organisation</button>
             </form>
         <% } else { %>
-            <form action="/organizations/<%= organization.org_id % autocomplete="off">/activate" method="POST">
+            <form action="/organizations/<%= organization.org_id %>/activate" method="POST" autocomplete="off">
                 <input type="hidden" name="_csrf" value="<%= user.csrf %>">
                 <button class="action-button success">Réactiver l’organisation</button>
             </form>
@@ -49,7 +49,7 @@
             <div><dt>Paiements</dt><dd><%= organization._count.payments %></dd></div>
             <div><dt>Commission billetterie</dt><dd><%= organization.ticket_commission_bps == null ? `${defaultTicketCommissionPercent} % (taux par défaut)` : `${organization.ticket_commission_bps / 100} % (taux personnalisé)` %></dd></div>
         </dl>
-        <form action="/organizations/<%= organization.org_id % autocomplete="off">/ticket-commission" method="POST" class="subscription-admin" data-password-confirm data-confirm-title="Confirmer la commission" data-confirm-message="Saisissez votre mot de passe de super-admin pour modifier la commission de billetterie.">
+        <form action="/organizations/<%= organization.org_id %>/ticket-commission" method="POST" class="subscription-admin" data-password-confirm data-confirm-title="Confirmer la commission" data-confirm-message="Saisissez votre mot de passe de super-admin pour modifier la commission de billetterie." autocomplete="off">
             <input type="hidden" name="_csrf" value="<%= user.csrf %>">
             <label class="field-label">Commission sur les billets vendus (%)
                 <input type="number" name="commissionPercent" class="field-input" min="0" max="50" step="0.01" placeholder="<%= defaultTicketCommissionPercent %> (par défaut)" value="<%= organization.ticket_commission_bps == null ? '' : organization.ticket_commission_bps / 100 %>">
@@ -78,7 +78,7 @@
 </section>
 
 <dialog class="confirmation-dialog" data-subscription-dialog aria-labelledby="subscription-dialog-title">
-    <form action="/organizations/<%= organization.org_id % autocomplete="off">/subscription" method="POST" data-password-confirm data-confirm-title="Confirmer le changement d’abonnement" data-confirm-message="Saisissez votre mot de passe de super-admin pour appliquer ce changement.">
+    <form action="/organizations/<%= organization.org_id %>/subscription" method="POST" data-password-confirm data-confirm-title="Confirmer le changement d’abonnement" data-confirm-message="Saisissez votre mot de passe de super-admin pour appliquer ce changement." autocomplete="off">
         <input type="hidden" name="_csrf" value="<%= user.csrf %>">
         <div class="dialog-heading">
             <div><span class="eyebrow">Action sensible</span><h3 id="subscription-dialog-title">Changer l’abonnement</h3></div>
@@ -124,10 +124,10 @@
             <td class="align-right"><div class="action-row">
                 <% if (agent.deleted_at) { %><span class="action-note">Aucune action</span>
                 <% } else if (agent.is_active) { %>
-                    <form action="/users/<%= agent.user_id % autocomplete="off">/deactivate" method="POST"><input type="hidden" name="_csrf" value="<%= user.csrf %>"><input type="hidden" name="returnTo" value="/organizations/<%= organization.org_id %>"><button class="action-button warning" data-confirm="Désactiver cet agent ?">Désactiver</button></form>
+                    <form action="/users/<%= agent.user_id %>/deactivate" method="POST" autocomplete="off"><input type="hidden" name="_csrf" value="<%= user.csrf %>"><input type="hidden" name="returnTo" value="/organizations/<%= organization.org_id %>"><button class="action-button warning" data-confirm="Désactiver cet agent ?">Désactiver</button></form>
                 <% } else if (agent.suspended_by_plan || !organization.is_active) { %><span class="action-note"><%= agent.suspended_by_plan ? 'Quota du plan à régulariser' : 'Réactivez d’abord l’organisation' %></span>
                 <% } else { %>
-                    <form action="/users/<%= agent.user_id % autocomplete="off">/activate" method="POST"><input type="hidden" name="_csrf" value="<%= user.csrf %>"><input type="hidden" name="returnTo" value="/organizations/<%= organization.org_id %>"><button class="action-button success">Réactiver</button></form>
+                    <form action="/users/<%= agent.user_id %>/activate" method="POST" autocomplete="off"><input type="hidden" name="_csrf" value="<%= user.csrf %>"><input type="hidden" name="returnTo" value="/organizations/<%= organization.org_id %>"><button class="action-button success">Réactiver</button></form>
                 <% } %>
             </div></td>
         </tr><% }) %>

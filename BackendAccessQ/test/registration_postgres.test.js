@@ -453,7 +453,7 @@ test("free registration flow is atomic on PostgreSQL", { skip: !enabled || !safe
         assert.equal((await prisma.ticketPayment.findUnique({ where: { ticket_payment_id: review.ticket_payment_id } })).status, "REFUNDED");
         assert.equal(await usdBalance(), "12.81");
 
-        // Reversement saisi par un super-admin : opérateur détecté auprès de pawaPay avant l'envoi.
+        // Reversement saisi par un super-admin : opérateur choisi envoyé tel quel, sinon détecté auprès de pawaPay (anciens reversements).
         const originalPredict = pawaPay.predictProvider;
         t.after(() => { pawaPay.predictProvider = originalPredict; });
         pawaPay.predictProvider = async phoneNumber => ({ country: phoneNumber.startsWith("243") ? "COD" : "ZMB", provider: phoneNumber.startsWith("243") ? "VODACOM_MPESA_COD" : "MTN_MOMO_ZMB", phoneNumber });
@@ -463,7 +463,15 @@ test("free registration flow is atomic on PostgreSQL", { skip: !enabled || !safe
         } });
         const platformPayout = await manual({});
         const wrongCountry = await manual({ phone_number: "260971234567" });
+        const chosen = await manual({ provider: "VODACOM_MPESA_COD", phone_number: "260971234567" });
+        const unavailable = await manual({ provider: "ORANGE_COD" });
         await payouts.processPending();
+        const sentAsChosen = await prisma.organizerPayout.findUnique({ where: { payout_id: chosen.payout_id } });
+        assert.equal(sentAsChosen.status, "PROCESSING");
+        assert.equal(sentAsChosen.provider, "VODACOM_MPESA_COD");
+        const notAvailable = await prisma.organizerPayout.findUnique({ where: { payout_id: unavailable.payout_id } });
+        assert.equal(notAvailable.status, "FAILED");
+        assert.equal(notAvailable.failure_code, "PROVIDER_NOT_AVAILABLE");
         const detected = await prisma.organizerPayout.findUnique({ where: { payout_id: platformPayout.payout_id } });
         assert.equal(detected.status, "PROCESSING");
         assert.equal(detected.provider, "VODACOM_MPESA_COD");

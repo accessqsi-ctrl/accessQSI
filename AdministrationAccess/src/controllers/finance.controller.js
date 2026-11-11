@@ -3,7 +3,7 @@ const { Prisma } = require('@prisma/client');
 const prisma = require('../lib/prisma');
 const { writeAudit } = require('../services/audit.service');
 const { verifySuperAdminPassword } = require('../services/super-admin.service');
-const { PAYOUT_COUNTRIES, findCountry, normalizeRecipientPhone } = require('../services/payout-recipient.service');
+const { PAYOUT_COUNTRIES, findCountry, findProvider, normalizeRecipientPhone } = require('../services/payout-recipient.service');
 
 // La console ne parle jamais à pawaPay : elle valide ou refuse en base, le backend AccessQ exécute et vérifie.
 const financePath = (type, message) => `/finance?${type}=${encodeURIComponent(message)}`;
@@ -36,6 +36,57 @@ const loadPlatformBalances = async (client = prisma) => {
     return [...rows.values()]
         .map((item) => ({ ...item, balance: item.subscriptions.plus(item.commissions).minus(item.payouts) }))
         .sort((a, b) => a.currency.localeCompare(b.currency));
+};
+
+// Opérations qui n'ont pas encore quitté le wallet pawaPay (un reversement « en cours » chez pawaPay est déjà débité).
+const NOT_YET_DEBITED_PAYOUT_STATUSES = ['REQUESTED', 'APPROVED', 'SUBMITTING'];
+// Au-delà, le relevé pawaPay est signalé comme ancien (le backend le renouvelle toutes les 5 minutes).
+const WALLET_STALE_MS = 15 * 60 * 1000;
+const zero = () => new Prisma.Decimal(0);
+const sumBy = (rows, field) => {
+    const totals = new Map();
+    rows.forEach((item) => totals.set(item.currency, (totals.get(item.currency) || zero()).plus(new Prisma.Decimal(item._sum[field] || 0))));
+    return totals;
+};
+
+// Solde réel de la plateforme d'après le dernier relevé des wallets pawaPay (frais et ajustements pawaPay compris) :
+// wallet − soldes dus aux organisateurs − reversements pas encore débités − achats à vérifier ou à rembourser.
+// L'écart avec le solde calculé correspond surtout aux frais pawaPay. Sans relevé, `wallet` est nul.
+const loadPlatformReconciliation = async (platformBalances, client = prisma, now = Date.now()) => {
+    const [wallets, ledger, pendingPayouts, reserved] = await Promise.all([
+        client.pawaPayWalletBalance.findMany({ orderBy: [{ currency: 'asc' }, { country: 'asc' }] }),
+        client.organizerLedgerEntry.groupBy({ by: ['org_id', 'currency'], _sum: { amount: true } }),
+        client.organizerPayout.groupBy({ by: ['currency'], where: { status: { in: NOT_YET_DEBITED_PAYOUT_STATUSES } }, _sum: { amount: true } }),
+        client.ticketPayment.groupBy({
+            by: ['currency'],
+            where: { OR: [{ status: 'REVIEW_REQUIRED' }, { status: 'REFUND_PENDING', refund: { status: 'PENDING' } }] },
+            _sum: { amount: true }
+        })
+    ]);
+    const owed = sumBy(ledger.filter((item) => new Prisma.Decimal(item._sum.amount || 0).gt(0)), 'amount');
+    const pending = sumBy(pendingPayouts, 'amount');
+    const held = sumBy(reserved, 'amount');
+    const computed = new Map(platformBalances.map((item) => [item.currency, item.balance]));
+    const currencies = [...new Set([...wallets.map((item) => item.currency), ...computed.keys()])].sort();
+    return currencies.map((currency) => {
+        const currencyWallets = wallets.filter((item) => item.currency === currency);
+        const fetchedAt = currencyWallets.length ? new Date(Math.min(...currencyWallets.map((item) => item.fetched_at.getTime()))) : null;
+        const wallet = currencyWallets.length ? currencyWallets.reduce((total, item) => total.plus(item.balance), zero()) : null;
+        const row = {
+            currency,
+            wallet,
+            wallets: currencyWallets.map((item) => ({ country: item.country, provider: item.provider, balance: new Prisma.Decimal(item.balance) })),
+            fetchedAt,
+            stale: !fetchedAt || now - fetchedAt.getTime() > WALLET_STALE_MS,
+            owedToOrganizers: owed.get(currency) || zero(),
+            pendingPayouts: pending.get(currency) || zero(),
+            reservedPayments: held.get(currency) || zero(),
+            computed: computed.get(currency) || zero()
+        };
+        row.available = wallet === null ? null : wallet.minus(row.owedToOrganizers).minus(row.pendingPayouts).minus(row.reservedPayments);
+        row.gap = row.available === null ? null : row.available.minus(row.computed);
+        return row;
+    });
 };
 
 // Soldes positifs par organisation et devise, avec le compte de réception et l'éventuel reversement en cours.
@@ -93,6 +144,7 @@ exports.showFinance = async (req, res) => {
         }) : [];
         const now = Date.now();
         const [balances, platformBalances] = await Promise.all([loadBalances(now), loadPlatformBalances()]);
+        const reconciliation = await loadPlatformReconciliation(platformBalances, prisma, now);
         res.render('finance', {
             user: req.user,
             requested: requested.map((payout) => {
@@ -102,6 +154,7 @@ exports.showFinance = async (req, res) => {
             recentPayouts,
             balances,
             platformBalances,
+            reconciliation,
             payoutCountries: PAYOUT_COUNTRIES,
             reviewPayments,
             recentRefunds,
@@ -259,9 +312,9 @@ exports.createPayout = async (req, res) => {
     }
 };
 
-// Reversement saisi entièrement par le super-admin : pays, devise, montant et numéro du bénéficiaire.
+// Reversement saisi entièrement par le super-admin : pays, opérateur, devise, montant et numéro du bénéficiaire.
 // Prélevé sur le solde d'une organisation si elle est choisie, sinon sur le solde de la plateforme.
-// L'opérateur est détecté par le backend auprès de pawaPay avant l'envoi (échec sans envoi si le pays ne correspond pas).
+// L'opérateur choisi est envoyé tel quel ; le backend vérifie seulement qu'il accepte les reversements dans ce pays et cette devise.
 exports.createManualPayout = async (req, res) => {
     const rawOrg = String(req.body.org_id ?? '').trim();
     const orgId = rawOrg ? Number.parseInt(rawOrg, 10) : null;
@@ -271,6 +324,8 @@ exports.createManualPayout = async (req, res) => {
     const note = cleanReason(req.body.note);
     if (rawOrg && (!Number.isInteger(orgId) || orgId <= 0 || String(orgId) !== rawOrg)) return res.redirect(financePath('error', 'Organisation invalide.'));
     if (!country) return res.redirect(financePath('error', 'Choisissez le pays du bénéficiaire.'));
+    const provider = findProvider(country, req.body.provider);
+    if (!provider) return res.redirect(financePath('error', `Choisissez l’opérateur Mobile Money du bénéficiaire (${country.name}).`));
     if (!country.currencies.includes(currency)) return res.redirect(financePath('error', `Devise non disponible pour ${country.name}.`));
     if (!AMOUNT_PATTERN.test(rawAmount) || new Prisma.Decimal(rawAmount).lte(0)) return res.redirect(financePath('error', 'Montant invalide (deux décimales au plus).'));
     const phoneNumber = normalizeRecipientPhone(req.body.phone_number, country);
@@ -293,8 +348,14 @@ exports.createManualPayout = async (req, res) => {
             } else {
                 // Un seul reversement de la plateforme à la fois vérifie le solde.
                 await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('accessq_platform_payout'))`;
-                const platform = (await loadPlatformBalances(tx)).find((item) => item.currency === currency);
+                const platformBalances = await loadPlatformBalances(tx);
+                const platform = platformBalances.find((item) => item.currency === currency);
                 if (!platform || amount.gt(platform.balance)) throw new PayoutRefusal(`Le montant dépasse le solde de la plateforme en ${currency}.`);
+                // Le solde réel pawaPay (frais déduits) peut être inférieur au solde calculé : on retient le plus petit.
+                const real = (await loadPlatformReconciliation(platformBalances, tx)).find((item) => item.currency === currency);
+                if (real?.available && amount.gt(real.available)) {
+                    throw new PayoutRefusal(`Le montant dépasse le solde réel de la plateforme sur pawaPay (${real.available.toFixed(2)} ${currency}, frais déduits).`);
+                }
             }
             const now = new Date();
             const payout = await tx.organizerPayout.create({ data: {
@@ -303,7 +364,7 @@ exports.createManualPayout = async (req, res) => {
                 amount,
                 currency,
                 country: country.code,
-                provider: null,
+                provider: provider.code,
                 phone_number: phoneNumber,
                 manual_recipient: true,
                 note,
@@ -321,7 +382,7 @@ exports.createManualPayout = async (req, res) => {
             catch (error) { if (error?.code !== 'P2034' || attempt === 3) throw error; }
         }
         writeAudit({ actorId: req.user.id, action: 'PAYOUT_CREATE_MANUAL', targetType: 'PAYOUT', targetId: payout.payout_id, organizationId: orgId });
-        res.redirect(financePath('success', `Reversement de ${payout.amount} ${currency} vers +${phoneNumber} créé. L’opérateur est vérifié puis l’envoi part dans la minute.`));
+        res.redirect(financePath('success', `Reversement de ${payout.amount} ${currency} vers +${phoneNumber} (${provider.name}) créé. Il sera envoyé par AccessQ dans la minute.`));
     } catch (error) {
         if (error instanceof PayoutRefusal) return res.redirect(financePath('error', error.message));
         console.error('Erreur createManualPayout:', error);
@@ -330,3 +391,4 @@ exports.createManualPayout = async (req, res) => {
 };
 
 exports.loadPlatformBalances = loadPlatformBalances;
+exports.loadPlatformReconciliation = loadPlatformReconciliation;

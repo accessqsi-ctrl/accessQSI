@@ -1,6 +1,7 @@
 const paymentService = require("../services/payment.service");
 const ticketPayments = require("../services/ticket_payment.service");
 const organizerPayouts = require("../services/organizer_payout.service");
+const walletBalances = require("../services/wallet_balance.service");
 const logger = require("../utils/logger");
 
 const run = async () => {
@@ -23,6 +24,7 @@ const run = async () => {
     } catch (error) {
         logger.error("payout.worker_failed", { error });
     }
+    await walletBalances.refreshIfDue();
 };
 
 const startSubscriptionLifecycleWorker = () => {

@@ -35,13 +35,17 @@ La page `/finance` regroupe :
 - un formulaire « Nouveau reversement » où le super-admin saisit pays, devise, montant, numéro du
   bénéficiaire et motif. Avec une organisation, le montant est prélevé sur son solde ; sans organisation,
   sur le solde de la plateforme ;
-- le solde de la plateforme par devise : abonnements et pass payés + commissions sur les billets vendus
-  − reversements de la plateforme (les frais pawaPay ne sont pas déduits).
+- le solde de la plateforme par devise, sous deux formes : le solde calculé (abonnements et pass payés
+  + commissions sur les billets vendus − reversements de la plateforme, sans les frais pawaPay) et le solde
+  réel (wallet pawaPay relevé par le backend toutes les 5 minutes − soldes dus aux organisateurs
+  − reversements pas encore envoyés − achats à vérifier ou à rembourser). L'écart entre les deux correspond
+  surtout aux frais pawaPay. Un reversement de la plateforme ne peut pas dépasser le plus petit des deux.
 
 Chaque action redemande le mot de passe du super-admin et est journalisée. Le bouton « Reverser » d'un
 solde d'organisateur utilise le compte de réception qu'il a enregistré. Pour un reversement saisi à la
-main, l'opérateur n'est pas choisi : le backend le détecte auprès de pawaPay (predict-provider) et
-n'envoie rien si le numéro ne correspond pas au pays ou à la devise. La console n'appelle jamais pawaPay.
+main, le super-admin choisit l'opérateur Mobile Money (liste par pays, codes pawaPay) : il est envoyé
+tel quel, sans détection automatique (un numéro porté serait mal identifié). Le backend n'envoie rien si
+cet opérateur n'accepte pas les reversements dans ce pays et cette devise. La console n'appelle jamais pawaPay.
 Le backend AccessQ envoie les opérations validées et en vérifie le résultat.
 
 ## Sécurité des accès

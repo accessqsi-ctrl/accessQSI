@@ -103,6 +103,12 @@ const predictProvider = (phoneNumber) => request({
     data: { phoneNumber }
 });
 
+// Solde réel de chaque wallet du compte pawaPay (un wallet par pays et devise, parfois par opérateur).
+const getWalletBalances = () => request({
+    method: "GET",
+    path: "/v2/wallet-balances"
+});
+
 const getActiveConfiguration = (operationType = "DEPOSIT") => {
     const { country } = getPaymentConfig();
     const params = { operationType };
@@ -173,6 +179,7 @@ module.exports = {
     initiatePayout,
     checkPayout,
     predictProvider,
+    getWalletBalances,
     getActiveConfiguration,
     extractProviders
 };
