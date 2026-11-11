@@ -337,6 +337,15 @@ exports.createManualPayout = async (req, res) => {
             writeAudit({ actorId: req.user.id, action: 'PAYOUT_CREATE_MANUAL', targetType: orgId ? 'ORGANIZATION' : 'PLATFORM', targetId: orgId || 'platform', organizationId: orgId, outcome: 'DENIED' });
             return res.redirect(financePath('error', 'Mot de passe incorrect. Aucun reversement n’a été créé.'));
         }
+        // Solde réel pawaPay (frais déduits), lu hors transaction : ces lectures ralentiraient la transaction verrouillée.
+        // Le solde calculé reste contrôlé sous verrou ; si deux reversements passaient ensemble au-delà du solde réel,
+        // pawaPay refuserait le second (échec sans perte).
+        if (!orgId) {
+            const real = (await loadPlatformReconciliation(await loadPlatformBalances())).find((item) => item.currency === currency);
+            if (real?.available && amount.gt(real.available)) {
+                return res.redirect(financePath('error', `Le montant dépasse le solde réel de la plateforme sur pawaPay (${real.available.toFixed(2)} ${currency}, frais déduits).`));
+            }
+        }
         const run = () => prisma.$transaction(async (tx) => {
             if (orgId) {
                 const locked = await tx.$queryRaw`SELECT org_id FROM organizations WHERE org_id = ${orgId} FOR UPDATE`;
@@ -348,14 +357,8 @@ exports.createManualPayout = async (req, res) => {
             } else {
                 // Un seul reversement de la plateforme à la fois vérifie le solde.
                 await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('accessq_platform_payout'))`;
-                const platformBalances = await loadPlatformBalances(tx);
-                const platform = platformBalances.find((item) => item.currency === currency);
+                const platform = (await loadPlatformBalances(tx)).find((item) => item.currency === currency);
                 if (!platform || amount.gt(platform.balance)) throw new PayoutRefusal(`Le montant dépasse le solde de la plateforme en ${currency}.`);
-                // Le solde réel pawaPay (frais déduits) peut être inférieur au solde calculé : on retient le plus petit.
-                const real = (await loadPlatformReconciliation(platformBalances, tx)).find((item) => item.currency === currency);
-                if (real?.available && amount.gt(real.available)) {
-                    throw new PayoutRefusal(`Le montant dépasse le solde réel de la plateforme sur pawaPay (${real.available.toFixed(2)} ${currency}, frais déduits).`);
-                }
             }
             const now = new Date();
             const payout = await tx.organizerPayout.create({ data: {

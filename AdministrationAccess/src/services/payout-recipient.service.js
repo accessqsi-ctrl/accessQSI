@@ -1,13 +1,13 @@
 // Pays et devises proposés pour un reversement saisi à la main (pays couverts par pawaPay pour les devises AccessQ).
-// L'opérateur est choisi par le super-admin (codes pawaPay) : le backend vérifie qu'il est actif pour ce pays et cette devise,
+// L'opérateur est choisi par le super-admin (codes pawaPay, vérifiés sur docs.pawapay.io/v2/docs/providers le 11/11/2026) : le backend vérifie qu'il est actif pour ce pays et cette devise,
 // sans détection automatique (un numéro porté vers un autre opérateur serait mal identifié).
 // trunkZero : le 0 initial du format national disparaît au format international (0991234567 → 243991234567).
 const PAYOUT_COUNTRIES = Object.freeze([
     { code: 'COD', name: 'RD Congo', prefix: '243', currencies: ['CDF', 'USD'], trunkZero: true, providers: [{ code: 'VODACOM_MPESA_COD', name: 'Vodacom M-Pesa' }, { code: 'AIRTEL_COD', name: 'Airtel Money' }, { code: 'ORANGE_COD', name: 'Orange Money' }] },
     { code: 'CMR', name: 'Cameroun', prefix: '237', currencies: ['XAF'], trunkZero: false, providers: [{ code: 'MTN_MOMO_CMR', name: 'MTN MoMo' }, { code: 'ORANGE_CMR', name: 'Orange Money' }] },
     { code: 'COG', name: 'Congo-Brazzaville', prefix: '242', currencies: ['XAF'], trunkZero: false, providers: [{ code: 'MTN_MOMO_COG', name: 'MTN MoMo' }, { code: 'AIRTEL_COG', name: 'Airtel Money' }] },
-    { code: 'GAB', name: 'Gabon', prefix: '241', currencies: ['XAF'], trunkZero: false, providers: [{ code: 'AIRTEL_GAB', name: 'Airtel Money' }] },
-    { code: 'CIV', name: 'Côte d’Ivoire', prefix: '225', currencies: ['XOF'], trunkZero: false, providers: [{ code: 'MTN_MOMO_CIV', name: 'MTN MoMo' }, { code: 'ORANGE_CIV', name: 'Orange Money' }, { code: 'WAVE_CIV', name: 'Wave' }] },
+    { code: 'GAB', name: 'Gabon', prefix: '241', currencies: ['XAF'], trunkZero: false, providers: [{ code: 'AIRTEL_GAB', name: 'Airtel Money' }, { code: 'MOOV_GAB', name: 'Moov Money' }] },
+    { code: 'CIV', name: 'Côte d’Ivoire', prefix: '225', currencies: ['XOF'], trunkZero: false, providers: [{ code: 'MTN_MOMO_CIV', name: 'MTN MoMo' }, { code: 'ORANGE_CIV', name: 'Orange Money' }, { code: 'MOOV_CIV', name: 'Moov Money' }, { code: 'WAVE_CIV', name: 'Wave' }] },
     { code: 'SEN', name: 'Sénégal', prefix: '221', currencies: ['XOF'], trunkZero: false, providers: [{ code: 'ORANGE_SEN', name: 'Orange Money' }, { code: 'FREE_SEN', name: 'Free Money' }, { code: 'WAVE_SEN', name: 'Wave' }] },
     { code: 'BEN', name: 'Bénin', prefix: '229', currencies: ['XOF'], trunkZero: false, providers: [{ code: 'MTN_MOMO_BEN', name: 'MTN MoMo' }, { code: 'MOOV_BEN', name: 'Moov Money' }] },
     { code: 'BFA', name: 'Burkina Faso', prefix: '226', currencies: ['XOF'], trunkZero: false, providers: [{ code: 'ORANGE_BFA', name: 'Orange Money' }, { code: 'MOOV_BFA', name: 'Moov Money' }] },

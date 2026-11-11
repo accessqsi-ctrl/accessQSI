@@ -304,6 +304,11 @@ const submitPayout = async initial => {
             await failPayout(payout, extractPawaPayFailure(response), response);
         }
     } catch (error) {
+        // Refus définitif (requête non conforme, reversements non activés) : échec, le montant revient au solde.
+        if (pawaPay.isDefinitiveRejection(error)) {
+            await failPayout(payout, extractPawaPayFailure(error.responseData), error.responseData);
+            return;
+        }
         // Issue incertaine : on revient à « validé ». Le même identifiant est renvoyé, pawaPay ignore un doublon.
         await prisma.organizerPayout.updateMany({ where: { payout_id: payout.payout_id, status: "SUBMITTING" }, data: { status: "APPROVED" } });
         logger.warn("payout.submission_uncertain", { payout_id: payout.payout_id, org_id: payout.org_id, status: error.status, error });
@@ -342,6 +347,12 @@ const submitRefund = async refund => {
             await failRefund(refund, extractPawaPayFailure(response), response);
         }
     } catch (error) {
+        // Refus définitif : le paiement revient « à vérifier » et un super-admin peut relancer après correction.
+        if (pawaPay.isDefinitiveRejection(error)) {
+            await failRefund(refund, extractPawaPayFailure(error.responseData), error.responseData);
+            return;
+        }
+        // Issue incertaine : renvoyé au prochain passage avec le même identifiant.
         await prisma.ticketRefund.updateMany({ where: { ticket_refund_id: refund.ticket_refund_id, status: "PENDING" }, data: { submitted_at: null } });
         logger.warn("ticket_refund.submission_uncertain", { ticket_refund_id: refund.ticket_refund_id, status: error.status, error });
     }

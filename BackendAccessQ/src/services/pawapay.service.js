@@ -120,6 +120,34 @@ const getActiveConfiguration = (operationType = "DEPOSIT") => {
     });
 };
 
+// pawaPay v2 exprime les décimales acceptées en texte (« NONE », « TWO_PLACES ») ; v1 et nos tests, en nombre.
+// Inconnu → null (les arrondis retombent alors sur 2 décimales).
+const normalizeDecimals = (value) => {
+    if (value === undefined || value === null || value === "") return null;
+    const text = String(value).trim().toUpperCase();
+    if (text === "NONE") return 0;
+    if (text === "TWO_PLACES") return 2;
+    const number = Number(text);
+    return Number.isInteger(number) ? Math.max(0, Math.min(2, number)) : null;
+};
+
+// Seule l'autorisation par PIN sur le téléphone (PROVIDER_AUTH) est gérée par AccessQ. Les parcours avec OTP préalable
+// (PREAUTH, Orange Burkina Faso) ou redirection (REDIRECT_AUTH, Wave) échoueraient : ces opérateurs ne sont pas proposés.
+const SUPPORTED_DEPOSIT_AUTH_TYPES = Object.freeze(["PROVIDER_AUTH"]);
+const isSupportedDepositProvider = (provider) => (
+    provider.supportsDeposit !== false
+    && (!provider.authorizationType || SUPPORTED_DEPOSIT_AUTH_TYPES.includes(provider.authorizationType))
+);
+
+// Refus définitif à l'initiation : requête non conforme (HTTP 400) ou opération non activée pour l'opérateur
+// (HTTP 403 *_NOT_ALLOWED). La renvoyer telle quelle échouerait toujours. Les erreurs réseau, 5xx et d'authentification
+// (jeton, signature) restent incertaines : on réessaie.
+const isDefinitiveRejection = (error) => {
+    if (!(error instanceof PawaPayRequestError) || error.responseData?.status !== "REJECTED") return false;
+    const code = String(error.responseData?.failureReason?.failureCode || "");
+    return error.status === 400 || (error.status === 403 && /_NOT_ALLOWED$/.test(code));
+};
+
 // operationType : "DEPOSIT" (encaissement) ou "PAYOUT" (reversement).
 const extractProviders = (configuration, operationType = "DEPOSIT") => {
     const countries = Array.isArray(configuration?.countries)
@@ -151,12 +179,11 @@ const extractProviders = (configuration, operationType = "DEPOSIT") => {
                         countryDisplayName: country.displayName || null,
                         prefix: country.prefix || null,
                         [operationType === "PAYOUT" ? "supportsPayout" : "supportsDeposit"]: !currencyConfig || Boolean(normalizedDepositConfig),
-                        decimals: normalizedDepositConfig?.decimals
+                        decimals: normalizeDecimals(normalizedDepositConfig?.decimals
                             ?? normalizedDepositConfig?.decimalPlaces
                             ?? normalizedDepositConfig?.decimalsInAmount
                             ?? provider.decimals
-                            ?? provider.decimalPlaces
-                            ?? null,
+                            ?? provider.decimalPlaces),
                         authorizationType: normalizedDepositConfig?.authorizationType
                             || normalizedDepositConfig?.authType
                             || provider.authorizationType
@@ -181,5 +208,9 @@ module.exports = {
     predictProvider,
     getWalletBalances,
     getActiveConfiguration,
-    extractProviders
+    extractProviders,
+    isDefinitiveRejection,
+    isSupportedDepositProvider,
+    normalizeDecimals,
+    SUPPORTED_DEPOSIT_AUTH_TYPES
 };

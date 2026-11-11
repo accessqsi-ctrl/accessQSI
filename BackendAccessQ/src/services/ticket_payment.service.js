@@ -36,7 +36,7 @@ const activeProviders = async (now = Date.now()) => {
     if (providerCache.providers && now - providerCache.at < PROVIDER_CACHE_MS) return providerCache.providers;
     const { providerAllowlist } = getPaymentConfig();
     const providers = pawaPay.extractProviders(await pawaPay.getActiveConfiguration()).filter(provider => (
-        provider.supportsDeposit !== false
+        pawaPay.isSupportedDepositProvider(provider)
         && provider.currency
         && (providerAllowlist.length === 0 || providerAllowlist.includes(provider.provider))
     ));

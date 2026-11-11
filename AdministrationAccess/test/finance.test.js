@@ -190,7 +190,9 @@ test('a manual payout takes the typed recipient and operator and checks the orga
             create: async ({ data }) => { created.ledger.push(data); }
         }
     };
+    // Les lectures du solde réel se font hors transaction : le client simulé répond comme la transaction.
     const controller = loadController({
+        ...tx,
         userQ: { findFirst: async () => ({ password_hash: passwordHash }) },
         $transaction: (work) => work(tx)
     });
