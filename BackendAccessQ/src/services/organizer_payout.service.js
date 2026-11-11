@@ -25,20 +25,40 @@ const assertPassword = async (userId, password) => {
     if (!valid) throw new RegistrationError("Mot de passe incorrect.", "INVALID_PASSWORD", 403);
 };
 
-let providerCache = { at: 0, providers: null };
-const payoutProviders = async (now = Date.now()) => {
-    if (providerCache.providers && now - providerCache.at < PROVIDER_CACHE_MS) return providerCache.providers;
+// `all` : tout ce que pawaPay renvoie (sert à expliquer un refus) ; `providers` : ce qu'AccessQ accepte d'utiliser.
+let providerCache = { at: 0, all: null, providers: null };
+const payoutConfiguration = async (now = Date.now()) => {
+    if (providerCache.providers && now - providerCache.at < PROVIDER_CACHE_MS) return providerCache;
     const { providerAllowlist } = getPaymentConfig();
-    const providers = pawaPay.extractProviders(await pawaPay.getActiveConfiguration("PAYOUT"), "PAYOUT").filter(provider => (
+    const all = pawaPay.extractProviders(await pawaPay.getActiveConfiguration("PAYOUT"), "PAYOUT");
+    const providers = all.filter(provider => (
         provider.supportsPayout !== false
         && TICKET_CURRENCIES.includes(provider.currency)
         && (providerAllowlist.length === 0 || providerAllowlist.includes(provider.provider))
     ));
-    providerCache = { at: now, providers };
-    return providers;
+    providerCache = { at: now, all, providers };
+    return providerCache;
 };
+const payoutProviders = async (now = Date.now()) => (await payoutConfiguration(now)).providers;
 
-const resetProviderCache = () => { providerCache = { at: 0, providers: null }; };
+const resetProviderCache = () => { providerCache = { at: 0, all: null, providers: null }; };
+
+// Raison précise pour laquelle un opérateur n'est pas utilisable en reversement, pour le super-admin.
+const unavailableReason = (all, providerCode, currency, country) => {
+    const { providerAllowlist, country: countryFilter } = getPaymentConfig();
+    const entries = all.filter(item => item.provider === providerCode);
+    const sameCurrency = entries.find(item => item.currency === currency);
+    if (!entries.length) {
+        return countryFilter && countryFilter !== country
+            ? `${providerCode} est hors du périmètre : PAWAPAY_COUNTRY=${countryFilter} limite la configuration pawaPay à ce pays.`
+            : `${providerCode} n’apparaît pas dans la configuration pawaPay des reversements : opérateur non activé en reversement sur le compte pawaPay (à demander au support pawaPay).`;
+    }
+    if (!sameCurrency) return `${providerCode} ne verse pas en ${currency} (devises : ${entries.map(item => item.currency).filter(Boolean).join(", ") || "inconnues"}).`;
+    if (sameCurrency.supportsPayout === false) return `Les reversements en ${currency} ne sont pas activés pour ${providerCode} sur le compte pawaPay (à demander au support pawaPay).`;
+    if (!TICKET_CURRENCIES.includes(currency)) return `La devise ${currency} n’est pas gérée par AccessQ.`;
+    if (providerAllowlist.length && !providerAllowlist.includes(providerCode)) return `${providerCode} est exclu par PAWAPAY_PROVIDERS (${providerAllowlist.join(", ")}) dans la configuration du backend.`;
+    return `${providerCode} n’accepte pas les reversements en ${currency}.`;
+};
 
 const listPayoutProviders = async () => (await payoutProviders()).map(provider => ({
     provider: provider.provider,
@@ -232,9 +252,10 @@ const applyRemotePayout = async (payout, remote) => {
 
 // Opérateur d'un reversement saisi par un super-admin : actif en reversement pour ce pays et cette devise, décimales acceptées.
 const manualProviderFailure = async (payout, providerCode) => {
-    const provider = (await payoutProviders()).find(item => item.provider === providerCode && item.currency === payout.currency);
+    const { all, providers } = await payoutConfiguration();
+    const provider = providers.find(item => item.provider === providerCode && item.currency === payout.currency);
     const amount = new Prisma.Decimal(payout.amount).toString();
-    if (!provider) return { code: "PROVIDER_NOT_AVAILABLE", message: `${providerCode} n’accepte pas les reversements en ${payout.currency}.` };
+    if (!provider) return { code: "PROVIDER_NOT_AVAILABLE", message: unavailableReason(all, providerCode, payout.currency, payout.country) };
     if (provider.country && provider.country !== payout.country) return { code: "COUNTRY_MISMATCH", message: `${providerCode} opère en ${provider.country}, pas ${payout.country}.` };
     if (roundForProvider(amount, provider.decimals) !== Number(amount)) return { code: "INVALID_AMOUNT", message: `${providerCode} n’accepte pas ce nombre de décimales.` };
     return null;

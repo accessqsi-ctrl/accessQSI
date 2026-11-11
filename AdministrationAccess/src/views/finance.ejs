@@ -127,7 +127,7 @@ const refundBadge = { PENDING: ['badge-blue', 'Envoi en cours'], PROCESSING: ['b
             <td><%= payout.organization ? payout.organization.name : 'Plateforme AccessQ' %><div class="cell-subtitle"><%= date(payout.updated_at) %></div>
                 <% if (payout.manual_recipient) { %><div class="cell-subtitle">Saisi par <%= payout.requested_by.full_name %><% if (payout.note) { %> · <%= payout.note %><% } %></div><% } %></td>
             <td><%= money(payout.amount, payout.currency) %><div class="cell-subtitle">+<%= payout.phone_number %> · <%= payout.provider || 'opérateur en détection' %></div></td>
-            <td><span class="badge <%= tone %>"><%= label %></span><% if (payout.failure_code) { %><div class="cell-subtitle"><%= payout.failure_code %></div><% } %></td>
+            <td><span class="badge <%= tone %>"><%= label %></span><% if (payout.failure_code) { %><div class="cell-subtitle"><%= payout.failure_code %><% if (payout.failure_message && payout.failure_message !== payout.failure_code) { %> : <%= payout.failure_message %><% } %></div><% } %></td>
         </tr><% }) %>
         <% if (!recentPayouts.length) { %><tr><td colspan="3" class="empty-state">Aucun reversement.</td></tr><% } %>
         </tbody></table></div>

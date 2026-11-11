@@ -116,3 +116,51 @@ test("a payout rejected with HTTP 400 fails and returns to the balance instead o
     await payouts.processPending();
     assert.deepEqual(statuses, ["SUBMITTING", "APPROVED"]);
 });
+
+test("an unavailable payout operator gets a reason the super-admin can act on", async t => {
+    const saved = { conf: pawaPay.getActiveConfiguration, env: { ...process.env }, payout: prisma.organizerPayout, ledger: prisma.organizerLedgerEntry, transaction: prisma.$transaction };
+    t.after(() => {
+        pawaPay.getActiveConfiguration = saved.conf;
+        for (const key of ["PAWAPAY_PROVIDERS", "PAWAPAY_COUNTRY", "TICKET_PAYMENTS_ENABLED"]) {
+            if (saved.env[key] === undefined) delete process.env[key]; else process.env[key] = saved.env[key];
+        }
+        Object.assign(prisma, { organizerPayout: saved.payout, organizerLedgerEntry: saved.ledger, $transaction: saved.transaction });
+        payouts.resetProviderCache();
+    });
+    process.env.TICKET_PAYMENTS_ENABLED = "true";
+    const operation = (decimals, extra = {}) => ({ currency: "USD", operationTypes: { PAYOUT: { decimalsInAmount: decimals, ...extra } } });
+    pawaPay.getActiveConfiguration = async () => ({ countries: [{ country: "COD", prefix: "243", providers: [
+        { provider: "VODACOM_MPESA_COD", currencies: [operation("TWO_PLACES")] },
+        { provider: "ORANGE_COD", currencies: [{ currency: "CDF", operationTypes: { PAYOUT: { decimalsInAmount: "TWO_PLACES" } } }] },
+        { provider: "AIRTEL_COD", currencies: [operation("TWO_PLACES")] }
+    ] }] });
+
+    let failure = null;
+    const payout = { payout_id: "33333333-3333-4333-8333-333333333333", provider_payout_id: "44444444-4444-4444-8444-444444444444", org_id: null, amount: "5", currency: "USD", country: "COD", phone_number: "243997654321", manual_recipient: true };
+    prisma.organizerPayout = {
+        findMany: async ({ where }) => (where.status === "APPROVED" ? [{ ...payout, status: "APPROVED" }] : []),
+        updateMany: async ({ data }) => { if (data.status === "FAILED") failure = data; return { count: 1 }; }
+    };
+    prisma.ticketRefund = { findMany: async () => [] };
+    prisma.organizerLedgerEntry = { upsert: async () => {} };
+    prisma.$transaction = async work => work(prisma);
+    const reasonFor = async provider => {
+        failure = null;
+        payouts.resetProviderCache();
+        payout.provider = provider;
+        await payouts.processPending();
+        return failure;
+    };
+
+    process.env.PAWAPAY_PROVIDERS = "VODACOM_MPESA_COD";
+    let result = await reasonFor("AIRTEL_COD");
+    assert.equal(result.failure_code, "PROVIDER_NOT_AVAILABLE");
+    assert.match(result.failure_message, /exclu par PAWAPAY_PROVIDERS/);
+    delete process.env.PAWAPAY_PROVIDERS;
+
+    assert.match((await reasonFor("ORANGE_COD")).failure_message, /ne verse pas en USD \(devises : CDF\)/);
+    assert.match((await reasonFor("MTN_MOMO_COD")).failure_message, /non activé en reversement sur le compte pawaPay/);
+    process.env.PAWAPAY_COUNTRY = "COD";
+    payout.country = "CMR";
+    assert.match((await reasonFor("MTN_MOMO_CMR")).failure_message, /PAWAPAY_COUNTRY=COD/);
+});
