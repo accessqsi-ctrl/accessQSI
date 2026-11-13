@@ -119,6 +119,15 @@ sur **notre** compte.
 Au niveau du compte : `signatureConfiguration`. Au niveau du pays : `prefix`, `flag`, `displayName` en/fr. Au niveau
 de l'opérateur : `logo`, `nameDisplayedToCustomer`.
 
+> **Constaté sur le compte de production (11/11/2026).**
+> - La vraie réponse nomme les plafonds `minAmount` / `maxAmount`, pas `minTransactionLimit` / `maxTransactionLimit`
+>   comme l'exemple de la documentation : il faudra lire les deux noms.
+> - RDC, remboursements : USD de 0,01 à 0,5 minimum selon l'opérateur et 2500 maximum ; CDF jusqu'à 1 000 000
+>   (Vodacom, Orange) ou 6 250 000 (Airtel) ; Vodacom CDF en `NONE`.
+> - `operationType=PAYOUT` renvoyait `countries: []` : **reversements non activés** sur le compte (remboursements
+>   activés). Activation à demander au support, URL de callback des reversements :
+>   `https://accessqsi-backend.onrender.com/billing/callbacks/pawapay/payouts`.
+
 ### Recommandations de pawaPay pour la saisie du numéro
 
 - **Ne jamais présélectionner d'opérateur par défaut.** Le client ne voit pas le choix et le paiement part vers le

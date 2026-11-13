@@ -49,9 +49,11 @@ const unavailableReason = (all, providerCode, currency, country) => {
     const entries = all.filter(item => item.provider === providerCode);
     const sameCurrency = entries.find(item => item.currency === currency);
     if (!entries.length) {
-        return countryFilter && countryFilter !== country
-            ? `${providerCode} est hors du périmètre : PAWAPAY_COUNTRY=${countryFilter} limite la configuration pawaPay à ce pays.`
-            : `${providerCode} n’apparaît pas dans la configuration pawaPay des reversements : opérateur non activé en reversement sur le compte pawaPay (à demander au support pawaPay).`;
+        if (countryFilter && countryFilter !== country) return `${providerCode} est hors du périmètre : PAWAPAY_COUNTRY=${countryFilter} limite la configuration pawaPay à ce pays.`;
+        // Ce que pawaPay a réellement renvoyé, pour distinguer « rien d'activé » d'« autres opérateurs seulement ».
+        if (!all.length) return `pawaPay ne renvoie aucun opérateur de reversement pour ce compte : les reversements ne sont pas activés (à demander au support pawaPay).`;
+        const offered = [...new Set(all.map(item => `${item.provider}${item.currency ? ` ${item.currency}` : ""}`))].join(", ");
+        return `${providerCode} n’apparaît pas dans la configuration pawaPay des reversements (opérateur non activé en reversement, à demander au support pawaPay). Activés : ${offered}.`;
     }
     if (!sameCurrency) return `${providerCode} ne verse pas en ${currency} (devises : ${entries.map(item => item.currency).filter(Boolean).join(", ") || "inconnues"}).`;
     if (sameCurrency.supportsPayout === false) return `Les reversements en ${currency} ne sont pas activés pour ${providerCode} sur le compte pawaPay (à demander au support pawaPay).`;

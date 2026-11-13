@@ -7,11 +7,11 @@ export const LEGAL_UPDATED_LABEL = "5 novembre 2026";
 export const COMPANY = {
   brand: "AccessQ",
   legalName: "INKLI SOFT, TINKLI SOFTWARE",
-  legalForm: "société à responsabilité limitée unipersonnelle(SARLU)",
+  legalForm: "société à responsabilité limitée unipersonnelle (SARLU)",
   rccm: "CD/KNG/RCCM/26-B-02526",
   idNat: "01-J6100-N00001Z",
   taxId: "A2628437P",
-  address: "14 Av maman sese,Q. Binza-Pigeon, C. Ngaliema, Kinshasa, République démocratique du Congo",
+  address: "14 Av. maman sese,Q. Binza-Pigeon, C. Ngaliema, Kinshasa, République démocratique du Congo",
   supportEmail: "access.supportclient@gmail.com",
   privacyEmail: "access.supportclient@gmail.com",
   courts: "les juridictions compétentes de Kinshasa"

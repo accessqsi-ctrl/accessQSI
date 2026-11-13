@@ -159,7 +159,13 @@ test("an unavailable payout operator gets a reason the super-admin can act on", 
     delete process.env.PAWAPAY_PROVIDERS;
 
     assert.match((await reasonFor("ORANGE_COD")).failure_message, /ne verse pas en USD \(devises : CDF\)/);
-    assert.match((await reasonFor("MTN_MOMO_COD")).failure_message, /non activé en reversement sur le compte pawaPay/);
+    const missing = (await reasonFor("MTN_MOMO_COD")).failure_message;
+    assert.match(missing, /non activé en reversement/);
+    assert.match(missing, /Activés : VODACOM_MPESA_COD USD, ORANGE_COD CDF, AIRTEL_COD USD/);
+    const conf = pawaPay.getActiveConfiguration;
+    pawaPay.getActiveConfiguration = async () => ({ countries: [] });
+    assert.match((await reasonFor("AIRTEL_COD")).failure_message, /aucun opérateur de reversement pour ce compte/);
+    pawaPay.getActiveConfiguration = conf;
     process.env.PAWAPAY_COUNTRY = "COD";
     payout.country = "CMR";
     assert.match((await reasonFor("MTN_MOMO_CMR")).failure_message, /PAWAPAY_COUNTRY=COD/);
