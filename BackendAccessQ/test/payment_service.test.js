@@ -53,7 +53,7 @@ test("payment reasons identify the purchased product and operation", () => {
         deposit_id: "7ca37a1d-f8c3-4f4b-972d-0249220ad35c",
         plan: { title: "PRO" },
         billing_interval: "MONTHLY",
-        amount: "25",
+        amount: "85",
         currency: "USD",
         failure_code: "INVALID_PAYER_FORMAT",
         failure_message: "The MSISDN is too long for the identified country COG"
@@ -339,14 +339,14 @@ test("a completed Event Pass payment creates a credit without replacing the subs
         deposit_id: "b03cd8bb-55dd-4f4b-90b3-d2c23d88a8ba",
         org_id: 3,
         plan_id: 4,
-        amount: new Prisma.Decimal("7"),
+        amount: new Prisma.Decimal("20"),
         currency: "USD",
         country: "COD",
         provider: "AIRTEL_COD",
         phone_number: "243991234567",
         status: "PENDING",
         billing_interval: "ONE_TIME",
-        plan: { plan_id: 4, title: "EVENT_PASS", cost: 7, currency: "USD" }
+        plan: { plan_id: 4, title: "EVENT_PASS", cost: 20, currency: "USD" }
     };
     let passData = null;
     let organizationUpdated = false;
@@ -373,7 +373,7 @@ test("a completed Event Pass payment creates a credit without replacing the subs
             data: {
                 depositId: payment.deposit_id,
                 status: "COMPLETED",
-                amount: "7",
+                amount: "20",
                 currency: "USD"
             }
         })

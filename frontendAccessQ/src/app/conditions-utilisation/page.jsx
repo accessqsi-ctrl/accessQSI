@@ -35,6 +35,7 @@ const sections = [
     body: <>
       <p>La création d’un compte, organisateur ou participant, nécessite l’acceptation expresse des présentes CGU par une case à cocher. {COMPANY.brand} enregistre la version acceptée et la date d’acceptation.</p>
       <p>L’Organisateur qui crée un compte au nom d’une organisation déclare disposer du pouvoir de l’engager. Il est responsable de l’usage de la Plateforme par ses Agents.</p>
+      <p>Lorsqu’une box est créée pour un mineur, la personne qui l’ouvre confirme que le titulaire de l’autorité parentale a donné ou autorisé le consentement requis pour le traitement des données du mineur.</p>
     </>
   },
   {
@@ -118,7 +119,8 @@ const sections = [
     title: "Disponibilité et responsabilité",
     body: <>
       <p>{COMPANY.brand} met en œuvre les moyens raisonnables pour assurer la disponibilité et la sécurité de la Plateforme. Le service peut être interrompu pour maintenance ou à cause d’événements extérieurs (réseau internet, opérateurs Mobile Money, hébergeur, coupure d’électricité). Nous conseillons aux Organisateurs de prévoir une solution de secours pour le contrôle des entrées.</p>
-      <p>{COMPANY.brand} n’est pas l’organisateur des événements et n’est pas responsable de leur déroulement, de leur annulation ni des dommages qui y surviennent. Sauf faute lourde ou intentionnelle, la responsabilité de {COMPANY.brand} envers un Organisateur est limitée aux sommes payées par lui à {COMPANY.brand} au titre de l’abonnement et des commissions pendant les douze mois précédant le fait générateur.</p>
+      <p>{COMPANY.brand} n’est pas l’organisateur des événements et n’assume pas les obligations propres à leur organisation, à leur déroulement ou à leur sécurité, qui relèvent de l’Organisateur. {COMPANY.legalName} demeure responsable de la bonne exécution de ses propres obligations contractuelles, notamment du fonctionnement des services qu’elle fournit, de l’émission des billets après confirmation du paiement et du traitement des reversements et remboursements prévus aux présentes.</p>
+      <p>La responsabilité de {COMPANY.legalName} ne peut être écartée que dans les cas admis par la loi, notamment lorsque l’inexécution résulte du fait du client, d’un cas de force majeure ou d’un tiers extérieur à la fourniture des prestations contractuelles. Aucune disposition des présentes ne supprime les droits à réparation ni les responsabilités qui ne peuvent légalement être exclues, notamment en matière de protection des données personnelles.</p>
     </>
   },
   {

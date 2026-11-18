@@ -1,7 +1,8 @@
 const bcrypt = require("bcrypt");
 const userService = require("../services/user.service");
 const prisma = require("../prisma/client");
-const { getPlanSummary, getPlanUsage } = require("../config/subscription");
+const { getPlanUsage } = require("../config/subscription");
+const { getPlanSummaryWithEventPasses } = require("../services/event_pass_quota.service");
 const {
     pm,
     passwordPolicyMessage,
@@ -27,7 +28,7 @@ exports.viewprofile = async (req, res) => {
                 include: { plan: true }
             })
             : null;
-        const planSummary = getPlanSummary(organization);
+        const planSummary = await getPlanSummaryWithEventPasses(prisma, organization);
         const usageCounts = fullUser.org_id
             ? await Promise.all([
                 prisma.event.count({

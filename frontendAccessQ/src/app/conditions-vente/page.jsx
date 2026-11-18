@@ -18,7 +18,7 @@ const sections = [
       <p>Les billets et pass proposés sur {COMPANY.brand} sont émis et vendus par l’<strong>organisateur</strong> de l’événement, dont le nom figure sur la page d’inscription. L’organisateur est seul responsable de l’événement : sa tenue, son contenu, ses horaires, sa sécurité et le respect de ce qu’il annonce.</p>
       <p>{COMPANY.brand}, plateforme éditée par {COMPANY.legalName}, fournit l’outil de billetterie, la box et le contrôle d’accès, et encaisse le paiement au nom et pour le compte de l’organisateur.</p>
       <CompanyIdentity />
-      <p>Ces conditions complètent les <Link href="/conditions-utilisation" className={link}>conditions d’utilisation</Link>. L’organisateur peut ajouter ses propres règles (âge minimum, objets interdits, tenue exigée…) : elles sont alors indiquées sur la page de l’offre.</p>
+      <p>Ces conditions complètent les <Link href="/conditions-utilisation" className={link}>conditions d’utilisation</Link>. L’organisateur peut préciser les conditions d’accès propres à son événement et les règles de sécurité applicables ; elles sont indiquées sur la page de l’offre et doivent respecter la loi.</p>
     </>
   },
   {
@@ -89,7 +89,7 @@ const sections = [
   {
     id: "responsabilite",
     title: "Responsabilité",
-    body: <p>{COMPANY.brand} n’est responsable ni de la tenue de l’événement ni des dommages subis pendant celui-ci. Elle répond du bon fonctionnement de la box, de l’émission du billet après paiement confirmé et de l’exécution des remboursements dans les conditions ci-dessus.</p>
+    body: <p>{COMPANY.brand} n’organise pas l’événement et n’assume pas les obligations qui relèvent de l’organisateur, notamment sa tenue et sa sécurité. {COMPANY.legalName} demeure responsable de la bonne exécution des services qu’elle fournit, dont la box, l’émission des billets après paiement confirmé et le traitement des remboursements prévus par ces conditions. Les responsabilités et droits à réparation que la loi rend impératifs restent applicables.</p>
   },
   {
     id: "droit",

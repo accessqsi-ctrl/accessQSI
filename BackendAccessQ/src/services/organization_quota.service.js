@@ -5,6 +5,7 @@ const {
     getPlanSummary,
     getQuotaStatus
 } = require("../config/subscription");
+const { getPlanSummaryWithEventPasses } = require("./event_pass_quota.service");
 
 class PlanQuotaError extends Error {
     constructor({ resourceName, currentCount, limit, planSummary }) {
@@ -35,7 +36,7 @@ const withOrganizationQuota = async ({
             where: { org_id: organizationId },
             include: { plan: true }
         });
-        const planSummary = getPlanSummary(organization);
+        const planSummary = await getPlanSummaryWithEventPasses(tx, organization);
         const currentCount = await count(tx);
         const quotaStatus = getQuotaStatus(planSummary.limits[limitKey], currentCount);
 
@@ -126,7 +127,7 @@ const withEventCreationQuota = async ({ organizationId, eventPassId = null, crea
             return event;
         }
 
-        const planSummary = getPlanSummary(organization, now);
+        const planSummary = await getPlanSummaryWithEventPasses(tx, organization, now);
         const currentCount = await tx.event.count({
             where: {
                 org_id: organizationId,

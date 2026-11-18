@@ -5,6 +5,8 @@ const { getPaymentConfig } = require("../../config/payment");
 const {
     PLAN_KEYS,
     BILLING_INTERVALS,
+    EVENT_PASS_AGENT_BONUS,
+    EVENT_PASS_AREA_BONUS,
     PLAN_DETAILS,
     ensureDefaultPlans,
     getFixedPlanPrice
@@ -76,7 +78,9 @@ const getPlans = async () => {
             durationDays: details.durationDays || ([PLAN_KEYS.ESSENTIAL, PLAN_KEYS.PRO].includes(plan.title) ? 30 : null),
             limits: plan.title === PLAN_KEYS.EVENT_PASS ? {
                 events: 1,
-                qrCodesPerEvent: details.maxQrCodesPerEvent
+                qrCodesPerEvent: details.maxQrCodesPerEvent,
+                agentsAdded: EVENT_PASS_AGENT_BONUS,
+                areasAdded: EVENT_PASS_AREA_BONUS
             } : {
                 eventsPerCycle: details.maxEventsPerCycle,
                 qrCodesPerEvent: details.maxQrCodesPerEvent,

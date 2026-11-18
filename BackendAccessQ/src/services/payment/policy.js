@@ -5,10 +5,13 @@ const {
     BILLING_INTERVALS,
     SUBSCRIPTION_MONTH_DAYS,
     PLAN_DETAILS,
+    EVENT_PASS_AGENT_BONUS,
+    EVENT_PASS_AREA_BONUS,
     getFixedPlanPrice,
     getPlanSummary
 } = require("../../config/subscription");
 const { PaymentValidationError } = require("./format");
+const { countActiveEventPasses } = require("../event_pass_quota.service");
 
 const OPEN_CHANGE_STATUSES = ["AWAITING_PAYMENT", "SCHEDULED", "REFUND_PENDING"];
 const PLAN_RANK = Object.freeze({
@@ -51,10 +54,13 @@ const planSnapshot = (planKey) => {
 
 const enforceResourceLimits = async (tx, orgId, planKey, selection = null) => {
     const details = PLAN_DETAILS[planKey] || PLAN_DETAILS.DISCOVERY;
+    const passCount = await countActiveEventPasses(tx, orgId);
+    const maxAgents = details.maxAgents == null ? null : details.maxAgents + passCount * EVENT_PASS_AGENT_BONUS;
+    const maxAreas = details.maxAreas == null ? null : details.maxAreas + passCount * EVENT_PASS_AREA_BONUS;
     const requestedAgents = Array.isArray(selection?.agentIds) ? selection.agentIds.map(Number) : [];
     const requestedAreas = Array.isArray(selection?.areaIds) ? selection.areaIds.map(Number) : [];
 
-    if (details.maxAgents != null) {
+    if (maxAgents != null) {
         const agents = await tx.userQ.findMany({
             where: {
                 org_id: orgId,
@@ -66,9 +72,9 @@ const enforceResourceLimits = async (tx, orgId, planKey, selection = null) => {
             orderBy: [{ created_at: "asc" }, { user_id: "asc" }]
         });
         const available = new Set(agents.map((agent) => agent.user_id));
-        const retained = requestedAgents.filter((id) => available.has(id)).slice(0, details.maxAgents);
+        const retained = requestedAgents.filter((id) => available.has(id)).slice(0, maxAgents);
         for (const agent of agents) {
-            if (retained.length >= details.maxAgents) break;
+            if (retained.length >= maxAgents) break;
             if (!retained.includes(agent.user_id)) retained.push(agent.user_id);
         }
         const suspended = agents.map((agent) => agent.user_id).filter((id) => !retained.includes(id));
@@ -80,16 +86,16 @@ const enforceResourceLimits = async (tx, orgId, planKey, selection = null) => {
         }
     }
 
-    if (details.maxAreas != null) {
+    if (maxAreas != null) {
         const areas = await tx.area.findMany({
             where: { org_id: orgId, deleted_at: null, suspended_by_plan: false },
             select: { area_id: true },
             orderBy: { area_id: "asc" }
         });
         const available = new Set(areas.map((area) => area.area_id));
-        const retained = requestedAreas.filter((id) => available.has(id)).slice(0, details.maxAreas);
+        const retained = requestedAreas.filter((id) => available.has(id)).slice(0, maxAreas);
         for (const area of areas) {
-            if (retained.length >= details.maxAreas) break;
+            if (retained.length >= maxAreas) break;
             if (!retained.includes(area.area_id)) retained.push(area.area_id);
         }
         const suspended = areas.map((area) => area.area_id).filter((id) => !retained.includes(id));

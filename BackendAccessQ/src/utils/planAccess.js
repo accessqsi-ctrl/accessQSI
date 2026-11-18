@@ -1,5 +1,6 @@
 const prisma = require("../prisma/client");
-const { getPlanSummary, PLAN_KEYS } = require("../config/subscription");
+const { PLAN_KEYS } = require("../config/subscription");
+const { getPlanSummaryWithEventPasses } = require("../services/event_pass_quota.service");
 
 const getFreePlanContext = () => ({
     organization: null,
@@ -12,8 +13,8 @@ const getFreePlanContext = () => ({
         maxEventsPerCycle: 1,
         maxQrCodes: 50,
         maxQrCodesPerEvent: 50,
-        maxAgents: 2,
-        maxAreas: 2,
+        maxAgents: 1,
+        maxAreas: 1,
         maxPdfPagesPerFile: 200
     },
     capabilities: [],
@@ -35,7 +36,7 @@ const getOrganizationPlanContext = async (organizationId) => {
             include: { plan: true }
         });
 
-        const summary = getPlanSummary(organization);
+        const summary = await getPlanSummaryWithEventPasses(prisma, organization);
 
         return {
             organization,

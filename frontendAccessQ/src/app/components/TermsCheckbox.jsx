@@ -33,7 +33,7 @@ export default function TermsCheckbox({ audience = "attendee", checked, onChange
             <Link href={link.href} target="_blank" rel="noopener" className="font-semibold text-blue-700 underline dark:text-blue-300">{link.label}</Link>
           </span>
         ))}
-        {" "}d’AccessQ.
+        {" "}d’AccessQ.{audience === "attendee" && " Si cette box concerne un mineur, je confirme que le titulaire de l’autorité parentale a autorisé le traitement de ses données personnelles."}
       </label>
     </div>
   );

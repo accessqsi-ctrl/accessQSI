@@ -159,7 +159,7 @@ export default function NewEventPage() {
                         </select>
                     </label>
                     <p className="mt-2 text-xs text-emerald-800 dark:text-emerald-200">
-                        Le Pass sera attribué à cet événement et ses 30 jours commenceront à la création.
+                        Dès confirmation du paiement, le Pass ajoute 2 agents et 2 zones aux quotas de votre formule. Il ajoute aussi 200 QR à cet événement; sa validité de 30 jours commence à l’attribution.
                     </p>
                 </div>
             )}

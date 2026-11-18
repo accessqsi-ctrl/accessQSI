@@ -6,7 +6,7 @@ const emailService = require("../services/email.service");
 const prisma = require("../prisma/client");
 const { getPublicKey } = require("../config/jwtKeys");
 const logger = require("../utils/logger");
-const { getPlanSummary } = require("../config/subscription");
+const { getPlanSummaryWithEventPasses } = require("../services/event_pass_quota.service");
 const { TERMS_VERSION, hasAcceptedTerms } = require("../config/legal");
 const { evaluateAccess, findUserAccessState } = require("../services/account_access.service");
 const {
@@ -131,7 +131,7 @@ exports.login = async (req, res) => {
                 where: { org_id: user.org_id },
                 include: { plan: true }
             });
-            const planSummary = getPlanSummary(organization);
+            const planSummary = await getPlanSummaryWithEventPasses(prisma, organization);
             if (planSummary.plan === "ESSENTIAL" && planSummary.isTrial) {
                 welcomeOffer = {
                     plan: planSummary.plan,

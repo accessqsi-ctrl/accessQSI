@@ -103,28 +103,28 @@ const pricingPlans = [
     name: "Découverte",
     price: "Gratuit",
     description: "Pour tester un premier contrôle à petite échelle.",
-    features: ["1 événement par mois", "50 QR par événement", "2 agents actifs", "2 zones actives", "Création des QR un par un", "Modèles de carte standard", "Tableau de bord de base"],
+    features: ["1 événement par mois", "50 QR par événement", "1 agent actif", "1 zone active", "Création des QR un par un", "Modèles de carte standard", "Tableau de bord de base"],
     cta: "Créer mon compte",
     href: "/register"
   },
   {
     name: "Essential",
-    price: "15 $",
+    price: "50 $",
     cadence: "/ mois",
-    annual: "144 $ par an — économisez 20 %",
+    annual: "540 $ par an — économisez 10 %",
     description: "Pour les organisateurs et équipes aux besoins réguliers.",
-    features: ["Tout Découverte inclus", "3 événements par mois", "200 QR par événement", "5 agents actifs", "6 zones actives", "Import de QR en masse (CSV)", "Export des scans en CSV et PDF"],
+    features: ["Tout Découverte inclus", "3 événements par mois", "200 QR par événement", "3 agents actifs", "3 zones actives", "Import de QR en masse (CSV)", "Export des scans en CSV et PDF"],
     cta: "Essayer Essential gratuitement",
     href: "/register",
     featured: true
   },
   {
     name: "Pro",
-    price: "25 $",
+    price: "85 $",
     cadence: "/ mois",
-    annual: "240 $ par an — économisez 20 %",
+    annual: "900 $ par an — économisez 11,8 %",
     description: "Pour les opérations exigeantes et les volumes importants.",
-    features: ["Tout Essential inclus", "5 événements par mois", "350 QR par événement", "10 agents actifs", "10 zones actives", "Modèles de carte personnalisés (logo, fond, textes)", "Statistiques avancées : scans des 7 derniers jours et meilleurs agents"],
+    features: ["Tout Essential inclus", "4 événements par mois", "350 QR par événement", "7 agents actifs", "7 zones actives", "Modèles de carte personnalisés (logo, fond, textes)", "Statistiques avancées : scans des 7 derniers jours et meilleurs agents"],
     cta: "Créer mon compte",
     href: "/register"
   },
@@ -599,13 +599,13 @@ export default function Home() {
                 <span className="rounded-full bg-amber-200 px-3 py-1 text-xs font-black uppercase tracking-wider text-amber-900 dark:bg-amber-800 dark:text-amber-100">Paiement unique</span>
               </div>
               <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-300">
-                Un seul événement, jusqu&apos;à 200 QR et 30 jours de validité après attribution. Les agents, les zones et les fonctionnalités restent ceux de votre plan. Idéal si vous n&apos;avez pas besoin d&apos;un abonnement récurrent.
+                Un événement avec jusqu&apos;à 200 QR, plus 2 agents et 2 zones ajoutés aux quotas de votre formule dès le paiement. L&apos;événement est valable 30 jours après attribution.
               </p>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <p className="whitespace-nowrap text-3xl font-black text-slate-950 dark:text-white">7 $</p>
+              <p className="whitespace-nowrap text-3xl font-black text-slate-950 dark:text-white">20 $</p>
               <Link href="/register" className="inline-flex min-h-11 items-center justify-center rounded-full bg-amber-500 px-5 py-3 text-center text-sm font-black text-slate-950 transition-all hover:bg-amber-400 active:scale-95">
-                Commencer gratuitement
+                Découvrir le Pass
               </Link>
             </div>
           </div>

@@ -8,12 +8,14 @@ const {
     PLAN_KEYS,
     BILLING_INTERVALS,
     PLAN_DETAILS,
+    EVENT_PASS_AGENT_BONUS,
+    EVENT_PASS_AREA_BONUS,
     getPlanByKey,
-    getPlanSummary,
     addUtcMonths,
     getTrialDurationDays
 } = require("../../config/subscription");
 const { PaymentValidationError, serializePayment } = require("./format");
+const { countActiveEventPasses, getPlanSummaryWithEventPasses } = require("../event_pass_quota.service");
 const {
     OPEN_CHANGE_STATUSES,
     serializeChange,
@@ -203,7 +205,7 @@ const getBillingOverview = async (orgId) => {
 
     return {
         subscription: {
-            ...getPlanSummary(organization),
+            ...await getPlanSummaryWithEventPasses(prisma, organization),
             startedAt: organization.subscription_started_at,
             expiresAt: organization.subscription_expires_at,
             pendingChange: serializeChange(openChange)
@@ -245,7 +247,7 @@ const startProTrial = async (orgId) => {
             "TRIAL_ALREADY_USED"
         );
     }
-    const currentSummary = getPlanSummary(organization);
+    const currentSummary = await getPlanSummaryWithEventPasses(prisma, organization);
     if (currentSummary.isPaid) {
         throw new PaymentValidationError(
             "Un abonnement payant est déjà actif pour cette organisation.",
@@ -337,7 +339,7 @@ const startProTrial = async (orgId) => {
         org_id: orgId,
         expires_at: expiresAt
     });
-    return getPlanSummary(updatedOrganization);
+    return getPlanSummaryWithEventPasses(prisma, updatedOrganization);
 };
 
 const requestCancellation = async (orgId) => prisma.$transaction(async (tx) => {
@@ -346,7 +348,7 @@ const requestCancellation = async (orgId) => prisma.$transaction(async (tx) => {
         where: { org_id: orgId },
         include: { plan: true }
     });
-    if (!organization || !getPlanSummary(organization).isPaid || !organization.subscription_expires_at) {
+    if (!organization || !(await getPlanSummaryWithEventPasses(tx, organization)).isPaid || !organization.subscription_expires_at) {
         throw new PaymentValidationError("Aucun abonnement payant actif ne peut être annulé.", "NO_ACTIVE_PAID_SUBSCRIPTION");
     }
     const open = await tx.subscriptionChange.findFirst({
@@ -493,11 +495,14 @@ const selectRetainedResources = async (orgId, { agentIds = [], areaIds = [] } = 
     }
     const targetKey = change.to_plan?.title;
     const details = PLAN_DETAILS[targetKey] || PLAN_DETAILS.DISCOVERY;
-    if (details.maxAgents != null && normalizedAgentIds.length > details.maxAgents) {
-        throw new PaymentValidationError(`Vous pouvez conserver au maximum ${details.maxAgents} agents actifs.`, "TOO_MANY_RETAINED_AGENTS");
+    const passCount = await countActiveEventPasses(prisma, orgId);
+    const maxAgents = details.maxAgents == null ? null : details.maxAgents + passCount * EVENT_PASS_AGENT_BONUS;
+    const maxAreas = details.maxAreas == null ? null : details.maxAreas + passCount * EVENT_PASS_AREA_BONUS;
+    if (maxAgents != null && normalizedAgentIds.length > maxAgents) {
+        throw new PaymentValidationError(`Vous pouvez conserver au maximum ${maxAgents} agents actifs.`, "TOO_MANY_RETAINED_AGENTS");
     }
-    if (details.maxAreas != null && normalizedAreaIds.length > details.maxAreas) {
-        throw new PaymentValidationError(`Vous pouvez conserver au maximum ${details.maxAreas} zones actives.`, "TOO_MANY_RETAINED_AREAS");
+    if (maxAreas != null && normalizedAreaIds.length > maxAreas) {
+        throw new PaymentValidationError(`Vous pouvez conserver au maximum ${maxAreas} zones actives.`, "TOO_MANY_RETAINED_AREAS");
     }
     const [agents, areas] = await Promise.all([
         prisma.userQ.count({

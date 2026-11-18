@@ -20,7 +20,7 @@ Ce segment est recommandé pour commencer parce que :
 
 - son problème est urgent et facile à montrer en vidéo : files, fraude, doublons et accès VIP ;
 - la décision d'achat peut être prise par une seule personne ou une petite équipe ;
-- le Pass événement à 7 USD constitue une offre d'entrée simple ;
+- le Pass événement à 20 USD constitue une offre d'entrée simple ;
 - chaque événement réussi peut produire une démonstration, un témoignage et des recommandations.
 
 Les entreprises, écoles, hôtels et ONG forment la deuxième vague, après l'obtention de preuves terrain.
@@ -57,11 +57,11 @@ Une **organisation activée** doit avoir créé un événement, une zone et au m
 
 **Testez gratuitement votre prochain contrôle d'accès avec AccessQ.**
 
-- plan Découverte : 1 événement, 50 QR, 2 agents et 2 zones ;
+- plan Découverte : 1 événement, 50 QR, 1 agent et 1 zone ;
 - aucune carte bancaire requise pour commencer ;
 - accompagnement WhatsApp de démarrage pour les 20 premières organisations activées ;
-- passage au Pass événement à 7 USD lorsque 200 QR suffisent ;
-- Essential à 15 USD/mois et Pro à 25 USD/mois pour les usages récurrents.
+- passage au Pass événement à 20 USD pour un événement avec 200 QR et +2 agents actifs / +2 zones actives sur la formule ;
+- Essential à 50 USD/mois et Pro à 85 USD/mois pour les usages récurrents.
 
 La promesse publique est alignée sur le comportement d'inscription : chaque nouvelle organisation bénéficie d'un mois d'Essential offert, sans paiement initial, puis peut choisir un plan payant ou poursuivre avec Découverte.
 
@@ -115,7 +115,7 @@ E-mail vérifié → assistant de démarrage
                ↓
 Événement + zone + 5 QR + premier scan
                ↓
-Pass 7 USD / Essential 15 USD / Pro 25 USD
+Pass 20 USD / Essential 50 USD / Pro 85 USD
                ↓
 Témoignage + recommandation
 ```

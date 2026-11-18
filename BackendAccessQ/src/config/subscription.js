@@ -15,6 +15,8 @@ const BILLING_INTERVALS = Object.freeze({
 
 const DEFAULT_TRIAL_DURATION_DAYS = 30;
 const EVENT_PASS_DURATION_DAYS = 30;
+const EVENT_PASS_AGENT_BONUS = 2;
+const EVENT_PASS_AREA_BONUS = 2;
 const SUBSCRIPTION_MONTH_DAYS = 30;
 const PDF_PAGES_PER_FILE = 200;
 
@@ -47,11 +49,11 @@ const scalePrices = (factor) => Object.freeze({
     GHS: Math.round(117 * factor)
 });
 
-const ESSENTIAL_FIXED_PRICES = scalePrices(1.5);
-const ESSENTIAL_ANNUAL_FIXED_PRICES = scalePrices(14.4);
-const PRO_FIXED_PRICES = scalePrices(2.5);
-const PRO_ANNUAL_FIXED_PRICES = scalePrices(24);
-const EVENT_PASS_FIXED_PRICES = scalePrices(0.7);
+const ESSENTIAL_FIXED_PRICES = scalePrices(5);
+const ESSENTIAL_ANNUAL_FIXED_PRICES = scalePrices(54);
+const PRO_FIXED_PRICES = scalePrices(8.5);
+const PRO_ANNUAL_FIXED_PRICES = scalePrices(90);
+const EVENT_PASS_FIXED_PRICES = scalePrices(2);
 
 const PLAN_DETAILS = Object.freeze({
     DISCOVERY: Object.freeze({
@@ -61,10 +63,10 @@ const PLAN_DETAILS = Object.freeze({
         currency: "USD",
         maxEventsPerCycle: 1,
         maxQrCodesPerEvent: 50,
-        maxAgents: 2,
-        maxAreas: 2,
+        maxAgents: 1,
+        maxAreas: 1,
         capabilities: Object.freeze([]),
-        features: ["1 événement par mois", "50 QR par événement", "2 agents actifs", "2 zones actives", "Création des QR un par un", "Modèles de carte standard", "Tableau de bord de base"]
+        features: ["1 événement par mois", "50 QR par événement", "1 agent actif", "1 zone active", "Création des QR un par un", "Modèles de carte standard", "Tableau de bord de base"]
     }),
     ESSENTIAL: Object.freeze({
         key: PLAN_KEYS.ESSENTIAL,
@@ -76,14 +78,14 @@ const PLAN_DETAILS = Object.freeze({
         annualFixedPrices: ESSENTIAL_ANNUAL_FIXED_PRICES,
         maxEventsPerCycle: 3,
         maxQrCodesPerEvent: 200,
-        maxAgents: 5,
-        maxAreas: 6,
+        maxAgents: 3,
+        maxAreas: 3,
         capabilities: Object.freeze([
             PLAN_CAPABILITIES.BULK_QR_IMPORT,
             PLAN_CAPABILITIES.MULTIPLE_REGISTRATION_OFFERS,
             PLAN_CAPABILITIES.SCAN_EXPORTS
         ]),
-        features: ["Tout Découverte inclus", "3 événements par mois", "200 QR par événement", "5 agents actifs", "6 zones actives", "Import de QR en masse (CSV)", "Export des scans en CSV et PDF", "Formulaires d’inscription à plusieurs offres"]
+        features: ["Tout Découverte inclus", "3 événements par mois", "200 QR par événement", "3 agents actifs", "3 zones actives", "Import de QR en masse (CSV)", "Export des scans en CSV et PDF", "Formulaires d’inscription à plusieurs offres"]
     }),
     PRO: Object.freeze({
         key: PLAN_KEYS.PRO,
@@ -93,12 +95,12 @@ const PLAN_DETAILS = Object.freeze({
         currency: "USD",
         fixedPrices: PRO_FIXED_PRICES,
         annualFixedPrices: PRO_ANNUAL_FIXED_PRICES,
-        maxEventsPerCycle: 5,
+        maxEventsPerCycle: 4,
         maxQrCodesPerEvent: 350,
-        maxAgents: 10,
-        maxAreas: 10,
+        maxAgents: 7,
+        maxAreas: 7,
         capabilities: Object.freeze(Object.values(PLAN_CAPABILITIES)),
-        features: ["Tout Essential inclus", "5 événements par mois", "350 QR par événement", "10 agents actifs", "10 zones actives", "Modèles de carte personnalisés (logo, fond, textes)", "Statistiques avancées : scans des 7 derniers jours et meilleurs agents"]
+        features: ["Tout Essential inclus", "4 événements par mois", "350 QR par événement", "7 agents actifs", "7 zones actives", "Modèles de carte personnalisés (logo, fond, textes)", "Statistiques avancées : scans des 7 derniers jours et meilleurs agents"]
     }),
     ENTERPRISE: Object.freeze({
         key: PLAN_KEYS.ENTERPRISE,
@@ -125,7 +127,7 @@ const PLAN_DETAILS = Object.freeze({
         maxAreas: null,
         durationDays: EVENT_PASS_DURATION_DAYS,
         capabilities: Object.freeze([]),
-        features: ["1 événement", "200 QR", "Valable 30 jours après attribution", "Agents, zones et fonctionnalités selon votre plan"]
+        features: ["1 événement", "200 QR", "+2 agents actifs au quota de la formule", "+2 zones actives au quota de la formule", "Valable 30 jours après attribution"]
     })
 });
 
@@ -195,8 +197,9 @@ const getMonthlyCycle = (organization, now = new Date()) => {
     return { start, end };
 };
 
-const getPlanSummary = (organization, now = new Date()) => {
+const getPlanSummary = (organization, now = new Date(), activeEventPassCount = 0) => {
     const details = getPlanDetails(organization, now);
+    const passCount = Math.max(0, Math.floor(Number(activeEventPassCount) || 0));
     const nowTime = now.getTime();
     const trialStartedAt = organization?.trial_started_at || null;
     const trialExpiresAt = organization?.trial_expires_at || null;
@@ -228,13 +231,14 @@ const getPlanSummary = (organization, now = new Date()) => {
         expiresAt: subscriptionExpiresAt,
         cycleStartedAt: cycle.start,
         cycleEndsAt: cycle.end,
+        activeEventPassCount: passCount,
         limits: {
             maxEvents: details.maxEventsPerCycle,
             maxEventsPerCycle: details.maxEventsPerCycle,
             maxQrCodes: details.maxQrCodesPerEvent,
             maxQrCodesPerEvent: details.maxQrCodesPerEvent,
-            maxAgents: details.maxAgents,
-            maxAreas: details.maxAreas,
+            maxAgents: details.maxAgents == null ? null : details.maxAgents + passCount * EVENT_PASS_AGENT_BONUS,
+            maxAreas: details.maxAreas == null ? null : details.maxAreas + passCount * EVENT_PASS_AREA_BONUS,
             maxPdfPagesPerFile: PDF_PAGES_PER_FILE
         },
         capabilities: [...details.capabilities],
@@ -324,6 +328,8 @@ module.exports = {
     BILLING_INTERVALS,
     DEFAULT_TRIAL_DURATION_DAYS,
     EVENT_PASS_DURATION_DAYS,
+    EVENT_PASS_AGENT_BONUS,
+    EVENT_PASS_AREA_BONUS,
     SUBSCRIPTION_MONTH_DAYS,
     PDF_PAGES_PER_FILE,
     PLAN_CAPABILITIES,

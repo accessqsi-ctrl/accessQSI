@@ -101,8 +101,8 @@ const sections = [
   },
   {
     id: "mineurs",
-    title: "Mineurs",
-    body: <p>La création d’une box est réservée aux personnes de 16 ans ou plus. Un billet pour un mineur plus jeune doit être obtenu par un parent ou un représentant légal, depuis sa propre box.</p>
+    title: "Personnes mineures",
+    body: <p>AccessQ ne fixe pas d’âge minimum pour créer une box ou obtenir un billet. Lorsqu’un service de la société de l’information est proposé directement à un mineur et implique le traitement de ses données personnelles, le consentement doit être donné ou autorisé par le titulaire de l’autorité parentale. La personne qui crée une box pour un mineur confirme que cette autorisation a été obtenue. Cette confirmation est recueillie avec l’acceptation des conditions et enregistrée avec sa date et sa version ; une confirmation du représentant légal peut être demandée en cas de doute.</p>
   },
   {
     id: "modifications",

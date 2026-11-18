@@ -2,11 +2,13 @@ const paymentService = require("../services/payment.service");
 const ticketPayments = require("../services/ticket_payment.service");
 const organizerPayouts = require("../services/organizer_payout.service");
 const walletBalances = require("../services/wallet_balance.service");
+const { reconcileExpiredEventPassQuotas } = require("../services/event_pass_quota.service");
 const logger = require("../utils/logger");
 
 const run = async () => {
     try {
         const applied = await paymentService.applyDueSubscriptionChanges();
+        await reconcileExpiredEventPassQuotas();
         await paymentService.reconcilePendingTransactions();
         if (applied.length > 0) {
             logger.info("subscription.scheduled_changes_applied", { count: applied.length });

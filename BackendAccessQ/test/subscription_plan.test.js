@@ -21,24 +21,24 @@ const makeResponse = () => ({
   json(payload) { this.body = payload; return this; }
 });
 
-test("Découverte applique 1 événement mensuel, 50 QR par événement, 2 agents et 2 zones", () => {
+test("Découverte applique 1 événement mensuel, 50 QR par événement, 1 agent et 1 zone", () => {
   const summary = getPlanSummary({ plan: { title: "DISCOVERY" }, created_at: new Date("2026-01-08T10:00:00Z") });
   assert.equal(summary.plan, "DISCOVERY");
   assert.equal(getEventQuotaStatus(summary, 1).allowed, false);
   assert.equal(getQrQuotaStatus(summary, 50).allowed, false);
-  assert.equal(getAgentQuotaStatus(summary, 2).allowed, false);
-  assert.equal(getAreaQuotaStatus(summary, 2).allowed, false);
+  assert.equal(getAgentQuotaStatus(summary, 1).allowed, false);
+  assert.equal(getAreaQuotaStatus(summary, 1).allowed, false);
 });
 
-test("Essential applique 3 événements, 200 QR, 5 agents et 6 zones", () => {
+test("Essential applique 3 événements, 200 QR, 3 agents et 3 zones", () => {
   const summary = getPlanSummary({ plan: { title: "ESSENTIAL" } });
   assert.deepEqual(summary.limits, {
     maxEvents: 3,
     maxEventsPerCycle: 3,
     maxQrCodes: 200,
     maxQrCodesPerEvent: 200,
-    maxAgents: 5,
-    maxAreas: 6,
+    maxAgents: 3,
+    maxAreas: 3,
     maxPdfPagesPerFile: 200
   });
   assert.equal(hasPlanCapability(summary, PLAN_CAPABILITIES.SCAN_EXPORTS), true);
@@ -61,14 +61,14 @@ test("Essential est identifié comme un essai pendant sa période gratuite", () 
   assert.equal(summary.subscriptionType, "TRIAL");
 });
 
-test("Pro applique 5 événements, 350 QR, 10 agents et 10 zones", () => {
+test("Pro applique 4 événements, 350 QR, 7 agents et 7 zones", () => {
   const summary = getPlanSummary({ plan: { title: "PRO" } });
   assert.equal(getEventQuotaStatus(summary, 4).allowed, true);
-  assert.equal(getEventQuotaStatus(summary, 5).allowed, false);
+  assert.equal(getEventQuotaStatus(summary, 4).allowed, false);
   assert.equal(getQrQuotaStatus(summary, 349).allowed, true);
   assert.equal(getQrQuotaStatus(summary, 350).allowed, false);
-  assert.equal(summary.limits.maxAgents, 10);
-  assert.equal(summary.limits.maxAreas, 10);
+  assert.equal(summary.limits.maxAgents, 7);
+  assert.equal(summary.limits.maxAreas, 7);
   assert.equal(hasPlanCapability(summary, PLAN_CAPABILITIES.ADVANCED_ANALYTICS), true);
 });
 

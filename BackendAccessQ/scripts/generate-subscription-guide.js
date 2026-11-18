@@ -216,23 +216,23 @@ paragraph("AccessQ commercialise l'accès à la plateforme par abonnement mensue
 table(
     ["Plan", "Prix", "Événements", "QR / événement", "Agents", "Zones"],
     [
-        ["Découverte", "Gratuit", "1 / mois", "50", "2 actifs", "2 actives"],
-        ["Essential", "15 $ / mois\nou 144 $ / an", "5 / mois", "200", "5 actifs", "6 actives"],
-        ["Pass événement", "7 $ / événement", "1 crédit", "200", "Selon le compte", "Selon le compte"],
-        ["Pro", "25 $ / mois\nou 240 $ / an", "7 / mois", "350", "10 actifs", "15 actives"],
+        ["Découverte", "Gratuit", "1 / mois", "50", "1 actif", "1 active"],
+        ["Essential", "50 $ / mois\nou 540 $ / an", "3 / mois", "200", "3 actifs", "3 actives"],
+        ["Pass événement", "20 $ / événement", "1 crédit", "200", "+2 actifs", "+2 actives"],
+        ["Pro", "85 $ / mois\nou 900 $ / an", "4 / mois", "350", "7 actifs", "7 actives"],
         ["Entreprise", "Sur devis", "Personnalisé", "Personnalisé", "Personnalisé", "Personnalisé"]
     ],
     [88, 83, 84, 88, 76, 76],
     { fontSize: 8.3 }
 );
-callout("Offres annuelles", "Essential annuel coûte 144 $, soit 12 $ par mois. Pro annuel coûte 240 $, soit 20 $ par mois. Chaque formule applique une remise de 20 % et se paie en une fois. Les quotas d'événements continuent à se renouveler par cycle mensuel.", "green");
+callout("Offres annuelles", "Essential annuel coûte 540 $, soit 45 $ par mois en moyenne (10 % de remise). Pro annuel coûte 900 $, soit 75 $ par mois en moyenne (environ 11,8 % de remise). Chaque formule se paie en une fois. Les quotas d'événements continuent à se renouveler par cycle mensuel.", "green");
 paragraph("Les prix affichés en dollars servent de référence commerciale. Le montant réellement débité est un tarif local fixe configuré pour la devise de l'opérateur Mobile Money : CDF, XOF, XAF, RWF, ZMW, KES, UGX, TZS, NGN ou GHS.");
 
 sectionTitle(2, "Notions fondamentales", "La séparation entre période payée, cycle de quota et événement évite les remises à zéro frauduleuses.");
 subTitle("Période d'abonnement");
 paragraph("La période d'abonnement est l'intervalle déjà payé. Un abonnement mensuel ajoute un mois ; Essential annuel ajoute douze mois. La date de fin est conservée lors d'un upgrade afin que le changement de plan ne crée pas un nouveau cycle artificiel.");
 subTitle("Cycle mensuel de quota");
-paragraph("Les événements sont comptés par cycle mensuel ancré sur la date de début de l'abonnement. Même avec Essential annuel, le quota de 5 événements se renouvelle chaque mois. Un événement supprimé reste compté dans le cycle pendant lequel il a été créé.");
+paragraph("Les événements sont comptés par cycle mensuel ancré sur la date de début de l'abonnement. Même avec Essential annuel, le quota de 3 événements se renouvelle chaque mois. Un événement supprimé reste compté dans le cycle pendant lequel il a été créé.");
 subTitle("Quota propre à l'événement");
 paragraph("Chaque événement possède son propre quota QR. Essential autorise jusqu'à 200 QR pour chacun de ses événements ; Pro en autorise 350. Supprimer un QR ne rend pas son unité au quota, ce qui empêche la génération et la suppression répétées.");
 subTitle("Ressources actives");
@@ -285,7 +285,7 @@ sectionTitle(5, "Calcul du prorata", "Le client paie uniquement la différence d
 paragraph("Le prorata est utilisé pour les upgrades Essential vers Pro lorsque la périodicité reste identique : mensuel vers mensuel ou annuel vers annuel. La plateforme calcule les unités de période restantes, y compris les périodes déjà prépayées, puis applique la différence entre les deux tarifs.");
 callout("Formule", "Unités restantes = temps restant / durée du cycle\nCrédit = prix de l'ancien plan × unités restantes\nCoût Pro restant = prix du nouveau plan × unités restantes\nMontant dû = coût Pro restant − crédit", "blue");
 subTitle("Exemple");
-paragraph("Essential coûte 15 $ et Pro 25 $. Si exactement la moitié du cycle reste, le crédit Essential vaut 7,50 $, le coût Pro restant vaut 12,50 $ et le client paie 5 $. La date de renouvellement ne change pas.");
+paragraph("Essential coûte 50 $ et Pro 85 $. Si exactement la moitié du cycle reste, le crédit Essential vaut 25 $, le coût Pro restant vaut 42,50 $ et le client paie 17,50 $. La date de renouvellement ne change pas.");
 paragraph("Le montant local est arrondi selon le nombre de décimales accepté par l'opérateur Mobile Money. Le devis affiché avant paiement contient le montant débité, le crédit appliqué, le prix de référence, le type de transition et la date d'effet.");
 
 sectionTitle(6, "Paiements Mobile Money avec pawaPay", "Le paiement reste explicitement autorisé par le client ; AccessQ ne prétend pas effectuer un prélèvement automatique.");
@@ -304,14 +304,14 @@ callout("Renouvellement", "Le renouvellement est manuel ou prépayé : le client
 
 sectionTitle(7, "Quotas lors d'un upgrade ou downgrade", "Le changement de plan modifie le plafond total, pas la consommation déjà enregistrée.");
 subTitle("Upgrade sans remise à zéro");
-paragraph("Si un client Essential a déjà créé 5 événements puis passe à Pro, son plafond devient 7 pour le même cycle. Il lui reste donc 2 événements, et non 7 supplémentaires. La date d'ancrage et les consommations existantes sont préservées.");
+paragraph("Si un client Essential a déjà créé 3 événements puis passe à Pro, son plafond devient 4 pour le même cycle. Il lui reste donc 1 événement, et non 4 supplémentaires. La date d'ancrage et les consommations existantes sont préservées.");
 subTitle("Downgrade avec dépassement");
 paragraph("Les événements et QR existants restent consultables. Les nouvelles créations sont bloquées lorsqu'elles dépassent les limites du nouveau plan. Les agents et zones excédentaires sont suspendus sans être supprimés.");
 paragraph("Avant l'échéance, l'administrateur de l'organisation peut sélectionner les agents et zones qu'il souhaite conserver. Si aucune sélection n'est enregistrée, AccessQ applique un choix déterministe parmi les ressources actives les plus anciennes.");
 callout("Zones historiques", "Une zone suspendue ne peut plus être utilisée pour créer ou modifier un nouvel événement. Elle reste toutefois disponible comme référence des anciens horaires et scans, ce qui préserve la validité des QR existants.", "green");
 
 sectionTitle(8, "Expiration et plan Découverte", "À la fin d'une période non renouvelée, le compte conserve ses données mais retrouve les limites gratuites.");
-bullet("Le plan effectif devient Découverte : 1 événement mensuel, 50 QR par événement, 2 agents et 2 zones.");
+bullet("Le plan effectif devient Découverte : 1 événement mensuel, 50 QR par événement, 1 agent et 1 zone.");
 bullet("Les événements créés précédemment restent consultables.");
 bullet("Les QR déjà générés restent valides jusqu'à la fin de leur événement, sous réserve de leurs propres dates et règles d'usage.");
 bullet("Les QR expirés, révoqués ou ayant atteint leur limite restent refusés normalement.");
@@ -319,14 +319,14 @@ bullet("Les agents et zones au-delà du quota Découverte sont marqués comme su
 bullet("Une ressource suspendue peut être réactivée après upgrade, dans la limite du nouveau quota.");
 paragraph("Un worker de cycle de vie s'exécute périodiquement sur le backend. Il applique les changements arrivés à échéance, marque les abonnements expirés et impose les limites de ressources correspondantes.");
 
-sectionTitle(9, "Pass événement à 7 $", "Le Pass est un crédit autonome et ne modifie jamais l'abonnement principal.");
+sectionTitle(9, "Pass événement à 20 $", "Le Pass est un crédit autonome et ne modifie jamais l'abonnement principal.");
 flow([
-    { title: "Achat", text: "Paiement unique de 7 $" },
+    { title: "Achat", text: "Paiement unique de 20 $" },
     { title: "Crédit", text: "Statut AVAILABLE" },
     { title: "Attribution", text: "Choix explicite d'un événement" },
     { title: "Validité", text: "200 QR, fenêtre de 30 jours" }
 ]);
-paragraph("L'attribution explicite évite toute ambiguïté entre le quota mensuel d'un abonnement et le crédit du Pass. Le Pass ne réinitialise aucun compteur et ne se cumule pas automatiquement avec Essential ou Pro.");
+paragraph("L'attribution explicite évite toute ambiguïté entre le quota mensuel d'un abonnement et le crédit du Pass. Dès la confirmation du paiement, chaque Pass ajoute 2 agents actifs et 2 zones actives aux limites de la formule. Le bonus s'applique tant que le Pass est disponible ou affecté à un événement valide. Le Pass donne aussi un crédit d'événement de 200 QR et ne réinitialise aucun compteur.");
 paragraph("Le délai de 30 jours commence lors de l'attribution à l'événement. L'événement doit être planifié dans cette fenêtre. Après expiration, les données restent conservées mais aucun nouveau QR ne peut être créé avec ce Pass.");
 
 sectionTitle(10, "Essai Pro", "L'essai est facultatif, contrôlé par configuration et utilisable une seule fois.");
@@ -395,7 +395,7 @@ sectionTitle(14, "Scénarios de référence", "Ces exemples résument le comport
 subTitle("Scénario A — Essential vers Pro au milieu du mois");
 paragraph("Le devis calcule la différence proratisée. Après confirmation pawaPay, Pro est actif immédiatement. Le cycle mensuel, les événements déjà consommés et la date de renouvellement restent inchangés.");
 subTitle("Scénario B — Pro vers Essential");
-paragraph("Essential est payé maintenant mais programmé à l'échéance de Pro. Le client conserve Pro jusque-là et choisit les 5 agents et 6 zones à garder actifs. À l'échéance, les excédents sont suspendus.");
+paragraph("Essential est payé maintenant mais programmé à l'échéance de Pro. Le client conserve Pro jusque-là et choisit les 3 agents et 3 zones à garder actifs. À l'échéance, les excédents sont suspendus.");
 subTitle("Scénario C — Deux paiements lancés presque simultanément");
 paragraph("Le verrou organisationnel et l'index unique empêchent une deuxième transition ouverte. Si un ancien callback arrive après une autre modification, la version ne correspond plus et aucune activation aveugle n'a lieu.");
 subTitle("Scénario D — Abonnement non renouvelé");

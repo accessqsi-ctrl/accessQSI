@@ -55,37 +55,25 @@ test("active pawaPay configuration is reduced to public provider fields", () => 
 });
 
 test("the approved Pro and Essential annual prices are exposed", () => {
-    assert.deepEqual(PRO_FIXED_PRICES, {
-        USD: 25,
-        CDF: 57500,
-        XOF: 14500,
-        XAF: 14500,
-        RWF: 36750,
-        ZMW: 463,
-        KES: 3250,
-        UGX: 92500,
-        TZS: 65750,
-        NGN: 34250,
-        GHS: 293
-    });
-    assert.equal(getFixedPlanPrice("PRO", "USD"), 25);
-    assert.equal(getFixedPlanPrice("PRO", "CDF"), 57500);
+    assert.equal(PRO_FIXED_PRICES.USD, 85);
+    assert.equal(getFixedPlanPrice("PRO", "USD"), 85);
+    assert.equal(getFixedPlanPrice("PRO", "CDF"), 195500);
     assert.deepEqual(PRO_ANNUAL_FIXED_PRICES, {
-        USD: 240,
-        CDF: 552000,
-        XOF: 139200,
-        XAF: 139200,
-        RWF: 352800,
-        ZMW: 4440,
-        KES: 31200,
-        UGX: 888000,
-        TZS: 631200,
-        NGN: 328800,
-        GHS: 2808
+        USD: 900,
+        CDF: 2070000,
+        XOF: 522000,
+        XAF: 522000,
+        RWF: 1323000,
+        ZMW: 16650,
+        KES: 117000,
+        UGX: 3330000,
+        TZS: 2367000,
+        NGN: 1233000,
+        GHS: 10530
     });
-    assert.equal(getFixedPlanPrice("PRO", "USD", "ANNUAL"), 240);
-    assert.equal(ESSENTIAL_ANNUAL_FIXED_PRICES.USD, 144);
-    assert.equal(getFixedPlanPrice("ESSENTIAL", "USD", "ANNUAL"), 144);
+    assert.equal(getFixedPlanPrice("PRO", "USD", "ANNUAL"), 900);
+    assert.equal(ESSENTIAL_ANNUAL_FIXED_PRICES.USD, 540);
+    assert.equal(getFixedPlanPrice("ESSENTIAL", "USD", "ANNUAL"), 540);
     assert.equal(getFixedPlanPrice("PRO", "EUR"), null);
 });
 

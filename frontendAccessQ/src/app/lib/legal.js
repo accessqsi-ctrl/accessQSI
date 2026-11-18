@@ -1,7 +1,7 @@
 // Version des textes juridiques publiés. Doit rester identique à TERMS_VERSION dans
 // BackendAccessQ/src/config/legal.js : la changer oblige chaque compte à les accepter à nouveau.
-export const LEGAL_VERSION = "2026-11-05";
-export const LEGAL_UPDATED_LABEL = "5 novembre 2026";
+export const LEGAL_VERSION = "2026-11-18";
+export const LEGAL_UPDATED_LABEL = "18 novembre 2026";
 
 // Identité de l'éditeur. Les mentions « à compléter » doivent être remplies avant la mise en ligne.
 export const COMPANY = {

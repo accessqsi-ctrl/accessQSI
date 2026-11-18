@@ -94,15 +94,15 @@ test("le devis d’upgrade facture uniquement la différence proratisée", () =>
     const end = new Date("2026-08-31T00:00:00Z");
     const quote = calculatePaymentQuote({
         organization: organization({ plan: "ESSENTIAL", start, end }),
-        plan: { title: "PRO", cost: 25, currency: "USD" },
+        plan: { title: "PRO", cost: 85, currency: "USD" },
         provider: { currency: "USD", decimals: 2 },
         billingInterval: "MONTHLY",
         now: new Date("2026-08-16T00:00:00Z")
     });
     assert.equal(quote.transition.type, "UPGRADE");
-    assert.equal(quote.localPrice, 5);
-    assert.equal(quote.creditAmount, 7.5);
-    assert.equal(quote.referencePrice, 5);
+    assert.equal(quote.localPrice, 17.5);
+    assert.equal(quote.creditAmount, 25);
+    assert.equal(quote.referencePrice, 17.5);
 });
 
 test("le devis Essential annuel vers Pro annuel utilise les tarifs annuels", () => {
@@ -112,15 +112,15 @@ test("le devis Essential annuel vers Pro annuel utilise les tarifs annuels", () 
     const now = new Date((start.getTime() + end.getTime()) / 2);
     const quote = calculatePaymentQuote({
         organization: organization({ plan: "ESSENTIAL", interval: "ANNUAL", start, end }),
-        plan: { title: "PRO", cost: 25, currency: "USD" },
+        plan: { title: "PRO", cost: 900, currency: "USD" },
         provider: { currency: "USD", decimals: 2 },
         billingInterval: "ANNUAL",
         now
     });
     assert.equal(quote.transition.type, "UPGRADE");
-    assert.equal(quote.localPrice, 48);
-    assert.equal(quote.creditAmount, 72);
-    assert.equal(quote.referencePrice, 48);
+    assert.equal(quote.localPrice, 180);
+    assert.equal(quote.creditAmount, 270);
+    assert.equal(quote.referencePrice, 180);
 });
 
 test("un downgrade payé est programmé sans remplacer immédiatement le plan actif", async () => {
@@ -143,8 +143,8 @@ test("un downgrade payé est programmé sans remplacer immédiatement le plan ac
         org_id: 3,
         plan_id: 2,
         subscription_change_id: 44,
-        amount: new Prisma.Decimal("15"),
-        reference_amount: new Prisma.Decimal("15"),
+        amount: new Prisma.Decimal("50"),
+        reference_amount: new Prisma.Decimal("50"),
         reference_currency: "USD",
         currency: "USD",
         country: "COD",
@@ -152,7 +152,7 @@ test("un downgrade payé est programmé sans remplacer immédiatement le plan ac
         phone_number: "243991234567",
         status: "PENDING",
         billing_interval: "MONTHLY",
-        plan: { plan_id: 2, title: "ESSENTIAL", cost: 15, currency: "USD" },
+        plan: { plan_id: 2, title: "ESSENTIAL", cost: 50, currency: "USD" },
         subscription_change: change
     };
     let organizationUpdated = false;
@@ -186,7 +186,7 @@ test("un downgrade payé est programmé sans remplacer immédiatement le plan ac
     mockModule("src/services/pawapay.service.js", {
         checkDeposit: async () => ({
             status: "FOUND",
-            data: { depositId: payment.deposit_id, status: "COMPLETED", amount: "15", currency: "USD" }
+            data: { depositId: payment.deposit_id, status: "COMPLETED", amount: "50", currency: "USD" }
         })
     });
     const service = require("../src/services/payment.service");
@@ -316,7 +316,7 @@ test("un upgrade payé conserve l’ancrage et la date de fin du cycle", async (
         phone_number: "243991234567",
         status: "PENDING",
         billing_interval: "MONTHLY",
-        plan: { plan_id: 3, title: "PRO", cost: 25, currency: "USD" },
+        plan: { plan_id: 3, title: "PRO", cost: 85, currency: "USD" },
         subscription_change: change
     };
     let orgUpdate;
