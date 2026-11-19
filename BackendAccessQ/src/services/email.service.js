@@ -14,7 +14,7 @@ const providerErrorMeta = (operation, error) => ({
 // Expéditeur par défaut chargé depuis les variables d'environnement
 const defaultSender = {
     name: process.env.BREVO_SENDER_NAME || "AccessQ",
-    email: process.env.BREVO_SENDER_EMAIL || "access.supportclient@gmail.com",
+    email: process.env.BREVO_SENDER_EMAIL || "supportaccessq@tinklisoftware.com",
 };
 
 /**

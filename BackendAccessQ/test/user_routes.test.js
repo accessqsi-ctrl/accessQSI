@@ -285,7 +285,7 @@ test("POST /user/login rejects users of a disabled organization", async () => {
     assert.equal(res.body.code, "ORGANIZATION_DISABLED");
 });
 
-test("POST /user/login returns the Essential welcome offer only on the first login", async () => {
+test("POST /user/login does not return an Essential welcome offer", async () => {
     let lastLoginUpdate = null;
     const trialStart = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
@@ -329,9 +329,7 @@ test("POST /user/login returns the Essential welcome offer only on the first log
     });
 
     assert.equal(res.status, 200);
-    assert.equal(res.body.welcomeOffer.plan, "ESSENTIAL");
-    assert.equal(res.body.welcomeOffer.expiresAt, expiry.toISOString());
-    assert.equal(res.body.welcomeOffer.features.length > 0, true);
+    assert.equal(Object.hasOwn(res.body, "welcomeOffer"), false);
     assert.deepEqual(lastLoginUpdate.where, { user_id: 7 });
     assert.ok(lastLoginUpdate.data.last_login instanceof Date);
 });
@@ -368,7 +366,7 @@ test("POST /user/login does not return the welcome offer after the first login",
     });
 
     assert.equal(res.status, 200);
-    assert.equal(res.body.welcomeOffer, null);
+    assert.equal(Object.hasOwn(res.body, "welcomeOffer"), false);
     assert.equal(organizationLookupCalled, false);
 });
 

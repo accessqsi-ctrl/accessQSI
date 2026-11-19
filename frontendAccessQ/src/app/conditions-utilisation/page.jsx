@@ -35,7 +35,6 @@ const sections = [
     body: <>
       <p>La création d’un compte, organisateur ou participant, nécessite l’acceptation expresse des présentes CGU par une case à cocher. {COMPANY.brand} enregistre la version acceptée et la date d’acceptation.</p>
       <p>L’Organisateur qui crée un compte au nom d’une organisation déclare disposer du pouvoir de l’engager. Il est responsable de l’usage de la Plateforme par ses Agents.</p>
-      <p>Lorsqu’une box est créée pour un mineur, la personne qui l’ouvre confirme que le titulaire de l’autorité parentale a donné ou autorisé le consentement requis pour le traitement des données du mineur.</p>
     </>
   },
   {
@@ -43,7 +42,7 @@ const sections = [
     title: "Comptes et sécurité",
     body: <>
       <p>Vous vous engagez à fournir des informations exactes et à les tenir à jour. Les identifiants, mots de passe et codes reçus par e-mail sont personnels et confidentiels. Toute action effectuée depuis votre compte est réputée faite par vous, jusqu’à ce que vous nous signaliez une utilisation frauduleuse.</p>
-      <p>Prévenez-nous sans délai à <a href={`mailto:${COMPANY.supportEmail}`} className="text-blue-700 underline dark:text-blue-300">{COMPANY.supportEmail}</a> en cas de perte ou de compromission de vos accès.</p>
+      <p>En cas de perte ou de compromission de vos accès, contactez-nous à <a href={`mailto:${COMPANY.supportEmail}`} className="text-blue-700 underline dark:text-blue-300">{COMPANY.supportEmail}</a>.</p>
     </>
   },
   {
@@ -59,21 +58,20 @@ const sections = [
     title: "Formules, essai et paiement de l’abonnement",
     body: <>
       <p>Les tarifs en vigueur sont affichés sur le site au moment de la souscription. Les prix de référence sont exprimés en dollars américains ; le paiement Mobile Money peut être présenté dans la devise locale prise en charge par l’opérateur.</p>
-      <p>Une nouvelle organisation peut bénéficier d’un essai gratuit de la formule Essential, sans paiement initial, pour la durée indiquée à l’inscription. À la fin de l’essai ou d’une période payée non renouvelée, le compte revient à la formule gratuite et les fonctions ou quotas qui la dépassent sont suspendus. Les données ne sont pas supprimées de ce seul fait.</p>
+      <p>Chaque nouvelle organisation commence sur la formule gratuite Découverte. Les fonctions et quotas dépendent de la formule souscrite. À la fin d’une période payée non renouvelée, le compte revient à Découverte et les fonctions ou quotas qui la dépassent sont suspendus. Les données ne sont pas supprimées de ce seul fait.</p>
       <p>Les abonnements sont payés d’avance, pour la période choisie. Sauf disposition légale contraire ou défaillance imputable à {COMPANY.brand}, une période commencée n’est pas remboursable.</p>
     </>
   },
   {
     id: "billetterie",
-    title: "Billetterie payante : mandat d’encaissement",
+    title: "Billetterie payante et reversements",
     body: <>
-      <p>Lorsque l’Organisateur vend des billets payants, il donne mandat à {COMPANY.legalName} d’encaisser en son nom et pour son compte le prix payé par les Participants, par l’intermédiaire de son prestataire de paiement (pawaPay) et des opérateurs Mobile Money.</p>
+      <p>Lorsque l’Organisateur vend des billets payants, le paiement est traité par notre prestataire pawaPay et les opérateurs Mobile Money. La totalité du prix est créditée au solde de l’Organisateur : {COMPANY.brand} ne prélève aucun pourcentage sur les ventes.</p>
       <ul>
         <li><strong>Vendeur du billet.</strong> L’Organisateur est le vendeur du billet et le seul responsable de l’événement : son organisation, son déroulement, sa sécurité, sa conformité aux autorisations administratives, et le respect des engagements annoncés aux Participants.</li>
-        <li><strong>Commission.</strong> {COMPANY.brand} prélève sur chaque billet vendu une commission de service. Son taux est de 10 % du prix du billet, sauf taux différent convenu par écrit avec l’Organisateur. Le taux applicable est figé au moment de chaque achat.</li>
-        <li><strong>Solde et reversement.</strong> Le montant net (prix encaissé moins la commission et, le cas échéant, les remboursements) est porté au solde de l’Organisateur. L’Organisateur demande un reversement depuis son espace, vers le compte Mobile Money qu’il a enregistré. Chaque demande est vérifiée par {COMPANY.brand} avant envoi. L’Organisateur est responsable de l’exactitude du numéro de reversement qu’il enregistre.</li>
+        <li><strong>Solde et reversement.</strong> La totalité du prix encaissé est portée au solde de l’Organisateur, sans commission de {COMPANY.brand}. L’Organisateur peut demander un reversement vers le compte Mobile Money enregistré dans son espace. Il est responsable de l’exactitude du numéro indiqué.</li>
         <li><strong>Vérifications.</strong> {COMPANY.brand} peut retenir un reversement, en tout ou en partie, en cas de suspicion de fraude, de contestation de paiement, d’annulation ou de report de l’événement, ou de demande d’une autorité. Elle informe l’Organisateur de la raison de la retenue.</li>
-        <li><strong>Annulation et remboursement.</strong> Si l’événement est annulé, l’Organisateur doit prévenir {COMPANY.brand} et les Participants sans délai. Les remboursements sont versés au numéro Mobile Money qui a payé. Ils sont imputés en priorité sur le solde de l’Organisateur ; si ce solde est insuffisant, l’Organisateur reste redevable de la différence envers les Participants et envers {COMPANY.brand}.</li>
+        <li><strong>Annulation et remboursement.</strong> Si l’événement est annulé ou reporté, l’Organisateur en informe les Participants et assume seul le remboursement du prix des billets. Les Participants doivent adresser leur demande à l’Organisateur, qui en assure le paiement.</li>
       </ul>
     </>
   },
@@ -118,8 +116,8 @@ const sections = [
     id: "disponibilite",
     title: "Disponibilité et responsabilité",
     body: <>
-      <p>{COMPANY.brand} met en œuvre les moyens raisonnables pour assurer la disponibilité et la sécurité de la Plateforme. Le service peut être interrompu pour maintenance ou à cause d’événements extérieurs (réseau internet, opérateurs Mobile Money, hébergeur, coupure d’électricité). Nous conseillons aux Organisateurs de prévoir une solution de secours pour le contrôle des entrées.</p>
-      <p>{COMPANY.brand} n’est pas l’organisateur des événements et n’assume pas les obligations propres à leur organisation, à leur déroulement ou à leur sécurité, qui relèvent de l’Organisateur. {COMPANY.legalName} demeure responsable de la bonne exécution de ses propres obligations contractuelles, notamment du fonctionnement des services qu’elle fournit, de l’émission des billets après confirmation du paiement et du traitement des reversements et remboursements prévus aux présentes.</p>
+      <p>{COMPANY.brand} met en œuvre les moyens raisonnables pour assurer la disponibilité et la sécurité de la Plateforme. Le service peut être interrompu pour maintenance ou à cause d’événements extérieurs (réseau internet, opérateurs Mobile Money, hébergeur, coupure d’électricité).</p>
+      <p>{COMPANY.brand} n’est pas l’organisateur des événements et n’assume pas les obligations propres à leur organisation, à leur déroulement, à leur sécurité ou au remboursement des billets, qui relèvent de l’Organisateur. {COMPANY.legalName} demeure responsable de la bonne exécution de ses propres obligations contractuelles.</p>
       <p>La responsabilité de {COMPANY.legalName} ne peut être écartée que dans les cas admis par la loi, notamment lorsque l’inexécution résulte du fait du client, d’un cas de force majeure ou d’un tiers extérieur à la fourniture des prestations contractuelles. Aucune disposition des présentes ne supprime les droits à réparation ni les responsabilités qui ne peuvent légalement être exclues, notamment en matière de protection des données personnelles.</p>
     </>
   },
@@ -139,7 +137,7 @@ const sections = [
   {
     id: "droit",
     title: "Droit applicable et litiges",
-    body: <p>Les présentes CGU sont régies par le droit de la République démocratique du Congo. En cas de différend, les parties recherchent d’abord une solution amiable en écrivant à {COMPANY.supportEmail}. À défaut d’accord dans un délai de trente jours, le litige est porté devant {COMPANY.courts}, sous réserve des règles impératives de compétence applicables aux consommateurs.</p>
+    body: <p>Les présentes CGU sont régies par le droit de la République démocratique du Congo. Les parties recherchent d’abord une solution amiable en contactant <a href={`mailto:${COMPANY.supportEmail}`} className="text-blue-700 underline dark:text-blue-300">{COMPANY.supportEmail}</a>. À défaut, le litige est porté devant {COMPANY.courts}, sous réserve des règles impératives de compétence applicables aux consommateurs.</p>
   }
 ];
 

@@ -33,7 +33,7 @@ const jsonOrThrow = async response => {
   return data;
 };
 
-// Ventes encaissées par AccessQ : le solde est ce qui reste dû à l'organisation après commission et reversements.
+// Ventes de billets et reversements dus à l'organisation.
 function SalesBalance() {
   const [sales, setSales] = useState(null);
   const [payouts, setPayouts] = useState({ accounts: [], payouts: [] });
@@ -50,7 +50,7 @@ function SalesBalance() {
     catch (reason) { setNotice({ ok: false, message: reason.message }); }
   };
   return <section className="aq-panel p-6">
-    <div className="flex items-center gap-3"><Wallet className="h-6 w-6 text-blue-600 dark:text-blue-400" /><div><h2 className="text-lg font-bold text-slate-950 dark:text-slate-50">Ventes de billets</h2><p className="text-sm text-slate-500 dark:text-slate-400">Encaissées par AccessQ. Le solde, déduction faite de la commission, vous est reversé sur votre compte Mobile Money après validation par AccessQ.</p></div></div>
+    <div className="flex items-center gap-3"><Wallet className="h-6 w-6 text-blue-600 dark:text-blue-400" /><div><h2 className="text-lg font-bold text-slate-950 dark:text-slate-50">Ventes de billets</h2><p className="text-sm text-slate-500 dark:text-slate-400">La totalité du prix de chaque billet est créditée à votre organisation. Vous pouvez demander le reversement vers votre compte Mobile Money.</p></div></div>
     {notice && <p className={`mt-4 rounded-xl p-3 text-sm font-semibold ${notice.ok ? "bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300" : "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300"}`}>{notice.message}</p>}
     <div className="mt-5 grid gap-4 lg:grid-cols-2">{sales.balances.map(row => <BalanceCard key={row.currency} row={row}
       account={payouts.accounts.find(item => item.currency === row.currency)}
@@ -61,9 +61,9 @@ function SalesBalance() {
       <td>{payoutLabels[payout.status] || payout.status}{payout.failureMessage && <span className="block text-xs text-slate-500 dark:text-slate-400">{payout.failureMessage}</span>}</td>
       <td>{payout.status === "REQUESTED" && <button type="button" onClick={() => cancel(payout)} className="text-sm font-bold text-blue-700 dark:text-blue-300">Annuler</button>}</td>
     </tr>)}</tbody></table></div>}
-    {sales.recentSales?.length > 0 && <div className="mt-6 overflow-x-auto"><h3 className="mb-2 text-sm font-bold text-slate-900 dark:text-slate-100">Ventes récentes</h3><table className="w-full min-w-[640px] text-left text-sm"><thead><tr className="aq-table-head"><th className="px-4 py-3">Acheteur</th><th>Offre</th><th>Prix</th><th>Commission</th><th>Pour vous</th><th>Date</th></tr></thead><tbody className="divide-y divide-slate-100 dark:divide-slate-800">{sales.recentSales.map(sale => <tr key={sale.id}>
+    {sales.recentSales?.length > 0 && <div className="mt-6 overflow-x-auto"><h3 className="mb-2 text-sm font-bold text-slate-900 dark:text-slate-100">Ventes récentes</h3><table className="w-full min-w-[640px] text-left text-sm"><thead><tr className="aq-table-head"><th className="px-4 py-3">Acheteur</th><th>Offre</th><th>Prix</th><th>Pour vous</th><th>Date</th></tr></thead><tbody className="divide-y divide-slate-100 dark:divide-slate-800">{sales.recentSales.map(sale => <tr key={sale.id}>
       <td className="px-4 py-3 font-semibold text-slate-900 dark:text-slate-100">{sale.buyerName}{saleBadges[sale.status] && <span className={`ml-2 rounded-full px-2 py-0.5 text-xs font-bold ${saleBadges[sale.status][1]}`}>{saleBadges[sale.status][0]}</span>}</td>
-      <td>{sale.offerName}</td><td>{money(sale.amount, sale.currency)}</td><td>{money(sale.commission, sale.currency)} ({sale.commissionPercent} %)</td><td className="font-semibold">{sale.status === "COMPLETED" ? money(sale.organizerAmount, sale.currency) : "—"}</td>
+      <td>{sale.offerName}</td><td>{money(sale.amount, sale.currency)}</td><td className="font-semibold">{sale.status === "COMPLETED" ? money(sale.organizerAmount, sale.currency) : "—"}</td>
       <td>{sale.completedAt ? new Date(sale.completedAt).toLocaleString("fr-FR") : "—"}</td>
     </tr>)}</tbody></table></div>}
   </section>;
@@ -98,7 +98,7 @@ function BalanceCard({ row, account, pending, onDone, onError }) {
   return <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
     <p className="text-xs font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">Solde disponible {row.currency}</p>
     <p className="mt-1 text-2xl font-black text-slate-950 dark:text-slate-50">{money(row.balance, row.currency)}</p>
-    <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{row.ticketsSold} billet(s) · {money(row.gross, row.currency)} encaissés · {money(row.commission, row.currency)} de commission</p>
+    <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{row.ticketsSold} billet(s) · {money(row.gross, row.currency)} encaissés · montant crédité intégralement à votre organisation</p>
     <p className="mt-3 text-sm text-slate-700 dark:text-slate-300">{account ? <>Reçu sur <strong>{account.providerName || account.provider}</strong> · {account.phoneNumber}</> : "Aucun compte de réception enregistré."}</p>
     <div className="mt-3 flex flex-wrap gap-2">
       <button type="button" onClick={() => open("account")} className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-bold dark:border-slate-700 dark:text-slate-200">{account ? "Modifier le compte" : "Ajouter un compte"}</button>

@@ -114,7 +114,7 @@ const pricingPlans = [
     annual: "540 $ par an — économisez 10 %",
     description: "Pour les organisateurs et équipes aux besoins réguliers.",
     features: ["Tout Découverte inclus", "3 événements par mois", "200 QR par événement", "3 agents actifs", "3 zones actives", "Import de QR en masse (CSV)", "Export des scans en CSV et PDF"],
-    cta: "Essayer Essential gratuitement",
+    cta: "Créer mon compte",
     href: "/register",
     featured: true
   },
@@ -134,7 +134,7 @@ const pricingPlans = [
     description: "Pour les grands comptes et les déploiements sur mesure.",
     features: ["Toutes les fonctionnalités Pro", "Événements, QR, agents et zones sur mesure", "Support événementiel", "Personnalisation avancée", "SLA sur mesure"],
     cta: "Nous contacter",
-    href: "mailto:access.supportclient@gmail.com"
+    href: "mailto:supportaccessq@tinklisoftware.com"
   }
 ];
 
@@ -224,12 +224,7 @@ export default function Home() {
             >
               Tarifs
             </a>
-            <a
-              href="mailto:access.supportclient@gmail.com"
-              className="hidden text-sm font-semibold text-slate-600 transition-colors hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400 sm:inline"
-            >
-              Nous contacter
-            </a>
+            <a href="mailto:supportaccessq@tinklisoftware.com" className="hidden text-sm font-semibold text-slate-600 transition-colors hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400 sm:inline">Nous contacter</a>
             <Link
               href="/login"
               className="text-xs font-semibold text-slate-600 transition-colors hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400 sm:text-sm"
@@ -241,7 +236,7 @@ export default function Home() {
               className="rounded-full bg-slate-900 px-3 py-2 text-xs font-semibold text-white shadow-md transition-all hover:bg-slate-800 hover:shadow-lg active:scale-95 dark:bg-[#BED3C3] dark:text-slate-900 dark:hover:bg-[#AEC5B3] sm:px-5 sm:py-2.5 sm:text-sm"
             >
               <span className="sm:hidden">Inscription</span>
-              <span className="hidden sm:inline">Essayer gratuitement</span>
+              <span className="hidden sm:inline">Créer un compte</span>
             </Link>
           </nav>
         </div>
@@ -611,7 +606,7 @@ export default function Home() {
           </div>
 
           <p className="mx-auto mt-6 max-w-3xl text-center text-xs leading-5 text-slate-500 dark:text-slate-400">
-            Prix de référence en dollars américains. Le paiement Mobile Money peut être présenté dans la devise locale prise en charge par votre opérateur. L&apos;essai Essential est réservé aux nouvelles organisations et ne nécessite aucun paiement initial.
+            Prix de référence en dollars américains. Le paiement Mobile Money peut être présenté dans la devise locale prise en charge par votre opérateur.
           </p>
         </div>
       </section>
@@ -619,12 +614,7 @@ export default function Home() {
       <footer className="w-full border-t border-slate-200 dark:border-slate-700 py-8 bg-slate-50 dark:bg-slate-800 z-20">
         <div className="container mx-auto flex flex-col items-center justify-center gap-2 px-6 text-center text-sm text-slate-500 dark:text-slate-400 sm:flex-row sm:flex-wrap sm:gap-4">
           <p>&copy; 2026 Tinkli Software. Tous droits réservés.</p>
-          <a
-            href="mailto:access.supportclient@gmail.com"
-            className="font-semibold text-blue-700 transition-colors hover:text-blue-600 hover:underline dark:text-blue-300 dark:hover:text-blue-200"
-          >
-            Nous contacter
-          </a>
+          <a href="mailto:supportaccessq@tinklisoftware.com" className="font-semibold text-blue-700 transition-colors hover:text-blue-600 hover:underline dark:text-blue-300 dark:hover:text-blue-200">Nous contacter</a>
           {LEGAL_LINKS.map(item => (
             <Link key={item.href} href={item.href} className="transition-colors hover:text-blue-600 hover:underline dark:hover:text-blue-300">
               {item.label}

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ArrowRight, CalendarDays, CheckCircle2, Crown, Lightbulb, Mail, Menu, Sparkles, X } from "lucide-react";
+import { Crown, Lightbulb, Mail, Menu, X } from "lucide-react";
 
 import { useState, useEffect, useMemo } from "react";
 import { apiFetch } from "../lib/api";
@@ -14,8 +14,9 @@ export default function DashboardShell({ children }) {
     const pathname = usePathname();
     const router = useRouter();
     const [showLogoutModal, setShowLogoutModal] = useState(false);
+    const [logoutPending, setLogoutPending] = useState(false);
+    const [logoutError, setLogoutError] = useState("");
     const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
-    const [welcomeOffer, setWelcomeOffer] = useState(null);
     const { userProfile, profileLoading, isProPlan, planName } = useUserPlan();
     const { registrationForms: registrationFormsEnabled } = useFeatures();
     const isOperator = userProfile?.role === "OPERATOR";
@@ -40,40 +41,26 @@ export default function DashboardShell({ children }) {
         }
     }, [agentRestrictedPath, isAgent, profileLoading, router]);
 
-    useEffect(() => {
-        if (profileLoading) return undefined;
-
-        let parsedOffer = null;
-        try {
-            const storedOffer = sessionStorage.getItem("accessq-essential-welcome");
-            if (!storedOffer) return undefined;
-            sessionStorage.removeItem("accessq-essential-welcome");
-            parsedOffer = JSON.parse(storedOffer);
-        } catch {
-            parsedOffer = null;
-        }
-
-        const timer = window.setTimeout(() => setWelcomeOffer(parsedOffer), 0);
-        return () => window.clearTimeout(timer);
-    }, [profileLoading]);
-
-    useEffect(() => {
-        if (!welcomeOffer) return undefined;
-        const closeOnEscape = (event) => {
-            if (event.key === "Escape") setWelcomeOffer(null);
-        };
-        window.addEventListener("keydown", closeOnEscape);
-        return () => window.removeEventListener("keydown", closeOnEscape);
-    }, [welcomeOffer]);
-
     const handleLogout = async () => {
+        if (logoutPending) return;
+        setLogoutPending(true);
+        setLogoutError("");
         try {
-            const res = await apiFetch("/user/logout", { method: "POST" });
+            const res = await apiFetch("/user/logout", {
+                method: "POST",
+                redirectOnAuthFailure: false
+            });
             if (res.ok) {
-                router.push("/login");
+                window.location.replace("/login");
+                return;
             }
+            const payload = await res.json().catch(() => null);
+            setLogoutError(payload?.message || "La déconnexion a échoué. Réessayez.");
         } catch (err) {
             console.error("Error during logout:", err);
+            setLogoutError("Impossible de contacter le serveur. Vérifiez votre connexion puis réessayez.");
+        } finally {
+            setLogoutPending(false);
         }
     };
 
@@ -90,11 +77,7 @@ export default function DashboardShell({ children }) {
             { name: "Scanner", href: "/scan", icon: "M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z M15 13a3 3 0 11-6 0 3 3 0 016 0z", special: true },
             { name: "accessQ Pro", href: "/dashboard/upgrade", iconComponent: Crown },
             { name: "Paramètres", href: "/dashboard/settings", icon: "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z" },
-            {
-                name: "Nous contacter",
-                href: "mailto:access.supportclient@gmail.com?subject=Contact%20accessQ",
-                iconComponent: Mail
-            },
+            { name: "Nous contacter", href: "mailto:supportaccessq@tinklisoftware.com?subject=Contact%20AccessQ", iconComponent: Mail },
         ];
         if (!registrationFormsEnabled) {
             items.splice(items.findIndex(item => item.href === "/dashboard/registration-forms"), 1);
@@ -356,19 +339,28 @@ export default function DashboardShell({ children }) {
                                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
                             </div>
                             <p className="text-sm text-slate-600 dark:text-slate-300 mb-6">Êtes-vous sûr de vouloir vous déconnecter de votre compte accessQ ?</p>
+                            {logoutError && (
+                                <p role="alert" className="mb-4 w-full rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">
+                                    {logoutError}
+                                </p>
+                            )}
                             
                             <div className="flex gap-3 w-full">
                                 <button 
+                                    type="button"
+                                    disabled={logoutPending}
                                     onClick={() => setShowLogoutModal(false)}
-                                    className="flex-1 py-2.5 px-4 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold rounded-xl transition-colors"
+                                    className="flex-1 py-2.5 px-4 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold rounded-xl transition-colors disabled:cursor-not-allowed disabled:opacity-60"
                                 >
                                     Annuler
                                 </button>
                                 <button 
+                                    type="button"
+                                    disabled={logoutPending}
                                     onClick={handleLogout}
-                                    className="flex-1 py-2.5 px-4 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl shadow-md transition-all active:scale-95"
+                                    className="flex-1 py-2.5 px-4 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl shadow-md transition-all active:scale-95 disabled:cursor-wait disabled:opacity-70"
                                 >
-                                    Déconnexion
+                                    {logoutPending ? "Déconnexion…" : "Déconnexion"}
                                 </button>
                             </div>
                         </div>
@@ -376,75 +368,6 @@ export default function DashboardShell({ children }) {
                 </div>
             )}
 
-            {welcomeOffer && (
-                <div className="fixed inset-0 z-[70] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="essential-welcome-title">
-                    <button
-                        type="button"
-                        aria-label="Fermer la fenêtre de bienvenue"
-                        onClick={() => setWelcomeOffer(null)}
-                        className="absolute inset-0 bg-slate-950/65 backdrop-blur-md"
-                    />
-                    <div className="relative w-full max-w-lg overflow-hidden rounded-3xl border border-white/20 bg-white shadow-2xl dark:bg-slate-900">
-                        <div className="relative overflow-hidden bg-slate-900 px-6 pb-8 pt-7 text-white sm:px-8 dark:bg-gradient-to-br dark:from-blue-700 dark:via-indigo-600 dark:to-emerald-500">
-                            <button
-                                type="button"
-                                onClick={() => setWelcomeOffer(null)}
-                                aria-label="Fermer"
-                                className="absolute right-4 top-4 rounded-full bg-white/15 p-2 text-white transition hover:bg-white/25"
-                            >
-                                <X className="h-5 w-5" />
-                            </button>
-                            <div className="relative">
-                                <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/15 px-3 py-1.5 text-xs font-bold uppercase tracking-wider backdrop-blur-sm">
-                                    <Sparkles className="h-4 w-4" />
-                                    Cadeau de bienvenue
-                                </div>
-                                <h2 id="essential-welcome-title" className="max-w-md text-3xl font-black leading-tight sm:text-4xl">
-                                    Votre premier mois Essentiel est offert !
-                                </h2>
-                                <p className="mt-3 max-w-md text-sm leading-relaxed text-blue-50 sm:text-base">
-                                    Bienvenue sur accessQ. Toutes les fonctionnalités du plan Essentiel sont activées dès maintenant, sans paiement.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="px-6 py-6 sm:px-8">
-                            {welcomeOffer.expiresAt && (
-                                <div className="mb-5 flex items-center gap-3 rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-blue-900 dark:border-blue-900/50 dark:bg-blue-950/40 dark:text-blue-100">
-                                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white">
-                                        <CalendarDays className="h-5 w-5" />
-                                    </span>
-                                    <div>
-                                        <p className="text-xs font-semibold uppercase tracking-wide text-blue-500">Offre valable jusqu’au</p>
-                                        <p className="font-bold">
-                                            {new Intl.DateTimeFormat("fr-FR", { dateStyle: "long" }).format(new Date(welcomeOffer.expiresAt))}
-                                        </p>
-                                    </div>
-                                </div>
-                            )}
-
-                            <div className="grid gap-3 sm:grid-cols-2">
-                                {(welcomeOffer.features || []).slice(0, 4).map((feature) => (
-                                    <div key={feature} className="flex items-start gap-2.5 text-sm font-medium text-slate-700 dark:text-slate-200">
-                                        <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-500" />
-                                        <span>{feature}</span>
-                                    </div>
-                                ))}
-                            </div>
-
-                            <Link
-                                href="/dashboard/getting-started"
-                                onClick={() => setWelcomeOffer(null)}
-                                className="mt-7 flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-700 px-5 py-3.5 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:bg-gradient-to-r dark:from-blue-700 dark:to-indigo-600"
-                            >
-                                Découvrir mon espace
-                                <ArrowRight className="h-4 w-4" />
-                            </Link>
-                            <p className="mt-3 text-center text-xs text-slate-400">Aucun moyen de paiement requis.</p>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 }

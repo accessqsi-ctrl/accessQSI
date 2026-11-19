@@ -8,7 +8,7 @@ const logger = require("../utils/logger");
 const { enqueue } = require("./registration_job.service");
 const { requestHashFor } = require("./pass_issuance.service");
 const { getPaymentConfig } = require("../config/payment");
-const { commissionBpsFor, getTicketingConfig, splitAmount } = require("../config/ticketing");
+const { getTicketingConfig } = require("../config/ticketing");
 const { selectProviderConfiguration, roundForProvider } = require("./payment/policy");
 const { normalizePhoneNumber, maskPhoneNumber, extractPawaPayFailure, publicPaymentFailureMessage } = require("./payment/format");
 const { unwrapDepositStatus, amountsMatch } = require("./payment/reconciliation");
@@ -154,8 +154,6 @@ const initiate = async (slug, input, submissionKey, attendee) => {
             throw new RegistrationError("Cette offre est complète.", "OFFER_SOLD_OUT", 409);
         }
         await assertTicketQrAvailable(tx, form, now);
-        const commissionBps = commissionBpsFor(form.organization, config);
-        const split = splitAmount(current.price, commissionBps, provider.decimals);
         return tx.ticketPayment.create({
             data: {
                 deposit_id: crypto.randomUUID(),
@@ -168,9 +166,9 @@ const initiate = async (slug, input, submissionKey, attendee) => {
                 holder_phone: holderPhone,
                 amount: current.price,
                 currency: current.currency,
-                commission_bps: commissionBps,
-                commission_amount: split.commission,
-                organizer_amount: split.organizer,
+                commission_bps: 0,
+                commission_amount: 0,
+                organizer_amount: current.price,
                 country: provider.country,
                 provider: provider.provider,
                 phone_number: phoneNumber,
@@ -374,19 +372,17 @@ const reconcilePending = async (now = new Date()) => {
 const organizationBalance = async orgId => {
     const [ledger, sales, recent] = await Promise.all([
         prisma.organizerLedgerEntry.groupBy({ by: ["currency"], where: { org_id: orgId }, _sum: { amount: true } }),
-        prisma.ticketPayment.groupBy({ by: ["currency"], where: { org_id: orgId, status: "COMPLETED" }, _sum: { amount: true, commission_amount: true }, _count: { _all: true } }),
+        prisma.ticketPayment.groupBy({ by: ["currency"], where: { org_id: orgId, status: "COMPLETED" }, _sum: { amount: true }, _count: { _all: true } }),
         prisma.ticketPayment.findMany({ where: { org_id: orgId, status: { in: ["COMPLETED", "REVIEW_REQUIRED", "REFUND_PENDING", "REFUNDED"] } }, include: { offer: true, attendee: { select: { full_name: true } } }, orderBy: { completed_at: "desc" }, take: 20 })
     ]);
     const currencies = [...new Set([...ledger.map(row => row.currency), ...sales.map(row => row.currency)])].sort();
     return {
-        defaultCommissionPercent: getTicketingConfig().defaultCommissionBps / 100,
         balances: currencies.map(currency => {
             const sale = sales.find(row => row.currency === currency);
             return {
                 currency,
                 balance: String(ledger.find(row => row.currency === currency)?._sum.amount || 0),
                 gross: String(sale?._sum.amount || 0),
-                commission: String(sale?._sum.commission_amount || 0),
                 ticketsSold: sale?._count._all || 0
             };
         }),
@@ -396,9 +392,7 @@ const organizationBalance = async orgId => {
             offerName: payment.offer.name,
             buyerName: payment.attendee.full_name,
             amount: String(payment.amount),
-            commission: String(payment.commission_amount),
             organizerAmount: String(payment.organizer_amount),
-            commissionPercent: payment.commission_bps / 100,
             currency: payment.currency,
             completedAt: payment.completed_at
         }))

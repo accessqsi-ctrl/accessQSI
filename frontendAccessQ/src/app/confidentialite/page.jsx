@@ -95,7 +95,7 @@ const sections = [
     title: "Vos droits",
     body: <>
       <p>Conformément à la législation congolaise sur la protection des données à caractère personnel, vous pouvez demander l’accès à vos données, leur rectification, leur suppression, vous opposer à un traitement fondé sur notre intérêt légitime, et retirer votre consentement pour la photo.</p>
-      <p>Écrivez à <a href={`mailto:${COMPANY.privacyEmail}`} className={link}>{COMPANY.privacyEmail}</a> depuis l’adresse liée à votre compte. Nous répondons dans un délai d’un mois. Les données que nous devons garder pour une obligation légale (paiements notamment) ne peuvent pas être supprimées avant la fin de leur durée de conservation. Pour les données d’un événement, nous pouvons transmettre votre demande à l’organisateur concerné.</p>
+      <p>Pour exercer vos droits, écrivez à <a href={`mailto:${COMPANY.privacyEmail}`} className={link}>{COMPANY.privacyEmail}</a> depuis l’adresse liée à votre compte. Nous répondons dans un délai d’un mois. Les données que nous devons garder pour une obligation légale (paiements notamment) ne peuvent pas être supprimées avant la fin de leur durée de conservation. Pour les données d’un événement, nous pouvons transmettre votre demande à l’organisateur concerné.</p>
       <p>Si notre réponse ne vous satisfait pas, vous pouvez saisir l’autorité congolaise compétente en matière de protection des données personnelles.</p>
     </>
   },

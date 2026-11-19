@@ -6,7 +6,6 @@ const emailService = require("../services/email.service");
 const prisma = require("../prisma/client");
 const { getPublicKey } = require("../config/jwtKeys");
 const logger = require("../utils/logger");
-const { getPlanSummaryWithEventPasses } = require("../services/event_pass_quota.service");
 const { TERMS_VERSION, hasAcceptedTerms } = require("../config/legal");
 const { evaluateAccess, findUserAccessState } = require("../services/account_access.service");
 const {
@@ -123,25 +122,6 @@ exports.login = async (req, res) => {
             });
         }
 
-        const firstLogin = user.last_login === null;
-        let welcomeOffer = null;
-
-        if (firstLogin && user.org_id) {
-            const organization = await prisma.organization.findUnique({
-                where: { org_id: user.org_id },
-                include: { plan: true }
-            });
-            const planSummary = await getPlanSummaryWithEventPasses(prisma, organization);
-            if (planSummary.plan === "ESSENTIAL" && planSummary.isTrial) {
-                welcomeOffer = {
-                    plan: planSummary.plan,
-                    planName: planSummary.planName,
-                    expiresAt: planSummary.trialExpiresAt || planSummary.expiresAt,
-                    features: planSummary.features
-                };
-            }
-        }
-
         await prisma.userQ.update({
             where: { user_id: user.user_id },
             data: { last_login: new Date() }
@@ -171,7 +151,6 @@ exports.login = async (req, res) => {
             success: true,
             message: "Connexion réussie",
             token: accessToken, // Optionnel pour les apps mobiles, NextJS doit utiliser le cookie
-            welcomeOffer,
             user: {
                 user_id: user.user_id,
                 name: user.full_name,
@@ -311,8 +290,8 @@ exports.signin = async (req, res) => {
                 emailSent,
                 email,
                 message: emailSent
-                    ? "Compte créé avec un mois d’Essentiel offert. Un e-mail de vérification vous a été envoyé."
-                    : "Compte créé avec un mois d’Essentiel offert, mais l’e-mail n’a pas pu être envoyé. Vous pouvez demander un nouvel envoi.",
+                    ? "Compte créé avec la formule Découverte. Un e-mail de vérification vous a été envoyé."
+                    : "Compte créé avec la formule Découverte, mais l’e-mail n’a pas pu être envoyé. Vous pouvez demander un nouvel envoi.",
             });
         } else {
             if (!user.is_verified) {

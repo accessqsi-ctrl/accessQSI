@@ -260,10 +260,9 @@ test("free registration flow is atomic on PostgreSQL", { skip: !enabled || !safe
     });
 
     await t.test("paid offers hold the place, issue only after pawaPay confirms and credit the organizer", async () => {
-        const previousEnv = { enabled: process.env.TICKET_PAYMENTS_ENABLED, percent: process.env.TICKET_COMMISSION_PERCENT };
+        const previousEnv = { enabled: process.env.TICKET_PAYMENTS_ENABLED };
         const originals = { conf: pawaPay.getActiveConfiguration, initiate: pawaPay.initiateDeposit, check: pawaPay.checkDeposit };
         process.env.TICKET_PAYMENTS_ENABLED = "true";
-        delete process.env.TICKET_COMMISSION_PERCENT;
         const remote = new Map();
         pawaPay.getActiveConfiguration = async () => ({ countries: [{ country: "COD", prefix: "243", providers: [{ provider: "VODACOM_MPESA_COD", displayName: "M-Pesa", currencies: [{ currency: "USD", operationTypes: { DEPOSIT: { decimals: 2 } } }] }] }] });
         pawaPay.initiateDeposit = async payload => {
@@ -275,7 +274,6 @@ test("free registration flow is atomic on PostgreSQL", { skip: !enabled || !safe
         t.after(() => {
             Object.assign(pawaPay, { getActiveConfiguration: originals.conf, initiateDeposit: originals.initiate, checkDeposit: originals.check });
             if (previousEnv.enabled === undefined) delete process.env.TICKET_PAYMENTS_ENABLED; else process.env.TICKET_PAYMENTS_ENABLED = previousEnv.enabled;
-            if (previousEnv.percent !== undefined) process.env.TICKET_COMMISSION_PERCENT = previousEnv.percent;
         });
         const settle = (payment, status, patch = {}) => remote.set(payment.deposit_id, { ...remote.get(payment.deposit_id), status, ...patch });
 
@@ -301,8 +299,8 @@ test("free registration flow is atomic on PostgreSQL", { skip: !enabled || !safe
         assert.equal((await registrations.publicForm(form.public_slug)).offers[0].sold_out, true);
         assert.equal(payment.status, "PENDING");
         assert.equal(payment.phone_number, "243991234567");
-        assert.equal(String(payment.commission_amount), "1.25");
-        assert.equal(String(payment.organizer_amount), "11.25");
+        assert.equal(String(payment.commission_amount), "0");
+        assert.equal(String(payment.organizer_amount), "12.5");
         assert.equal(payment.registration_id, null);
         assert.equal((await checkout(buyer, "buyer-1")).replayed, true);
         await assert.rejects(checkout(buyer, "buyer-1", { payerPhone: "0997654321" }), error => error.code === "IDEMPOTENCY_KEY_CONFLICT");
@@ -325,12 +323,11 @@ test("free registration flow is atomic on PostgreSQL", { skip: !enabled || !safe
         await assert.rejects(checkout(rival, "rival-2"), error => error.code === "OFFER_SOLD_OUT");
         await prisma.registrationJob.updateMany({ where: { registration_id: ticket.registration_id }, data: { status: "COMPLETED", completed_at: new Date() } });
 
-        // Taux propre à l'organisation, échec, montant falsifié, et paiement arrivé après expiration de la réservation.
-        await prisma.organization.update({ where: { org_id: org.org_id }, data: { ticket_commission_bps: 750 } });
+        // Vente sans commission, échec, montant falsifié, et paiement arrivé après expiration de la réservation.
         const open = await registrations.updateForm(org.org_id, form.registration_form_id, { title: form.title, offers: [{ id: offer.registration_offer_id, name: "VIP", price: "12.50", currency: "USD", capacity: 2, cardTemplateId: "event-ticket" }] });
         assert.equal(open.offers[0].capacity, 2);
         const failed = (await checkout(rival, "rival-3")).payment;
-        assert.equal(String(failed.commission_amount), "0.94");
+        assert.equal(String(failed.commission_amount), "0");
         settle(failed, "FAILED", { failureReason: { failureCode: "INSUFFICIENT_BALANCE" } });
         assert.equal((await ticketPayments.reconcile(failed.deposit_id)).status, "FAILED");
         assert.equal((await registrations.publicForm(form.public_slug)).offers[0].sold_out, false);
@@ -347,12 +344,10 @@ test("free registration flow is atomic on PostgreSQL", { skip: !enabled || !safe
         assert.equal(await prisma.registration.count({ where: { registration_offer_id: offer.registration_offer_id } }), 2);
 
         const balance = await ticketPayments.organizationBalance(org.org_id);
-        assert.equal(balance.defaultCommissionPercent, 10);
         const usd = balance.balances.find(row => row.currency === "USD");
         assert.equal(usd.ticketsSold, 2);
         assert.equal(usd.gross, "25");
-        assert.equal(usd.commission, "2.19");
-        assert.equal(usd.balance, "22.81");
+        assert.equal(usd.balance, "25");
         assert.equal((await ticketPayments.organizationBalance(otherOrg.org_id)).balances.length, 0);
         await prisma.registrationJob.updateMany({ data: { status: "COMPLETED", completed_at: new Date() } });
     });

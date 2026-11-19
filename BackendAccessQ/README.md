@@ -54,7 +54,7 @@ DATABASE_URL=postgresql://...
 FRONTEND_URL=https://app.example.com
 BREVO_API_KEY=...
 BREVO_SENDER_NAME=AccessQ
-BREVO_SENDER_EMAIL=no-reply@example.com
+BREVO_SENDER_EMAIL=supportaccessq@tinklisoftware.com
 REGISTRATION_WORKER_POLL_MS=2000
 REGISTRATION_JOB_LEASE_MS=60000
 ```
@@ -97,12 +97,12 @@ passe en arrière-plan.
 ## Billetterie payante
 
 Une offre devient payante quand elle a un prix et une devise (`price`, `currency`). Seuls
-les opérateurs pawaPay qui acceptent cette devise sont proposés. L'argent est encaissé sur
-le compte pawaPay d'AccessQ, indépendamment des abonnements Pro :
+les opérateurs pawaPay qui acceptent cette devise sont proposés. Les paiements sont traités
+par pawaPay, indépendamment des abonnements Pro. AccessQ ne prélève aucune commission :
+100 % du prix est crédité au solde de l'organisateur.
 
 ```env
 TICKET_PAYMENTS_ENABLED=true
-TICKET_COMMISSION_PERCENT=10
 TICKET_PAYMENT_HOLD_MINUTES=15
 ```
 
@@ -111,13 +111,11 @@ TICKET_PAYMENT_HOLD_MINUTES=15
 2. Le billet n'est créé qu'après confirmation du dépôt **auprès de pawaPay**, par le callback
    de dépôt habituel (`/billing/callbacks/pawapay`, aiguillé automatiquement), par la page de
    suivi (`GET /box/payments/:id`) ou par la réconciliation en arrière-plan.
-3. Chaque vente fige son taux de commission et ajoute au journal `organizer_ledger_entries`
-   le montant net dû à l'organisateur. Le solde par devise est servi par
+3. Chaque vente ajoute au journal `organizer_ledger_entries` la totalité du prix dû à
+   l'organisateur. Le solde par devise est servi par
    `GET /registration-forms/balance`.
 
-La commission vaut `TICKET_COMMISSION_PERCENT` (10 % par défaut). Un super-admin peut fixer
-un taux propre à une organisation depuis la console d'administration. Un dépôt dont le
-montant ne correspond pas, ou confirmé après expiration de la réservation alors que l'offre
+Un dépôt dont le montant ne correspond pas, ou confirmé après expiration de la réservation alors que l'offre
 est complète, passe en `REVIEW_REQUIRED` sans émettre de billet.
 
 ### Reversements et remboursements

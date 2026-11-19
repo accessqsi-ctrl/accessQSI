@@ -16,7 +16,7 @@ const sections = [
     title: "Qui vend le billet",
     body: <>
       <p>Les billets et pass proposés sur {COMPANY.brand} sont émis et vendus par l’<strong>organisateur</strong> de l’événement, dont le nom figure sur la page d’inscription. L’organisateur est seul responsable de l’événement : sa tenue, son contenu, ses horaires, sa sécurité et le respect de ce qu’il annonce.</p>
-      <p>{COMPANY.brand}, plateforme éditée par {COMPANY.legalName}, fournit l’outil de billetterie, la box et le contrôle d’accès, et encaisse le paiement au nom et pour le compte de l’organisateur.</p>
+      <p>{COMPANY.brand}, plateforme éditée par {COMPANY.legalName}, fournit l’outil de billetterie, la box et le contrôle d’accès. La totalité du prix est créditée au solde de l’organisateur, sans prélèvement de commission par {COMPANY.brand}.</p>
       <CompanyIdentity />
       <p>Ces conditions complètent les <Link href="/conditions-utilisation" className={link}>conditions d’utilisation</Link>. L’organisateur peut préciser les conditions d’accès propres à son événement et les règles de sécurité applicables ; elles sont indiquées sur la page de l’offre et doivent respecter la loi.</p>
     </>
@@ -34,7 +34,7 @@ const sections = [
     title: "Prix et paiement",
     body: <>
       <ul>
-        <li>Le prix est fixé par l’organisateur et affiché, avec sa devise, avant le paiement. C’est le montant total que vous payez à {COMPANY.brand}. La commission de service de {COMPANY.brand} est prise sur ce prix et payée par l’organisateur : elle ne vous est pas facturée en plus.</li>
+        <li>Le prix est fixé par l’organisateur et affiché, avec sa devise, avant le paiement. C’est le montant total que vous payez pour le billet. La totalité du prix est créditée au solde de l’organisateur ; {COMPANY.brand} ne prélève aucune commission sur la vente.</li>
         <li>Le paiement se fait par Mobile Money, via notre prestataire pawaPay, avec les opérateurs proposés pour la devise du billet. Votre opérateur peut appliquer ses propres frais de transaction, selon ses conditions.</li>
         <li>Après avoir choisi votre offre, vous recevez une demande de confirmation sur votre téléphone. Votre place est réservée pendant quelques minutes (15 minutes en règle générale). Sans confirmation dans ce délai, la réservation est libérée.</li>
         <li>La vente est conclue dès que l’opérateur confirme le paiement. Le billet est alors déposé dans votre box. Si un paiement reste en vérification, le billet est émis ou le paiement remboursé dès que la vérification est terminée.</li>
@@ -69,10 +69,10 @@ const sections = [
     body: <>
       <ul>
         <li><strong>Pas de droit de rétractation.</strong> Un billet donne accès à un événement à une date déterminée : il n’est ni repris ni échangé à votre seule demande, sauf si l’organisateur le prévoit sur l’offre.</li>
-        <li><strong>Événement annulé.</strong> Le prix du billet est remboursé. Le remboursement est versé sur le numéro Mobile Money qui a payé, quel que soit le titulaire actuel du billet. Les frais de transaction prélevés par votre opérateur au moment du paiement peuvent ne pas être remboursés.</li>
+        <li><strong>Événement annulé.</strong> Pour demander le remboursement du prix du billet, contactez l’organisateur, qui en est responsable et qui vous indiquera les modalités de paiement. Les frais de transaction prélevés par votre opérateur au moment du paiement peuvent ne pas être remboursés.</li>
         <li><strong>Événement reporté ou modifié de façon importante</strong> (date, lieu, artiste principal) : le billet reste valable pour la nouvelle date. Si vous ne pouvez pas y assister, vous pouvez demander le remboursement dans le délai annoncé par l’organisateur.</li>
-        <li>L’organisateur est responsable du remboursement. {COMPANY.brand} l’exécute à partir des sommes qu’elle détient pour le compte de l’organisateur et vous informe de son avancement. Si ces sommes ne suffisent pas, votre demande est à adresser à l’organisateur, et {COMPANY.brand} vous aide à le joindre.</li>
-        <li>Pour toute demande, écrivez à <a href={`mailto:${COMPANY.supportEmail}`} className={link}>{COMPANY.supportEmail}</a> en indiquant l’adresse de votre box et l’événement concerné.</li>
+        <li>L’organisateur est seul responsable du traitement et du paiement des remboursements liés à l’événement. AccessQ ne retient aucune commission sur la vente des billets.</li>
+        <li>Pour toute question relative à un paiement, vous pouvez écrire à <a href={`mailto:${COMPANY.supportEmail}`} className={link}>{COMPANY.supportEmail}</a>.</li>
       </ul>
     </>
   },
@@ -94,7 +94,7 @@ const sections = [
   {
     id: "droit",
     title: "Droit applicable et réclamations",
-    body: <p>Ces conditions sont régies par le droit de la République démocratique du Congo. Adressez d’abord toute réclamation à {COMPANY.supportEmail} : nous y répondons dans un délai raisonnable. À défaut de solution amiable, le litige est porté devant {COMPANY.courts}, sans préjudice des droits que la loi vous reconnaît en tant que consommateur.</p>
+    body: <p>Ces conditions sont régies par le droit de la République démocratique du Congo. Adressez d’abord toute réclamation à <a href={`mailto:${COMPANY.supportEmail}`} className={link}>{COMPANY.supportEmail}</a>. À défaut de solution amiable, le litige est porté devant {COMPANY.courts}, sans préjudice des droits que la loi vous reconnaît en tant que consommateur.</p>
   }
 ];
 
