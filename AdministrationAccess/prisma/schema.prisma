@@ -62,8 +62,6 @@ model Organization {
   enterprise_contract_reference String?
   enterprise_entitlements       Json?
   default_card_template_id      String?
-  // Commission de la plateforme sur la billetterie, en points de base (1000 = 10 %). Null : taux par défaut.
-  ticket_commission_bps         Int?
   areas                         Area[]
   assets                        OrganizationAsset[]
   card_templates                CardTemplateCustom[]
@@ -381,7 +379,7 @@ model TicketPayment {
   holder_phone            String?                @db.VarChar(40)
   amount                  Decimal                @db.Decimal(18, 2)
   currency                String                 @db.VarChar(3)
-  // Taux et répartition figés au moment de l'achat.
+  // Champs conservés pour l'historique des anciens paiements. Les nouveaux paiements ont un taux nul.
   commission_bps          Int
   commission_amount       Decimal                @db.Decimal(18, 2)
   organizer_amount        Decimal                @db.Decimal(18, 2)
@@ -468,7 +466,7 @@ model OrganizerPayoutAccount {
 // Reversement du solde d'un organisateur. Le montant est retiré du solde dès la demande,
 // et y revient si la demande est refusée, annulée ou échoue. Validé par un super-admin, envoyé par le backend.
 // Un super-admin peut aussi saisir lui-même le destinataire (manual_recipient) : sans organisation,
-// le reversement est prélevé sur le solde de la plateforme (abonnements + commissions billetterie).
+// le reversement est prélevé sur le solde de la plateforme (abonnements).
 model OrganizerPayout {
   payout_id               String                 @id @default(uuid()) @db.Uuid
   provider_payout_id      String                 @unique @db.Uuid
