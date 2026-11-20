@@ -1,3 +1,4 @@
+
 import { SITE_URL } from "./lib/seo";
 
 export default function robots() {
@@ -5,8 +6,7 @@ export default function robots() {
     rules: {
       userAgent: "*",
       allow: "/",
-      disallow: ["/dashboard", "/scan", "/register/", "/reset-password", "/verify-email", "/forgot-password"],
     },
-    sitemap: `${SITE_URL}/sitemap.xml`,
+    sitemap: `${SITE_URL.replace(/\/$/, "")}/sitemap.xml`,
   };
 }
